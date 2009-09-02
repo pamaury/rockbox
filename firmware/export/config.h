@@ -5,7 +5,7 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
+ * $Id: config.h 22546 2009-08-29 19:31:29Z kkurbjun $
  *
  * Copyright (C) 2002 by Daniel Stenberg
  *
@@ -848,11 +848,13 @@ Lyre prototype 1*/
 
 #else /* BOOTLOADER */
 
-//#define USB_ENABLE_SERIAL
+#define USB_ENABLE_SERIAL
 #define USB_ENABLE_STORAGE
+#define USB_ENABLE_MTP
 
 #ifdef USB_HAS_INTERRUPT
 #define USB_ENABLE_HID
+#define USB_ENABLE_CHARGING_ONLY
 #else
 #define USB_ENABLE_CHARGING_ONLY
 #endif

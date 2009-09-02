@@ -5,7 +5,7 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
+ * $Id: usb_core.c 22018 2009-07-23 23:05:26Z mcuelenaere $
  *
  * Copyright (C) 2007 by Björn Stenberg
  *
@@ -37,6 +37,14 @@
 
 #if defined(USB_ENABLE_SERIAL)
 #include "usb_serial.h"
+#endif
+
+#if defined(USB_ENABLE_CDC_ACM)
+#include "usb_cdc_acm.h"
+#endif
+
+#if defined(USB_ENABLE_MTP)
+#include "usb_mtp.h"
 #endif
 
 #if defined(USB_ENABLE_CHARGING_ONLY)
@@ -212,6 +220,25 @@ static struct usb_class_driver drivers[USB_NUM_DRIVERS] =
         .disconnect = usb_serial_disconnect,
         .transfer_complete = usb_serial_transfer_complete,
         .control_request = usb_serial_control_request,
+#ifdef HAVE_HOTSWAP
+        .notify_hotswap = NULL,
+#endif
+    },
+#endif
+#ifdef USB_ENABLE_MTP
+    [USB_DRIVER_MTP] = {
+        .enabled = false,
+        .needs_exclusive_storage = true,
+        .first_interface = 0,
+        .last_interface = 0,
+        .request_endpoints = usb_mtp_request_endpoints,
+        .set_first_interface = usb_mtp_set_first_interface,
+        .get_config_descriptor = usb_mtp_get_config_descriptor,
+        .init_connection = usb_mtp_init_connection,
+        .init = usb_mtp_init,
+        .disconnect = usb_mtp_disconnect,
+        .transfer_complete = usb_mtp_transfer_complete,
+        .control_request = usb_mtp_control_request,
 #ifdef HAVE_HOTSWAP
         .notify_hotswap = NULL,
 #endif

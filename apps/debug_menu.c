@@ -5,7 +5,7 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
+ * $Id: debug_menu.c 22441 2009-08-20 17:03:50Z nls $
  *
  * Copyright (C) 2002 Heikki Hannikainen
  *
@@ -2621,7 +2621,7 @@ static bool dbg_scrollwheel(void)
 
 #if defined (HAVE_USBSTACK)
 
-#if defined(ROCKBOX_HAS_LOGF) && defined(USB_ENABLE_SERIAL)
+#if (defined(ROCKBOX_HAS_LOGF) && (defined(USB_ENABLE_SERIAL))) || defined(USB_ENABLE_HID) || defined(USB_ENABLE_STORAGE) || defined(USB_ENABLE_MTP)
 static bool toggle_usb_core_driver(int driver, char *msg)
 {
     bool enabled = !usb_core_driver_enabled(driver);
@@ -2632,10 +2632,33 @@ static bool toggle_usb_core_driver(int driver, char *msg)
     return false;
 }
 
+#if defined(USB_ENABLE_SERIAL)
 static bool toggle_usb_serial(void)
 {
     return toggle_usb_core_driver(USB_DRIVER_SERIAL,"USB Serial");
 }
+#endif
+
+#if defined(USB_ENABLE_MTP)
+static bool toggle_usb_mtp(void)
+{
+    return toggle_usb_core_driver(USB_DRIVER_MTP,"USB MTP");
+}
+#endif
+
+#if defined(USB_ENABLE_HID)
+static bool toggle_usb_hid(void)
+{
+    return toggle_usb_core_driver(USB_DRIVER_HID,"USB HID");
+}
+#endif
+
+#if defined(USB_ENABLE_STORAGE)
+static bool toggle_usb_storage(void)
+{
+    return toggle_usb_core_driver(USB_DRIVER_MASS_STORAGE,"USB Storage");
+}
+#endif
 #endif
 
 #endif
@@ -2779,6 +2802,15 @@ static const struct the_menu_item menuitems[] = {
 #if defined(HAVE_USBSTACK)
 #if defined(ROCKBOX_HAS_LOGF) && defined(USB_ENABLE_SERIAL)
         {"USB Serial driver (logf)", toggle_usb_serial },
+#endif
+#if defined(USB_ENABLE_MTP)
+        {"USB MTP driver", toggle_usb_mtp },
+#endif
+#if defined(USB_ENABLE_HID)
+        {"USB HID driver", toggle_usb_hid },
+#endif
+#if defined(USB_ENABLE_STORAGE)
+        {"USB Storage driver", toggle_usb_storage },
 #endif
 #endif /* HAVE_USBSTACK */
 #ifdef CPU_BOOST_LOGGING

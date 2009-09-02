@@ -5,7 +5,7 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
+ * $Id: usb.c 21208 2009-06-08 00:19:16Z kkurbjun $
  *
  * Copyright (C) 2002 by Linus Nielsen Feltzing
  *
@@ -270,6 +270,7 @@ static void usb_thread(void)
                 {
                     /* Only charging is desired */
                     usb_state = USB_POWERED;
+#if 0
 #ifdef HAVE_USBSTACK
 #ifdef USB_ENABLE_STORAGE
                     usb_core_enable_driver(USB_DRIVER_MASS_STORAGE, false);
@@ -286,28 +287,29 @@ static void usb_thread(void)
 #ifdef USB_ENABLE_CHARGING_ONLY
                     usb_core_enable_driver(USB_DRIVER_CHARGING_ONLY, true);
 #endif
-                    usb_attach();
 #endif
-                    break;
+#endif /* 0 */
                 }
+                else
 #endif /* HAVE_USB_POWER */
 #ifdef HAVE_USBSTACK
+                {
 #ifdef HAVE_USB_POWER
                 /* Set the state to USB_POWERED for now. If permission to connect
                  * by threads and storage is granted it will be changed to
                  * USB_CONNECTED. */
-                usb_state = USB_POWERED;
+                    usb_state = USB_POWERED;
 #endif
 #ifdef USB_ENABLE_STORAGE
-                usb_core_enable_driver(USB_DRIVER_MASS_STORAGE, true);
+                    usb_core_enable_driver(USB_DRIVER_MASS_STORAGE, true);
 #endif
 #ifdef USB_ENABLE_HID
-                usb_core_enable_driver(USB_DRIVER_HID, true);
+                    usb_core_enable_driver(USB_DRIVER_HID, true);
 #endif
 #ifdef USB_ENABLE_CHARGING_ONLY
-                usb_core_enable_driver(USB_DRIVER_CHARGING_ONLY, false);
+                    usb_core_enable_driver(USB_DRIVER_CHARGING_ONLY, false);
 #endif
-
+                }
                 /* Check any drivers enabled at this point for exclusive storage
                  * access requirements. */
                 exclusive_storage_access = usb_core_any_exclusive_storage();

@@ -172,6 +172,7 @@
 
 #ifndef BOOTLOADER
 #define HAVE_MULTIDRIVE
+#define HAVE_MULTIVOLUME
 #define NUM_DRIVES 2
 #define HAVE_HOTSWAP
 #endif
