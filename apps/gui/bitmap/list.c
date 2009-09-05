@@ -66,6 +66,7 @@ static bool draw_title(struct screen *display, struct gui_synclist *list)
 {
     const int screen = display->screen_type;
     int style = STYLE_DEFAULT;
+    display->scroll_stop(&title_text[screen]);
     if (!list_display_title(list, screen))
         return false;
     title_text[screen] = *(list->parent[screen]);
@@ -112,7 +113,7 @@ void list_draw(struct screen *display, struct gui_synclist *list)
     line_height = font_get(parent->font)->height;
     display->set_viewport(parent);
     display->clear_viewport();
-    display->stop_scroll();
+    display->scroll_stop(&list_text[screen]);
     list_text[screen] = *parent;
     if ((show_title = draw_title(display, list)))
     {

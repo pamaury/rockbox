@@ -72,6 +72,7 @@ static const struct button_mapping button_context_standard[]  = {
 static const struct button_mapping button_context_wps[]  = {
     
     { ACTION_WPS_PLAY,        BUTTON_TOPRIGHT|BUTTON_REL,        BUTTON_TOPRIGHT },
+    { ACTION_WPS_STOP,        BUTTON_TOPRIGHT|BUTTON_REPEAT,     BUTTON_TOPRIGHT },
     { ACTION_WPS_SKIPNEXT,    BUTTON_MIDRIGHT|BUTTON_REL,        BUTTON_MIDRIGHT },
     { ACTION_WPS_SKIPPREV,    BUTTON_MIDLEFT|BUTTON_REL,         BUTTON_MIDLEFT },
 
@@ -181,6 +182,8 @@ static const struct button_mapping button_context_time[]  = {
 }; /* button_context_time */
 
 static const struct button_mapping button_context_quickscreen[]  = {
+    /* override ACTION_STD_CANCEL from standard context */
+    { ACTION_NONE,       BUTTON_MIDLEFT,                    BUTTON_NONE },
 
     { ACTION_STD_CANCEL, BUTTON_CENTER|BUTTON_REL,          BUTTON_NONE },
     { ACTION_QS_TOP,     BUTTON_TOPMIDDLE|BUTTON_REL,       BUTTON_NONE },
