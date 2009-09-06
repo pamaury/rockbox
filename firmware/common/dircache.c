@@ -873,17 +873,6 @@ const struct dircache_entry *dircache_get_entry_ptr(const char *filename)
     return dircache_get_entry(filename, false, false);
 }
 
-/**
- * Usermode function to return the root dircache_entry.
- */
-const struct dircache_entry *dircache_get_root_entry_ptr(void)
-{
-    if (!dircache_initialized)
-        return NULL;
-
-    return dircache_root;
-}
-
 static bool dircache_ptr_in_range(const void *ptr)
 {
     return (char *)ptr >= (char *)dircache_root && (char *)ptr < (char *)dircache_root+dircache_size;

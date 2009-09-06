@@ -32,6 +32,11 @@
 #include "powermgmt.h"
 #include "timefuncs.h"
 #include "file.h"
+#include "dircache.h"
+
+#if !defined(HAVE_DIRCACHE)
+#error USB-MTP requires dircache to be enabled
+#endif
 
 /* Communications Class interface */
 static struct usb_interface_descriptor __attribute__((aligned(2)))
@@ -80,7 +85,7 @@ static const struct mtp_string mtp_ext =
 
 static const struct mtp_array_uint16_t mtp_op_supported =
 {
-    10,
+    13,
     {MTP_OP_GET_DEV_INFO,
      MTP_OP_OPEN_SESSION,
      MTP_OP_CLOSE_SESSION,
@@ -90,7 +95,10 @@ static const struct mtp_array_uint16_t mtp_op_supported =
      MTP_OP_GET_OBJECT_HANDLES,
      MTP_OP_GET_OBJECT_INFO,
      MTP_OP_GET_OBJECT,
-     MTP_OP_GET_OBJ_PROPS_SUPPORTED
+     MTP_OP_GET_DEV_PROP_DESC,
+     MTP_OP_GET_DEV_PROP_VALUE,
+     MTP_OP_GET_OBJ_PROPS_SUPPORTED,
+     MTP_OP_GET_OBJ_REFERENCES
      }
 };
 
@@ -160,7 +168,14 @@ static const struct mtp_string mtp_serial =
 static const struct device_info dev_info=
 {
     100, /* Standard Version */
+    /* The specification says 0xffffffff but since then, 
+     * it appears that MTP has become a PTP extension with the 0x6 extension ID
+     */
+    #if 0
     0xffffffff, /* Vendor Extension ID */
+    #else
+    0x00000006, /* Vendor Extension ID */
+    #endif
     100, /* MTP Version */
     0x0000, /* Functional Mode */
 };
@@ -183,6 +198,8 @@ enum data_phase_type
 };
 
 typedef void (*recv_completion_routine)(char *data, int length);
+/* should write to dest, return number of bytes written or <0 on error, write at most max_size bytes */
+typedef int (*send_split_routine)(void *dest, int max_size, void *user);
 
 static struct
 {
@@ -192,6 +209,9 @@ static struct
     unsigned char *data_dest; /* current data destination pointer */
     uint32_t *cur_array_length_ptr; /* pointer to the length of the current array (if any) */
     recv_completion_routine recv_completion; /* function to call to complete a receive */
+    void *send_user; /* user data for send split routine */
+    uint32_t send_rem_bytes; /* remaining bytes to send */
+    send_split_routine send_split; /* function to call on send split */
 } mtp_state;
 
 static struct mtp_command cur_cmd;
@@ -211,6 +231,12 @@ static unsigned char *send_buffer;
  * Helpers
  *
  */
+static void fail_op_with(uint16_t error_code, enum data_phase_type dht);
+
+static uint32_t max_usb_xfer_size(void)
+{
+    return 32*1024; /* FIXME expected to work on any target */
+}
 
 static void fail_with(uint16_t error_code)
 {
@@ -234,6 +260,8 @@ static void send_response(void)
     
     state = SENDING_RESPONSE;
     usb_drv_send_nonblocking(ep_bulk_in, send_buffer, cont->length);
+    
+    /*logf("mtp: send response 0x%x", cont->code);*/
 }
 
 static void start_data_block(void)
@@ -339,16 +367,15 @@ static void start_data_block_array(void)
 
 define_pack_array_elem(uint32_t)
 
-static void finish_data_block_array(void)
+static uint32_t finish_data_block_array(void)
 {
-    /* stub */
+    /* return number of elements */
+    return *mtp_state.cur_array_length_ptr;
 }
 
-static void send_data_block(void)
+static unsigned char *get_data_block_ptr(void)
 {
-    struct generic_container *cont = (struct generic_container *) send_buffer;
-    state = SENDING_DATA_BLOCK;
-    usb_drv_send_nonblocking(ep_bulk_in, send_buffer, cont->length);
+    return mtp_state.data_dest;
 }
 
 static void receive_data_block(recv_completion_routine rct)
@@ -357,12 +384,53 @@ static void receive_data_block(recv_completion_routine rct)
     state = RECEIVING_DATA_BLOCK;
     usb_drv_recv(ep_bulk_out, recv_buffer, 1024);
 }
- 
-/*
- *
- * Operation handling
- *
- */
+
+static void continue_send_split_data(void)
+{
+    int size = MIN(max_usb_xfer_size(), mtp_state.send_rem_bytes);
+    int ret = mtp_state.send_split(send_buffer, size, mtp_state.send_user);
+    if(ret < 0)
+        return fail_op_with(ERROR_INCOMPLETE_TRANSFER, SEND_DATA_PHASE);
+    
+    mtp_state.send_rem_bytes -= ret;
+    usb_drv_send_nonblocking(ep_bulk_in, send_buffer, ret);
+}
+
+static void send_split_data(uint32_t nb_bytes, send_split_routine fn, void *user)
+{
+    mtp_state.send_split = fn,
+    mtp_state.send_rem_bytes = nb_bytes;
+    mtp_state.send_user = user;
+    
+    state = SENDING_DATA_BLOCK;
+    
+    struct generic_container *cont = (struct generic_container *) send_buffer;
+    
+    cont->length = nb_bytes + sizeof(struct generic_container);
+    cont->type = CONTAINER_DATA_BLOCK;
+    cont->code = cur_cmd.code;
+    cont->transaction_id = cur_cmd.transaction_id;
+    
+    int size = MIN(max_usb_xfer_size() - sizeof(struct generic_container), nb_bytes);
+    int ret = fn(send_buffer + sizeof(struct generic_container),
+                size,
+                user);
+    if(ret < 0)
+        return fail_op_with(ERROR_INCOMPLETE_TRANSFER, SEND_DATA_PHASE);
+    
+    mtp_state.send_rem_bytes -= ret;
+    usb_drv_send_nonblocking(ep_bulk_in, send_buffer, ret + sizeof(struct generic_container));
+}
+
+static void send_data_block(void)
+{
+    mtp_state.send_split = NULL;
+    /* FIXME should rewrite this with send_split_data */
+    struct generic_container *cont = (struct generic_container *) send_buffer;
+    state = SENDING_DATA_BLOCK;
+    usb_drv_send_nonblocking(ep_bulk_in, send_buffer, cont->length);
+}
+
 static void fail_op_with(uint16_t error_code, enum data_phase_type dht)
 {
     logf("mtp: fail operation with error code 0x%x", error_code);
@@ -397,6 +465,11 @@ static void fail_op_with(uint16_t error_code, enum data_phase_type dht)
     }
 }
 
+/*
+ *
+ * Operation handling
+ *
+ */
 static void open_session(uint32_t session_id)
 {
     logf("mtp: open session %lu", session_id);
@@ -491,8 +564,110 @@ static void get_storage_info(uint32_t stor_id)
     send_data_block();
 }
 
+static bool check_dircache(void)
+{
+    if(!dircache_is_enabled() || dircache_is_initializing())
+    {
+        logf("mtp: oops, dircache is not enabled, trying something...");
+        return false;
+    }
+    else
+        return true;
+}
+
+static const struct dircache_entry *mtp_handle_to_dircache_entry(uint32_t handle)
+{
+    /* NOTE invalid entry for 0xffffffff but works with it */
+    struct dircache_entry *entry = (struct dircache_entry *)handle;
+    if(!dircache_is_valid_ptr(entry))
+        return NULL;
+
+    return entry;
+}
+
+static uint32_t dircache_entry_to_mtp_handle(const struct dircache_entry *entry)
+{
+    return (uint32_t)entry;
+}
+
+static void list_files2(const struct dircache_entry *direntry, bool recursive, bool start_db)
+{
+    const struct dircache_entry *entry;
+    uint32_t *ptr;
+    uint32_t nb_elems=0;
+    
+    logf("mtp: list_files entry=0x%lx rec=%s", (uint32_t)direntry, recursive ? "yes" : "no");
+    
+    if((uint32_t)direntry == 0xffffffff)
+        direntry = dircache_get_entry_ptr("/");
+    else
+    {
+        if(!(direntry->attribute & ATTR_DIRECTORY))
+            return fail_op_with(ERROR_INVALID_PARENT_OBJ, SEND_DATA_PHASE);
+        direntry = direntry->down;
+    }
+    
+    if(start_db)
+    {
+        start_data_block();
+        start_data_block_array();
+    }
+    ptr = (uint32_t *)get_data_block_ptr();
+    entry = direntry;
+    
+    while(entry != NULL)
+    {
+        /* skip "." and ".." and files that begin with "<"*/
+        /*logf("mtp: add entry \"%s\"(len=%ld, 0x%lx)", entry->d_name, entry->name_len, (uint32_t)entry);*/
+        if(entry->d_name[0] == '.' && entry->d_name[1] == '\0')
+            goto Lnext;
+        if(entry->d_name[0] == '.' && entry->d_name[1] == '.'  && entry->d_name[2] == '\0')
+            goto Lnext;
+        if(entry->d_name[0] == '<')
+            goto Lnext;
+        
+        pack_data_block_array_elem_uint32_t(dircache_entry_to_mtp_handle(entry));
+        nb_elems++;
+        
+        Lnext:
+        entry = entry->next;
+    }
+    
+    /* handle recursive listing */
+    /* NOTE it could have been done during the listing, 
+       but then the number of opened files would have limit
+       the depth of recursion */
+    if(recursive && false)
+    {
+        while(nb_elems-- != 0)
+        {
+            const struct dircache_entry *entry = mtp_handle_to_dircache_entry(*ptr++);
+            if(entry->attribute & ATTR_DIRECTORY)
+                list_files2(entry, recursive, false);
+        }
+    }
+    
+    if(start_db)
+    {
+        finish_data_block_array();
+        finish_data_block();
+    }
+    
+    cur_resp.code = ERROR_OK;
+    cur_resp.nb_parameters = 0;
+    
+    send_data_block();
+}
+
+static void list_files(const struct dircache_entry *direntry, bool recursive)
+{
+    return list_files2(direntry,recursive,true);
+}
+
 static void get_num_objects(int nb_params, uint32_t stor_id, uint32_t obj_fmt, uint32_t obj_handle_parent)
 {
+    return fail_op_with(ERROR_OP_NOT_SUPPORTED, SEND_DATA_PHASE);
+    #if 0
     logf("mtp: get num objects: nb_params=%d stor_id=0x%lx obj_fmt=0x%lx obj_handle_parent=0x%lx",
         nb_params, stor_id, obj_fmt, obj_handle_parent);
     
@@ -512,73 +687,27 @@ static void get_num_objects(int nb_params, uint32_t stor_id, uint32_t obj_fmt, u
     if(stor_id!=0xffffffff && stor_id!=0x00010001)
         return fail_op_with(ERROR_INVALID_STORAGE_ID, SEND_DATA_PHASE);
     
-    return fail_op_with(ERROR_OP_NOT_SUPPORTED, SEND_DATA_PHASE);
-    /*
+    check_tcs();
+    
     cur_resp.code = ERROR_OK;
     cur_resp.nb_parameters = 1;
     cur_resp.param[0] = count;
     
     send_response();
-    */
-}
-
-static struct dircache_entry *handle_to_dircache_entry(uint32_t obj_handle)
-{
-    struct dircache_entry *entry = (struct dircache_entry *)obj_handle;
-    if(!dircache_is_valid_ptr(entry))
-        return NULL;
-
-    return entry;
-}
-
-static uint32_t dircache_entry_to_handle(const struct dircache_entry *entry)
-{
-    uint32_t obj_handle = (uint32_t)entry;
-    return obj_handle;
+    #endif
 }
 
 static void get_object_handles(int nb_params, uint32_t stor_id, uint32_t obj_fmt, uint32_t obj_handle_parent)
 {
-    const struct dircache_entry *entry = NULL, *child = NULL;
-
+    if(!check_dircache())
+        return fail_op_with(ERROR_DEV_BUSY, SEND_DATA_PHASE);
+    
     logf("mtp: get object handles: nb_params=%d stor_id=0x%lx obj_fmt=0x%lx obj_handle_parent=0x%lx",
         nb_params, stor_id, obj_fmt, obj_handle_parent);
     
-    /* if there are three parameters, make sure the third one make sense */
-    if(nb_params == 3)
-    {
-        if(obj_handle_parent == 0xffffffff)
-        {
-            child = dircache_get_root_entry_ptr();
-            if(!entry)
-                return fail_op_with(ERROR_GENERAL_ERROR, SEND_DATA_PHASE);
-        }
-        else if(obj_handle_parent != 0x00000000)
-        {
-            entry = handle_to_dircache_entry(obj_handle_parent);
-            if(!entry)
-                return fail_op_with(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE);
-	    child = entry->down;
-        }
-	else /* WRONG */
-	{
-		child = dircache_get_root_entry_ptr();
-		if(!child)
-			return fail_op_with(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE);
-	}
-    }
-    else /* WRONG */
-    {
-	    child = dircache_get_root_entry_ptr();
-	    if(!child)
-		    return fail_op_with(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE);
-    }
-
-/*
-    if(!entry)
-        return fail_op_with(ERROR_GENERAL_ERROR, SEND_DATA_PHASE);
-*/
-
+    /* if then third parameter is not present, set to the default value */
+    if(nb_params < 3)
+        obj_handle_parent = 0x00000000;
     /* if there are two parameters, make sure the second one does not filter anything */
     if(nb_params >= 2)
     {
@@ -586,35 +715,29 @@ static void get_object_handles(int nb_params, uint32_t stor_id, uint32_t obj_fmt
             return fail_op_with(ERROR_SPEC_BY_FMT_UNSUPPORTED, SEND_DATA_PHASE);
     }
     
-    if(stor_id!=0xffffffff && stor_id!=0x00010001)
+    if(stor_id != 0xffffffff && stor_id != 0x00010001)
         return fail_op_with(ERROR_INVALID_STORAGE_ID, SEND_DATA_PHASE);
     
-    start_data_block();
-    start_data_block_array();
-    
-    for(; child; child = child->next)
-        pack_data_block_array_elem_uint32_t(dircache_entry_to_handle(child));
-    
-    finish_data_block_array();
-    finish_data_block();
-    
-    cur_resp.code = ERROR_OK;
-    cur_resp.nb_parameters = 0;
-    
-    send_data_block();
+    if(obj_handle_parent == 0x00000000)
+        list_files((const struct dircache_entry *)0xffffffff, true); /* recursive, at root */
+    else
+    {
+        const struct dircache_entry *entry=mtp_handle_to_dircache_entry(obj_handle_parent);
+        if(entry == NULL)
+            return fail_op_with(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE);
+        else
+            list_files(entry, false); /* not recursive, at entry */
+    }
 }
 
 static void get_object_info(uint32_t object_handle)
 {
-    logf("mtp: get object info: handle=0x%lx", object_handle);
+    const struct dircache_entry *entry = mtp_handle_to_dircache_entry(object_handle);
+    logf("mtp: get object info: entry=\"%s\" attr=0x%x", entry->d_name, entry->attribute);
     
     struct object_info oi;
-    struct dircache_entry *entry = handle_to_dircache_entry(object_handle);
-    if(!entry)
-        return fail_op_with(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE);
-    
     oi.storage_id = 0x00010001;
-    oi.object_format = OBJ_FMT_UNDEFINED;
+    oi.object_format = (entry->attribute & ATTR_DIRECTORY) ? OBJ_FMT_ASSOCIATION : OBJ_FMT_UNDEFINED;
     oi.protection = 0x0000;
     oi.compressed_size = entry->size;
     oi.thumb_fmt = 0;
@@ -624,9 +747,9 @@ static void get_object_info(uint32_t object_handle)
     oi.image_pix_width = 0;
     oi.image_pix_height = 0;
     oi.image_bit_depth = 0;
-    oi.parent_handle = entry->up ? dircache_entry_to_handle(entry->up) : 0xffffffff;
-    oi.association_type = 0;
-    oi.association_desc = 0;
+    oi.parent_handle = dircache_entry_to_mtp_handle(entry->up); /* works also for root */
+    oi.association_type = (entry->attribute & ATTR_DIRECTORY) ? ASSOC_TYPE_FOLDER : ASSOC_TYPE_NONE;
+    oi.association_desc = (entry->attribute & ATTR_DIRECTORY) ? 0x1 : 0x0;
     oi.sequence_number = 0;
     
     start_data_block();
@@ -641,6 +764,62 @@ static void get_object_info(uint32_t object_handle)
     cur_resp.nb_parameters = 0;
     
     send_data_block();
+}
+
+struct get_object_st
+{
+    uint32_t offset;
+    uint32_t size;
+    int fd;
+};
+
+static int get_object_split_routine(void *dest, int size, void *user)
+{
+    struct get_object_st *st = user;
+    /*logf("mtp: continue get object: size=%d dest=0x%lx offset=%lu fd=%d", size, (uint32_t)dest, st->offset, st->fd);*/
+    
+    lseek(st->fd, st->offset, SEEK_SET);
+    if(read(st->fd, dest, size) != size)
+    {
+        logf("mtp: read failed");
+        close(st->fd);
+        return -1;
+    }
+    else
+    {
+        st->offset += size;
+        if(st->offset == st->size)
+            close(st->fd);
+        /*logf("mtp: ok for %d bytes", size);*/
+        return size;
+    }
+}
+
+static void get_object(uint32_t object_handle)
+{
+    const struct dircache_entry *entry = mtp_handle_to_dircache_entry(object_handle);
+    static struct get_object_st st;
+    char buffer[MAX_PATH];
+    
+    logf("mtp: get object: entry=\"%s\" attr=0x%x size=%ld", entry->d_name, entry->attribute, entry->size);
+    
+    /* can't be invalid handle, can't be root, can't be a directory */
+    if((uint32_t)entry == 0x00000000 || (uint32_t)entry == 0xffffffff || (entry->attribute & ATTR_DIRECTORY))
+        return fail_op_with(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE);
+    
+    dircache_copy_path(entry, buffer, MAX_PATH);
+    /*logf("mtp: get_object: path=\"%s\"", buffer);*/
+    
+    st.offset = 0;
+    st.size = entry->size;
+    st.fd = open(buffer, O_RDONLY);
+    if(st.fd < 0)
+        return fail_op_with(ERROR_GENERAL_ERROR, SEND_DATA_PHASE);
+    
+    cur_resp.code = ERROR_OK;
+    cur_resp.nb_parameters = 0;
+    
+    send_split_data(entry->size, &get_object_split_routine, &st);
 }
 
 static void get_object_props_supported(uint32_t object_fmt)
@@ -762,6 +941,30 @@ static void get_device_prop_value(uint32_t device_prop)
     }
 }
 
+static void get_object_references(uint32_t object_handle)
+{
+    const struct dircache_entry *entry=mtp_handle_to_dircache_entry(object_handle);
+    if(entry == NULL)
+        return fail_op_with(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE);
+    
+    logf("mtp: get object references: handle=0x%lx (\"%s\")", object_handle, entry->d_name);
+    
+    if(entry->attribute & ATTR_DIRECTORY)
+        return list_files(entry, false); /* not recursive, at entry */
+    else
+    {
+        start_data_block();
+        start_data_block_array();
+        finish_data_block_array();
+        finish_data_block();
+        
+        cur_resp.code = ERROR_OK;
+        cur_resp.nb_parameters = 0;
+    
+        send_data_block();
+    }
+}
+
 static void handle_command2(void)
 {
     #define want_nb_params(p, data_phase) \
@@ -770,8 +973,6 @@ static void handle_command2(void)
         if(cur_cmd.nb_parameters < pi || cur_cmd.nb_parameters > pa) return fail_op_with(ERROR_INVALID_DATASET, data_phase);
     #define want_session(data_phase) \
         if(mtp_state.session_id == 0x00000000) return fail_op_with(ERROR_SESSION_NOT_OPEN, data_phase);
-    #define want_dircache(data_phase) \
-        if(!dircache_is_enabled() || dircache_is_initializing()) return fail_op_with(ERROR_DEV_BUSY, data_phase);
     
     switch(cur_cmd.code)
     {
@@ -796,23 +997,23 @@ static void handle_command2(void)
             /*  There are two optional parameters and one mandatory */
             want_nb_params_range(1, 3, NO_DATA_PHASE)
             want_session(NO_DATA_PHASE) /* must be called in a session */
-            want_dircache(NO_DATA_PHASE) /* tagcache must be operational */
             return get_num_objects(cur_cmd.nb_parameters, cur_cmd.param[0], cur_cmd.param[1], cur_cmd.param[2]);
         case MTP_OP_GET_OBJECT_HANDLES:
             /*  There are two optional parameters and one mandatory */
             want_nb_params_range(1, 3, SEND_DATA_PHASE)
             want_session(SEND_DATA_PHASE) /* must be called in a session */
-            want_dircache(SEND_DATA_PHASE) /* tagcache must be operational */
             return get_object_handles(cur_cmd.nb_parameters, cur_cmd.param[0], cur_cmd.param[1], cur_cmd.param[2]);
         case MTP_OP_GET_OBJECT_INFO:
             want_nb_params(1, SEND_DATA_PHASE) /* one parameter */
             want_session(SEND_DATA_PHASE) /* must be called in a session */
-            want_dircache(SEND_DATA_PHASE) /* tagcache must be operational */
             return get_object_info(cur_cmd.param[0]);
+        case MTP_OP_GET_OBJECT:
+            want_nb_params(1, SEND_DATA_PHASE) /* one parameter */
+            want_session(SEND_DATA_PHASE) /* must be called in a session */
+            return get_object(cur_cmd.param[0]);
         case MTP_OP_GET_OBJ_PROPS_SUPPORTED:
             want_nb_params(1, SEND_DATA_PHASE)
             want_session(SEND_DATA_PHASE)
-            want_dircache(SEND_DATA_PHASE)
             return get_object_props_supported(cur_cmd.param[0]);
         case MTP_OP_RESET_DEVICE:
             want_nb_params(0, NO_DATA_PHASE) /* no parameter */
@@ -825,6 +1026,10 @@ static void handle_command2(void)
             want_nb_params(1, SEND_DATA_PHASE) /* one parameter */
             want_session(SEND_DATA_PHASE)
             return get_device_prop_value(cur_cmd.param[0]);
+        case MTP_OP_GET_OBJ_REFERENCES:
+            want_nb_params(1, SEND_DATA_PHASE) /* one parameter */
+            want_session(SEND_DATA_PHASE)
+            return get_object_references(cur_cmd.param[0]);
         default:
             logf("mtp: unknown command code 0x%x", cur_cmd.code);
             /* assume no data phase */
@@ -997,6 +1202,17 @@ void usb_mtp_init_connection(void)
     logf("mtp: init connection");
     active=true;
     
+    cpu_boost(true);
+    
+    if(!dircache_is_enabled())
+    {
+        logf("mtp: init dircache");
+        dircache_init();
+        dircache_build(/*dircache_get_cache_size()*/0);
+        if(!dircache_is_enabled())
+            fail_with(ERROR_GENERAL_ERROR);
+    }
+    
     mtp_state.session_id = 0x00000000;
     mtp_state.transaction_id = 0x00000000;
     
@@ -1023,6 +1239,7 @@ void usb_mtp_disconnect(void)
 {
     logf("mtp: disconnect");
     active = false;
+    cpu_boost(false);
 }
 
 /* called by usb_core_transfer_complete() */
@@ -1062,9 +1279,22 @@ void usb_mtp_transfer_complete(int ep,int dir, int status, int length)
                 break;
             }
             if(status != 0)
+            {
                 logf("mtp: send data transfer error");
-            state = SENDING_RESPONSE;
-            send_response();
+                fail_op_with(ERROR_INCOMPLETE_TRANSFER, SEND_DATA_PHASE);
+                break;
+            }
+            
+            /*
+            logf("mtp: send complete: send_split=0x%lx rem_bytes=%lu length=%d",
+                (uint32_t)mtp_state.send_split, mtp_state.send_rem_bytes, length);
+            */
+            
+            if(mtp_state.send_split == NULL || mtp_state.send_rem_bytes == 0)
+                send_response();
+            else
+                continue_send_split_data();
+            
             break;
         case RECEIVING_DATA_BLOCK:
             if(dir == USB_DIR_IN)

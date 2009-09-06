@@ -156,6 +156,7 @@ struct device_info
 #define ERROR_STORAGE_NOT_AVAILABLE 0x2013
 #define ERROR_SPEC_BY_FMT_UNSUPPORTED   0x2014
 #define ERROR_DEV_BUSY              0x2019
+#define ERROR_INVALID_PARENT_OBJ    0x201a
 #define ERROR_INVALID_PARAMETER     0x201d
 #define ERROR_SESSION_ALREADY_OPEN  0x201e
 #define ERROR_TRANSACTION_CANCELLED 0x201f
@@ -196,6 +197,7 @@ struct device_info
 #define MTP_OP_GET_DEV_PROP_DESC    0x1014
 #define MTP_OP_GET_DEV_PROP_VALUE   0x1015
 #define MTP_OP_GET_OBJ_PROPS_SUPPORTED  0x9801
+#define MTP_OP_GET_OBJ_REFERENCES   0x9810
 
 /*
  * Storage Types
@@ -234,11 +236,13 @@ struct device_info
  * Object Formats
  */
 #define OBJ_FMT_UNDEFINED   0x3000
+#define OBJ_FMT_ASSOCIATION 0x3001
 
 /*
- * Object Properties
+ * Association Types
  */
-#define OBJ_PROP_
+#define ASSOC_TYPE_NONE     0x0000
+#define ASSOC_TYPE_FOLDER   0x0001
 
 int usb_mtp_request_endpoints(struct usb_class_driver *);
 int usb_mtp_set_first_interface(int interface);
