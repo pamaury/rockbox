@@ -228,7 +228,7 @@ static struct usb_class_driver drivers[USB_NUM_DRIVERS] =
 #ifdef USB_ENABLE_MTP
     [USB_DRIVER_MTP] = {
         .enabled = false,
-        .needs_exclusive_storage = true,
+        .needs_exclusive_storage = false,
         .first_interface = 0,
         .last_interface = 0,
         .request_endpoints = usb_mtp_request_endpoints,

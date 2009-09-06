@@ -27,7 +27,7 @@
 #include "usb_class_driver.h"
 #define LOGF_ENABLE
 #include "logf.h"
-#include "tagcache.h"
+#include "dircache.h"
 #include "storage.h"
 #include "powermgmt.h"
 #include "timefuncs.h"
@@ -192,8 +192,6 @@ static struct
     unsigned char *data_dest; /* current data destination pointer */
     uint32_t *cur_array_length_ptr; /* pointer to the length of the current array (if any) */
     recv_completion_routine recv_completion; /* function to call to complete a receive */
-    bool tcs_init;
-    struct tagcache_search tcs;
 } mtp_state;
 
 static struct mtp_command cur_cmd;
@@ -477,7 +475,7 @@ static void get_storage_info(uint32_t stor_id)
     
     start_data_block();
     pack_data_block_uint16_t(STOR_TYPE_FIXED_RAM); /* Storage Type */
-    pack_data_block_uint16_t(FS_TYPE_GENERIC_FLAT); /* Filesystem Type */
+    pack_data_block_uint16_t(FS_TYPE_GENERIC_HIERARCHICAL); /* Filesystem Type */
     pack_data_block_uint16_t(ACCESS_CAP_RO_WITHOUT); /* Access Capability */
     pack_data_block_uint64_t(0); /* Max Capacity (optional for read only */
     pack_data_block_uint64_t(0); /* Free Space in bytes (optional for read only */
@@ -491,41 +489,6 @@ static void get_storage_info(uint32_t stor_id)
     cur_resp.nb_parameters = 0;
     
     send_data_block();
-}
-
-static void init_tcs(void)
-{
-    memset(&mtp_state.tcs, 0, sizeof(mtp_state.tcs));
-    tagcache_search(&mtp_state.tcs, tag_filename);
-    mtp_state.tcs_init = true;
-}
-
-static void deinit_tcs(void)
-{
-    tagcache_search_finish(&mtp_state.tcs);
-    mtp_state.tcs_init = false;
-}
-
-static void check_tcs(void)
-{
-    if(!mtp_state.tcs_init)
-        init_tcs();
-}
-
-static void check_tcs_and_rewind(void)
-{
-    deinit_tcs();
-    init_tcs();
-}
-
-static uint32_t idx_id_to_handle(int idx_id)
-{
-    return idx_id + 1;
-}
-
-static int handle_to_idx_id(uint32_t handle)
-{
-    return handle - 1;
 }
 
 static void get_num_objects(int nb_params, uint32_t stor_id, uint32_t obj_fmt, uint32_t obj_handle_parent)
@@ -549,8 +512,6 @@ static void get_num_objects(int nb_params, uint32_t stor_id, uint32_t obj_fmt, u
     if(stor_id!=0xffffffff && stor_id!=0x00010001)
         return fail_op_with(ERROR_INVALID_STORAGE_ID, SEND_DATA_PHASE);
     
-    check_tcs();
-    
     return fail_op_with(ERROR_OP_NOT_SUPPORTED, SEND_DATA_PHASE);
     /*
     cur_resp.code = ERROR_OK;
@@ -561,17 +522,63 @@ static void get_num_objects(int nb_params, uint32_t stor_id, uint32_t obj_fmt, u
     */
 }
 
+static struct dircache_entry *handle_to_dircache_entry(uint32_t obj_handle)
+{
+    struct dircache_entry *entry = (struct dircache_entry *)obj_handle;
+    if(!dircache_is_valid_ptr(entry))
+        return NULL;
+
+    return entry;
+}
+
+static uint32_t dircache_entry_to_handle(const struct dircache_entry *entry)
+{
+    uint32_t obj_handle = (uint32_t)entry;
+    return obj_handle;
+}
+
 static void get_object_handles(int nb_params, uint32_t stor_id, uint32_t obj_fmt, uint32_t obj_handle_parent)
 {
+    const struct dircache_entry *entry = NULL, *child = NULL;
+
     logf("mtp: get object handles: nb_params=%d stor_id=0x%lx obj_fmt=0x%lx obj_handle_parent=0x%lx",
         nb_params, stor_id, obj_fmt, obj_handle_parent);
     
     /* if there are three parameters, make sure the third one make sense */
     if(nb_params == 3)
     {
-        if(obj_handle_parent != 0x00000000 && obj_handle_parent != 0xffffffff)
-            return fail_op_with(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE);
+        if(obj_handle_parent == 0xffffffff)
+        {
+            child = dircache_get_root_entry_ptr();
+            if(!entry)
+                return fail_op_with(ERROR_GENERAL_ERROR, SEND_DATA_PHASE);
+        }
+        else if(obj_handle_parent != 0x00000000)
+        {
+            entry = handle_to_dircache_entry(obj_handle_parent);
+            if(!entry)
+                return fail_op_with(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE);
+	    child = entry->down;
+        }
+	else /* WRONG */
+	{
+		child = dircache_get_root_entry_ptr();
+		if(!child)
+			return fail_op_with(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE);
+	}
     }
+    else /* WRONG */
+    {
+	    child = dircache_get_root_entry_ptr();
+	    if(!child)
+		    return fail_op_with(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE);
+    }
+
+/*
+    if(!entry)
+        return fail_op_with(ERROR_GENERAL_ERROR, SEND_DATA_PHASE);
+*/
+
     /* if there are two parameters, make sure the second one does not filter anything */
     if(nb_params >= 2)
     {
@@ -582,13 +589,11 @@ static void get_object_handles(int nb_params, uint32_t stor_id, uint32_t obj_fmt
     if(stor_id!=0xffffffff && stor_id!=0x00010001)
         return fail_op_with(ERROR_INVALID_STORAGE_ID, SEND_DATA_PHASE);
     
-    check_tcs_and_rewind();
-    
     start_data_block();
     start_data_block_array();
     
-    while(tagcache_get_next(&mtp_state.tcs))
-        pack_data_block_array_elem_uint32_t(idx_id_to_handle(mtp_state.tcs.idx_id));
+    for(; child; child = child->next)
+        pack_data_block_array_elem_uint32_t(dircache_entry_to_handle(child));
     
     finish_data_block_array();
     finish_data_block();
@@ -601,28 +606,17 @@ static void get_object_handles(int nb_params, uint32_t stor_id, uint32_t obj_fmt
 
 static void get_object_info(uint32_t object_handle)
 {
-    return fail_op_with(ERROR_DEV_BUSY, SEND_DATA_PHASE);
-    
     logf("mtp: get object info: handle=0x%lx", object_handle);
     
     struct object_info oi;
-    char filename[MAX_PATH];
-    int fd;
-    int idx_id = handle_to_idx_id(object_handle);
-    
-    check_tcs();
-    
-    if(!tagcache_retrieve(&mtp_state.tcs, idx_id, tag_filename, filename, sizeof(filename)))
-        return fail_op_with(ERROR_GENERAL_ERROR, SEND_DATA_PHASE);
-    
-    fd = open(filename, O_RDONLY);
-    if(fd < 0)
-        return fail_op_with(ERROR_GENERAL_ERROR, SEND_DATA_PHASE);
+    struct dircache_entry *entry = handle_to_dircache_entry(object_handle);
+    if(!entry)
+        return fail_op_with(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE);
     
     oi.storage_id = 0x00010001;
     oi.object_format = OBJ_FMT_UNDEFINED;
     oi.protection = 0x0000;
-    oi.compressed_size = /*filesize(fd)*/0;
+    oi.compressed_size = entry->size;
     oi.thumb_fmt = 0;
     oi.thumb_compressed_size = 0;
     oi.thumb_pix_width = 0;
@@ -630,16 +624,14 @@ static void get_object_info(uint32_t object_handle)
     oi.image_pix_width = 0;
     oi.image_pix_height = 0;
     oi.image_bit_depth = 0;
-    oi.parent_handle = 0x00000000;
+    oi.parent_handle = entry->up ? dircache_entry_to_handle(entry->up) : 0xffffffff;
     oi.association_type = 0;
     oi.association_desc = 0;
     oi.sequence_number = 0;
     
-    close(fd);
-    
     start_data_block();
     pack_data_block_ptr(&oi, sizeof(oi));
-    pack_data_block_string_charz(filename); /* Filename */
+    pack_data_block_string_charz(entry->d_name); /* Filename */
     pack_data_block_date_time(get_time()); /* Date Created */
     pack_data_block_date_time(get_time()); /* Date Modified */
     pack_data_block_string_charz(NULL); /* Keywords */
@@ -778,8 +770,8 @@ static void handle_command2(void)
         if(cur_cmd.nb_parameters < pi || cur_cmd.nb_parameters > pa) return fail_op_with(ERROR_INVALID_DATASET, data_phase);
     #define want_session(data_phase) \
         if(mtp_state.session_id == 0x00000000) return fail_op_with(ERROR_SESSION_NOT_OPEN, data_phase);
-    #define want_tagcache(data_phase) \
-        if(!tagcache_is_usable()) return fail_op_with(ERROR_DEV_BUSY, data_phase);
+    #define want_dircache(data_phase) \
+        if(!dircache_is_enabled() || dircache_is_initializing()) return fail_op_with(ERROR_DEV_BUSY, data_phase);
     
     switch(cur_cmd.code)
     {
@@ -804,23 +796,23 @@ static void handle_command2(void)
             /*  There are two optional parameters and one mandatory */
             want_nb_params_range(1, 3, NO_DATA_PHASE)
             want_session(NO_DATA_PHASE) /* must be called in a session */
-            want_tagcache(NO_DATA_PHASE) /* tagcache must be operational */
+            want_dircache(NO_DATA_PHASE) /* tagcache must be operational */
             return get_num_objects(cur_cmd.nb_parameters, cur_cmd.param[0], cur_cmd.param[1], cur_cmd.param[2]);
         case MTP_OP_GET_OBJECT_HANDLES:
             /*  There are two optional parameters and one mandatory */
             want_nb_params_range(1, 3, SEND_DATA_PHASE)
             want_session(SEND_DATA_PHASE) /* must be called in a session */
-            want_tagcache(SEND_DATA_PHASE) /* tagcache must be operational */
+            want_dircache(SEND_DATA_PHASE) /* tagcache must be operational */
             return get_object_handles(cur_cmd.nb_parameters, cur_cmd.param[0], cur_cmd.param[1], cur_cmd.param[2]);
         case MTP_OP_GET_OBJECT_INFO:
             want_nb_params(1, SEND_DATA_PHASE) /* one parameter */
             want_session(SEND_DATA_PHASE) /* must be called in a session */
-            want_tagcache(SEND_DATA_PHASE) /* tagcache must be operational */
+            want_dircache(SEND_DATA_PHASE) /* tagcache must be operational */
             return get_object_info(cur_cmd.param[0]);
         case MTP_OP_GET_OBJ_PROPS_SUPPORTED:
             want_nb_params(1, SEND_DATA_PHASE)
             want_session(SEND_DATA_PHASE)
-            want_tagcache(SEND_DATA_PHASE)
+            want_dircache(SEND_DATA_PHASE)
             return get_object_props_supported(cur_cmd.param[0]);
         case MTP_OP_RESET_DEVICE:
             want_nb_params(0, NO_DATA_PHASE) /* no parameter */
@@ -1008,10 +1000,6 @@ void usb_mtp_init_connection(void)
     mtp_state.session_id = 0x00000000;
     mtp_state.transaction_id = 0x00000000;
     
-    if(mtp_state.tcs_init)
-        deinit_tcs();
-    mtp_state.tcs_init = false;
-    
     size_t bufsize;
     unsigned char * audio_buffer;
     audio_buffer = audio_get_buffer(false,&bufsize);
@@ -1033,9 +1021,6 @@ void usb_mtp_init(void)
 
 void usb_mtp_disconnect(void)
 {
-    if(mtp_state.tcs_init)
-        deinit_tcs();
-    
     logf("mtp: disconnect");
     active = false;
 }
