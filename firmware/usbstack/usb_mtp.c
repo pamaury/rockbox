@@ -235,7 +235,7 @@ static void send_response(void)
     memcpy(send_buffer + sizeof(struct generic_container), &cur_resp.param[0], 4 * cur_resp.nb_parameters);
     
     state = SENDING_RESPONSE;
-    usb_drv_send_nonblocking(ep_bulk_out, send_buffer, cont->length);
+    usb_drv_send_nonblocking(ep_bulk_in, send_buffer, cont->length);
 }
 
 static void start_data_block(void)
@@ -350,7 +350,7 @@ static void send_data_block(void)
 {
     struct generic_container *cont = (struct generic_container *) send_buffer;
     state = SENDING_DATA_BLOCK;
-    usb_drv_send_nonblocking(ep_bulk_out, send_buffer, cont->length);
+    usb_drv_send_nonblocking(ep_bulk_in, send_buffer, cont->length);
 }
 
 static void receive_data_block(recv_completion_routine rct)
