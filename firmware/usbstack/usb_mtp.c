@@ -299,8 +299,8 @@ static void pack_data_block_string_charz(const char *str)
 static void pack_data_block_date_time(struct tm *time)
 {
     static char buf[16];
-    buf[0] = '0' + time->tm_year / 1000;
-    buf[1] = '0' + ((time->tm_year / 100) % 10);
+    buf[0] = '0' + (time->tm_year+1900) / 1000;
+    buf[1] = '0' + (((time->tm_year+1900) / 100) % 10);
     buf[2] = '0' + ((time->tm_year / 10) % 10);
     buf[3] = '0' + (time->tm_year % 10);
     buf[4] = '0' + time->tm_mon / 10;
