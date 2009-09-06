@@ -874,6 +874,17 @@ const struct dircache_entry *dircache_get_entry_ptr(const char *filename)
 }
 
 /**
+ * Usermode function to return the root dircache_entry.
+ */
+const struct dircache_entry *dircache_get_root_entry_ptr(void)
+{
+    if (!dircache_initialized)
+        return NULL;
+
+    return dircache_root;
+}
+
+/**
  * Function to copy the full absolute path from dircache to the given buffer
  * using the given dircache_entry pointer.
  */
