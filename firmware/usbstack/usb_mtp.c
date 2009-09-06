@@ -733,7 +733,7 @@ static void get_object_info(uint32_t object_handle)
     
     struct object_info oi;
     oi.storage_id = 0x00010001;
-    oi.object_format = OBJ_FMT_UNDEFINED;
+    oi.object_format = (entry->attribute & ATTR_DIRECTORY) ? OBJ_FMT_ASSOCIATION : OBJ_FMT_UNDEFINED;
     oi.protection = 0x0000;
     oi.compressed_size = entry->size;
     oi.thumb_fmt = 0;

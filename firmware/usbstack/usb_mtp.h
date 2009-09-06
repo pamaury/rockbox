@@ -236,6 +236,7 @@ struct device_info
  * Object Formats
  */
 #define OBJ_FMT_UNDEFINED   0x3000
+#define OBJ_FMT_ASSOCIATION 0x3001
 
 /*
  * Association Types
