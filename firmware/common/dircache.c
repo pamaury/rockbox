@@ -884,6 +884,25 @@ const struct dircache_entry *dircache_get_root_entry_ptr(void)
     return dircache_root;
 }
 
+static bool dircache_ptr_in_range(const void *ptr)
+{
+    return (char *)ptr >= (char *)dircache_root && (char *)ptr < (char *)dircache_root+dircache_size;
+}
+     
+/**
+ * Usermode function to determine the (likely) validity of the given
+ * dircache_entry pointer, which may have been obtained from an external
+ * source.  Note: this routine is NOT designed to defend against a
+ * malicious attacker.
+ */
+bool dircache_is_valid_ptr(const struct dircache_entry *entry)
+{
+    return dircache_ptr_in_range(entry)
+        && (!entry->next || dircache_ptr_in_range(entry->next))
+        && (!entry->up || dircache_ptr_in_range(entry->up))
+        && (!entry->down || dircache_ptr_in_range(entry->down));
+}
+
 /**
  * Function to copy the full absolute path from dircache to the given buffer
  * using the given dircache_entry pointer.
