@@ -258,7 +258,7 @@ static void send_response(void)
     memcpy(send_buffer + sizeof(struct generic_container), &cur_resp.param[0], 4 * cur_resp.nb_parameters);
     
     state = SENDING_RESPONSE;
-    usb_drv_send_nonblocking(ep_bulk_out, send_buffer, cont->length);
+    usb_drv_send_nonblocking(ep_bulk_in, send_buffer, cont->length);
     
     /*logf("mtp: send response 0x%x", cont->code);*/
 }
@@ -324,8 +324,8 @@ static void pack_data_block_string_charz(const char *str)
 static void pack_data_block_date_time(struct tm *time)
 {
     static char buf[16];
-    buf[0] = '0' + time->tm_year / 1000;
-    buf[1] = '0' + ((time->tm_year / 100) % 10);
+    buf[0] = '0' + (time->tm_year+1900) / 1000;
+    buf[1] = '0' + (((time->tm_year+1900) / 100) % 10);
     buf[2] = '0' + ((time->tm_year / 10) % 10);
     buf[3] = '0' + (time->tm_year % 10);
     buf[4] = '0' + time->tm_mon / 10;
@@ -392,7 +392,7 @@ static void continue_send_split_data(void)
         return fail_op_with(ERROR_INCOMPLETE_TRANSFER, SEND_DATA_PHASE);
     
     mtp_state.send_rem_bytes -= ret;
-    usb_drv_send_nonblocking(ep_bulk_out, send_buffer, ret);
+    usb_drv_send_nonblocking(ep_bulk_in, send_buffer, ret);
 }
 
 static void send_split_data(uint32_t nb_bytes, send_split_routine fn, void *user)
@@ -418,7 +418,7 @@ static void send_split_data(uint32_t nb_bytes, send_split_routine fn, void *user
         return fail_op_with(ERROR_INCOMPLETE_TRANSFER, SEND_DATA_PHASE);
     
     mtp_state.send_rem_bytes -= ret;
-    usb_drv_send_nonblocking(ep_bulk_out, send_buffer, ret + sizeof(struct generic_container));
+    usb_drv_send_nonblocking(ep_bulk_in, send_buffer, ret + sizeof(struct generic_container));
 }
 
 static void send_data_block(void)
@@ -427,7 +427,7 @@ static void send_data_block(void)
     /* FIXME should rewrite this with send_split_data */
     struct generic_container *cont = (struct generic_container *) send_buffer;
     state = SENDING_DATA_BLOCK;
-    usb_drv_send_nonblocking(ep_bulk_out, send_buffer, cont->length);
+    usb_drv_send_nonblocking(ep_bulk_in, send_buffer, cont->length);
 }
 
 static void fail_op_with(uint16_t error_code, enum data_phase_type dht)
