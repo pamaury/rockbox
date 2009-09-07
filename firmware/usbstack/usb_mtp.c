@@ -590,7 +590,7 @@ static uint32_t dircache_entry_to_mtp_handle(const struct dircache_entry *entry)
     return (uint32_t)entry;
 }
 
-static void list_files2(const struct dircache_entry *direntry, bool recursive, bool start_db)
+static bool list_files2(const struct dircache_entry *direntry, bool recursive)
 {
     const struct dircache_entry *entry;
     uint32_t *ptr;
@@ -603,65 +603,52 @@ static void list_files2(const struct dircache_entry *direntry, bool recursive, b
     else
     {
         if(!(direntry->attribute & ATTR_DIRECTORY))
-            return fail_op_with(ERROR_INVALID_PARENT_OBJ, SEND_DATA_PHASE);
+        {
+            fail_op_with(ERROR_INVALID_PARENT_OBJ, SEND_DATA_PHASE);
+            return false;
+        }
         direntry = direntry->down;
     }
     
-    if(start_db)
-    {
-        start_data_block();
-        start_data_block_array();
-    }
     ptr = (uint32_t *)get_data_block_ptr();
-    entry = direntry;
     
-    while(entry != NULL)
+    for(entry = direntry; entry != NULL; entry = entry->next)
     {
         /* skip "." and ".." and files that begin with "<"*/
         /*logf("mtp: add entry \"%s\"(len=%ld, 0x%lx)", entry->d_name, entry->name_len, (uint32_t)entry);*/
         if(entry->d_name[0] == '.' && entry->d_name[1] == '\0')
-            goto Lnext;
+            continue;
         if(entry->d_name[0] == '.' && entry->d_name[1] == '.'  && entry->d_name[2] == '\0')
-            goto Lnext;
+            continue;
         if(entry->d_name[0] == '<')
-            goto Lnext;
+            continue;
         
         pack_data_block_array_elem_uint32_t(dircache_entry_to_mtp_handle(entry));
         nb_elems++;
         
-        Lnext:
-        entry = entry->next;
+        /* handle recursive listing */
+        if(recursive && (entry->attribute & ATTR_DIRECTORY))
+            if (!list_files2(entry, recursive))
+                return false;
     }
-    
-    /* handle recursive listing */
-    /* NOTE it could have been done during the listing, 
-       but then the number of opened files would have limit
-       the depth of recursion */
-    if(recursive && false)
-    {
-        while(nb_elems-- != 0)
-        {
-            const struct dircache_entry *entry = mtp_handle_to_dircache_entry(*ptr++);
-            if(entry->attribute & ATTR_DIRECTORY)
-                list_files2(entry, recursive, false);
-        }
-    }
-    
-    if(start_db)
-    {
-        finish_data_block_array();
-        finish_data_block();
-    }
-    
-    cur_resp.code = ERROR_OK;
-    cur_resp.nb_parameters = 0;
-    
-    send_data_block();
+
+    return true;
 }
 
 static void list_files(const struct dircache_entry *direntry, bool recursive)
 {
-    return list_files2(direntry,recursive,true);
+    start_data_block();
+    start_data_block_array();
+
+    if (!list_files2(direntry,recursive)) return;
+
+    finish_data_block_array();
+    finish_data_block();
+
+    cur_resp.code = ERROR_OK;
+    cur_resp.nb_parameters = 0;
+
+    send_data_block();
 }
 
 static void get_num_objects(int nb_params, uint32_t stor_id, uint32_t obj_fmt, uint32_t obj_handle_parent)
