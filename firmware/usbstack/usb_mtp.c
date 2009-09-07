@@ -322,6 +322,17 @@ static void pack_data_block_string_charz(const char *str)
         pack_data_block_uint16_t(*str++);
 }
 
+/* TODO: find a better place for this function. */
+static void fat2tm(struct tm *tm, unsigned short date, unsigned short time)
+{
+    tm->tm_year = ((date >> 9 ) & 0x7F) + 80;
+    tm->tm_mon  =  (date >> 5 ) & 0x0F;
+    tm->tm_mday =  (date      ) & 0x1F;
+    tm->tm_hour =  (time >> 11) & 0x1F;
+    tm->tm_min  =  (time >> 5 ) & 0x3F;
+    tm->tm_sec  =  (time & 0x1F) << 1;
+}
+    
 static void pack_data_block_date_time(struct tm *time)
 {
     static char buf[16];
@@ -720,6 +731,7 @@ static void get_object_handles(int nb_params, uint32_t stor_id, uint32_t obj_fmt
 static void get_object_info(uint32_t object_handle)
 {
     const struct dircache_entry *entry = mtp_handle_to_dircache_entry(object_handle);
+    struct tm filetm;
     logf("mtp: get object info: entry=\"%s\" attr=0x%x", entry->d_name, entry->attribute);
     
     struct object_info oi;
@@ -742,8 +754,9 @@ static void get_object_info(uint32_t object_handle)
     start_data_block();
     pack_data_block_ptr(&oi, sizeof(oi));
     pack_data_block_string_charz(entry->d_name); /* Filename */
-    pack_data_block_date_time(get_time()); /* Date Created */
-    pack_data_block_date_time(get_time()); /* Date Modified */
+    fat2tm(&filetm, entry->wrtdate, entry->wrttime);
+    pack_data_block_date_time(&filetm); /* Date Created */
+    pack_data_block_date_time(&filetm); /* Date Modified */
     pack_data_block_string_charz(NULL); /* Keywords */
     finish_data_block();
     
