@@ -592,10 +592,13 @@ static bool check_dircache(void)
         return true;
 }
 
-static const struct dircache_entry *mtp_handle_to_dircache_entry(uint32_t handle)
+static const struct dircache_entry *mtp_handle_to_dircache_entry(uint32_t handle, bool accept_root)
 {
     /* NOTE invalid entry for 0xffffffff but works with it */
     struct dircache_entry *entry = (struct dircache_entry *)handle;
+    if(entry == (struct dircache_entry *)0xffffffff)
+        return accept_root ? entry : NULL;
+    
     if(!dircache_is_valid_ptr(entry))
         return NULL;
 
@@ -726,7 +729,7 @@ static void get_object_handles(int nb_params, uint32_t stor_id, uint32_t obj_fmt
         list_files((const struct dircache_entry *)0xffffffff, true); /* recursive, at root */
     else
     {
-        const struct dircache_entry *entry=mtp_handle_to_dircache_entry(obj_handle_parent);
+        const struct dircache_entry *entry=mtp_handle_to_dircache_entry(obj_handle_parent, true);
         if(entry == NULL)
             return fail_op_with(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE);
         else
@@ -736,7 +739,7 @@ static void get_object_handles(int nb_params, uint32_t stor_id, uint32_t obj_fmt
 
 static void get_object_info(uint32_t object_handle)
 {
-    const struct dircache_entry *entry = mtp_handle_to_dircache_entry(object_handle);
+    const struct dircache_entry *entry = mtp_handle_to_dircache_entry(object_handle, false);
     struct tm filetm;
     logf("mtp: get object info: entry=\"%s\" attr=0x%x", entry->d_name, entry->attribute);
     
@@ -803,14 +806,14 @@ static int get_object_split_routine(void *dest, int size, void *user)
 
 static void get_object(uint32_t object_handle)
 {
-    const struct dircache_entry *entry = mtp_handle_to_dircache_entry(object_handle);
+    const struct dircache_entry *entry = mtp_handle_to_dircache_entry(object_handle, false);
     static struct get_object_st st;
     char buffer[MAX_PATH];
     
     logf("mtp: get object: entry=\"%s\" attr=0x%x size=%ld", entry->d_name, entry->attribute, entry->size);
     
     /* can't be invalid handle, can't be root, can't be a directory */
-    if((uint32_t)entry == 0x00000000 || (uint32_t)entry == 0xffffffff || (entry->attribute & ATTR_DIRECTORY))
+    if(entry == NULL || (entry->attribute & ATTR_DIRECTORY))
         return fail_op_with(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE);
     
     dircache_copy_path(entry, buffer, MAX_PATH);
@@ -949,7 +952,7 @@ static void get_device_prop_value(uint32_t device_prop)
 
 static void get_object_references(uint32_t object_handle)
 {
-    const struct dircache_entry *entry=mtp_handle_to_dircache_entry(object_handle);
+    const struct dircache_entry *entry=mtp_handle_to_dircache_entry(object_handle, false);
     if(entry == NULL)
         return fail_op_with(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE);
     
@@ -1208,6 +1211,7 @@ void usb_mtp_init_connection(void)
     logf("mtp: init connection");
     active=true;
     
+    /* enable to cpu boost to enable transfers of big size (ie > ~90 bytes) */
     cpu_boost(true);
     
     if(!dircache_is_enabled())
