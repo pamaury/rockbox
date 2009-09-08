@@ -160,6 +160,8 @@ struct device_info
 #define ERROR_INVALID_PARAMETER     0x201d
 #define ERROR_SESSION_ALREADY_OPEN  0x201e
 #define ERROR_TRANSACTION_CANCELLED 0x201f
+#define ERROR_INVALID_OBJ_PROP_CODE 0xa801
+#define ERROR_INVALID_OBJ_PROP_FMT  0xa802
 #define ERROR_INVALID_DATASET       0xa806
 
 /*
@@ -197,6 +199,8 @@ struct device_info
 #define MTP_OP_GET_DEV_PROP_DESC    0x1014
 #define MTP_OP_GET_DEV_PROP_VALUE   0x1015
 #define MTP_OP_GET_OBJ_PROPS_SUPPORTED  0x9801
+#define MTP_OP_GET_OBJ_PROP_DESC    0x9802
+#define MTP_OP_GET_OBJ_PROP_VALUE   0x9803
 #define MTP_OP_GET_OBJ_REFERENCES   0x9810
 
 /*
@@ -243,6 +247,29 @@ struct device_info
  */
 #define ASSOC_TYPE_NONE     0x0000
 #define ASSOC_TYPE_FOLDER   0x0001
+
+/*
+ * Object Properties
+ */
+#define OBJ_PROP_GET        0x00
+#define OBJ_PROP_GET_SET    0x01
+
+#define OBJ_PROP_FORM_NONE  0x00
+#define OBJ_PROP_FORM_ENUM  0x02
+#define OBJ_PROP_FORM_DATE  0x03
+ 
+#define OBJ_PROP_STORAGE_ID 0xdc01
+#define OBJ_PROP_OBJ_FMT    0xdc02
+#define OBJ_PROP_OBJ_SIZE   0xdc04
+#define OBJ_PROP_ASSOC_TYPE 0xdc05
+#define OBJ_PROP_ASSOC_DESC 0xdc06
+#define OBJ_PROP_FILENAME   0xdc07
+#define OBJ_PROP_C_DATE     0xdc08
+#define OBJ_PROP_M_DATE     0xdc09
+#define OBJ_PROP_PARENT_OBJ 0xdc0b
+#define OBJ_PROP_HIDDEN     0xdc0d
+#define OBJ_PROP_SYS_OBJ    0xdc0e
+#define OBJ_PROP_NAME       0xdc44
 
 int usb_mtp_request_endpoints(struct usb_class_driver *);
 int usb_mtp_set_first_interface(int interface);

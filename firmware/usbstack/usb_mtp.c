@@ -85,7 +85,7 @@ static const struct mtp_string mtp_ext =
 
 static const struct mtp_array_uint16_t mtp_op_supported =
 {
-    13,
+    15,
     {MTP_OP_GET_DEV_INFO,
      MTP_OP_OPEN_SESSION,
      MTP_OP_CLOSE_SESSION,
@@ -98,6 +98,8 @@ static const struct mtp_array_uint16_t mtp_op_supported =
      MTP_OP_GET_DEV_PROP_DESC,
      MTP_OP_GET_DEV_PROP_VALUE,
      MTP_OP_GET_OBJ_PROPS_SUPPORTED,
+     MTP_OP_GET_OBJ_PROP_DESC,
+     MTP_OP_GET_OBJ_PROP_VALUE,
      MTP_OP_GET_OBJ_REFERENCES
      }
 };
@@ -124,8 +126,9 @@ static const struct mtp_array_uint16_t mtp_capture_fmt =
 
 static const struct mtp_array_uint16_t mtp_playback_fmt =
 {
-    0,
-    {}
+    2,
+    {OBJ_FMT_UNDEFINED,
+     OBJ_FMT_ASSOCIATION}
 };
 
 static const struct mtp_string mtp_manufacturer =
@@ -380,6 +383,7 @@ static void start_data_block_array(void)
         (*mtp_state.cur_array_length_ptr)++; \
     } \
 
+define_pack_array_elem(uint16_t)
 define_pack_array_elem(uint32_t)
 
 static uint32_t finish_data_block_array(void)
@@ -568,8 +572,8 @@ static void get_storage_info(uint32_t stor_id)
     pack_data_block_uint16_t(FS_TYPE_GENERIC_HIERARCHICAL); /* Filesystem Type */
     pack_data_block_uint16_t(ACCESS_CAP_RO_WITHOUT); /* Access Capability */
     pack_data_block_uint64_t(0); /* Max Capacity (optional for read only */
-    pack_data_block_uint64_t(0); /* Free Space in bytes (optional for read only */
-    pack_data_block_uint32_t(0); /* Free Space in objects (optional for read only */
+    pack_data_block_uint64_t(0); /* Free Space in bytes (optional for read only) */
+    pack_data_block_uint32_t(0); /* Free Space in objects (optional for read only) */
     pack_data_block_string_charz("Storage description missing"); /* Storage Description */
     pack_data_block_string_charz("Volume identifier missing"); /* Volume Identifier */
     finish_data_block();
@@ -831,21 +835,6 @@ static void get_object(uint32_t object_handle)
     send_split_data(entry->size, &get_object_split_routine, &st);
 }
 
-static void get_object_props_supported(uint32_t object_fmt)
-{
-    //logf("mtp: get object props supported: fmt=0x%lx", object_fmt);
-    
-    start_data_block();
-    start_data_block_array();
-    finish_data_block_array();
-    finish_data_block();
-    
-    cur_resp.code = ERROR_OK;
-    cur_resp.nb_parameters = 0;
-    
-    send_data_block();
-}
-
 static void reset_device(void)
 {
     logf("mtp: reset device");
@@ -950,6 +939,530 @@ static void get_device_prop_value(uint32_t device_prop)
     }
 }
 
+static void get_object_props_supported(uint32_t object_fmt)
+{
+    logf("mtp: get object props supported: fmt=0x%lx", object_fmt);
+    
+    if(object_fmt != OBJ_FMT_UNDEFINED && object_fmt != OBJ_FMT_ASSOCIATION)
+        return fail_op_with(ERROR_INVALID_OBJ_FORMAT, SEND_DATA_PHASE);
+    
+    bool folder = (object_fmt == OBJ_FMT_ASSOCIATION);
+    
+    start_data_block();
+    start_data_block_array();
+    pack_data_block_array_elem_uint16_t(OBJ_PROP_STORAGE_ID);
+    pack_data_block_array_elem_uint16_t(OBJ_PROP_OBJ_FMT);
+    if(folder)
+    {
+        pack_data_block_array_elem_uint16_t(OBJ_PROP_ASSOC_TYPE);
+        pack_data_block_array_elem_uint16_t(OBJ_PROP_ASSOC_DESC);
+    }
+    else
+        pack_data_block_array_elem_uint16_t(OBJ_PROP_OBJ_SIZE);
+    pack_data_block_array_elem_uint16_t(OBJ_PROP_FILENAME);
+    pack_data_block_array_elem_uint16_t(OBJ_PROP_C_DATE);
+    pack_data_block_array_elem_uint16_t(OBJ_PROP_M_DATE);
+    pack_data_block_array_elem_uint16_t(OBJ_PROP_PARENT_OBJ);
+    pack_data_block_array_elem_uint16_t(OBJ_PROP_HIDDEN);
+    pack_data_block_array_elem_uint16_t(OBJ_PROP_SYS_OBJ);
+    pack_data_block_array_elem_uint16_t(OBJ_PROP_NAME);
+    finish_data_block_array();
+    finish_data_block();
+    
+    cur_resp.code = ERROR_OK;
+    cur_resp.nb_parameters = 0;
+    
+    send_data_block();
+}
+
+static void get_storage_id_desc(uint32_t obj_fmt)
+{
+    start_data_block();
+    pack_data_block_uint16_t(OBJ_PROP_STORAGE_ID);
+    pack_data_block_uint16_t(TYPE_UINT32);
+    pack_data_block_uint8_t(OBJ_PROP_GET); /* Get */
+    pack_data_block_uint32_t(0x00000000); /* Factory Default Value */
+    pack_data_block_uint32_t(0xffffffff); /* Group */
+    pack_data_block_uint8_t(OBJ_PROP_FORM_NONE); /* None */
+    finish_data_block();
+    
+    cur_resp.code = ERROR_OK;
+    cur_resp.nb_parameters = 0;
+    
+    send_data_block();
+}
+
+static void get_object_fmt_desc(uint32_t obj_fmt)
+{
+    start_data_block();
+    pack_data_block_uint16_t(OBJ_PROP_OBJ_FMT);
+    pack_data_block_uint16_t(TYPE_UINT16);
+    pack_data_block_uint8_t(OBJ_PROP_GET); /* Get */
+    pack_data_block_uint32_t(0x0000); /* Factory Default Value */
+    pack_data_block_uint32_t(0xffffffff); /* Group */
+    pack_data_block_uint8_t(OBJ_PROP_FORM_NONE); /* None */
+    finish_data_block();
+    
+    cur_resp.code = ERROR_OK;
+    cur_resp.nb_parameters = 0;
+    
+    send_data_block();
+}
+
+static void get_assoc_type_desc(uint32_t obj_fmt)
+{
+    start_data_block();
+    pack_data_block_uint16_t(OBJ_PROP_ASSOC_TYPE);
+    pack_data_block_uint16_t(TYPE_UINT16);
+    pack_data_block_uint8_t(OBJ_PROP_GET); /* Get */
+    pack_data_block_uint32_t(0x0000); /* Factory Default Value */
+    pack_data_block_uint32_t(0xffffffff); /* Group */
+    pack_data_block_uint8_t(OBJ_PROP_FORM_ENUM); /* Enumeration */
+    pack_data_block_uint16_t(1); /* Number of values */
+    pack_data_block_uint16_t(ASSOC_TYPE_FOLDER);
+    finish_data_block();
+    
+    cur_resp.code = ERROR_OK;
+    cur_resp.nb_parameters = 0;
+    
+    send_data_block();
+}
+
+static void get_assoc_desc_desc(uint32_t obj_fmt)
+{
+    start_data_block();
+    pack_data_block_uint16_t(OBJ_PROP_ASSOC_DESC);
+    pack_data_block_uint16_t(TYPE_UINT32);
+    pack_data_block_uint8_t(OBJ_PROP_GET); /* Get */
+    pack_data_block_uint32_t(0x00000000); /* Factory Default Value */
+    pack_data_block_uint32_t(0xffffffff); /* Group */
+    pack_data_block_uint8_t(OBJ_PROP_FORM_NONE); /* None */
+    finish_data_block();
+    
+    cur_resp.code = ERROR_OK;
+    cur_resp.nb_parameters = 0;
+    
+    send_data_block();
+}
+
+static void get_object_size_desc(uint32_t obj_fmt)
+{
+    start_data_block();
+    pack_data_block_uint16_t(OBJ_PROP_OBJ_SIZE);
+    pack_data_block_uint16_t(TYPE_UINT32);
+    pack_data_block_uint8_t(OBJ_PROP_GET); /* Get */
+    pack_data_block_uint32_t(0x00000000); /* Factory Default Value */
+    pack_data_block_uint32_t(0xffffffff); /* Group */
+    pack_data_block_uint8_t(OBJ_PROP_FORM_NONE); /* None */
+    finish_data_block();
+    
+    cur_resp.code = ERROR_OK;
+    cur_resp.nb_parameters = 0;
+    
+    send_data_block();
+}
+
+static void get_object_filename_desc(uint32_t obj_fmt)
+{
+    start_data_block();
+    pack_data_block_uint16_t(OBJ_PROP_FILENAME);
+    pack_data_block_uint16_t(TYPE_STR);
+    pack_data_block_uint8_t(OBJ_PROP_GET); /* Get */
+    pack_data_block_uint8_t(0x00); /* Factory Default Value */
+    pack_data_block_uint32_t(0xffffffff); /* Group */
+    pack_data_block_uint8_t(OBJ_PROP_FORM_NONE); /* None */
+    finish_data_block();
+    
+    cur_resp.code = ERROR_OK;
+    cur_resp.nb_parameters = 0;
+    
+    send_data_block();
+}
+
+static void get_object_c_date_desc(uint32_t obj_fmt)
+{
+    start_data_block();
+    pack_data_block_uint16_t(OBJ_PROP_C_DATE);
+    pack_data_block_uint16_t(TYPE_STR);
+    pack_data_block_uint8_t(OBJ_PROP_GET); /* Get */
+    pack_data_block_uint8_t(0x00); /* Factory Default Value */
+    pack_data_block_uint32_t(0xffffffff); /* Group */
+    pack_data_block_uint8_t(OBJ_PROP_FORM_NONE); /* None */
+    finish_data_block();
+    
+    cur_resp.code = ERROR_OK;
+    cur_resp.nb_parameters = 0;
+    
+    send_data_block();
+}
+
+static void get_object_m_date_desc(uint32_t obj_fmt)
+{
+    start_data_block();
+    pack_data_block_uint16_t(OBJ_PROP_M_DATE);
+    pack_data_block_uint16_t(TYPE_STR);
+    pack_data_block_uint8_t(OBJ_PROP_GET); /* Get */
+    pack_data_block_uint8_t(0x00); /* Factory Default Value */
+    pack_data_block_uint32_t(0xffffffff); /* Group */
+    pack_data_block_uint8_t(OBJ_PROP_FORM_NONE); /* None */
+    finish_data_block();
+    
+    cur_resp.code = ERROR_OK;
+    cur_resp.nb_parameters = 0;
+    
+    send_data_block();
+}
+
+static void get_parent_obj_desc(uint32_t obj_fmt)
+{
+    start_data_block();
+    pack_data_block_uint16_t(OBJ_PROP_PARENT_OBJ);
+    pack_data_block_uint16_t(TYPE_UINT32);
+    pack_data_block_uint8_t(OBJ_PROP_GET); /* Get */
+    pack_data_block_uint8_t(0x00000000); /* Factory Default Value */
+    pack_data_block_uint32_t(0xffffffff); /* Group */
+    pack_data_block_uint8_t(OBJ_PROP_FORM_NONE); /* None */
+    finish_data_block();
+    
+    cur_resp.code = ERROR_OK;
+    cur_resp.nb_parameters = 0;
+    
+    send_data_block();
+}
+
+static void get_hidden_desc(uint32_t obj_fmt)
+{
+    start_data_block();
+    pack_data_block_uint16_t(OBJ_PROP_HIDDEN);
+    pack_data_block_uint16_t(TYPE_UINT16);
+    pack_data_block_uint8_t(OBJ_PROP_GET); /* Get */
+    pack_data_block_uint16_t(0x0000); /* Factory Default Value */
+    pack_data_block_uint32_t(0xffffffff); /* Group */
+    pack_data_block_uint8_t(OBJ_PROP_FORM_ENUM); /* Enumeration */
+    pack_data_block_uint16_t(2); /* Number of values */
+    pack_data_block_uint16_t(0x0);
+    pack_data_block_uint16_t(0x1);
+    finish_data_block();
+    
+    cur_resp.code = ERROR_OK;
+    cur_resp.nb_parameters = 0;
+    
+    send_data_block();
+}
+
+static void get_sys_obj_desc(uint32_t obj_fmt)
+{
+    start_data_block();
+    pack_data_block_uint16_t(OBJ_PROP_SYS_OBJ);
+    pack_data_block_uint16_t(TYPE_UINT16);
+    pack_data_block_uint8_t(OBJ_PROP_GET); /* Get */
+    pack_data_block_uint16_t(0x0000); /* Factory Default Value */
+    pack_data_block_uint32_t(0xffffffff); /* Group */
+    pack_data_block_uint8_t(OBJ_PROP_FORM_ENUM); /* Enumeration */
+    pack_data_block_uint16_t(2); /* Number of values */
+    pack_data_block_uint16_t(0x0);
+    pack_data_block_uint16_t(0x1);
+    finish_data_block();
+    
+    cur_resp.code = ERROR_OK;
+    cur_resp.nb_parameters = 0;
+    
+    send_data_block();
+}
+
+static void get_object_name_desc(uint32_t obj_fmt)
+{
+    start_data_block();
+    pack_data_block_uint16_t(OBJ_PROP_NAME);
+    pack_data_block_uint16_t(TYPE_STR);
+    pack_data_block_uint8_t(OBJ_PROP_GET); /* Get */
+    pack_data_block_uint8_t(0x00); /* Factory Default Value */
+    pack_data_block_uint32_t(0xffffffff); /* Group */
+    pack_data_block_uint8_t(OBJ_PROP_FORM_NONE); /* None */
+    finish_data_block();
+    
+    cur_resp.code = ERROR_OK;
+    cur_resp.nb_parameters = 0;
+    
+    send_data_block();
+}
+
+
+static void get_object_prop_desc(uint32_t obj_prop, uint32_t obj_fmt)
+{
+    switch(obj_prop)
+    {
+        case OBJ_PROP_STORAGE_ID: return get_storage_id_desc(obj_fmt);
+        case OBJ_PROP_OBJ_FMT: return get_object_fmt_desc(obj_fmt);
+        case OBJ_PROP_ASSOC_TYPE: return get_assoc_type_desc(obj_fmt);
+        case OBJ_PROP_ASSOC_DESC: return get_assoc_desc_desc(obj_fmt);
+        case OBJ_PROP_OBJ_SIZE: return get_object_size_desc(obj_fmt);
+        case OBJ_PROP_FILENAME: return get_object_filename_desc(obj_fmt);
+        case OBJ_PROP_C_DATE: return get_object_c_date_desc(obj_fmt);
+        case OBJ_PROP_M_DATE: return get_object_m_date_desc(obj_fmt);
+        case OBJ_PROP_PARENT_OBJ: return get_parent_obj_desc(obj_fmt);
+        case OBJ_PROP_HIDDEN: return get_hidden_desc(obj_fmt);
+        case OBJ_PROP_SYS_OBJ: return get_sys_obj_desc(obj_fmt);
+        case OBJ_PROP_NAME: return get_object_name_desc(obj_fmt);
+        default: return fail_op_with(ERROR_INVALID_OBJ_PROP_CODE, SEND_DATA_PHASE);
+    }
+}
+
+static void get_storage_id_value(uint32_t obj_handle)
+{
+    const struct dircache_entry *entry = mtp_handle_to_dircache_entry(obj_handle, false);
+    if(entry == NULL)
+        return fail_op_with(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE);
+    
+    logf("mtp: get stor id value: handle=0x%lx(\"%s\")", obj_handle, entry->d_name);
+    
+    start_data_block();
+    pack_data_block_uint32_t(0x00010001);
+    finish_data_block();
+    
+    cur_resp.code = ERROR_OK;
+    cur_resp.nb_parameters = 0;
+    
+    send_data_block();
+}
+
+static void get_object_fmt_value(uint32_t obj_handle)
+{
+    const struct dircache_entry *entry = mtp_handle_to_dircache_entry(obj_handle, false);
+    if(entry == NULL)
+        return fail_op_with(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE);
+    
+    logf("mtp: get object fmt value: handle=0x%lx(\"%s\")", obj_handle, entry->d_name);
+    
+    start_data_block();
+    if(entry->attribute & ATTR_DIRECTORY)
+        pack_data_block_uint16_t(OBJ_FMT_ASSOCIATION);
+    else
+        pack_data_block_uint16_t(OBJ_FMT_UNDEFINED);
+    finish_data_block();
+    
+    cur_resp.code = ERROR_OK;
+    cur_resp.nb_parameters = 0;
+    
+    send_data_block();
+}
+
+static void get_assoc_type_value(uint32_t obj_handle)
+{
+    const struct dircache_entry *entry = mtp_handle_to_dircache_entry(obj_handle, false);
+    if(entry == NULL)
+        return fail_op_with(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE);
+    if(!(entry->attribute & ATTR_DIRECTORY))
+        return fail_op_with(ERROR_INVALID_OBJ_PROP_CODE, SEND_DATA_PHASE);
+    
+    logf("mtp: get assoc type value: handle=0x%lx(\"%s\")", obj_handle, entry->d_name);
+    
+    start_data_block();
+    pack_data_block_uint16_t(ASSOC_TYPE_FOLDER);
+    finish_data_block();
+    
+    cur_resp.code = ERROR_OK;
+    cur_resp.nb_parameters = 0;
+    
+    send_data_block();
+}
+
+static void get_assoc_desc_value(uint32_t obj_handle)
+{
+    const struct dircache_entry *entry = mtp_handle_to_dircache_entry(obj_handle, false);
+    if(entry == NULL)
+        return fail_op_with(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE);
+    if(!(entry->attribute & ATTR_DIRECTORY))
+        return fail_op_with(ERROR_INVALID_OBJ_PROP_CODE, SEND_DATA_PHASE);
+    
+    logf("mtp: get assoc desc value: handle=0x%lx(\"%s\")", obj_handle, entry->d_name);
+    
+    start_data_block();
+    pack_data_block_uint32_t(0x1);
+    finish_data_block();
+    
+    cur_resp.code = ERROR_OK;
+    cur_resp.nb_parameters = 0;
+    
+    send_data_block();
+}
+
+static void get_object_size_value(uint32_t obj_handle)
+{
+    const struct dircache_entry *entry = mtp_handle_to_dircache_entry(obj_handle, false);
+    if(entry == NULL)
+        return fail_op_with(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE);
+    if(entry->attribute & ATTR_DIRECTORY)
+        return fail_op_with(ERROR_INVALID_OBJ_PROP_CODE, SEND_DATA_PHASE);
+    
+    logf("mtp: get object size value: handle=0x%lx(\"%s\")", obj_handle, entry->d_name);
+    
+    start_data_block();
+    pack_data_block_uint32_t(entry->size);
+    finish_data_block();
+    
+    cur_resp.code = ERROR_OK;
+    cur_resp.nb_parameters = 0;
+    
+    send_data_block();
+}
+
+static void get_object_filename_value(uint32_t obj_handle)
+{
+    const struct dircache_entry *entry = mtp_handle_to_dircache_entry(obj_handle, false);
+    if(entry == NULL)
+        return fail_op_with(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE);
+    
+    logf("mtp: get object filename value: handle=0x%lx(\"%s\")", obj_handle, entry->d_name);
+    
+    start_data_block();
+    pack_data_block_string_charz(entry->d_name);
+    finish_data_block();
+    
+    cur_resp.code = ERROR_OK;
+    cur_resp.nb_parameters = 0;
+    
+    send_data_block();
+}
+
+static void get_object_c_date_value(uint32_t obj_handle)
+{
+    const struct dircache_entry *entry = mtp_handle_to_dircache_entry(obj_handle, false);
+    struct tm filetm;
+    if(entry == NULL)
+        return fail_op_with(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE);
+    
+    logf("mtp: get c_name value: handle=0x%lx(\"%s\")", obj_handle, entry->d_name);
+    
+    start_data_block();
+    fat2tm(&filetm, entry->wrtdate, entry->wrttime);
+    pack_data_block_date_time(&filetm);
+    finish_data_block();
+    
+    cur_resp.code = ERROR_OK;
+    cur_resp.nb_parameters = 0;
+    
+    send_data_block();
+}
+
+static void get_object_m_date_value(uint32_t obj_handle)
+{
+    const struct dircache_entry *entry = mtp_handle_to_dircache_entry(obj_handle, false);
+    struct tm filetm;
+    if(entry == NULL)
+        return fail_op_with(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE);
+    
+    logf("mtp: get m_date value: handle=0x%lx(\"%s\")", obj_handle, entry->d_name);
+    
+    start_data_block();
+    fat2tm(&filetm, entry->wrtdate, entry->wrttime);
+    pack_data_block_date_time(&filetm);
+    finish_data_block();
+    
+    cur_resp.code = ERROR_OK;
+    cur_resp.nb_parameters = 0;
+    
+    send_data_block();
+}
+
+static void get_parent_obj_value(uint32_t obj_handle)
+{
+    const struct dircache_entry *entry = mtp_handle_to_dircache_entry(obj_handle, false);
+    if(entry == NULL)
+        return fail_op_with(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE);
+    
+    logf("mtp: get parent obj value: handle=0x%lx(\"%s\")", obj_handle, entry->d_name);
+    
+    start_data_block();
+    pack_data_block_uint32_t(dircache_entry_to_mtp_handle(entry->up));
+    finish_data_block();
+    
+    cur_resp.code = ERROR_OK;
+    cur_resp.nb_parameters = 0;
+    
+    send_data_block();
+}
+
+static void get_hidden_value(uint32_t obj_handle)
+{
+    const struct dircache_entry *entry = mtp_handle_to_dircache_entry(obj_handle, false);
+    if(entry == NULL)
+        return fail_op_with(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE);
+    
+    logf("mtp: get hidden value: handle=0x%lx(\"%s\")", obj_handle, entry->d_name);
+    
+    start_data_block();
+    if(entry->attribute & ATTR_HIDDEN)
+        pack_data_block_uint16_t(0x1);
+    else
+        pack_data_block_uint16_t(0x1);
+    finish_data_block();
+    
+    cur_resp.code = ERROR_OK;
+    cur_resp.nb_parameters = 0;
+    
+    send_data_block();
+}
+
+static void get_sys_obj_value(uint32_t obj_handle)
+{
+    const struct dircache_entry *entry = mtp_handle_to_dircache_entry(obj_handle, false);
+    if(entry == NULL)
+        return fail_op_with(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE);
+    
+    logf("mtp: get sys obj value: handle=0x%lx(\"%s\")", obj_handle, entry->d_name);
+    
+    start_data_block();
+    if(entry->attribute & ATTR_SYSTEM)
+        pack_data_block_uint16_t(0x1);
+    else
+        pack_data_block_uint16_t(0x1);
+    finish_data_block();
+    
+    cur_resp.code = ERROR_OK;
+    cur_resp.nb_parameters = 0;
+    
+    send_data_block();
+}
+
+static void get_object_name_value(uint32_t obj_handle)
+{
+    const struct dircache_entry *entry = mtp_handle_to_dircache_entry(obj_handle, false);
+    if(entry == NULL)
+        return fail_op_with(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE);
+    
+    logf("mtp: get object name value: handle=0x%lx(\"%s\")", obj_handle, entry->d_name);
+    
+    start_data_block();
+    pack_data_block_string_charz(entry->d_name);
+    finish_data_block();
+    
+    cur_resp.code = ERROR_OK;
+    cur_resp.nb_parameters = 0;
+    
+    send_data_block();
+}
+
+static void get_object_prop_value(uint32_t obj_handle, uint32_t obj_prop)
+{
+    switch(obj_prop)
+    {
+        case OBJ_PROP_STORAGE_ID: return get_storage_id_value(obj_handle);
+        case OBJ_PROP_OBJ_FMT: return get_object_fmt_value(obj_handle);
+        case OBJ_PROP_ASSOC_TYPE: return get_assoc_type_value(obj_handle);
+        case OBJ_PROP_ASSOC_DESC: return get_assoc_desc_value(obj_handle);
+        case OBJ_PROP_OBJ_SIZE: return get_object_size_value(obj_handle);
+        case OBJ_PROP_FILENAME: return get_object_filename_value(obj_handle);
+        case OBJ_PROP_C_DATE: return get_object_c_date_value(obj_handle);
+        case OBJ_PROP_M_DATE: return get_object_m_date_value(obj_handle);
+        case OBJ_PROP_PARENT_OBJ: return get_parent_obj_value(obj_handle);
+        case OBJ_PROP_HIDDEN: return get_hidden_value(obj_handle);
+        case OBJ_PROP_SYS_OBJ: return get_sys_obj_value(obj_handle);
+        case OBJ_PROP_NAME: return get_object_name_value(obj_handle);
+        default: return fail_op_with(ERROR_INVALID_OBJ_PROP_CODE, SEND_DATA_PHASE);
+    }
+}
+
 static void get_object_references(uint32_t object_handle)
 {
     const struct dircache_entry *entry=mtp_handle_to_dircache_entry(object_handle, false);
@@ -1020,10 +1533,6 @@ static void handle_command2(void)
             want_nb_params(1, SEND_DATA_PHASE) /* one parameter */
             want_session(SEND_DATA_PHASE) /* must be called in a session */
             return get_object(cur_cmd.param[0]);
-        case MTP_OP_GET_OBJ_PROPS_SUPPORTED:
-            want_nb_params(1, SEND_DATA_PHASE)
-            want_session(SEND_DATA_PHASE)
-            return get_object_props_supported(cur_cmd.param[0]);
         case MTP_OP_RESET_DEVICE:
             want_nb_params(0, NO_DATA_PHASE) /* no parameter */
             return reset_device();
@@ -1035,6 +1544,18 @@ static void handle_command2(void)
             want_nb_params(1, SEND_DATA_PHASE) /* one parameter */
             want_session(SEND_DATA_PHASE)
             return get_device_prop_value(cur_cmd.param[0]);
+        case MTP_OP_GET_OBJ_PROPS_SUPPORTED:
+            want_nb_params(1, SEND_DATA_PHASE)
+            want_session(SEND_DATA_PHASE)
+            return get_object_props_supported(cur_cmd.param[0]);
+        case MTP_OP_GET_OBJ_PROP_DESC:
+            want_nb_params(2, SEND_DATA_PHASE)
+            want_session(SEND_DATA_PHASE)
+            return get_object_prop_desc(cur_cmd.param[0], cur_cmd.param[1]);
+        case MTP_OP_GET_OBJ_PROP_VALUE:
+            want_nb_params(2, SEND_DATA_PHASE)
+            want_session(SEND_DATA_PHASE)
+            return get_object_prop_value(cur_cmd.param[0], cur_cmd.param[1]);
         case MTP_OP_GET_OBJ_REFERENCES:
             want_nb_params(1, SEND_DATA_PHASE) /* one parameter */
             want_session(SEND_DATA_PHASE)
