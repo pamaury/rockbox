@@ -197,7 +197,8 @@ enum data_phase_type
     RECV_DATA_PHASE
 };
 
-typedef void (*recv_completion_routine)(char *data, int length);
+/* rem_bytes is the total number of bytes remaining including this block */
+typedef void (*recv_split_routine)(char *data, int length, uint32_t rem_bytes, void *user);
 /* should write to dest, return number of bytes written or <0 on error, write at most max_size bytes */
 typedef int (*send_split_routine)(void *dest, int max_size, void *user);
 
@@ -208,10 +209,13 @@ static struct
     uint32_t transaction_id; /* same thing */
     unsigned char *data_dest; /* current data destination pointer */
     uint32_t *cur_array_length_ptr; /* pointer to the length of the current array (if any) */
-    recv_completion_routine recv_completion; /* function to call to complete a receive */
-    void *send_user; /* user data for send split routine */
-    uint32_t send_rem_bytes; /* remaining bytes to send */
-    send_split_routine send_split; /* function to call on send split */
+    union
+    {
+        recv_split_routine recv_split; /* function to call on receive split */
+        send_split_routine send_split; /* function to call on send split */
+    };
+    void *user; /* user data for send or receive split routine */
+    uint32_t rem_bytes; /* remaining bytes to send or receive */
 } mtp_state;
 
 static struct mtp_command cur_cmd;
@@ -389,29 +393,31 @@ static unsigned char *get_data_block_ptr(void)
     return mtp_state.data_dest;
 }
 
-static void receive_data_block(recv_completion_routine rct)
+static void receive_split_data(recv_split_routine rct, void *user)
 {
-    mtp_state.recv_completion = rct;
+    mtp_state.rem_bytes = 0;
+    mtp_state.recv_split = rct;
+    mtp_state.user = user;
     state = RECEIVING_DATA_BLOCK;
-    usb_drv_recv(ep_bulk_out, recv_buffer, 1024);
+    usb_drv_recv(ep_bulk_out, recv_buffer, max_usb_xfer_size());
 }
 
 static void continue_send_split_data(void)
 {
-    int size = MIN(max_usb_xfer_size(), mtp_state.send_rem_bytes);
-    int ret = mtp_state.send_split(send_buffer, size, mtp_state.send_user);
+    int size = MIN(max_usb_xfer_size(), mtp_state.rem_bytes);
+    int ret = mtp_state.send_split(send_buffer, size, mtp_state.user);
     if(ret < 0)
         return fail_op_with(ERROR_INCOMPLETE_TRANSFER, SEND_DATA_PHASE);
     
-    mtp_state.send_rem_bytes -= ret;
+    mtp_state.rem_bytes -= ret;
     usb_drv_send_nonblocking(ep_bulk_in, send_buffer, ret);
 }
 
 static void send_split_data(uint32_t nb_bytes, send_split_routine fn, void *user)
 {
     mtp_state.send_split = fn,
-    mtp_state.send_rem_bytes = nb_bytes;
-    mtp_state.send_user = user;
+    mtp_state.rem_bytes = nb_bytes;
+    mtp_state.user = user;
     
     state = SENDING_DATA_BLOCK;
     
@@ -429,7 +435,7 @@ static void send_split_data(uint32_t nb_bytes, send_split_routine fn, void *user
     if(ret < 0)
         return fail_op_with(ERROR_INCOMPLETE_TRANSFER, SEND_DATA_PHASE);
     
-    mtp_state.send_rem_bytes -= ret;
+    mtp_state.rem_bytes -= ret;
     usb_drv_send_nonblocking(ep_bulk_in, send_buffer, ret + sizeof(struct generic_container));
 }
 
@@ -464,7 +470,7 @@ static void fail_op_with(uint16_t error_code, enum data_phase_type dht)
             break;
         case RECV_DATA_PHASE:
             /* receive but throw away */
-            receive_data_block(NULL);
+            receive_split_data(NULL, NULL);
             break;
         default:
             logf("mtp: oops in fail_op_with");
@@ -1220,7 +1226,7 @@ void usb_mtp_init_connection(void)
     unsigned char * audio_buffer;
     audio_buffer = audio_get_buffer(false,&bufsize);
     recv_buffer = (void *)UNCACHED_ADDR((unsigned int)(audio_buffer+31) & 0xffffffe0);
-    send_buffer = recv_buffer + 1024;
+    send_buffer = recv_buffer + max_usb_xfer_size();
     cpucache_invalidate();
     
     /* wait for next command */
@@ -1287,10 +1293,10 @@ void usb_mtp_transfer_complete(int ep,int dir, int status, int length)
             
             /*
             logf("mtp: send complete: send_split=0x%lx rem_bytes=%lu length=%d",
-                (uint32_t)mtp_state.send_split, mtp_state.send_rem_bytes, length);
+                (uint32_t)mtp_state.send_split, mtp_state.rem_bytes, length);
             */
             
-            if(mtp_state.send_split == NULL || mtp_state.send_rem_bytes == 0)
+            if(mtp_state.send_split == NULL || mtp_state.rem_bytes == 0)
                 send_response();
             else
                 continue_send_split_data();
@@ -1305,26 +1311,45 @@ void usb_mtp_transfer_complete(int ep,int dir, int status, int length)
             if(status != 0)
                 logf("mtp: receive data transfer error");
             
-            if(mtp_state.recv_completion == NULL)
+            if(mtp_state.recv_split == NULL)
             {
                 state = SENDING_RESPONSE;
                 send_response();
             }
             else
             {
-                struct generic_container *cont = (struct generic_container *) recv_buffer;
-                if((int) cont->length != length)
-                    return fail_with(ERROR_INVALID_DATASET);
-                if(cont->type != CONTAINER_DATA_BLOCK)
-                    return fail_with(ERROR_INVALID_DATASET);
-                if(cont->code != cur_cmd.code)
-                    return fail_with(ERROR_INVALID_DATASET);
-                if(cont->transaction_id != cur_cmd.transaction_id)
-                    return fail_with(ERROR_INVALID_DATASET);
-                
-                mtp_state.recv_completion(recv_buffer + sizeof(struct generic_container),
-                    length - sizeof(struct generic_container));
+                if(mtp_state.rem_bytes == 0)
+                {
+                    struct generic_container *cont = (struct generic_container *) recv_buffer;
+                    mtp_state.rem_bytes = cont->length;
+                    if(length > (int) mtp_state.rem_bytes)
+                        return fail_with(ERROR_INVALID_DATASET);
+                    if(cont->type != CONTAINER_DATA_BLOCK)
+                        return fail_with(ERROR_INVALID_DATASET);
+                    if(cont->code != cur_cmd.code)
+                        return fail_with(ERROR_INVALID_DATASET);
+                    if(cont->transaction_id != cur_cmd.transaction_id)
+                        return fail_with(ERROR_INVALID_DATASET);
+                    
+                    mtp_state.recv_split(recv_buffer + sizeof(struct generic_container),
+                        length - sizeof(struct generic_container), mtp_state.rem_bytes, mtp_state.user);
+                }
+                else
+                {
+                    if(length > (int) mtp_state.rem_bytes)
+                        return fail_with(ERROR_INVALID_DATASET);
+
+                    mtp_state.recv_split(recv_buffer, length, mtp_state.rem_bytes, mtp_state.user);
+                }
+
+                mtp_state.rem_bytes -= length;
+                if(mtp_state.rem_bytes == 0)
+                {
+                    state = SENDING_RESPONSE;
+                    send_response();
+                }
             }
+                
             break;
         default:
             logf("mtp: unhandeld transfer complete ep=%d dir=%d status=%d length=%d",ep,dir,status,length);
