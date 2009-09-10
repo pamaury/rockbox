@@ -62,12 +62,16 @@ void panicf( const char *fmt, ...)
     int y = 1;
 
 #if LCD_DEPTH > 1
+#if 0
     lcd_set_backdrop(NULL);
+#endif
     lcd_set_foreground(LCD_BLACK);
     lcd_set_background(LCD_WHITE);
 #endif
 
+#if 0
     lcd_clear_display();
+#endif
     lcd_setfont(FONT_SYSFIXED);
     lcd_set_viewport(NULL);
     lcd_puts(1, y++, (unsigned char *)"*PANIC*");

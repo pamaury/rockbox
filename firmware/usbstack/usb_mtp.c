@@ -32,6 +32,7 @@
 #include "powermgmt.h"
 #include "timefuncs.h"
 #include "file.h"
+#include "dir.h"
 #include "dircache.h"
 
 #if !defined(HAVE_DIRCACHE)
@@ -85,7 +86,7 @@ static const struct mtp_string mtp_ext =
 
 static const struct mtp_array_uint16_t mtp_op_supported =
 {
-    15,
+    16,
     {MTP_OP_GET_DEV_INFO,
      MTP_OP_OPEN_SESSION,
      MTP_OP_CLOSE_SESSION,
@@ -95,6 +96,7 @@ static const struct mtp_array_uint16_t mtp_op_supported =
      MTP_OP_GET_OBJECT_HANDLES,
      MTP_OP_GET_OBJECT_INFO,
      MTP_OP_GET_OBJECT,
+     MTP_OP_SEND_OBJECT_INFO,
      MTP_OP_GET_DEV_PROP_DESC,
      MTP_OP_GET_DEV_PROP_VALUE,
      MTP_OP_GET_OBJ_PROPS_SUPPORTED,
@@ -200,7 +202,7 @@ enum data_phase_type
     RECV_DATA_PHASE
 };
 
-/* rem_bytes is the total number of bytes remaining including this block */
+/* rem_bytes is the total number of data bytes remaining including this block */
 typedef void (*recv_split_routine)(char *data, int length, uint32_t rem_bytes, void *user);
 /* should write to dest, return number of bytes written or <0 on error, write at most max_size bytes */
 typedef int (*send_split_routine)(void *dest, int max_size, void *user);
@@ -210,7 +212,8 @@ static struct
     uint16_t error;/* current error id (if state = ERROR_WAITING_RESET) */
     uint32_t session_id; /* current session id, 0x00000000 if none */
     uint32_t transaction_id; /* same thing */
-    unsigned char *data_dest; /* current data destination pointer */
+    unsigned char *data; /* current data source/destination pointer */
+    uint32_t data_len; /* remaining length of data if a source */
     uint32_t *cur_array_length_ptr; /* pointer to the length of the current array (if any) */
     union
     {
@@ -271,21 +274,36 @@ static void send_response(void)
     /*logf("mtp: send response 0x%x", cont->code);*/
 }
 
-static void start_data_block(void)
+static void start_pack_data_block(void)
 {
     struct generic_container *cont = (struct generic_container *) send_buffer;
     
-    cont->length = 0; /* filled by finish_data_block */
+    cont->length = 0; /* filled by finish_pack_data_block */
     cont->type = CONTAINER_DATA_BLOCK;
     cont->code = cur_cmd.code;
     cont->transaction_id = cur_cmd.transaction_id;
-    mtp_state.data_dest = send_buffer + sizeof(struct generic_container);
+    mtp_state.data = send_buffer + sizeof(struct generic_container);
+}
+
+static void start_unpack_data_block(void *data, uint32_t data_len)
+{
+    mtp_state.data = data;
+    mtp_state.data_len = data_len;
 }
 
 static void pack_data_block_ptr(const void *ptr, int length)
 {
-    memcpy(mtp_state.data_dest, ptr, length);
-    mtp_state.data_dest += length;
+    memcpy(mtp_state.data, ptr, length);
+    mtp_state.data += length;
+}
+
+static bool unpack_data_block_ptr(void *ptr, size_t length)
+{
+    if (mtp_state.data_len < length) return false;
+    if (ptr) memcpy(ptr, mtp_state.data, length);
+    mtp_state.data += length;
+    mtp_state.data_len -= length;
+    return true;
 }
 
 #define define_pack_array(type) \
@@ -294,18 +312,23 @@ static void pack_data_block_ptr(const void *ptr, int length)
         pack_data_block_ptr(arr, 4 + arr->length * sizeof(type)); \
     } \
     
-#define define_pack(type) \
+#define define_pack_unpack(type) \
     static void pack_data_block_##type(type val) \
     { \
         pack_data_block_ptr(&val, sizeof(type)); \
     } \
+\
+    static bool unpack_data_block_##type(type *val) \
+    { \
+        return unpack_data_block_ptr(val, sizeof(type)); \
+    }
 
 define_pack_array(uint16_t)
 
-define_pack(uint8_t)
-define_pack(uint16_t)
-define_pack(uint32_t)
-define_pack(uint64_t)
+define_pack_unpack(uint8_t)
+define_pack_unpack(uint16_t)
+define_pack_unpack(uint32_t)
+define_pack_unpack(uint64_t)
 
 static void pack_data_block_string(const struct mtp_string *str)
 {
@@ -327,6 +350,25 @@ static void pack_data_block_string_charz(const char *str)
     /* will put an ending zero */
     while(len-- != 0)
         pack_data_block_uint16_t(*str++);
+}
+
+static bool unpack_data_block_string_charz(char *dest, uint32_t dest_len)
+{
+    uint8_t len;
+
+    if(!unpack_data_block_uint8_t(&len)) return false;
+
+    if(dest && len + 1 > dest_len)
+        return false;
+
+    while(len-- != 0)
+    {
+        uint16_t chr;
+        if (!unpack_data_block_uint16_t(&chr)) return false;
+        if (dest) *dest++ = chr;
+    }
+    if (dest) *dest = 0;
+    return true;
 }
 
 /* TODO: find a better place for this function. */
@@ -363,17 +405,22 @@ static void pack_data_block_date_time(struct tm *time)
     pack_data_block_string_charz(buf);
 }
 
-static void finish_data_block(void)
+static void finish_pack_data_block(void)
 {
     struct generic_container *cont = (struct generic_container *) send_buffer;
-    cont->length = mtp_state.data_dest - send_buffer;
+    cont->length = mtp_state.data - send_buffer;
 }
 
-static void start_data_block_array(void)
+static bool finish_unpack_data_block(void)
 {
-    mtp_state.cur_array_length_ptr = (uint32_t *) mtp_state.data_dest;
+    return (mtp_state.data_len == 0);
+}
+
+static void start_pack_data_block_array(void)
+{
+    mtp_state.cur_array_length_ptr = (uint32_t *) mtp_state.data;
     *mtp_state.cur_array_length_ptr = 0; /* zero length for now */
-    mtp_state.data_dest += 4;
+    mtp_state.data += 4;
 }
 
 #define define_pack_array_elem(type) \
@@ -386,7 +433,7 @@ static void start_data_block_array(void)
 define_pack_array_elem(uint16_t)
 define_pack_array_elem(uint32_t)
 
-static uint32_t finish_data_block_array(void)
+static uint32_t finish_pack_data_block_array(void)
 {
     /* return number of elements */
     return *mtp_state.cur_array_length_ptr;
@@ -394,8 +441,9 @@ static uint32_t finish_data_block_array(void)
 
 static unsigned char *get_data_block_ptr(void)
 {
-    return mtp_state.data_dest;
+    return mtp_state.data;
 }
+
 
 static void receive_split_data(recv_split_routine rct, void *user)
 {
@@ -468,8 +516,8 @@ static void fail_op_with(uint16_t error_code, enum data_phase_type dht)
             break;
         case SEND_DATA_PHASE:
             /* send empty packet */
-            start_data_block();
-            finish_data_block();
+            start_pack_data_block();
+            finish_pack_data_block();
             send_data_block();
             break;
         case RECV_DATA_PHASE:
@@ -520,7 +568,7 @@ static void get_device_info(void)
 {
     logf("mtp: get device info");
     
-    start_data_block();
+    start_pack_data_block();
     pack_data_block_uint16_t(dev_info.std_version);
     pack_data_block_uint32_t(dev_info.vendor_ext);
     pack_data_block_uint16_t(dev_info.mtp_version);
@@ -535,7 +583,7 @@ static void get_device_info(void)
     pack_data_block_string(&mtp_model);
     pack_data_block_string(&mtp_dev_version);
     pack_data_block_string(&mtp_serial);
-    finish_data_block();
+    finish_pack_data_block();
     
     cur_resp.code = ERROR_OK;
     cur_resp.nb_parameters = 0;
@@ -548,12 +596,12 @@ static void get_storage_ids(void)
     /* FIXME mostly incomplete ! */
     logf("mtp: get storage ids");
     
-    start_data_block();
-    start_data_block_array();
+    start_pack_data_block();
+    start_pack_data_block_array();
     /* for now, only report the main volume */
     pack_data_block_array_elem_uint32_t(0x00010001);
-    finish_data_block_array();
-    finish_data_block();
+    finish_pack_data_block_array();
+    finish_pack_data_block();
     
     cur_resp.code = ERROR_OK;
     cur_resp.nb_parameters = 0;
@@ -567,7 +615,7 @@ static void get_storage_info(uint32_t stor_id)
     if(stor_id!=0x00010001)
         return fail_op_with(ERROR_INVALID_STORAGE_ID, SEND_DATA_PHASE);
     
-    start_data_block();
+    start_pack_data_block();
     pack_data_block_uint16_t(STOR_TYPE_FIXED_RAM); /* Storage Type */
     pack_data_block_uint16_t(FS_TYPE_GENERIC_HIERARCHICAL); /* Filesystem Type */
     pack_data_block_uint16_t(ACCESS_CAP_RO_WITHOUT); /* Access Capability */
@@ -576,7 +624,7 @@ static void get_storage_info(uint32_t stor_id)
     pack_data_block_uint32_t(0); /* Free Space in objects (optional for read only) */
     pack_data_block_string_charz("Storage description missing"); /* Storage Description */
     pack_data_block_string_charz("Volume identifier missing"); /* Volume Identifier */
-    finish_data_block();
+    finish_pack_data_block();
     
     
     cur_resp.code = ERROR_OK;
@@ -661,13 +709,13 @@ static bool list_files2(const struct dircache_entry *direntry, bool recursive)
 
 static void list_files(const struct dircache_entry *direntry, bool recursive)
 {
-    start_data_block();
-    start_data_block_array();
+    start_pack_data_block();
+    start_pack_data_block_array();
 
     if (!list_files2(direntry,recursive)) return;
 
-    finish_data_block_array();
-    finish_data_block();
+    finish_pack_data_block_array();
+    finish_pack_data_block();
 
     cur_resp.code = ERROR_OK;
     cur_resp.nb_parameters = 0;
@@ -764,14 +812,14 @@ static void get_object_info(uint32_t object_handle)
     oi.association_desc = (entry->attribute & ATTR_DIRECTORY) ? 0x1 : 0x0;
     oi.sequence_number = 0;
     
-    start_data_block();
+    start_pack_data_block();
     pack_data_block_ptr(&oi, sizeof(oi));
     pack_data_block_string_charz(entry->d_name); /* Filename */
     fat2tm(&filetm, entry->wrtdate, entry->wrttime);
     pack_data_block_date_time(&filetm); /* Date Created */
     pack_data_block_date_time(&filetm); /* Date Modified */
     pack_data_block_string_charz(NULL); /* Keywords */
-    finish_data_block();
+    finish_pack_data_block();
     
     cur_resp.code = ERROR_OK;
     cur_resp.nb_parameters = 0;
@@ -835,6 +883,134 @@ static void get_object(uint32_t object_handle)
     send_split_data(entry->size, &get_object_split_routine, &st);
 }
 
+struct send_object_info_st
+{
+    uint32_t stor_id;
+    uint32_t obj_handle_parent;
+};
+
+static void send_object_info_split_routine(char *data, int length, uint32_t rem_bytes, void *user)
+{
+    struct send_object_info_st *st = user;
+    struct object_info oi;
+    static char filename[MAX_PATH];
+    static char path[MAX_PATH];
+    uint32_t path_len;
+    const struct dircache_entry *parent_entry = mtp_handle_to_dircache_entry(st->obj_handle_parent, false), *this_entry;
+
+    logf("send_object_info_split_routine stor_id=0x%x obj_handle_parent=0x%x", st->stor_id, st->obj_handle_parent);
+
+    if (st->obj_handle_parent == 0xffffffff)
+    {
+        path_len = 0;
+    }
+    else
+    {
+        dircache_copy_path(parent_entry, path, MAX_PATH);
+        path_len = strlen(path);
+    }
+
+    logf("length=%d rem_bytes=%d", length, rem_bytes);
+
+    if (length != rem_bytes) /* Does the ObjectInfo span multiple packets? (unhandled case) */
+        return fail_with(ERROR_INVALID_DATASET);
+
+    start_unpack_data_block(data, length);
+    if (!unpack_data_block_ptr(&oi, sizeof(oi)))
+        return fail_op_with(ERROR_INVALID_DATASET, RECV_DATA_PHASE);
+    if (!unpack_data_block_string_charz(filename, sizeof(filename))) /* Filename */
+        return fail_op_with(ERROR_INVALID_DATASET, RECV_DATA_PHASE);
+    if (!unpack_data_block_string_charz(NULL, 0)) /* Date Created */
+        return fail_op_with(ERROR_INVALID_DATASET, RECV_DATA_PHASE);
+    if (!unpack_data_block_string_charz(NULL, 0)) /* Date Modified */
+        return fail_op_with(ERROR_INVALID_DATASET, RECV_DATA_PHASE);
+    if (!unpack_data_block_string_charz(NULL, 0)) /* Keywords */
+        return fail_op_with(ERROR_INVALID_DATASET, RECV_DATA_PHASE);
+    if (!finish_unpack_data_block())
+        return fail_op_with(ERROR_INVALID_DATASET, RECV_DATA_PHASE);
+
+    logf("successfully unpacked");
+
+    if (path_len < MAX_PATH-1)
+    {
+        path[path_len] = '/';
+        path[path_len+1] = 0;
+        path_len++;
+    }
+
+    if (path_len < MAX_PATH-1)
+    {
+        strlcpy(path+path_len, filename, MAX_PATH-path_len);
+    }
+
+    logf("path = %s", path);
+
+    logf("about to made the file");
+    logf("about to made the file l2");
+
+    if (oi.object_format == OBJ_FMT_ASSOCIATION)
+    {
+        if (mkdir(path) < 0)
+            return fail_op_with(ERROR_GENERAL_ERROR, RECV_DATA_PHASE);
+    }
+    else
+    {
+        int fd = open(path, O_WRONLY);
+        if (fd < 0)
+            return fail_op_with(ERROR_GENERAL_ERROR, RECV_DATA_PHASE);
+        close(fd);
+    }
+
+    logf("made the file");
+    logf("made the file l2");
+
+    this_entry = dircache_get_entry_ptr(path);
+    if (this_entry == NULL)
+        return fail_op_with(ERROR_GENERAL_ERROR, RECV_DATA_PHASE);
+ 
+    cur_resp.code = ERROR_OK;
+    cur_resp.nb_parameters = 3;
+    cur_resp.param[0] = st->stor_id;
+    cur_resp.param[1] = st->obj_handle_parent;
+    cur_resp.param[2] = dircache_entry_to_mtp_handle(this_entry);
+}
+
+static void send_object_info(int nb_params, uint32_t stor_id, uint32_t obj_handle_parent)
+{
+    static struct send_object_info_st st;
+    const struct dircache_entry *parent_entry = mtp_handle_to_dircache_entry(obj_handle_parent, false);
+
+    logf("mtp: send object info: stor_id=0x%x obj_handle_parent=0x%x", (unsigned int) stor_id, (unsigned int) obj_handle_parent);
+    logf("2nd msg");
+
+    if (nb_params < 1)
+        stor_id = 0x00010001;
+
+    if (stor_id != 0x00000000 && stor_id != 0x00010001)
+        return fail_op_with(ERROR_INVALID_STORAGE_ID, RECV_DATA_PHASE);
+
+    stor_id = 0x00010001;
+    if (nb_params < 2 || obj_handle_parent == 0x00000000)
+        obj_handle_parent = 0xffffffff;
+
+    if (obj_handle_parent != 0xffffffff)
+    {
+        if (parent_entry == NULL)
+            return fail_op_with(ERROR_INVALID_OBJ_HANDLE, RECV_DATA_PHASE);
+
+        if (!(parent_entry->attribute & ATTR_DIRECTORY))
+            return fail_op_with(ERROR_INVALID_PARENT_OBJ, RECV_DATA_PHASE);
+            
+    }
+
+    st.stor_id = stor_id;
+    st.obj_handle_parent = obj_handle_parent;
+
+    logf("stor_id = %d, obj_handle_parent = %d", stor_id, obj_handle_parent);
+
+    receive_split_data(send_object_info_split_routine, &st);
+}
+
 static void reset_device(void)
 {
     logf("mtp: reset device");
@@ -846,7 +1022,7 @@ static void get_battery_level(bool want_desc)
 {
     logf("mtp: get battery level desc/value");
     
-    start_data_block();
+    start_pack_data_block();
     if(want_desc)
     {
         pack_data_block_uint16_t(DEV_PROP_BATTERY_LEVEL); /* Device Prop Code */
@@ -863,7 +1039,7 @@ static void get_battery_level(bool want_desc)
         pack_data_block_uint8_t(100); /* Maximum Value */
         pack_data_block_uint8_t(1); /* Step Size */
     }
-    finish_data_block();
+    finish_pack_data_block();
     
     cur_resp.code = ERROR_OK;
     cur_resp.nb_parameters = 0;
@@ -875,7 +1051,7 @@ static void get_date_time(bool want_desc)
 {
     logf("mtp: get date time desc/value");
     
-    start_data_block();
+    start_pack_data_block();
     if(want_desc)
     {
         pack_data_block_uint16_t(DEV_PROP_BATTERY_LEVEL); /* Device Prop Code */
@@ -886,7 +1062,7 @@ static void get_date_time(bool want_desc)
     pack_data_block_date_time(get_time()); /* Current Value */
     if(want_desc)
         pack_data_block_uint8_t(DEV_PROP_FORM_NONE); /* Form Flag */
-    finish_data_block();
+    finish_pack_data_block();
     
     cur_resp.code = ERROR_OK;
     cur_resp.nb_parameters = 0;
@@ -898,7 +1074,7 @@ static void get_friendly_name(bool want_desc)
 {
     logf("mtp: get friendly name desc");
     
-    start_data_block();
+    start_pack_data_block();
     if(want_desc)
     {
         pack_data_block_uint16_t(DEV_PROP_BATTERY_LEVEL); /* Device Prop Code */
@@ -909,7 +1085,7 @@ static void get_friendly_name(bool want_desc)
     pack_data_block_string(&device_friendly_name); /* Current Value */
     if(want_desc)
         pack_data_block_uint8_t(DEV_PROP_FORM_NONE); /* Form Flag */
-    finish_data_block();
+    finish_pack_data_block();
     
     cur_resp.code = ERROR_OK;
     cur_resp.nb_parameters = 0;
@@ -948,8 +1124,8 @@ static void get_object_props_supported(uint32_t object_fmt)
     
     bool folder = (object_fmt == OBJ_FMT_ASSOCIATION);
     
-    start_data_block();
-    start_data_block_array();
+    start_pack_data_block();
+    start_pack_data_block_array();
     pack_data_block_array_elem_uint16_t(OBJ_PROP_STORAGE_ID);
     pack_data_block_array_elem_uint16_t(OBJ_PROP_OBJ_FMT);
     if(folder)
@@ -966,8 +1142,8 @@ static void get_object_props_supported(uint32_t object_fmt)
     pack_data_block_array_elem_uint16_t(OBJ_PROP_HIDDEN);
     pack_data_block_array_elem_uint16_t(OBJ_PROP_SYS_OBJ);
     pack_data_block_array_elem_uint16_t(OBJ_PROP_NAME);
-    finish_data_block_array();
-    finish_data_block();
+    finish_pack_data_block_array();
+    finish_pack_data_block();
     
     cur_resp.code = ERROR_OK;
     cur_resp.nb_parameters = 0;
@@ -977,14 +1153,14 @@ static void get_object_props_supported(uint32_t object_fmt)
 
 static void get_storage_id_desc(uint32_t obj_fmt)
 {
-    start_data_block();
+    start_pack_data_block();
     pack_data_block_uint16_t(OBJ_PROP_STORAGE_ID);
     pack_data_block_uint16_t(TYPE_UINT32);
     pack_data_block_uint8_t(OBJ_PROP_GET); /* Get */
     pack_data_block_uint32_t(0x00000000); /* Factory Default Value */
     pack_data_block_uint32_t(0xffffffff); /* Group */
     pack_data_block_uint8_t(OBJ_PROP_FORM_NONE); /* None */
-    finish_data_block();
+    finish_pack_data_block();
     
     cur_resp.code = ERROR_OK;
     cur_resp.nb_parameters = 0;
@@ -994,14 +1170,14 @@ static void get_storage_id_desc(uint32_t obj_fmt)
 
 static void get_object_fmt_desc(uint32_t obj_fmt)
 {
-    start_data_block();
+    start_pack_data_block();
     pack_data_block_uint16_t(OBJ_PROP_OBJ_FMT);
     pack_data_block_uint16_t(TYPE_UINT16);
     pack_data_block_uint8_t(OBJ_PROP_GET); /* Get */
     pack_data_block_uint32_t(0x0000); /* Factory Default Value */
     pack_data_block_uint32_t(0xffffffff); /* Group */
     pack_data_block_uint8_t(OBJ_PROP_FORM_NONE); /* None */
-    finish_data_block();
+    finish_pack_data_block();
     
     cur_resp.code = ERROR_OK;
     cur_resp.nb_parameters = 0;
@@ -1011,7 +1187,7 @@ static void get_object_fmt_desc(uint32_t obj_fmt)
 
 static void get_assoc_type_desc(uint32_t obj_fmt)
 {
-    start_data_block();
+    start_pack_data_block();
     pack_data_block_uint16_t(OBJ_PROP_ASSOC_TYPE);
     pack_data_block_uint16_t(TYPE_UINT16);
     pack_data_block_uint8_t(OBJ_PROP_GET); /* Get */
@@ -1020,7 +1196,7 @@ static void get_assoc_type_desc(uint32_t obj_fmt)
     pack_data_block_uint8_t(OBJ_PROP_FORM_ENUM); /* Enumeration */
     pack_data_block_uint16_t(1); /* Number of values */
     pack_data_block_uint16_t(ASSOC_TYPE_FOLDER);
-    finish_data_block();
+    finish_pack_data_block();
     
     cur_resp.code = ERROR_OK;
     cur_resp.nb_parameters = 0;
@@ -1030,14 +1206,14 @@ static void get_assoc_type_desc(uint32_t obj_fmt)
 
 static void get_assoc_desc_desc(uint32_t obj_fmt)
 {
-    start_data_block();
+    start_pack_data_block();
     pack_data_block_uint16_t(OBJ_PROP_ASSOC_DESC);
     pack_data_block_uint16_t(TYPE_UINT32);
     pack_data_block_uint8_t(OBJ_PROP_GET); /* Get */
     pack_data_block_uint32_t(0x00000000); /* Factory Default Value */
     pack_data_block_uint32_t(0xffffffff); /* Group */
     pack_data_block_uint8_t(OBJ_PROP_FORM_NONE); /* None */
-    finish_data_block();
+    finish_pack_data_block();
     
     cur_resp.code = ERROR_OK;
     cur_resp.nb_parameters = 0;
@@ -1047,14 +1223,14 @@ static void get_assoc_desc_desc(uint32_t obj_fmt)
 
 static void get_object_size_desc(uint32_t obj_fmt)
 {
-    start_data_block();
+    start_pack_data_block();
     pack_data_block_uint16_t(OBJ_PROP_OBJ_SIZE);
     pack_data_block_uint16_t(TYPE_UINT32);
     pack_data_block_uint8_t(OBJ_PROP_GET); /* Get */
     pack_data_block_uint32_t(0x00000000); /* Factory Default Value */
     pack_data_block_uint32_t(0xffffffff); /* Group */
     pack_data_block_uint8_t(OBJ_PROP_FORM_NONE); /* None */
-    finish_data_block();
+    finish_pack_data_block();
     
     cur_resp.code = ERROR_OK;
     cur_resp.nb_parameters = 0;
@@ -1064,14 +1240,14 @@ static void get_object_size_desc(uint32_t obj_fmt)
 
 static void get_object_filename_desc(uint32_t obj_fmt)
 {
-    start_data_block();
+    start_pack_data_block();
     pack_data_block_uint16_t(OBJ_PROP_FILENAME);
     pack_data_block_uint16_t(TYPE_STR);
     pack_data_block_uint8_t(OBJ_PROP_GET); /* Get */
     pack_data_block_uint8_t(0x00); /* Factory Default Value */
     pack_data_block_uint32_t(0xffffffff); /* Group */
     pack_data_block_uint8_t(OBJ_PROP_FORM_NONE); /* None */
-    finish_data_block();
+    finish_pack_data_block();
     
     cur_resp.code = ERROR_OK;
     cur_resp.nb_parameters = 0;
@@ -1081,14 +1257,14 @@ static void get_object_filename_desc(uint32_t obj_fmt)
 
 static void get_object_c_date_desc(uint32_t obj_fmt)
 {
-    start_data_block();
+    start_pack_data_block();
     pack_data_block_uint16_t(OBJ_PROP_C_DATE);
     pack_data_block_uint16_t(TYPE_STR);
     pack_data_block_uint8_t(OBJ_PROP_GET); /* Get */
     pack_data_block_uint8_t(0x00); /* Factory Default Value */
     pack_data_block_uint32_t(0xffffffff); /* Group */
     pack_data_block_uint8_t(OBJ_PROP_FORM_NONE); /* None */
-    finish_data_block();
+    finish_pack_data_block();
     
     cur_resp.code = ERROR_OK;
     cur_resp.nb_parameters = 0;
@@ -1098,14 +1274,14 @@ static void get_object_c_date_desc(uint32_t obj_fmt)
 
 static void get_object_m_date_desc(uint32_t obj_fmt)
 {
-    start_data_block();
+    start_pack_data_block();
     pack_data_block_uint16_t(OBJ_PROP_M_DATE);
     pack_data_block_uint16_t(TYPE_STR);
     pack_data_block_uint8_t(OBJ_PROP_GET); /* Get */
     pack_data_block_uint8_t(0x00); /* Factory Default Value */
     pack_data_block_uint32_t(0xffffffff); /* Group */
     pack_data_block_uint8_t(OBJ_PROP_FORM_NONE); /* None */
-    finish_data_block();
+    finish_pack_data_block();
     
     cur_resp.code = ERROR_OK;
     cur_resp.nb_parameters = 0;
@@ -1115,14 +1291,14 @@ static void get_object_m_date_desc(uint32_t obj_fmt)
 
 static void get_parent_obj_desc(uint32_t obj_fmt)
 {
-    start_data_block();
+    start_pack_data_block();
     pack_data_block_uint16_t(OBJ_PROP_PARENT_OBJ);
     pack_data_block_uint16_t(TYPE_UINT32);
     pack_data_block_uint8_t(OBJ_PROP_GET); /* Get */
     pack_data_block_uint8_t(0x00000000); /* Factory Default Value */
     pack_data_block_uint32_t(0xffffffff); /* Group */
     pack_data_block_uint8_t(OBJ_PROP_FORM_NONE); /* None */
-    finish_data_block();
+    finish_pack_data_block();
     
     cur_resp.code = ERROR_OK;
     cur_resp.nb_parameters = 0;
@@ -1132,7 +1308,7 @@ static void get_parent_obj_desc(uint32_t obj_fmt)
 
 static void get_hidden_desc(uint32_t obj_fmt)
 {
-    start_data_block();
+    start_pack_data_block();
     pack_data_block_uint16_t(OBJ_PROP_HIDDEN);
     pack_data_block_uint16_t(TYPE_UINT16);
     pack_data_block_uint8_t(OBJ_PROP_GET); /* Get */
@@ -1142,7 +1318,7 @@ static void get_hidden_desc(uint32_t obj_fmt)
     pack_data_block_uint16_t(2); /* Number of values */
     pack_data_block_uint16_t(0x0);
     pack_data_block_uint16_t(0x1);
-    finish_data_block();
+    finish_pack_data_block();
     
     cur_resp.code = ERROR_OK;
     cur_resp.nb_parameters = 0;
@@ -1152,7 +1328,7 @@ static void get_hidden_desc(uint32_t obj_fmt)
 
 static void get_sys_obj_desc(uint32_t obj_fmt)
 {
-    start_data_block();
+    start_pack_data_block();
     pack_data_block_uint16_t(OBJ_PROP_SYS_OBJ);
     pack_data_block_uint16_t(TYPE_UINT16);
     pack_data_block_uint8_t(OBJ_PROP_GET); /* Get */
@@ -1162,7 +1338,7 @@ static void get_sys_obj_desc(uint32_t obj_fmt)
     pack_data_block_uint16_t(2); /* Number of values */
     pack_data_block_uint16_t(0x0);
     pack_data_block_uint16_t(0x1);
-    finish_data_block();
+    finish_pack_data_block();
     
     cur_resp.code = ERROR_OK;
     cur_resp.nb_parameters = 0;
@@ -1172,14 +1348,14 @@ static void get_sys_obj_desc(uint32_t obj_fmt)
 
 static void get_object_name_desc(uint32_t obj_fmt)
 {
-    start_data_block();
+    start_pack_data_block();
     pack_data_block_uint16_t(OBJ_PROP_NAME);
     pack_data_block_uint16_t(TYPE_STR);
     pack_data_block_uint8_t(OBJ_PROP_GET); /* Get */
     pack_data_block_uint8_t(0x00); /* Factory Default Value */
     pack_data_block_uint32_t(0xffffffff); /* Group */
     pack_data_block_uint8_t(OBJ_PROP_FORM_NONE); /* None */
-    finish_data_block();
+    finish_pack_data_block();
     
     cur_resp.code = ERROR_OK;
     cur_resp.nb_parameters = 0;
@@ -1216,9 +1392,9 @@ static void get_storage_id_value(uint32_t obj_handle)
     
     logf("mtp: get stor id value: handle=0x%lx(\"%s\")", obj_handle, entry->d_name);
     
-    start_data_block();
+    start_pack_data_block();
     pack_data_block_uint32_t(0x00010001);
-    finish_data_block();
+    finish_pack_data_block();
     
     cur_resp.code = ERROR_OK;
     cur_resp.nb_parameters = 0;
@@ -1234,12 +1410,12 @@ static void get_object_fmt_value(uint32_t obj_handle)
     
     logf("mtp: get object fmt value: handle=0x%lx(\"%s\")", obj_handle, entry->d_name);
     
-    start_data_block();
+    start_pack_data_block();
     if(entry->attribute & ATTR_DIRECTORY)
         pack_data_block_uint16_t(OBJ_FMT_ASSOCIATION);
     else
         pack_data_block_uint16_t(OBJ_FMT_UNDEFINED);
-    finish_data_block();
+    finish_pack_data_block();
     
     cur_resp.code = ERROR_OK;
     cur_resp.nb_parameters = 0;
@@ -1257,9 +1433,9 @@ static void get_assoc_type_value(uint32_t obj_handle)
     
     logf("mtp: get assoc type value: handle=0x%lx(\"%s\")", obj_handle, entry->d_name);
     
-    start_data_block();
+    start_pack_data_block();
     pack_data_block_uint16_t(ASSOC_TYPE_FOLDER);
-    finish_data_block();
+    finish_pack_data_block();
     
     cur_resp.code = ERROR_OK;
     cur_resp.nb_parameters = 0;
@@ -1277,9 +1453,9 @@ static void get_assoc_desc_value(uint32_t obj_handle)
     
     logf("mtp: get assoc desc value: handle=0x%lx(\"%s\")", obj_handle, entry->d_name);
     
-    start_data_block();
+    start_pack_data_block();
     pack_data_block_uint32_t(0x1);
-    finish_data_block();
+    finish_pack_data_block();
     
     cur_resp.code = ERROR_OK;
     cur_resp.nb_parameters = 0;
@@ -1297,9 +1473,9 @@ static void get_object_size_value(uint32_t obj_handle)
     
     logf("mtp: get object size value: handle=0x%lx(\"%s\")", obj_handle, entry->d_name);
     
-    start_data_block();
+    start_pack_data_block();
     pack_data_block_uint32_t(entry->size);
-    finish_data_block();
+    finish_pack_data_block();
     
     cur_resp.code = ERROR_OK;
     cur_resp.nb_parameters = 0;
@@ -1315,9 +1491,9 @@ static void get_object_filename_value(uint32_t obj_handle)
     
     logf("mtp: get object filename value: handle=0x%lx(\"%s\")", obj_handle, entry->d_name);
     
-    start_data_block();
+    start_pack_data_block();
     pack_data_block_string_charz(entry->d_name);
-    finish_data_block();
+    finish_pack_data_block();
     
     cur_resp.code = ERROR_OK;
     cur_resp.nb_parameters = 0;
@@ -1334,10 +1510,10 @@ static void get_object_c_date_value(uint32_t obj_handle)
     
     logf("mtp: get c_name value: handle=0x%lx(\"%s\")", obj_handle, entry->d_name);
     
-    start_data_block();
+    start_pack_data_block();
     fat2tm(&filetm, entry->wrtdate, entry->wrttime);
     pack_data_block_date_time(&filetm);
-    finish_data_block();
+    finish_pack_data_block();
     
     cur_resp.code = ERROR_OK;
     cur_resp.nb_parameters = 0;
@@ -1354,10 +1530,10 @@ static void get_object_m_date_value(uint32_t obj_handle)
     
     logf("mtp: get m_date value: handle=0x%lx(\"%s\")", obj_handle, entry->d_name);
     
-    start_data_block();
+    start_pack_data_block();
     fat2tm(&filetm, entry->wrtdate, entry->wrttime);
     pack_data_block_date_time(&filetm);
-    finish_data_block();
+    finish_pack_data_block();
     
     cur_resp.code = ERROR_OK;
     cur_resp.nb_parameters = 0;
@@ -1373,9 +1549,9 @@ static void get_parent_obj_value(uint32_t obj_handle)
     
     logf("mtp: get parent obj value: handle=0x%lx(\"%s\")", obj_handle, entry->d_name);
     
-    start_data_block();
+    start_pack_data_block();
     pack_data_block_uint32_t(dircache_entry_to_mtp_handle(entry->up));
-    finish_data_block();
+    finish_pack_data_block();
     
     cur_resp.code = ERROR_OK;
     cur_resp.nb_parameters = 0;
@@ -1391,12 +1567,12 @@ static void get_hidden_value(uint32_t obj_handle)
     
     logf("mtp: get hidden value: handle=0x%lx(\"%s\")", obj_handle, entry->d_name);
     
-    start_data_block();
+    start_pack_data_block();
     if(entry->attribute & ATTR_HIDDEN)
         pack_data_block_uint16_t(0x1);
     else
         pack_data_block_uint16_t(0x1);
-    finish_data_block();
+    finish_pack_data_block();
     
     cur_resp.code = ERROR_OK;
     cur_resp.nb_parameters = 0;
@@ -1412,12 +1588,12 @@ static void get_sys_obj_value(uint32_t obj_handle)
     
     logf("mtp: get sys obj value: handle=0x%lx(\"%s\")", obj_handle, entry->d_name);
     
-    start_data_block();
+    start_pack_data_block();
     if(entry->attribute & ATTR_SYSTEM)
         pack_data_block_uint16_t(0x1);
     else
         pack_data_block_uint16_t(0x1);
-    finish_data_block();
+    finish_pack_data_block();
     
     cur_resp.code = ERROR_OK;
     cur_resp.nb_parameters = 0;
@@ -1433,9 +1609,9 @@ static void get_object_name_value(uint32_t obj_handle)
     
     logf("mtp: get object name value: handle=0x%lx(\"%s\")", obj_handle, entry->d_name);
     
-    start_data_block();
+    start_pack_data_block();
     pack_data_block_string_charz(entry->d_name);
-    finish_data_block();
+    finish_pack_data_block();
     
     cur_resp.code = ERROR_OK;
     cur_resp.nb_parameters = 0;
@@ -1475,10 +1651,10 @@ static void get_object_references(uint32_t object_handle)
         return list_files(entry, false); /* not recursive, at entry */
     else
     {
-        start_data_block();
-        start_data_block_array();
-        finish_data_block_array();
-        finish_data_block();
+        start_pack_data_block();
+        start_pack_data_block_array();
+        finish_pack_data_block_array();
+        finish_pack_data_block();
         
         cur_resp.code = ERROR_OK;
         cur_resp.nb_parameters = 0;
@@ -1533,6 +1709,10 @@ static void handle_command2(void)
             want_nb_params(1, SEND_DATA_PHASE) /* one parameter */
             want_session(SEND_DATA_PHASE) /* must be called in a session */
             return get_object(cur_cmd.param[0]);
+        case MTP_OP_SEND_OBJECT_INFO:
+            want_nb_params_range(0, 2, SEND_DATA_PHASE)
+            want_session(RECV_DATA_PHASE)
+            return send_object_info(cur_cmd.nb_parameters, cur_cmd.param[0], cur_cmd.param[1]);
         case MTP_OP_RESET_DEVICE:
             want_nb_params(0, NO_DATA_PHASE) /* no parameter */
             return reset_device();
@@ -1776,6 +1956,8 @@ void usb_mtp_disconnect(void)
 /* called by usb_core_transfer_complete() */
 void usb_mtp_transfer_complete(int ep,int dir, int status, int length)
 {
+    logf("usb_mtp_xfer_comp ep=%d length=%d", ep, length);
+
     if(ep == EP_CONTROL)
         return;
     if(ep == ep_int)
@@ -1836,9 +2018,12 @@ void usb_mtp_transfer_complete(int ep,int dir, int status, int length)
             if(status != 0)
                 logf("mtp: receive data transfer error");
             
+            logf("mtp: OUT received in RECEIVING_DATA_BLOCK, length = %d, mtp_state.rem_bytes = %d", length, mtp_state.rem_bytes);
+
             if(mtp_state.recv_split == NULL)
             {
                 state = SENDING_RESPONSE;
+                logf("mtp: send_response trivial case");
                 send_response();
             }
             else
@@ -1846,8 +2031,9 @@ void usb_mtp_transfer_complete(int ep,int dir, int status, int length)
                 if(mtp_state.rem_bytes == 0)
                 {
                     struct generic_container *cont = (struct generic_container *) recv_buffer;
-                    mtp_state.rem_bytes = cont->length;
-                    if(length > (int) mtp_state.rem_bytes)
+                    mtp_state.rem_bytes = cont->length - sizeof(struct generic_container);
+                    logf("FIRST ITERATION length = %d cont->length = %d cont->type = %d, cont->code = %d, cur_cmd.code = %d, cont->transaction_id = %d cur_cmd.transaction_id = %d", length, cont->length, cont->type, cont->code, cur_cmd.code, cont->transaction_id, cur_cmd.transaction_id);
+                    if(length > (int) cont->length)
                         return fail_with(ERROR_INVALID_DATASET);
                     if(cont->type != CONTAINER_DATA_BLOCK)
                         return fail_with(ERROR_INVALID_DATASET);
@@ -1858,6 +2044,7 @@ void usb_mtp_transfer_complete(int ep,int dir, int status, int length)
                     
                     mtp_state.recv_split(recv_buffer + sizeof(struct generic_container),
                         length - sizeof(struct generic_container), mtp_state.rem_bytes, mtp_state.user);
+                    mtp_state.rem_bytes -= length - sizeof(struct generic_container);
                 }
                 else
                 {
@@ -1865,9 +2052,11 @@ void usb_mtp_transfer_complete(int ep,int dir, int status, int length)
                         return fail_with(ERROR_INVALID_DATASET);
 
                     mtp_state.recv_split(recv_buffer, length, mtp_state.rem_bytes, mtp_state.user);
+                    mtp_state.rem_bytes -= length;
                 }
 
-                mtp_state.rem_bytes -= length;
+                logf("mtp_state.rem_bytes = %d", mtp_state.rem_bytes);
+
                 if(mtp_state.rem_bytes == 0)
                 {
                     state = SENDING_RESPONSE;

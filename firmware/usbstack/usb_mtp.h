@@ -194,6 +194,7 @@ struct device_info
 #define MTP_OP_GET_OBJECT_HANDLES   0x1007
 #define MTP_OP_GET_OBJECT_INFO      0x1008
 #define MTP_OP_GET_OBJECT           0x1009
+#define MTP_OP_SEND_OBJECT_INFO     0x100C
 #define MTP_OP_RESET_DEVICE         0x1010
 #define MTP_OP_POWER_DOWN           0x1013
 #define MTP_OP_GET_DEV_PROP_DESC    0x1014
