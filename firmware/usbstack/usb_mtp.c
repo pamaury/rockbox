@@ -203,7 +203,7 @@ enum data_phase_type
 };
 
 /* rem_bytes is the total number of data bytes remaining including this block */
-typedef void (*recv_split_routine)(char *data, int length, uint32_t rem_bytes, void *user);
+typedef void (*recv_split_routine)(unsigned char *data, int length, uint32_t rem_bytes, void *user);
 /* should write to dest, return number of bytes written or <0 on error, write at most max_size bytes */
 typedef int (*send_split_routine)(void *dest, int max_size, void *user);
 
@@ -243,9 +243,18 @@ static unsigned char *send_buffer;
  */
 static void fail_op_with(uint16_t error_code, enum data_phase_type dht);
 
-static uint32_t max_usb_xfer_size(void)
+static uint32_t max_usb_send_xfer_size(void)
 {
-    return 32*1024; /* FIXME expected to work on any target */
+    /* FIXME expected to work on any target */
+    /* FIXME keep coherent with allocated size for recv_buffer */
+    return 32*1024;
+}
+
+static uint32_t max_usb_recv_xfer_size(void)
+{
+    /* FIXME expected to work on any target */
+    /* FIXME keep coherent with allocated size for recv_buffer */
+    return 1024; 
 }
 
 static void fail_with(uint16_t error_code)
@@ -352,13 +361,13 @@ static void pack_data_block_string_charz(const char *str)
         pack_data_block_uint16_t(*str++);
 }
 
-static bool unpack_data_block_string_charz(char *dest, uint32_t dest_len)
+static bool unpack_data_block_string_charz(unsigned char *dest, uint32_t dest_len)
 {
     uint8_t len;
 
     if(!unpack_data_block_uint8_t(&len)) return false;
 
-    if(dest && len + 1 > dest_len)
+    if(dest  && (uint32_t)(len + 1) > dest_len)
         return false;
 
     while(len-- != 0)
@@ -444,6 +453,39 @@ static unsigned char *get_data_block_ptr(void)
     return mtp_state.data;
 }
 
+static void continue_recv_split_data(int length)
+{
+    logf("mtp: continue_recv_split_data");
+    
+    if(mtp_state.rem_bytes == 0)
+    {
+        struct generic_container *cont = (struct generic_container *) recv_buffer;
+        mtp_state.rem_bytes = cont->length - sizeof(struct generic_container);
+        logf("mtp: header: length=%d cont: length=%lu", length, cont->length);
+        if(length > (int) cont->length)
+            return fail_with(ERROR_INVALID_DATASET);
+        if(cont->type != CONTAINER_DATA_BLOCK)
+            return fail_with(ERROR_INVALID_DATASET);
+        if(cont->code != cur_cmd.code)
+            return fail_with(ERROR_INVALID_DATASET);
+        if(cont->transaction_id != cur_cmd.transaction_id)
+            return fail_with(ERROR_INVALID_DATASET);
+        
+        mtp_state.rem_bytes -= length - sizeof(struct generic_container);
+        mtp_state.recv_split(recv_buffer + sizeof(struct generic_container),
+            length - sizeof(struct generic_container), mtp_state.rem_bytes, mtp_state.user);
+    }
+    else
+    {
+        if((uint32_t)length > mtp_state.rem_bytes)
+            return fail_op_with(ERROR_INVALID_DATASET, NO_DATA_PHASE);
+
+        mtp_state.rem_bytes -= length;
+        mtp_state.recv_split(recv_buffer, length, mtp_state.rem_bytes, mtp_state.user);
+    }
+
+    logf("mtp: rem_bytes=%lu", mtp_state.rem_bytes);
+}
 
 static void receive_split_data(recv_split_routine rct, void *user)
 {
@@ -451,12 +493,12 @@ static void receive_split_data(recv_split_routine rct, void *user)
     mtp_state.recv_split = rct;
     mtp_state.user = user;
     state = RECEIVING_DATA_BLOCK;
-    usb_drv_recv(ep_bulk_out, recv_buffer, max_usb_xfer_size());
+    usb_drv_recv(ep_bulk_out, recv_buffer, max_usb_recv_xfer_size());
 }
 
 static void continue_send_split_data(void)
 {
-    int size = MIN(max_usb_xfer_size(), mtp_state.rem_bytes);
+    int size = MIN(max_usb_send_xfer_size(), mtp_state.rem_bytes);
     int ret = mtp_state.send_split(send_buffer, size, mtp_state.user);
     if(ret < 0)
         return fail_op_with(ERROR_INCOMPLETE_TRANSFER, SEND_DATA_PHASE);
@@ -480,7 +522,7 @@ static void send_split_data(uint32_t nb_bytes, send_split_routine fn, void *user
     cont->code = cur_cmd.code;
     cont->transaction_id = cur_cmd.transaction_id;
     
-    int size = MIN(max_usb_xfer_size() - sizeof(struct generic_container), nb_bytes);
+    int size = MIN(max_usb_send_xfer_size() - sizeof(struct generic_container), nb_bytes);
     int ret = fn(send_buffer + sizeof(struct generic_container),
                 size,
                 user);
@@ -619,13 +661,12 @@ static void get_storage_info(uint32_t stor_id)
     pack_data_block_uint16_t(STOR_TYPE_FIXED_RAM); /* Storage Type */
     pack_data_block_uint16_t(FS_TYPE_GENERIC_HIERARCHICAL); /* Filesystem Type */
     pack_data_block_uint16_t(ACCESS_CAP_RO_WITHOUT); /* Access Capability */
-    pack_data_block_uint64_t(0); /* Max Capacity (optional for read only */
+    pack_data_block_uint64_t(0); /* Max Capacity (optional for read only) */
     pack_data_block_uint64_t(0); /* Free Space in bytes (optional for read only) */
     pack_data_block_uint32_t(0); /* Free Space in objects (optional for read only) */
     pack_data_block_string_charz("Storage description missing"); /* Storage Description */
     pack_data_block_string_charz("Volume identifier missing"); /* Volume Identifier */
     finish_pack_data_block();
-    
     
     cur_resp.code = ERROR_OK;
     cur_resp.nb_parameters = 0;
@@ -725,6 +766,10 @@ static void list_files(const struct dircache_entry *direntry, bool recursive)
 
 static void get_num_objects(int nb_params, uint32_t stor_id, uint32_t obj_fmt, uint32_t obj_handle_parent)
 {
+    (void) nb_params;
+    (void) stor_id;
+    (void) obj_fmt;
+    (void) obj_handle_parent;
     return fail_op_with(ERROR_OP_NOT_SUPPORTED, SEND_DATA_PHASE);
     #if 0
     logf("mtp: get num objects: nb_params=%d stor_id=0x%lx obj_fmt=0x%lx obj_handle_parent=0x%lx",
@@ -889,16 +934,18 @@ struct send_object_info_st
     uint32_t obj_handle_parent;
 };
 
-static void send_object_info_split_routine(char *data, int length, uint32_t rem_bytes, void *user)
+static void send_object_info_split_routine(unsigned char *data, int length, uint32_t rem_bytes, void *user)
 {
     struct send_object_info_st *st = user;
     struct object_info oi;
     static char filename[MAX_PATH];
     static char path[MAX_PATH];
     uint32_t path_len;
-    const struct dircache_entry *parent_entry = mtp_handle_to_dircache_entry(st->obj_handle_parent, false), *this_entry;
+    uint32_t filename_len;
+    const struct dircache_entry *this_entry;
+    const struct dircache_entry *parent_entry = mtp_handle_to_dircache_entry(st->obj_handle_parent, false);
 
-    logf("send_object_info_split_routine stor_id=0x%x obj_handle_parent=0x%x", st->stor_id, st->obj_handle_parent);
+    logf("mtp: send_object_info_split_routine stor_id=0x%lx obj_handle_parent=0x%lx", st->stor_id, st->obj_handle_parent);
 
     if (st->obj_handle_parent == 0xffffffff)
     {
@@ -910,26 +957,26 @@ static void send_object_info_split_routine(char *data, int length, uint32_t rem_
         path_len = strlen(path);
     }
 
-    logf("length=%d rem_bytes=%d", length, rem_bytes);
+    logf("mtp: length=%d rem_bytes=%lu", length, rem_bytes);
 
-    if (length != rem_bytes) /* Does the ObjectInfo span multiple packets? (unhandled case) */
-        return fail_with(ERROR_INVALID_DATASET);
+    if (0 != rem_bytes) /* Does the ObjectInfo span multiple packets? (unhandled case) */
+        return fail_op_with(ERROR_INVALID_DATASET, NO_DATA_PHASE);
 
     start_unpack_data_block(data, length);
     if (!unpack_data_block_ptr(&oi, sizeof(oi)))
-        return fail_op_with(ERROR_INVALID_DATASET, RECV_DATA_PHASE);
+        return fail_op_with(ERROR_INVALID_DATASET, NO_DATA_PHASE);
     if (!unpack_data_block_string_charz(filename, sizeof(filename))) /* Filename */
-        return fail_op_with(ERROR_INVALID_DATASET, RECV_DATA_PHASE);
+        return fail_op_with(ERROR_INVALID_DATASET, NO_DATA_PHASE);
     if (!unpack_data_block_string_charz(NULL, 0)) /* Date Created */
-        return fail_op_with(ERROR_INVALID_DATASET, RECV_DATA_PHASE);
+        return fail_op_with(ERROR_INVALID_DATASET, NO_DATA_PHASE);
     if (!unpack_data_block_string_charz(NULL, 0)) /* Date Modified */
-        return fail_op_with(ERROR_INVALID_DATASET, RECV_DATA_PHASE);
+        return fail_op_with(ERROR_INVALID_DATASET, NO_DATA_PHASE);
     if (!unpack_data_block_string_charz(NULL, 0)) /* Keywords */
-        return fail_op_with(ERROR_INVALID_DATASET, RECV_DATA_PHASE);
+        return fail_op_with(ERROR_INVALID_DATASET, NO_DATA_PHASE);
     if (!finish_unpack_data_block())
-        return fail_op_with(ERROR_INVALID_DATASET, RECV_DATA_PHASE);
+        return fail_op_with(ERROR_INVALID_DATASET, NO_DATA_PHASE);
 
-    logf("successfully unpacked");
+    logf("mtp: successfully unpacked");
 
     if (path_len < MAX_PATH-1)
     {
@@ -937,42 +984,44 @@ static void send_object_info_split_routine(char *data, int length, uint32_t rem_
         path[path_len+1] = 0;
         path_len++;
     }
+    else
+        return fail_op_with(ERROR_GENERAL_ERROR, NO_DATA_PHASE);
 
-    if (path_len < MAX_PATH-1)
-    {
+    filename_len = strlen(filename);
+    if ((path_len + filename_len) < MAX_PATH-1)
         strlcpy(path+path_len, filename, MAX_PATH-path_len);
-    }
+    else
+        return fail_op_with(ERROR_GENERAL_ERROR, NO_DATA_PHASE);
 
-    logf("path = %s", path);
-
-    logf("about to made the file");
-    logf("about to made the file l2");
+    logf("mtp: path = %s", path);
 
     if (oi.object_format == OBJ_FMT_ASSOCIATION)
     {
         if (mkdir(path) < 0)
-            return fail_op_with(ERROR_GENERAL_ERROR, RECV_DATA_PHASE);
+            return fail_op_with(ERROR_GENERAL_ERROR, NO_DATA_PHASE);
     }
     else
     {
         int fd = open(path, O_WRONLY);
         if (fd < 0)
-            return fail_op_with(ERROR_GENERAL_ERROR, RECV_DATA_PHASE);
+            return fail_op_with(ERROR_GENERAL_ERROR, NO_DATA_PHASE);
         close(fd);
     }
 
-    logf("made the file");
-    logf("made the file l2");
-
     this_entry = dircache_get_entry_ptr(path);
     if (this_entry == NULL)
-        return fail_op_with(ERROR_GENERAL_ERROR, RECV_DATA_PHASE);
+        return fail_op_with(ERROR_GENERAL_ERROR, NO_DATA_PHASE);
+ 
+    logf("mtp: made the file");
  
     cur_resp.code = ERROR_OK;
     cur_resp.nb_parameters = 3;
     cur_resp.param[0] = st->stor_id;
     cur_resp.param[1] = st->obj_handle_parent;
+    /* FIXME TODO WARNING isn't it this_entry->up for directories ? */
     cur_resp.param[2] = dircache_entry_to_mtp_handle(this_entry);
+    
+    send_response();
 }
 
 static void send_object_info(int nb_params, uint32_t stor_id, uint32_t obj_handle_parent)
@@ -980,8 +1029,7 @@ static void send_object_info(int nb_params, uint32_t stor_id, uint32_t obj_handl
     static struct send_object_info_st st;
     const struct dircache_entry *parent_entry = mtp_handle_to_dircache_entry(obj_handle_parent, false);
 
-    logf("mtp: send object info: stor_id=0x%x obj_handle_parent=0x%x", (unsigned int) stor_id, (unsigned int) obj_handle_parent);
-    logf("2nd msg");
+    logf("mtp: send object info: stor_id=0x%lx obj_handle_parent=0x%lx", stor_id, obj_handle_parent);
 
     if (nb_params < 1)
         stor_id = 0x00010001;
@@ -1006,9 +1054,9 @@ static void send_object_info(int nb_params, uint32_t stor_id, uint32_t obj_handl
     st.stor_id = stor_id;
     st.obj_handle_parent = obj_handle_parent;
 
-    logf("stor_id = %d, obj_handle_parent = %d", stor_id, obj_handle_parent);
+    logf("mtp: stor_id=0x%lx obj_handle_parent=0x%lx", stor_id, obj_handle_parent);
 
-    receive_split_data(send_object_info_split_routine, &st);
+    receive_split_data(&send_object_info_split_routine, &st);
 }
 
 static void reset_device(void)
@@ -1153,6 +1201,8 @@ static void get_object_props_supported(uint32_t object_fmt)
 
 static void get_storage_id_desc(uint32_t obj_fmt)
 {
+    (void) obj_fmt;
+    
     start_pack_data_block();
     pack_data_block_uint16_t(OBJ_PROP_STORAGE_ID);
     pack_data_block_uint16_t(TYPE_UINT32);
@@ -1170,6 +1220,8 @@ static void get_storage_id_desc(uint32_t obj_fmt)
 
 static void get_object_fmt_desc(uint32_t obj_fmt)
 {
+    (void) obj_fmt;
+    
     start_pack_data_block();
     pack_data_block_uint16_t(OBJ_PROP_OBJ_FMT);
     pack_data_block_uint16_t(TYPE_UINT16);
@@ -1187,6 +1239,8 @@ static void get_object_fmt_desc(uint32_t obj_fmt)
 
 static void get_assoc_type_desc(uint32_t obj_fmt)
 {
+    (void) obj_fmt;
+    
     start_pack_data_block();
     pack_data_block_uint16_t(OBJ_PROP_ASSOC_TYPE);
     pack_data_block_uint16_t(TYPE_UINT16);
@@ -1206,6 +1260,8 @@ static void get_assoc_type_desc(uint32_t obj_fmt)
 
 static void get_assoc_desc_desc(uint32_t obj_fmt)
 {
+    (void) obj_fmt;
+    
     start_pack_data_block();
     pack_data_block_uint16_t(OBJ_PROP_ASSOC_DESC);
     pack_data_block_uint16_t(TYPE_UINT32);
@@ -1223,6 +1279,8 @@ static void get_assoc_desc_desc(uint32_t obj_fmt)
 
 static void get_object_size_desc(uint32_t obj_fmt)
 {
+    (void) obj_fmt;
+    
     start_pack_data_block();
     pack_data_block_uint16_t(OBJ_PROP_OBJ_SIZE);
     pack_data_block_uint16_t(TYPE_UINT32);
@@ -1240,6 +1298,8 @@ static void get_object_size_desc(uint32_t obj_fmt)
 
 static void get_object_filename_desc(uint32_t obj_fmt)
 {
+    (void) obj_fmt;
+    
     start_pack_data_block();
     pack_data_block_uint16_t(OBJ_PROP_FILENAME);
     pack_data_block_uint16_t(TYPE_STR);
@@ -1257,6 +1317,8 @@ static void get_object_filename_desc(uint32_t obj_fmt)
 
 static void get_object_c_date_desc(uint32_t obj_fmt)
 {
+    (void) obj_fmt;
+    
     start_pack_data_block();
     pack_data_block_uint16_t(OBJ_PROP_C_DATE);
     pack_data_block_uint16_t(TYPE_STR);
@@ -1274,6 +1336,8 @@ static void get_object_c_date_desc(uint32_t obj_fmt)
 
 static void get_object_m_date_desc(uint32_t obj_fmt)
 {
+    (void) obj_fmt;
+    
     start_pack_data_block();
     pack_data_block_uint16_t(OBJ_PROP_M_DATE);
     pack_data_block_uint16_t(TYPE_STR);
@@ -1291,6 +1355,8 @@ static void get_object_m_date_desc(uint32_t obj_fmt)
 
 static void get_parent_obj_desc(uint32_t obj_fmt)
 {
+    (void) obj_fmt;
+    
     start_pack_data_block();
     pack_data_block_uint16_t(OBJ_PROP_PARENT_OBJ);
     pack_data_block_uint16_t(TYPE_UINT32);
@@ -1308,6 +1374,8 @@ static void get_parent_obj_desc(uint32_t obj_fmt)
 
 static void get_hidden_desc(uint32_t obj_fmt)
 {
+    (void) obj_fmt;
+    
     start_pack_data_block();
     pack_data_block_uint16_t(OBJ_PROP_HIDDEN);
     pack_data_block_uint16_t(TYPE_UINT16);
@@ -1328,6 +1396,8 @@ static void get_hidden_desc(uint32_t obj_fmt)
 
 static void get_sys_obj_desc(uint32_t obj_fmt)
 {
+    (void) obj_fmt;
+    
     start_pack_data_block();
     pack_data_block_uint16_t(OBJ_PROP_SYS_OBJ);
     pack_data_block_uint16_t(TYPE_UINT16);
@@ -1348,6 +1418,8 @@ static void get_sys_obj_desc(uint32_t obj_fmt)
 
 static void get_object_name_desc(uint32_t obj_fmt)
 {
+    (void) obj_fmt;
+    
     start_pack_data_block();
     pack_data_block_uint16_t(OBJ_PROP_NAME);
     pack_data_block_uint16_t(TYPE_STR);
@@ -1931,7 +2003,7 @@ void usb_mtp_init_connection(void)
     unsigned char * audio_buffer;
     audio_buffer = audio_get_buffer(false,&bufsize);
     recv_buffer = (void *)UNCACHED_ADDR((unsigned int)(audio_buffer+31) & 0xffffffe0);
-    send_buffer = recv_buffer + max_usb_xfer_size();
+    send_buffer = recv_buffer + max_usb_send_xfer_size();
     cpucache_invalidate();
     
     /* wait for next command */
@@ -2016,53 +2088,18 @@ void usb_mtp_transfer_complete(int ep,int dir, int status, int length)
                 break;
             }
             if(status != 0)
+            {
                 logf("mtp: receive data transfer error");
+                fail_op_with(ERROR_INCOMPLETE_TRANSFER, SEND_DATA_PHASE);
+                break;
+            }
             
-            logf("mtp: OUT received in RECEIVING_DATA_BLOCK, length = %d, mtp_state.rem_bytes = %d", length, mtp_state.rem_bytes);
+            logf("mtp: received data: length = %d, mtp_state.rem_bytes = 0x%lu", length, mtp_state.rem_bytes);
 
             if(mtp_state.recv_split == NULL)
-            {
-                state = SENDING_RESPONSE;
-                logf("mtp: send_response trivial case");
                 send_response();
-            }
             else
-            {
-                if(mtp_state.rem_bytes == 0)
-                {
-                    struct generic_container *cont = (struct generic_container *) recv_buffer;
-                    mtp_state.rem_bytes = cont->length - sizeof(struct generic_container);
-                    logf("FIRST ITERATION length = %d cont->length = %d cont->type = %d, cont->code = %d, cur_cmd.code = %d, cont->transaction_id = %d cur_cmd.transaction_id = %d", length, cont->length, cont->type, cont->code, cur_cmd.code, cont->transaction_id, cur_cmd.transaction_id);
-                    if(length > (int) cont->length)
-                        return fail_with(ERROR_INVALID_DATASET);
-                    if(cont->type != CONTAINER_DATA_BLOCK)
-                        return fail_with(ERROR_INVALID_DATASET);
-                    if(cont->code != cur_cmd.code)
-                        return fail_with(ERROR_INVALID_DATASET);
-                    if(cont->transaction_id != cur_cmd.transaction_id)
-                        return fail_with(ERROR_INVALID_DATASET);
-                    
-                    mtp_state.recv_split(recv_buffer + sizeof(struct generic_container),
-                        length - sizeof(struct generic_container), mtp_state.rem_bytes, mtp_state.user);
-                    mtp_state.rem_bytes -= length - sizeof(struct generic_container);
-                }
-                else
-                {
-                    if(length > (int) mtp_state.rem_bytes)
-                        return fail_with(ERROR_INVALID_DATASET);
-
-                    mtp_state.recv_split(recv_buffer, length, mtp_state.rem_bytes, mtp_state.user);
-                    mtp_state.rem_bytes -= length;
-                }
-
-                logf("mtp_state.rem_bytes = %d", mtp_state.rem_bytes);
-
-                if(mtp_state.rem_bytes == 0)
-                {
-                    state = SENDING_RESPONSE;
-                    send_response();
-                }
-            }
+                continue_recv_split_data(length);
                 
             break;
         default:
