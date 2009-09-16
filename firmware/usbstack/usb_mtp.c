@@ -994,8 +994,12 @@ static void send_object_info_split_routine(unsigned char *data, int length, uint
         return fail_op_with(ERROR_GENERAL_ERROR, NO_DATA_PHASE);
 
     logf("mtp: path = %s", path);
+    
+    this_entry = dircache_get_entry_ptr(path);
+    if(this_entry != NULL)
+        return fail_op_with(ERROR_GENERAL_ERROR, NO_DATA_PHASE);
 
-    if (oi.object_format == OBJ_FMT_ASSOCIATION)
+    if(oi.object_format == OBJ_FMT_ASSOCIATION)
     {
         if (mkdir(path) < 0)
             return fail_op_with(ERROR_GENERAL_ERROR, NO_DATA_PHASE);
@@ -1003,13 +1007,15 @@ static void send_object_info_split_routine(unsigned char *data, int length, uint
     else
     {
         int fd = open(path, O_WRONLY);
-        if (fd < 0)
+        if(fd < 0)
             return fail_op_with(ERROR_GENERAL_ERROR, NO_DATA_PHASE);
         close(fd);
     }
 
     this_entry = dircache_get_entry_ptr(path);
-    if (this_entry == NULL)
+    if(this_entry != NULL && oi.object_format == OBJ_FMT_ASSOCIATION)
+        this_entry = this_entry->up;
+    if(this_entry == NULL)
         return fail_op_with(ERROR_GENERAL_ERROR, NO_DATA_PHASE);
  
     logf("mtp: made the file");
@@ -1018,7 +1024,6 @@ static void send_object_info_split_routine(unsigned char *data, int length, uint
     cur_resp.nb_parameters = 3;
     cur_resp.param[0] = st->stor_id;
     cur_resp.param[1] = st->obj_handle_parent;
-    /* FIXME TODO WARNING isn't it this_entry->up for directories ? */
     cur_resp.param[2] = dircache_entry_to_mtp_handle(this_entry);
     
     send_response();
