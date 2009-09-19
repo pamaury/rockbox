@@ -34,6 +34,8 @@
 #include "file.h"
 #include "dir.h"
 #include "dircache.h"
+#include "fat.h"
+#include "errno.h"
 
 #if !defined(HAVE_DIRCACHE)
 #error USB-MTP requires dircache to be enabled
@@ -86,7 +88,7 @@ static const struct mtp_string mtp_ext =
 
 static const struct mtp_array_uint16_t mtp_op_supported =
 {
-    16,
+    17,
     {MTP_OP_GET_DEV_INFO,
      MTP_OP_OPEN_SESSION,
      MTP_OP_CLOSE_SESSION,
@@ -97,6 +99,7 @@ static const struct mtp_array_uint16_t mtp_op_supported =
      MTP_OP_GET_OBJECT_INFO,
      MTP_OP_GET_OBJECT,
      MTP_OP_SEND_OBJECT_INFO,
+     MTP_OP_SEND_OBJECT,
      MTP_OP_GET_DEV_PROP_DESC,
      MTP_OP_GET_DEV_PROP_VALUE,
      MTP_OP_GET_OBJ_PROPS_SUPPORTED,
@@ -204,6 +207,8 @@ enum data_phase_type
 
 /* rem_bytes is the total number of data bytes remaining including this block */
 typedef void (*recv_split_routine)(unsigned char *data, int length, uint32_t rem_bytes, void *user);
+/* called when reception is finished or on error to complete transfer */
+typedef void (*finish_recv_split_routine)(void *user);
 /* should write to dest, return number of bytes written or <0 on error, write at most max_size bytes */
 typedef int (*send_split_routine)(void *dest, int max_size, void *user);
 
@@ -215,13 +220,14 @@ static struct
     unsigned char *data; /* current data source/destination pointer */
     uint32_t data_len; /* remaining length of data if a source */
     uint32_t *cur_array_length_ptr; /* pointer to the length of the current array (if any) */
-    union
-    {
-        recv_split_routine recv_split; /* function to call on receive split */
-        send_split_routine send_split; /* function to call on send split */
-    };
+    recv_split_routine recv_split; /* function to call on receive split */
+    send_split_routine send_split; /* function to call on send split */
+    finish_recv_split_routine finish_recv_split; /* function to call on completion or on error */
     void *user; /* user data for send or receive split routine */
     uint32_t rem_bytes; /* remaining bytes to send or receive */
+    
+    bool has_pending_oi;/* is there an object with ObjectInfo but without ObjectBinary ? */
+    struct mtp_pending_objectinfo pending_oi;
 } mtp_state;
 
 static struct mtp_command cur_cmd;
@@ -483,14 +489,25 @@ static void continue_recv_split_data(int length)
         mtp_state.rem_bytes -= length;
         mtp_state.recv_split(recv_buffer, length, mtp_state.rem_bytes, mtp_state.user);
     }
+    
+    if(mtp_state.rem_bytes == 0)
+    {
+        if(mtp_state.finish_recv_split!=NULL)
+            mtp_state.finish_recv_split(mtp_state.user);
+    }
+    else
+    {
+        usb_drv_recv(ep_bulk_out, recv_buffer, max_usb_recv_xfer_size());
+    }
 
     logf("mtp: rem_bytes=%lu", mtp_state.rem_bytes);
 }
 
-static void receive_split_data(recv_split_routine rct, void *user)
+static void receive_split_data(recv_split_routine rct, finish_recv_split_routine frst, void *user)
 {
     mtp_state.rem_bytes = 0;
     mtp_state.recv_split = rct;
+    mtp_state.finish_recv_split = frst;
     mtp_state.user = user;
     state = RECEIVING_DATA_BLOCK;
     usb_drv_recv(ep_bulk_out, recv_buffer, max_usb_recv_xfer_size());
@@ -542,6 +559,22 @@ static void send_data_block(void)
     usb_drv_send_nonblocking(ep_bulk_in, send_buffer, cont->length);
 }
 
+static void fail_op_with_recv_split_routine(unsigned char *data, int length, uint32_t rem_bytes, void *user)
+{
+    (void) data;
+    (void) length;
+    (void) rem_bytes;
+    (void) user;
+    /* throw data */
+}
+
+static void fail_op_with_finish_recv_split_routine(void *user)
+{
+    (void) user;
+    /* send response */
+    send_response();
+}
+
 static void fail_op_with(uint16_t error_code, enum data_phase_type dht)
 {
     logf("mtp: fail operation with error code 0x%x", error_code);
@@ -564,7 +597,7 @@ static void fail_op_with(uint16_t error_code, enum data_phase_type dht)
             break;
         case RECV_DATA_PHASE:
             /* receive but throw away */
-            receive_split_data(NULL, NULL);
+            receive_split_data(&fail_op_with_recv_split_routine, &fail_op_with_finish_recv_split_routine, NULL);
             break;
         default:
             logf("mtp: oops in fail_op_with");
@@ -574,6 +607,38 @@ static void fail_op_with(uint16_t error_code, enum data_phase_type dht)
             send_response();
             break;
     }
+}
+
+/*
+ * Handle conversions
+ */
+static bool check_dircache(void)
+{
+    if(!dircache_is_enabled() || dircache_is_initializing())
+    {
+        logf("mtp: oops, dircache is not enabled, trying something...");
+        return false;
+    }
+    else
+        return true;
+}
+
+static const struct dircache_entry *mtp_handle_to_dircache_entry(uint32_t handle, bool accept_root)
+{
+    /* NOTE invalid entry for 0xffffffff but works with it */
+    struct dircache_entry *entry = (struct dircache_entry *)handle;
+    if(entry == (struct dircache_entry *)0xffffffff)
+        return accept_root ? entry : NULL;
+    
+    if(!dircache_is_valid_ptr(entry))
+        return NULL;
+
+    return entry;
+}
+
+static uint32_t dircache_entry_to_mtp_handle(const struct dircache_entry *entry)
+{
+    return (uint32_t)entry;
 }
 
 /*
@@ -594,16 +659,33 @@ static void open_session(uint32_t session_id)
     send_response();
 }
 
-static void close_session(void)
+static void close_session(bool send_resp)
 {
     if(mtp_state.session_id == 0x00000000)
         return fail_op_with(ERROR_SESSION_NOT_OPEN, NO_DATA_PHASE);
     logf("mtp: close session %lu", mtp_state.session_id);
     
     mtp_state.session_id = 0x00000000;
-    cur_resp.code = ERROR_OK;
-    cur_resp.nb_parameters = 0;
-    send_response();
+    /* destroy pending object (if any) */
+    if(mtp_state.has_pending_oi)
+    {
+        const struct dircache_entry *entry = mtp_handle_to_dircache_entry(mtp_state.pending_oi.handle, false);
+        char path[MAX_PATH];
+        if(entry != NULL)
+        {
+            dircache_copy_path(entry, path, sizeof(path));
+            logf("mtp: remove unfinished pending object: \"%s\"", path);
+            remove(path);
+        }
+        mtp_state.has_pending_oi = false;
+    }
+    
+    if(send_resp)
+    {
+        cur_resp.code = ERROR_OK;
+        cur_resp.nb_parameters = 0;
+        send_response();
+    }
 }
 
 static void get_device_info(void)
@@ -657,12 +739,18 @@ static void get_storage_info(uint32_t stor_id)
     if(stor_id!=0x00010001)
         return fail_op_with(ERROR_INVALID_STORAGE_ID, SEND_DATA_PHASE);
     
+    /* FIXME: works only for first storage, we don't have stor->volume conversion */
+    unsigned long size, free;
+    fat_size(IF_MV2(0,) &size, &free);
+    size *= SECTOR_SIZE;
+    free *= SECTOR_SIZE;
+    
     start_pack_data_block();
     pack_data_block_uint16_t(STOR_TYPE_FIXED_RAM); /* Storage Type */
     pack_data_block_uint16_t(FS_TYPE_GENERIC_HIERARCHICAL); /* Filesystem Type */
     pack_data_block_uint16_t(ACCESS_CAP_RO_WITHOUT); /* Access Capability */
-    pack_data_block_uint64_t(0); /* Max Capacity (optional for read only) */
-    pack_data_block_uint64_t(0); /* Free Space in bytes (optional for read only) */
+    pack_data_block_uint64_t(size); /* Max Capacity (optional for read only) */
+    pack_data_block_uint64_t(free); /* Free Space in bytes (optional for read only) */
     pack_data_block_uint32_t(0); /* Free Space in objects (optional for read only) */
     pack_data_block_string_charz("Storage description missing"); /* Storage Description */
     pack_data_block_string_charz("Volume identifier missing"); /* Volume Identifier */
@@ -672,35 +760,6 @@ static void get_storage_info(uint32_t stor_id)
     cur_resp.nb_parameters = 0;
     
     send_data_block();
-}
-
-static bool check_dircache(void)
-{
-    if(!dircache_is_enabled() || dircache_is_initializing())
-    {
-        logf("mtp: oops, dircache is not enabled, trying something...");
-        return false;
-    }
-    else
-        return true;
-}
-
-static const struct dircache_entry *mtp_handle_to_dircache_entry(uint32_t handle, bool accept_root)
-{
-    /* NOTE invalid entry for 0xffffffff but works with it */
-    struct dircache_entry *entry = (struct dircache_entry *)handle;
-    if(entry == (struct dircache_entry *)0xffffffff)
-        return accept_root ? entry : NULL;
-    
-    if(!dircache_is_valid_ptr(entry))
-        return NULL;
-
-    return entry;
-}
-
-static uint32_t dircache_entry_to_mtp_handle(const struct dircache_entry *entry)
-{
-    return (uint32_t)entry;
 }
 
 static bool list_files2(const struct dircache_entry *direntry, bool recursive)
@@ -957,10 +1016,8 @@ static void send_object_info_split_routine(unsigned char *data, int length, uint
         path_len = strlen(path);
     }
 
-    logf("mtp: length=%d rem_bytes=%lu", length, rem_bytes);
-
     if (0 != rem_bytes) /* Does the ObjectInfo span multiple packets? (unhandled case) */
-        return fail_op_with(ERROR_INVALID_DATASET, NO_DATA_PHASE);
+        return fail_op_with(ERROR_INVALID_DATASET, RECV_DATA_PHASE); /* NOTE continue reception and throw data */
 
     start_unpack_data_block(data, length);
     if (!unpack_data_block_ptr(&oi, sizeof(oi)))
@@ -994,31 +1051,44 @@ static void send_object_info_split_routine(unsigned char *data, int length, uint
         return fail_op_with(ERROR_GENERAL_ERROR, NO_DATA_PHASE);
 
     logf("mtp: path = %s", path);
-    
-    this_entry = dircache_get_entry_ptr(path);
-    if(this_entry != NULL)
-        return fail_op_with(ERROR_GENERAL_ERROR, NO_DATA_PHASE);
 
     if(oi.object_format == OBJ_FMT_ASSOCIATION)
     {
-        if (mkdir(path) < 0)
+        /* sanity check */
+        if(oi.association_type != ASSOC_TYPE_FOLDER)
+            return fail_op_with(ERROR_INVALID_DATASET, NO_DATA_PHASE);
+        /* create directory */
+        if(mkdir(path) < 0)
             return fail_op_with(ERROR_GENERAL_ERROR, NO_DATA_PHASE);
     }
     else
     {
-        int fd = open(path, O_WRONLY);
+        /* create empty file */
+        int fd = open(path, O_RDWR|O_CREAT|O_TRUNC);
         if(fd < 0)
             return fail_op_with(ERROR_GENERAL_ERROR, NO_DATA_PHASE);
         close(fd);
     }
+    
+    logf("mtp: object created");
 
+    /* get object pointer */
     this_entry = dircache_get_entry_ptr(path);
+    /* to one level up for directory */
     if(this_entry != NULL && oi.object_format == OBJ_FMT_ASSOCIATION)
         this_entry = this_entry->up;
     if(this_entry == NULL)
         return fail_op_with(ERROR_GENERAL_ERROR, NO_DATA_PHASE);
  
-    logf("mtp: made the file");
+    /* if file size is nonzero, add a pending OI (except if there is one) */
+    if(oi.object_format != OBJ_FMT_ASSOCIATION && oi.compressed_size!=0)
+    {
+        if(mtp_state.has_pending_oi)
+            return fail_op_with(ERROR_GENERAL_ERROR, NO_DATA_PHASE);
+        mtp_state.pending_oi.handle = dircache_entry_to_mtp_handle(this_entry);
+        mtp_state.pending_oi.size = oi.compressed_size;
+        mtp_state.has_pending_oi = true;
+    }
  
     cur_resp.code = ERROR_OK;
     cur_resp.nb_parameters = 3;
@@ -1036,6 +1106,7 @@ static void send_object_info(int nb_params, uint32_t stor_id, uint32_t obj_handl
 
     logf("mtp: send object info: stor_id=0x%lx obj_handle_parent=0x%lx", stor_id, obj_handle_parent);
 
+    /* default store is main store */
     if (nb_params < 1)
         stor_id = 0x00010001;
 
@@ -1043,9 +1114,11 @@ static void send_object_info(int nb_params, uint32_t stor_id, uint32_t obj_handl
         return fail_op_with(ERROR_INVALID_STORAGE_ID, RECV_DATA_PHASE);
 
     stor_id = 0x00010001;
+    /* default parent if root */
     if (nb_params < 2 || obj_handle_parent == 0x00000000)
         obj_handle_parent = 0xffffffff;
 
+    /* check parent is root or a valid directory */
     if (obj_handle_parent != 0xffffffff)
     {
         if (parent_entry == NULL)
@@ -1053,7 +1126,6 @@ static void send_object_info(int nb_params, uint32_t stor_id, uint32_t obj_handl
 
         if (!(parent_entry->attribute & ATTR_DIRECTORY))
             return fail_op_with(ERROR_INVALID_PARENT_OBJ, RECV_DATA_PHASE);
-            
     }
 
     st.stor_id = stor_id;
@@ -1061,14 +1133,81 @@ static void send_object_info(int nb_params, uint32_t stor_id, uint32_t obj_handl
 
     logf("mtp: stor_id=0x%lx obj_handle_parent=0x%lx", stor_id, obj_handle_parent);
 
-    receive_split_data(&send_object_info_split_routine, &st);
+    receive_split_data(&send_object_info_split_routine, NULL, &st);
+}
+
+struct send_object_st
+{
+    int fd;
+    bool first_xfer;
+};
+
+static void send_object_split_routine(unsigned char *data, int length, uint32_t rem_bytes, void *user)
+{
+    struct send_object_st *st = user;
+    
+    if(st->first_xfer)
+    {
+        /* compute total xfer size */
+        uint32_t total_size=length + rem_bytes;
+        /* check it's equal to expected size */
+        if(total_size != mtp_state.pending_oi.size)
+            return fail_op_with(ERROR_INCOMPLETE_TRANSFER, RECV_DATA_PHASE);
+        
+        st->first_xfer = false;
+    }
+    
+    if(write(st->fd, data, length) < 0)
+    {
+        logf("mtp: write error: errno=%d", errno);
+        return fail_op_with(ERROR_GENERAL_ERROR, RECV_DATA_PHASE);
+    }
+}
+
+static void finish_send_object_split_routine(void *user)
+{
+    struct send_object_st *st = user;
+    
+    logf("mtp: finish send file");
+    
+    close(st->fd);
+    mtp_state.has_pending_oi = false;
+    
+    cur_resp.code = ERROR_OK;
+    cur_resp.nb_parameters = 0;
+    
+    send_response();
+}
+
+static void send_object(void)
+{
+    static struct send_object_st st;
+    static char path[MAX_PATH];
+    const struct dircache_entry *entry = mtp_handle_to_dircache_entry(mtp_state.pending_oi.handle, false);
+    /* check there is a pending OI */
+    if(!mtp_state.has_pending_oi)
+        return fail_op_with(ERROR_NO_VALID_OBJECTINFO, RECV_DATA_PHASE);
+    
+    logf("mtp: send object: associated objectinfo=0x%lx", mtp_state.pending_oi.handle);
+    
+    
+    if(entry == NULL)
+        return fail_op_with(ERROR_NO_VALID_OBJECTINFO, RECV_DATA_PHASE);
+    dircache_copy_path(entry, path, sizeof(path));
+    
+    st.fd = open(path, O_RDWR|O_TRUNC);
+    if(st.fd < 0)
+        return fail_op_with(ERROR_NO_VALID_OBJECTINFO, RECV_DATA_PHASE);
+    st.first_xfer = true;
+    /* wait data */
+    receive_split_data(&send_object_split_routine, &finish_send_object_split_routine, &st);
 }
 
 static void reset_device(void)
 {
     logf("mtp: reset device");
     
-    close_session();
+    close_session(true);
 }
 
 static void get_battery_level(bool want_desc)
@@ -1759,7 +1898,7 @@ static void handle_command2(void)
             return open_session(cur_cmd.param[0]);
         case MTP_OP_CLOSE_SESSION:
             want_nb_params(0, NO_DATA_PHASE) /* no parameter */
-            return close_session();
+            return close_session(true);
         case MTP_OP_GET_STORAGE_IDS:
             want_nb_params(0, SEND_DATA_PHASE) /* no parameter */
             want_session(SEND_DATA_PHASE) /* must be called in a session */
@@ -1790,6 +1929,10 @@ static void handle_command2(void)
             want_nb_params_range(0, 2, SEND_DATA_PHASE)
             want_session(RECV_DATA_PHASE)
             return send_object_info(cur_cmd.nb_parameters, cur_cmd.param[0], cur_cmd.param[1]);
+        case MTP_OP_SEND_OBJECT:
+            want_nb_params(0, RECV_DATA_PHASE);
+            want_session(RECV_DATA_PHASE);
+            return send_object();
         case MTP_OP_RESET_DEVICE:
             want_nb_params(0, NO_DATA_PHASE) /* no parameter */
             return reset_device();
@@ -1987,7 +2130,7 @@ bool usb_mtp_control_request(struct usb_ctrlrequest* req, unsigned char* dest)
 void usb_mtp_init_connection(void)
 {
     logf("mtp: init connection");
-    active=true;
+    active = true;
     
     /* enable to cpu boost to enable transfers of big size (ie > ~90 bytes) */
     cpu_boost(true);
@@ -2003,6 +2146,7 @@ void usb_mtp_init_connection(void)
     
     mtp_state.session_id = 0x00000000;
     mtp_state.transaction_id = 0x00000000;
+    mtp_state.has_pending_oi = false;
     
     size_t bufsize;
     unsigned char * audio_buffer;
@@ -2026,6 +2170,11 @@ void usb_mtp_init(void)
 void usb_mtp_disconnect(void)
 {
     logf("mtp: disconnect");
+    
+    /* close current session */
+    if(mtp_state.session_id != 0x00000000)
+        close_session(false);
+    
     active = false;
     cpu_boost(false);
 }

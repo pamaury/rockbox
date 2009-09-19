@@ -111,6 +111,12 @@ struct mtp_command
     uint32_t param[5];
 };
 
+struct mtp_pending_objectinfo
+{
+    uint32_t handle;
+    uint32_t size;
+};
+
 struct mtp_response
 {
     uint16_t code;
@@ -155,6 +161,7 @@ struct device_info
 #define ERROR_ACCESS_DENIED         0x200f
 #define ERROR_STORAGE_NOT_AVAILABLE 0x2013
 #define ERROR_SPEC_BY_FMT_UNSUPPORTED   0x2014
+#define ERROR_NO_VALID_OBJECTINFO   0x2015
 #define ERROR_DEV_BUSY              0x2019
 #define ERROR_INVALID_PARENT_OBJ    0x201a
 #define ERROR_INVALID_PARAMETER     0x201d
@@ -195,6 +202,7 @@ struct device_info
 #define MTP_OP_GET_OBJECT_INFO      0x1008
 #define MTP_OP_GET_OBJECT           0x1009
 #define MTP_OP_SEND_OBJECT_INFO     0x100C
+#define MTP_OP_SEND_OBJECT          0x100D
 #define MTP_OP_RESET_DEVICE         0x1010
 #define MTP_OP_POWER_DOWN           0x1013
 #define MTP_OP_GET_DEV_PROP_DESC    0x1014
