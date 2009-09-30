@@ -538,7 +538,7 @@ static void continue_send_split_data(void)
 static void send_split_data(uint32_t nb_bytes, send_split_routine fn, finish_send_split_routine fsst, void *user)
 {
     if(fn == NULL || fsst == NULL)
-        logf("mtp: error: se,d_split_data called with a NULL function ptr, your DAP will soon explode");
+        logf("mtp: error: send_split_data called with a NULL function ptr, your DAP will soon explode");
     
     mtp_state.send_split = fn,
     mtp_state.finish_send_split = fsst;
@@ -591,14 +591,6 @@ static int send_data_block_split(void *dest, int max_size, void *user)
 
 static void send_data_block(void)
 {
-    /*
-    mtp_state.send_split = NULL;
-    struct generic_container *cont = (struct generic_container *) send_buffer;
-    state = SENDING_DATA_BLOCK;
-    usb_drv_send_nonblocking(ep_bulk_in, send_buffer, cont->length);
-    */
-    
-    /* FIXME hacky solution using send_split_data */
     uint32_t size = mtp_state.data - send_buffer - sizeof(struct generic_container);
     /* use data to handle splitting */
     mtp_state.data = send_buffer + sizeof(struct generic_container);
