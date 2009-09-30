@@ -869,34 +869,6 @@ static void get_num_objects(int nb_params, uint32_t stor_id, uint32_t obj_fmt, u
     (void) obj_fmt;
     (void) obj_handle_parent;
     return fail_op_with(ERROR_OP_NOT_SUPPORTED, SEND_DATA_PHASE);
-    #if 0
-    logf("mtp: get num objects: nb_params=%d stor_id=0x%lx obj_fmt=0x%lx obj_handle_parent=0x%lx",
-        nb_params, stor_id, obj_fmt, obj_handle_parent);
-    
-    /* if there are three parameters, make sure the third one make sense */
-    if(nb_params == 3)
-    {
-        if(obj_handle_parent != 0x00000000 && obj_handle_parent != 0xffffffff)
-            return fail_op_with(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE);
-    }
-    /* if there are two parameters, make sure the second one does not filter anything */
-    if(nb_params >= 2)
-    {
-        if(obj_fmt != 0x00000000)
-            return fail_op_with(ERROR_SPEC_BY_FMT_UNSUPPORTED, SEND_DATA_PHASE);
-    }
-    
-    if(stor_id!=0xffffffff && stor_id!=0x00010001)
-        return fail_op_with(ERROR_INVALID_STORAGE_ID, SEND_DATA_PHASE);
-    
-    check_tcs();
-    
-    cur_resp.code = ERROR_OK;
-    cur_resp.nb_parameters = 1;
-    cur_resp.param[0] = count;
-    
-    send_response();
-    #endif
 }
 
 static void get_object_handles(int nb_params, uint32_t stor_id, uint32_t obj_fmt, uint32_t obj_handle_parent)
