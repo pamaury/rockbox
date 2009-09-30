@@ -208,9 +208,11 @@ enum data_phase_type
 /* rem_bytes is the total number of data bytes remaining including this block */
 typedef void (*recv_split_routine)(unsigned char *data, int length, uint32_t rem_bytes, void *user);
 /* called when reception is finished or on error to complete transfer */
-typedef void (*finish_recv_split_routine)(void *user);
+typedef void (*finish_recv_split_routine)(bool error, void *user);
 /* should write to dest, return number of bytes written or <0 on error, write at most max_size bytes */
 typedef int (*send_split_routine)(void *dest, int max_size, void *user);
+/* called when send is finished or on error to complete transfer */
+typedef void (*finish_send_split_routine)(bool error, void *user);
 
 static struct
 {
@@ -220,9 +222,16 @@ static struct
     unsigned char *data; /* current data source/destination pointer */
     uint32_t data_len; /* remaining length of data if a source */
     uint32_t *cur_array_length_ptr; /* pointer to the length of the current array (if any) */
-    recv_split_routine recv_split; /* function to call on receive split */
-    send_split_routine send_split; /* function to call on send split */
-    finish_recv_split_routine finish_recv_split; /* function to call on completion or on error */
+    union
+    {
+        recv_split_routine recv_split; /* function to call on receive split */
+        send_split_routine send_split; /* function to call on send split */
+    };
+    union
+    {
+        finish_recv_split_routine finish_recv_split; /* function to call on completion or on error */
+        finish_send_split_routine finish_send_split; /* function to call on completion or on error */
+    };
     void *user; /* user data for send or receive split routine */
     uint32_t rem_bytes; /* remaining bytes to send or receive */
     
@@ -491,20 +500,18 @@ static void continue_recv_split_data(int length)
     }
     
     if(mtp_state.rem_bytes == 0)
-    {
-        if(mtp_state.finish_recv_split!=NULL)
-            mtp_state.finish_recv_split(mtp_state.user);
-    }
+        mtp_state.finish_recv_split(false, mtp_state.user);
     else
-    {
         usb_drv_recv(ep_bulk_out, recv_buffer, max_usb_recv_xfer_size());
-    }
 
     logf("mtp: rem_bytes=%lu", mtp_state.rem_bytes);
 }
 
 static void receive_split_data(recv_split_routine rct, finish_recv_split_routine frst, void *user)
 {
+    if(rct == NULL || frst == NULL)
+        logf("mtp: error: receive_split_data called with a NULL function ptr, your DAP will soon explode");
+    
     mtp_state.rem_bytes = 0;
     mtp_state.recv_split = rct;
     mtp_state.finish_recv_split = frst;
@@ -516,17 +523,25 @@ static void receive_split_data(recv_split_routine rct, finish_recv_split_routine
 static void continue_send_split_data(void)
 {
     int size = MIN(max_usb_send_xfer_size(), mtp_state.rem_bytes);
+    
+    if(size == 0)
+        return mtp_state.finish_send_split(false, mtp_state.user);
+    
     int ret = mtp_state.send_split(send_buffer, size, mtp_state.user);
     if(ret < 0)
-        return fail_op_with(ERROR_INCOMPLETE_TRANSFER, SEND_DATA_PHASE);
+        return mtp_state.finish_send_split(true, mtp_state.user);
     
     mtp_state.rem_bytes -= ret;
     usb_drv_send_nonblocking(ep_bulk_in, send_buffer, ret);
 }
 
-static void send_split_data(uint32_t nb_bytes, send_split_routine fn, void *user)
+static void send_split_data(uint32_t nb_bytes, send_split_routine fn, finish_send_split_routine fsst, void *user)
 {
+    if(fn == NULL || fsst == NULL)
+        logf("mtp: error: se,d_split_data called with a NULL function ptr, your DAP will soon explode");
+    
     mtp_state.send_split = fn,
+    mtp_state.finish_send_split = fsst;
     mtp_state.rem_bytes = nb_bytes;
     mtp_state.user = user;
     
@@ -544,19 +559,50 @@ static void send_split_data(uint32_t nb_bytes, send_split_routine fn, void *user
                 size,
                 user);
     if(ret < 0)
-        return fail_op_with(ERROR_INCOMPLETE_TRANSFER, SEND_DATA_PHASE);
+        return mtp_state.finish_send_split(true, mtp_state.user);
     
     mtp_state.rem_bytes -= ret;
     usb_drv_send_nonblocking(ep_bulk_in, send_buffer, ret + sizeof(struct generic_container));
 }
 
+static void generic_finish_split_routine(bool error, void *user)
+{
+    (void) user;
+    if(error)
+    {
+        cur_resp.code = ERROR_INCOMPLETE_TRANSFER;
+        cur_resp.nb_parameters = 0;
+    }
+    
+    send_response();
+}
+
+static int send_data_block_split(void *dest, int max_size, void *user)
+{
+    /* FIXME hacky solution that works because of the current implementation of send_split_data */
+    /* it works because pack_data_start_block put a generic_container header that will be overwritten by send_split_data */
+    (void) user;
+    
+    memmove(dest, mtp_state.data, max_size);
+    mtp_state.data += max_size;
+    
+    return max_size;
+}
+
 static void send_data_block(void)
 {
+    /*
     mtp_state.send_split = NULL;
-    /* FIXME should rewrite this with send_split_data */
     struct generic_container *cont = (struct generic_container *) send_buffer;
     state = SENDING_DATA_BLOCK;
     usb_drv_send_nonblocking(ep_bulk_in, send_buffer, cont->length);
+    */
+    
+    /* FIXME hacky solution using send_split_data */
+    uint32_t size = mtp_state.data - send_buffer - sizeof(struct generic_container);
+    /* use data to handle splitting */
+    mtp_state.data = send_buffer + sizeof(struct generic_container);
+    send_split_data(size, &send_data_block_split, &generic_finish_split_routine, NULL);
 }
 
 static void fail_op_with_recv_split_routine(unsigned char *data, int length, uint32_t rem_bytes, void *user)
@@ -568,10 +614,11 @@ static void fail_op_with_recv_split_routine(unsigned char *data, int length, uin
     /* throw data */
 }
 
-static void fail_op_with_finish_recv_split_routine(void *user)
+static void fail_op_with_finish_recv_split_routine(bool error, void *user)
 {
     (void) user;
-    /* send response */
+    (void) error;
+    /* send response, ignoring error */
     send_response();
 }
 
@@ -953,11 +1000,17 @@ static int get_object_split_routine(void *dest, int size, void *user)
     else
     {
         st->offset += size;
-        if(st->offset == st->size)
-            close(st->fd);
         /*logf("mtp: ok for %d bytes", size);*/
         return size;
     }
+}
+
+static void finish_get_object_split_routine(bool error, void *user)
+{
+    struct get_object_st *st = user;
+    close(st->fd);
+    
+    generic_finish_split_routine(error, user);
 }
 
 static void get_object(uint32_t object_handle)
@@ -984,7 +1037,7 @@ static void get_object(uint32_t object_handle)
     cur_resp.code = ERROR_OK;
     cur_resp.nb_parameters = 0;
     
-    send_split_data(entry->size, &get_object_split_routine, &st);
+    send_split_data(entry->size, &get_object_split_routine, &finish_get_object_split_routine, &st);
 }
 
 struct send_object_info_st
@@ -1095,8 +1148,11 @@ static void send_object_info_split_routine(unsigned char *data, int length, uint
     cur_resp.param[0] = st->stor_id;
     cur_resp.param[1] = st->obj_handle_parent;
     cur_resp.param[2] = dircache_entry_to_mtp_handle(this_entry);
-    
-    send_response();
+}
+
+static void finish_send_object_info_split_routine(bool error, void *user)
+{
+    generic_finish_split_routine(error, user);
 }
 
 static void send_object_info(int nb_params, uint32_t stor_id, uint32_t obj_handle_parent)
@@ -1133,7 +1189,7 @@ static void send_object_info(int nb_params, uint32_t stor_id, uint32_t obj_handl
 
     logf("mtp: stor_id=0x%lx obj_handle_parent=0x%lx", stor_id, obj_handle_parent);
 
-    receive_split_data(&send_object_info_split_routine, NULL, &st);
+    receive_split_data(&send_object_info_split_routine, &finish_send_object_info_split_routine, &st);
 }
 
 struct send_object_st
@@ -1164,8 +1220,9 @@ static void send_object_split_routine(unsigned char *data, int length, uint32_t 
     }
 }
 
-static void finish_send_object_split_routine(void *user)
+static void finish_send_object_split_routine(bool error, void *user)
 {
+    (void)error;
     struct send_object_st *st = user;
     
     logf("mtp: finish send file");
@@ -2220,19 +2277,11 @@ void usb_mtp_transfer_complete(int ep,int dir, int status, int length)
             if(status != 0)
             {
                 logf("mtp: send data transfer error");
-                fail_op_with(ERROR_INCOMPLETE_TRANSFER, SEND_DATA_PHASE);
+                mtp_state.finish_send_split(true, mtp_state.user);
                 break;
             }
             
-            /*
-            logf("mtp: send complete: send_split=0x%lx rem_bytes=%lu length=%d",
-                (uint32_t)mtp_state.send_split, mtp_state.rem_bytes, length);
-            */
-            
-            if(mtp_state.send_split == NULL || mtp_state.rem_bytes == 0)
-                send_response();
-            else
-                continue_send_split_data();
+            continue_send_split_data();
             
             break;
         case RECEIVING_DATA_BLOCK:
@@ -2244,16 +2293,13 @@ void usb_mtp_transfer_complete(int ep,int dir, int status, int length)
             if(status != 0)
             {
                 logf("mtp: receive data transfer error");
-                fail_op_with(ERROR_INCOMPLETE_TRANSFER, SEND_DATA_PHASE);
+                mtp_state.finish_recv_split(true, mtp_state.user);
                 break;
             }
             
             logf("mtp: received data: length = %d, mtp_state.rem_bytes = 0x%lu", length, mtp_state.rem_bytes);
 
-            if(mtp_state.recv_split == NULL)
-                send_response();
-            else
-                continue_recv_split_data(length);
+            continue_recv_split_data(length);
                 
             break;
         default:
