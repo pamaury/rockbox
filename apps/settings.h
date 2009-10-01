@@ -768,7 +768,11 @@ struct user_settings
     /* If values are just added to the end, no need to bump plugin API
        version. */
     /* new stuff to be added at the end */
-    
+
+#ifdef USB_ENABLE_HID
+    int usb_keypad_mode;
+#endif
+
 #ifdef HAVE_LCD_BITMAP
     unsigned char ui_vp_config[64]; /* viewport string for the lists */
 #ifdef HAVE_REMOTE_LCD
@@ -777,7 +781,11 @@ struct user_settings
 #endif
 
 #if CONFIG_CODEC == SWCODEC
-    int limiter_level;
+    int compressor_threshold;
+    int compressor_ratio;
+    int compressor_makeup_gain;
+    int compressor_knee;
+    int compressor_release_time;
 #endif
 
 };

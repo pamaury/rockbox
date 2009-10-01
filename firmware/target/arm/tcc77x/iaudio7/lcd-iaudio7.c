@@ -128,7 +128,7 @@ static void _display_on(void)
 void lcd_init_device(void)
 {
     /* Configure external memory banks */
-    CSCFG1 = 0x3d500023;
+    CSCFG1 = 0x0d500023 | tcc77x_cscfg_bw(TCC77X_CSCFG_BW16);
 
     /* may be reset */
     GPIOA |= 0x8000;

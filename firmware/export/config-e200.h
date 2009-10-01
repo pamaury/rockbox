@@ -185,9 +185,7 @@
 #define USE_ROCKBOX_USB
 #define USB_VENDOR_ID 0x0781
 #define USB_PRODUCT_ID 0x7421
-
-/* Virtual LED (icon) */
-#define CONFIG_LED LED_VIRTUAL
+#define HAVE_USB_HID_MOUSE
 
 /* Define this if you have adjustable CPU frequency */
 #define HAVE_ADJUSTABLE_CPU_FREQ
@@ -202,6 +200,7 @@
 #define INCLUDE_TIMEOUT_API
 
 #endif /* SIMULATOR */
+
 
 /** Port-specific settings **/
 

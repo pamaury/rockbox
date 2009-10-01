@@ -127,8 +127,6 @@ static const struct button_mapping button_context_settings[]  = {
     { ACTION_SETTINGS_INCREPEAT,    BUTTON_TOPMIDDLE|BUTTON_REPEAT,     BUTTON_NONE },
     { ACTION_SETTINGS_DEC,          BUTTON_BOTTOMMIDDLE,                BUTTON_NONE },
     { ACTION_SETTINGS_DECREPEAT,    BUTTON_BOTTOMMIDDLE|BUTTON_REPEAT,  BUTTON_NONE },
-    { ACTION_STD_OK,                BUTTON_CENTER,                      BUTTON_NONE },
-    { ACTION_STD_CANCEL,            BUTTON_MIDLEFT,                     BUTTON_NONE },
 
     LAST_ITEM_IN_LIST__NEXTLIST(CONTEXT_CUSTOM2|CONTEXT_SETTINGS)
 }; /* button_context_settings */
@@ -142,7 +140,6 @@ static const struct button_mapping button_context_settings_right_is_inc[]  = {
     { ACTION_SETTINGS_INCREPEAT,    BUTTON_MIDRIGHT|BUTTON_REPEAT,  BUTTON_NONE },
     { ACTION_SETTINGS_DEC,          BUTTON_MIDLEFT,                 BUTTON_NONE },
     { ACTION_SETTINGS_DECREPEAT,    BUTTON_MIDLEFT|BUTTON_REPEAT,   BUTTON_NONE },
-    { ACTION_STD_OK,                BUTTON_CENTER,                  BUTTON_NONE },
     { ACTION_STD_CANCEL,            BUTTON_TOPLEFT,                 BUTTON_NONE },
     
     LAST_ITEM_IN_LIST__NEXTLIST(CONTEXT_CUSTOM2|CONTEXT_CUSTOM|CONTEXT_SETTINGS)
@@ -159,6 +156,9 @@ static const struct button_mapping button_context_colorchooser[]  = {
 }; /* button_context_colorchooser */
 
 static const struct button_mapping button_context_eq[]  = {
+    /* override the std context since we're using MIDRIGHT for settings inc */
+    { ACTION_NONE,          BUTTON_MIDRIGHT|BUTTON_REL,        BUTTON_MIDRIGHT },
+    { ACTION_NONE,          BUTTON_MIDRIGHT|BUTTON_REPEAT,     BUTTON_MIDRIGHT },
     LAST_ITEM_IN_LIST__NEXTLIST(CONTEXT_CUSTOM2|CONTEXT_SETTINGS_EQ),
 }; /* button_context_eq */
 
@@ -251,13 +251,26 @@ static const struct button_mapping button_context_radio[]  = {
     LAST_ITEM_IN_LIST__NEXTLIST(CONTEXT_CUSTOM2|CONTEXT_FM)
 }; /* button_context_radio */
 
-#ifdef HAVE_USBSTACK
+#ifdef USB_ENABLE_HID
 static const struct button_mapping button_context_usb_hid[] = {
-    { ACTION_USB_HID_PLAY,     BUTTON_TOPRIGHT,                  BUTTON_NONE },
-    { ACTION_USB_HID_SKIPPREV, BUTTON_MIDLEFT,                   BUTTON_NONE },
-    { ACTION_USB_HID_SKIPNEXT, BUTTON_MIDRIGHT,                  BUTTON_NONE },
-    { ACTION_USB_HID_MUTE,     BUTTON_CENTER,                    BUTTON_NONE },
-    { ACTION_USB_HID_MENU,     BUTTON_TOPLEFT,                   BUTTON_NONE },
+    { ACTION_USB_HID_INC,         BUTTON_BOTTOMRIGHT|BUTTON_REL,     BUTTON_BOTTOMRIGHT },
+    { ACTION_USB_HID_INC,         BUTTON_BOTTOMRIGHT|BUTTON_REPEAT,  BUTTON_BOTTOMRIGHT },
+    { ACTION_USB_HID_DEC,         BUTTON_BOTTOMMIDDLE|BUTTON_REL,    BUTTON_BOTTOMMIDDLE },
+    { ACTION_USB_HID_DEC,         BUTTON_BOTTOMMIDDLE|BUTTON_REPEAT, BUTTON_BOTTOMMIDDLE },
+    { ACTION_USB_HID_START,       BUTTON_TOPMIDDLE|BUTTON_REL,       BUTTON_TOPMIDDLE },
+    { ACTION_USB_HID_START_LONG,  BUTTON_TOPMIDDLE|BUTTON_REPEAT,    BUTTON_TOPMIDDLE },
+    { ACTION_USB_HID_QUIT,        BUTTON_BOTTOMLEFT|BUTTON_REL,      BUTTON_BOTTOMLEFT },
+    { ACTION_USB_HID_QUIT_LONG,   BUTTON_BOTTOMLEFT|BUTTON_REPEAT,   BUTTON_BOTTOMLEFT },
+    { ACTION_USB_HID_LEFT,        BUTTON_MIDLEFT|BUTTON_REL,         BUTTON_MIDLEFT },
+    { ACTION_USB_HID_LEFT_LONG,   BUTTON_MIDLEFT|BUTTON_REPEAT,      BUTTON_MIDLEFT },
+    { ACTION_USB_HID_RIGHT,       BUTTON_MIDRIGHT|BUTTON_REL,        BUTTON_MIDRIGHT },
+    { ACTION_USB_HID_RIGHT_LONG,  BUTTON_MIDRIGHT|BUTTON_REPEAT,     BUTTON_MIDRIGHT },
+    { ACTION_USB_HID_SELECT,      BUTTON_CENTER|BUTTON_REL,          BUTTON_CENTER },
+    { ACTION_USB_HID_SELECT_LONG, BUTTON_CENTER|BUTTON_REPEAT,       BUTTON_CENTER },
+    { ACTION_USB_HID_MENU,        BUTTON_TOPRIGHT|BUTTON_REL,        BUTTON_TOPRIGHT },
+    { ACTION_USB_HID_MENU_LONG,   BUTTON_TOPRIGHT|BUTTON_REPEAT,     BUTTON_TOPRIGHT },
+    { ACTION_USB_HID_MODE,        BUTTON_TOPLEFT|BUTTON_REL,         BUTTON_TOPLEFT },
+    { ACTION_USB_HID_MODE_LONG,   BUTTON_TOPLEFT|BUTTON_REPEAT,      BUTTON_TOPLEFT },
 
     LAST_ITEM_IN_LIST__NEXTLIST(CONTEXT_CUSTOM2|CONTEXT_USB_HID)
 }; /* button_context_usb_hid */
@@ -315,7 +328,7 @@ const struct button_mapping* get_context_mapping(int context)
             return button_context_pitchscreen;
         case CONTEXT_KEYBOARD:
             return button_context_keyboard;
-#ifdef HAVE_USBSTACK
+#ifdef USB_ENABLE_HID
         case CONTEXT_USB_HID:
             return button_context_usb_hid;
 #endif

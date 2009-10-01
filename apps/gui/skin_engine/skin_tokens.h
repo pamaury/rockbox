@@ -32,6 +32,7 @@ enum wps_token_type {
     /* Markers */
     WPS_TOKEN_CHARACTER,
     WPS_TOKEN_STRING,
+    WPS_TOKEN_TRANSLATEDSTRING,
 
     /* Alignment */
     WPS_TOKEN_ALIGN_LEFT,
@@ -177,7 +178,6 @@ enum wps_token_type {
     WPS_TOKEN_PLAYLIST_NAME,
     WPS_TOKEN_PLAYLIST_POSITION,
     WPS_TOKEN_PLAYLIST_SHUFFLE,
-
 #if (CONFIG_LED == LED_VIRTUAL) || defined(HAVE_REMOTE_LCD)
     /* Virtual LED */
     WPS_TOKEN_VLED_HDD,

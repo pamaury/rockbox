@@ -50,7 +50,6 @@
 
 #ifdef HAVE_HOTSWAP
 #include "disk.h"
-#include "panic.h"
 #endif
 
 /* command flags */
@@ -244,7 +243,7 @@ static int sd_init_card(const int drive)
 {
     unsigned long response;
     long init_timeout;
-    bool sdhc;
+    bool sd_v2 = false;
     unsigned long temp_reg[4];
     int i;
 
@@ -253,10 +252,10 @@ static int sd_init_card(const int drive)
 
     mci_delay();
 
-    sdhc = false;
+    /*  CMD8  Check for v2 sd card */
     if(send_cmd(drive, SD_SEND_IF_COND, 0x1AA, MCI_RESP|MCI_ARG, &response))
         if((response & 0xFFF) == 0x1AA)
-            sdhc = true;
+            sd_v2 = true;
 
     /* timeout for initialization is 1sec, from SD Specification 2.00 */
     init_timeout = current_tick + HZ;
@@ -273,8 +272,8 @@ static int sd_init_card(const int drive)
             return -3;
         }
 
-        /* acmd41 */
-        if(!send_cmd(drive, SD_APP_OP_COND, (sdhc ? 0x40FF8000 : (1<<23)),
+        /* acmd41 If we have a v2 sd card set HCS bit[30] with voltage range */
+        if(!send_cmd(drive, SD_APP_OP_COND, (0x00FF8000 | (sd_v2 ? 1<<30 : 0)),
                         MCI_RESP|MCI_ARG, &card_info[drive].ocr))
         {
             return -4;
@@ -612,9 +611,10 @@ static int sd_select_bank(signed char bank)
 
         wakeup_wait(&transfer_completion_signal, TIMEOUT_BLOCK);
 
-        dma_release();
+        /*  Wait for FIFO to empty  */
+        while(MCI_STATUS(INTERNAL_AS3525) & (MCI_TX_ACTIVE | MCI_RX_ACTIVE));
 
-        mci_delay();
+        dma_release();
 
         ret = sd_wait_for_state(INTERNAL_AS3525, SD_TRAN);
         if (ret < 0)
@@ -735,6 +735,10 @@ static int sd_transfer_sectors(IF_MD2(int drive,) unsigned long start,
 
 
         wakeup_wait(&transfer_completion_signal, TIMEOUT_BLOCK);
+
+        /*  Wait for FIFO to empty  */
+        while(MCI_STATUS(drive) & (MCI_TX_ACTIVE | MCI_RX_ACTIVE));
+
         if(!transfer_error[drive])
         {
             if(!write)

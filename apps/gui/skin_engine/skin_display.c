@@ -77,6 +77,9 @@ void skin_data_init(struct wps_data *wps_data)
     wps_data->peak_meter_enabled = false;
     wps_data->images = NULL;
     wps_data->progressbars = NULL;
+#ifdef HAVE_ALBUMART
+    wps_data->albumart = NULL;
+#endif
     /* progress bars */
 #else /* HAVE_LCD_CHARCELLS */
     int i;
@@ -117,14 +120,14 @@ bool gui_wps_display(struct gui_wps *gwps)
 bool skin_update(struct gui_wps *gwps, unsigned int update_type)
 {
     bool retval;
-    /* This maybe shouldnt be here, but while the skin is only used to 
+    /* This maybe shouldnt be here, but while the skin is only used to
      * display the music screen this is better than whereever we are being
      * called from. This is also safe for skined screen which dont use the id3 */
     struct mp3entry *id3 = gwps->state->id3;
     bool cuesheet_update = (id3 != NULL ? cuesheet_subtrack_changed(id3) : false);
     gwps->state->do_full_update = cuesheet_update || gwps->state->do_full_update;
-    
-    retval = skin_redraw(gwps, gwps->state->do_full_update ? 
+
+    retval = skin_redraw(gwps, gwps->state->do_full_update ?
                                         WPS_REFRESH_ALL : update_type);
     return retval;
 }
@@ -158,7 +161,7 @@ void skin_statusbar_changed(struct gui_wps *skin)
         }
     }
 
-    
+
 }
 
 static void draw_progressbar(struct gui_wps *gwps,
@@ -223,7 +226,7 @@ static void wps_draw_image(struct gui_wps *gwps, struct gui_img *img, int subima
 #if LCD_DEPTH > 1
     if(img->bm.format == FORMAT_MONO) {
 #endif
-        display->mono_bitmap_part(img->bm.data, 
+        display->mono_bitmap_part(img->bm.data,
                                   0, img->subimage_height * subimage,
                                   img->bm.width, img->x,
                                   img->y, img->bm.width,
@@ -232,8 +235,8 @@ static void wps_draw_image(struct gui_wps *gwps, struct gui_img *img, int subima
     } else {
         display->transparent_bitmap_part((fb_data *)img->bm.data,
                                          0, img->subimage_height * subimage,
-                                         STRIDE(display->screen_type, 
-                                            img->bm.width, img->bm.height), 
+                                         STRIDE(display->screen_type,
+                                            img->bm.width, img->bm.height),
                                          img->x, img->y, img->bm.width,
                                          img->subimage_height);
     }
@@ -265,6 +268,14 @@ static void wps_display_images(struct gui_wps *gwps, struct viewport* vp)
         }
         list = list->next;
     }
+#ifdef HAVE_ALBUMART
+    /* now draw the AA */
+    if (data->albumart && data->albumart->vp == vp && data->albumart->draw)
+    {
+        draw_album_art(gwps, audio_current_aa_hid(), false);
+    }
+#endif
+
     display->set_drawmode(DRMODE_SOLID);
 }
 
@@ -341,14 +352,14 @@ static void draw_player_fullbar(struct gui_wps *gwps, char* buf, int buf_size)
     {
         softchar = false;
         memset(progress_pattern, 0, sizeof(progress_pattern));
-        
+
         if ((digit = timestr[time_idx]))
         {
             softchar = true;
             digit -= '0';
 
             if (timestr[time_idx + 1] == ':')  /* ones, left aligned */
-            {   
+            {
                 memcpy(progress_pattern, numbers[digit], 4);
                 time_idx += 2;
             }
@@ -465,8 +476,11 @@ static bool evaluate_conditional(struct gui_wps *gwps, int *token_index)
             clear_image_pos(gwps, find_image(data->tokens[i].value.i&0xFF, gwps->data));
 #endif
 #ifdef HAVE_ALBUMART
-        if (data->tokens[i].type == WPS_TOKEN_ALBUMART_DISPLAY)
+        if (data->albumart && data->tokens[i].type == WPS_TOKEN_ALBUMART_DISPLAY)
+        {
             draw_album_art(gwps, audio_current_aa_hid(), true);
+            data->albumart->draw = false;
+        }
 #endif
     }
 
@@ -484,8 +498,8 @@ struct gui_img* find_image(char label, struct wps_data *data)
         list = list->next;
     }
     return NULL;
-}   
-#endif 
+}
+#endif
 
 struct skin_viewport* find_viewport(char label, struct wps_data *data)
 {
@@ -498,9 +512,9 @@ struct skin_viewport* find_viewport(char label, struct wps_data *data)
         list = list->next;
     }
     return NULL;
-}  
-            
-    
+}
+
+
 /* Read a (sub)line to the given alignment format buffer.
    linebuf is the buffer where the data is actually stored.
    align is the alignment format that'll be used to display the text.
@@ -603,7 +617,7 @@ static bool get_line(struct gui_wps *gwps,
                 struct skin_token_list *list = data->viewports;
                 while (list)
                 {
-                    struct skin_viewport *vp = 
+                    struct skin_viewport *vp =
                                 (struct skin_viewport *)list->token->value.data;
                     if (vp->label == label)
                     {
@@ -688,11 +702,17 @@ static bool update_curr_subline(struct gui_wps *gwps, struct skin_line *line)
     /* shortcut this whole thing if we need to reset the line completly */
     if (line->curr_subline == NULL)
     {
-        int next_refresh = current_tick;
+        line->subline_expire_time = current_tick;
         line->curr_subline = &line->sublines;
         if (!line->curr_subline->next)
-            next_refresh += 100*HZ;
-        line->subline_expire_time = next_refresh;
+        {
+            line->subline_expire_time += 100*HZ;
+        }
+        else
+        {
+            get_subline_timeout(gwps, line->curr_subline);
+            line->subline_expire_time += TIMEOUT_UNIT*line->curr_subline->time_mult;
+        }
         return true;
     }
     /* if time to advance to next sub-line  */
@@ -839,7 +859,7 @@ static void write_line(struct screen *display,
     ypos = (line * string_height);
 
 
-    if (scroll && ((left_width > scroll_width) || 
+    if (scroll && ((left_width > scroll_width) ||
                    (center_width > scroll_width) ||
                    (right_width > scroll_width)))
     {
@@ -891,7 +911,7 @@ static bool skin_redraw(struct gui_wps *gwps, unsigned refresh_mode)
 
     if (!id3)
         return false;
-    
+
     unsigned flags;
     char linebuf[MAX_PATH];
 
@@ -899,8 +919,8 @@ static bool skin_redraw(struct gui_wps *gwps, unsigned refresh_mode)
     align.left = NULL;
     align.center = NULL;
     align.right = NULL;
-    
-    
+
+
     struct skin_token_list *viewport_list;
 
     bool update_line, new_subline_refresh;
@@ -922,14 +942,14 @@ static bool skin_redraw(struct gui_wps *gwps, unsigned refresh_mode)
     if (refresh_mode == WPS_REFRESH_ALL)
     {
         struct skin_line *line;
-        
+
         display->set_viewport(&find_viewport(VP_DEFAULT_LABEL, data)->vp);
         display->clear_viewport();
-        
-        for (viewport_list = data->viewports; 
+
+        for (viewport_list = data->viewports;
              viewport_list; viewport_list = viewport_list->next)
         {
-            struct skin_viewport *skin_viewport = 
+            struct skin_viewport *skin_viewport =
                             (struct skin_viewport *)viewport_list->token->value.data;
             for(line = skin_viewport->lines; line; line = line->next)
             {
@@ -948,10 +968,10 @@ static bool skin_redraw(struct gui_wps *gwps, unsigned refresh_mode)
 #endif
 
     /* disable any viewports which are conditionally displayed */
-    for (viewport_list = data->viewports; 
+    for (viewport_list = data->viewports;
          viewport_list; viewport_list = viewport_list->next)
     {
-        struct skin_viewport *skin_viewport = 
+        struct skin_viewport *skin_viewport =
                         (struct skin_viewport *)viewport_list->token->value.data;
         if (skin_viewport->hidden_flags&VP_DRAW_HIDEABLE)
         {
@@ -961,11 +981,11 @@ static bool skin_redraw(struct gui_wps *gwps, unsigned refresh_mode)
                 skin_viewport->hidden_flags |= VP_DRAW_HIDDEN;
         }
     }
-    
-    for (viewport_list = data->viewports; 
-         viewport_list; viewport_list = viewport_list->next)
+    int viewport_count = 0;
+    for (viewport_list = data->viewports;
+         viewport_list; viewport_list = viewport_list->next, viewport_count++)
     {
-        struct skin_viewport *skin_viewport = 
+        struct skin_viewport *skin_viewport =
                         (struct skin_viewport *)viewport_list->token->value.data;
         unsigned vp_refresh_mode = refresh_mode;
         display->set_viewport(&skin_viewport->vp);
@@ -975,7 +995,7 @@ static bool skin_redraw(struct gui_wps *gwps, unsigned refresh_mode)
         struct skin_token_list *imglist = data->images;
         while (imglist)
         {
-            struct gui_img *img = (struct gui_img *)imglist->token->value.data;            
+            struct gui_img *img = (struct gui_img *)imglist->token->value.data;
             img->display = -1;
             imglist = imglist->next;
         }
@@ -999,11 +1019,11 @@ static bool skin_redraw(struct gui_wps *gwps, unsigned refresh_mode)
         {
             display->clear_viewport();
         }
-        
+
         /* loop over the lines for this viewport */
         struct skin_line *line;
         int line_count = 0;
-            
+
         for (line = skin_viewport->lines; line; line = line->next, line_count++)
         {
             struct skin_subline *subline;
@@ -1062,7 +1082,7 @@ static bool skin_redraw(struct gui_wps *gwps, unsigned refresh_mode)
             }
 #endif
 
-            if (update_line && 
+            if (update_line &&
                 /* conditionals clear the line which means if the %Vd is put into the default
                    viewport there will be a blank line.
                    To get around this we dont allow any actual drawing to happen in the

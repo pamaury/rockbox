@@ -132,6 +132,12 @@ recording_swcodec
 #else
 recording_hwcodec
 #endif
+#if defined(HAVE_LINE_IN)
+recording_linein
+#endif
+#if defined(HAVE_MIC_IN)
+recording_mic
+#endif
 #endif
 
 #if defined(HAVE_REMOTE_LCD)
@@ -190,6 +196,9 @@ usb_charging
 
 #if defined(HAVE_USBSTACK) && defined(USE_ROCKBOX_USB)
 usbstack
+#if defined(USB_ENABLE_HID)
+usb_hid
+#endif
 #endif
 
 #if defined(HAVE_WHEEL_ACCELERATION)

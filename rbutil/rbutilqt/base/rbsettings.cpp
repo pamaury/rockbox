@@ -44,6 +44,7 @@ const static struct {
     { RbSettings::ServerConfUrl,        "server_conf_url",      "" },
     { RbSettings::GenlangUrl,           "genlang_url",          "" },
     { RbSettings::ThemesUrl,            "themes_url",           "" },
+    { RbSettings::RbutilUrl,            "rbutil_url",           "" },
     { RbSettings::BleedingInfo,         "bleeding_info",        "" },
     { RbSettings::CurPlatformName,      ":platform:/name",      "" },
     { RbSettings::CurManual,            ":platform:/manualname","rockbox-:platform:" },
@@ -244,11 +245,14 @@ QStringList RbSettings::platforms()
     QStringList result;
     systemSettings->beginGroup("platforms");
     QStringList a = systemSettings->childKeys();
+    systemSettings->endGroup();
     for(int i = 0; i < a.size(); i++)
     {
-        result.append(systemSettings->value(a.at(i), "null").toString());
+        //only add not disabled targets
+        QString target = systemSettings->value("platforms/"+a.at(i), "null").toString();
+        if(systemSettings->value(target+"/status").toString() != "disabled")
+            result.append(target);
     }
-    systemSettings->endGroup();
     return result;
 }
 

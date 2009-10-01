@@ -27,7 +27,6 @@
 #include "nand_id.h"
 #include "storage.h"
 #include "buffer.h"
-#include "led.h"
 
 #define SECTOR_SIZE 512
 
@@ -825,13 +824,11 @@ int nand_read_sectors(IF_MD2(int drive,) unsigned long start, int incount,
                 goto nand_read_error;
             }
 
-#ifdef CPU_TCC780X /* 77x doesn't have USEC_TIMER yet */
             if (TIME_AFTER(USEC_TIMER, next_yield))
             {
                 next_yield = USEC_TIMER + MIN_YIELD_PERIOD;
                 yield();
             }
-#endif
 
             inbuf += SECTOR_SIZE;
             incount--;
@@ -900,7 +897,7 @@ int nand_init(void)
     mutex_init(&ata_mtx);
 
 #ifdef CPU_TCC77X
-    CSCFG2 = 0x318a8010;
+    CSCFG2 = 0x018a8010 | tcc77x_cscfg_bw(TCC77X_CSCFG_BW8);
 
     GPIOC_FUNC &= ~(CS_GPIO_BIT | WE_GPIO_BIT);
     GPIOC_FUNC |= 0x1;

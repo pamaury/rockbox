@@ -634,7 +634,17 @@ int wps_get_touchaction(struct wps_data *data)
                             wps_state.id3->elapsed = (vy *
                                     wps_state.id3->length) / r->height;
 
+                        if (!wps_state.paused)
+#if (CONFIG_CODEC == SWCODEC)
+                            audio_pre_ff_rewind();
+#else
+                            audio_pause();
+#endif
                         audio_ff_rewind(wps_state.id3->elapsed);
+#if (CONFIG_CODEC != SWCODEC)
+                        if (!wps_state.paused)
+                            audio_resume();
+#endif
                         break;
                     case WPS_TOUCHREGION_VOLUME:
                     {
@@ -1280,7 +1290,7 @@ void gui_sync_wps_init(void)
     {
         skin_data_init(&wps_datas[i]);
 #ifdef HAVE_ALBUMART
-        wps_datas[i].wps_uses_albumart = 0;
+        wps_datas[i].albumart = NULL;
 #endif
 #ifdef HAVE_REMOTE_LCD
         wps_datas[i].remote_wps = (i == SCREEN_REMOTE);
@@ -1306,12 +1316,13 @@ bool wps_uses_albumart(int *width, int *height)
     int  i;
     FOR_NB_SCREENS(i) {
         struct gui_wps *gwps = &gui_wps[i];
-        if (gwps->data && (gwps->data->wps_uses_albumart != WPS_ALBUMART_NONE))
+        struct skin_albumart *aa = gwps->data->albumart;
+        if (aa && (aa->state != WPS_ALBUMART_NONE))
         {
             if (width)
-                *width = gui_wps[0].data->albumart_max_width;
+                *width = aa->width;
             if (height)
-                *height = gui_wps[0].data->albumart_max_height;
+                *height = aa->height;
             return true;
         }
     }

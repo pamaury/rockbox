@@ -38,6 +38,7 @@
 #include "backdrop.h"
 #include "exported_menus.h"
 #include "appevents.h"
+#include "viewport.h"
 
 #if LCD_DEPTH > 1
 /**
@@ -94,6 +95,7 @@ static int set_color_func(void* color)
                          colors[c].setting, banned_color);
     settings_save();
     settings_apply(false);
+    send_event(GUI_EVENT_ACTIONUPDATE, (void*)true);
     return res;
 }
 
@@ -107,6 +109,7 @@ static int reset_color(void)
     
     settings_save();
     settings_apply(false);
+    send_event(GUI_EVENT_ACTIONUPDATE, (void*)true);
     return 0;
 }
 MENUITEM_FUNCTION(set_bg_col, MENU_FUNC_USEPARAM, ID2P(LANG_BACKGROUND_COLOR),
@@ -177,6 +180,20 @@ static int statusbar_callback(int action,const struct menu_item_ex *this_item)
 {
     return statusbar_callback_ex(action, this_item, SCREEN_MAIN);
 }
+
+#ifdef HAVE_BUTTONBAR
+static int buttonbar_callback(int action, const struct menu_item_ex *this_item)
+{
+    (void)this_item;
+    switch (action)
+    {
+        case ACTION_EXIT_MENUITEM:
+            viewportmanager_theme_changed(THEME_BUTTONBAR);
+        break;
+    }
+    return ACTION_REDRAW;
+}
+#endif
 MENUITEM_SETTING(scrollbar_item, &global_settings.scrollbar, NULL);
 MENUITEM_SETTING(scrollbar_width, &global_settings.scrollbar_width, NULL);
 MENUITEM_SETTING(statusbar, &global_settings.statusbar,
@@ -185,8 +202,8 @@ MENUITEM_SETTING(statusbar, &global_settings.statusbar,
 MENUITEM_SETTING(remote_statusbar, &global_settings.remote_statusbar,
                                                     statusbar_callback_remote);
 #endif
-#if CONFIG_KEYPAD == RECORDER_PAD
-MENUITEM_SETTING(buttonbar, &global_settings.buttonbar, NULL);
+#ifdef HAVE_BUTTONBAR
+MENUITEM_SETTING(buttonbar, &global_settings.buttonbar, buttonbar_callback);
 #endif
 MENUITEM_SETTING(volume_type, &global_settings.volume_type, NULL);
 MENUITEM_SETTING(battery_display, &global_settings.battery_display, NULL);

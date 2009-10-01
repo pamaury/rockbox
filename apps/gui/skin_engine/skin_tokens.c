@@ -170,6 +170,9 @@ const char *get_token_value(struct gui_wps *gwps,
 
         case WPS_TOKEN_STRING:
             return (char*)token->value.data;
+            
+        case WPS_TOKEN_TRANSLATEDSTRING:
+            return (char*)P2STR(ID2P(token->value.i));
 
         case WPS_TOKEN_TRACK_TIME_ELAPSED:
             format_time(buf, buf_size,
@@ -318,14 +321,16 @@ const char *get_token_value(struct gui_wps *gwps,
             return id3->comment;
 
 #ifdef HAVE_ALBUMART
-        case WPS_TOKEN_ALBUMART_DISPLAY:
-            draw_album_art(gwps, audio_current_aa_hid(), false);
-            return NULL;
-
         case WPS_TOKEN_ALBUMART_FOUND:
-            if (audio_current_aa_hid() >= 0) {
+            if (data->albumart && audio_current_aa_hid() >= 0) {
                 return "C";
             }
+            return NULL;
+            
+        case WPS_TOKEN_ALBUMART_DISPLAY:
+            if (!data->albumart)
+                return NULL;            
+            data->albumart->draw = true;
             return NULL;
 #endif
 
@@ -465,7 +470,7 @@ const char *get_token_value(struct gui_wps *gwps,
             int mode = 1;
             if (status == AUDIO_STATUS_PLAY)
                 mode = 2;
-            if (is_wps_fading() || 
+            if (is_wps_fading() ||
                (status & AUDIO_STATUS_PAUSE && !status_get_ffmode()))
                 mode = 3;
             if (status_get_ffmode() == STATUS_FASTFORWARD)
@@ -486,7 +491,7 @@ const char *get_token_value(struct gui_wps *gwps,
                 *intval = global_settings.repeat_mode + 1;
             snprintf(buf, buf_size, "%d", global_settings.repeat_mode);
             return buf;
-            
+
         case WPS_TOKEN_RTC_PRESENT:
 #if CONFIG_RTC
                 return "c";
@@ -744,7 +749,7 @@ const char *get_token_value(struct gui_wps *gwps,
                 return NULL;
 #endif
         case WPS_TOKEN_BUTTON_VOLUME:
-            if (data->button_time_volume && 
+            if (data->button_time_volume &&
                 TIME_BEFORE(current_tick, data->button_time_volume +
                                           token->value.i * TIMEOUT_UNIT))
                 return "v";

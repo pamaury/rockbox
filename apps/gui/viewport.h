@@ -58,6 +58,7 @@ void viewport_set_defaults(struct viewport *vp, enum screen_type screen);
 
 #define THEME_STATUSBAR     (BIT_N(0))
 #define THEME_UI_VIEWPORT   (BIT_N(1))
+#define THEME_BUTTONBAR     (BIT_N(2))
 #define THEME_ALL           (~(0u))
 
 #define VP_SB_HIDE_ALL 0
@@ -65,6 +66,7 @@ void viewport_set_defaults(struct viewport *vp, enum screen_type screen);
 #define VP_SB_IGNORE_SETTING(screen) BIT_N(4+screen)
 #define VP_SB_ALLSCREENS (VP_SB_ONSCREEN(0)|VP_SB_ONSCREEN(1))
 
+#ifndef __PCTOOL__
 /*
  * Initialize the viewportmanager, which in turns initializes the UI vp and
  * statusbar stuff
@@ -81,6 +83,36 @@ void viewportmanager_theme_changed(int);
  * buttonbar
  */
 void viewport_set_fullscreen(struct viewport *vp, enum screen_type screen);
+
+#ifdef HAVE_LCD_BITMAP
+
+/*
+ * Returns a pointer to the current viewport
+ *  - That could be the UI vp, or a viewport passed to do_menu() or the like
+ */
+struct viewport* viewport_get_current_vp(void);
+
+/*
+ * Set the UI vp pointer to a different one - NULL to reset to the UI vp
+ *
+ * This is needed since the UI viewport needs is kept in RAM.
+ */
+void viewport_set_current_vp(struct viewport* vp);
+
+/*
+ * returns true if the ui viewport is active on the screen
+ */
+bool viewport_ui_vp_get_state(enum screen_type screen);
+#ifdef HAVE_TOUCHSCREEN
+bool viewport_point_within_vp(const struct viewport *vp, int x, int y);
+#endif
+
+#else /* HAVE_LCD_CHARCELL */
+#define viewport_set_current_vp(a)
+#define viewport_get_current_vp() NULL
+#endif
+
+#endif /* __PCTOOL__ */
 
 #ifdef HAVE_LCD_BITMAP
 
@@ -102,26 +134,5 @@ const char* viewport_parse_viewport(struct viewport *vp,
                                     enum screen_type screen,
                                     const char *vp_def,
                                     const char separator);
-
-/*
- * Returns a pointer to the current viewport
- *  - That could be the UI vp, or a viewport passed to do_menu() or the like
- */
-struct viewport* viewport_get_current_vp(void);
-
-/*
- * Set the UI vp pointer to a different one - NULL to reset to the UI vp
- *
- * This is needed since the UI viewport needs is kept in RAM.
- */
-void viewport_set_current_vp(struct viewport* vp);
-
-#ifdef HAVE_TOUCHSCREEN
-bool viewport_point_within_vp(const struct viewport *vp, int x, int y);
-#endif
-
-#else /* HAVE_LCD_CHARCELL */
-#define viewport_set_current_vp(a)
-#define viewport_get_current_vp() NULL
-#endif
+#endif /* HAVE_LCD_BITMAP */
 #endif /* __VIEWPORT_H__ */

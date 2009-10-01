@@ -108,8 +108,6 @@
 /* Define how much SD sectors are reserved for OF */
 #define AMS_OF_SIZE 0x5000
 
-#define CONFIG_I2C I2C_AS3525
-
 #define BATTERY_CAPACITY_DEFAULT 1500 /* default battery capacity */
 #define BATTERY_CAPACITY_MIN 1500 /* min. capacity selectable */
 #define BATTERY_CAPACITY_MAX 3200 /* max. capacity selectable */
@@ -151,9 +149,6 @@
 #define USB_PRODUCT_ID 0x7431
 
 #endif /* BOOTLOADER */
-
-/* Software controlled LED */
-#define CONFIG_LED LED_VIRTUAL
 
 #define CONFIG_LCD LCD_SSD1815
 

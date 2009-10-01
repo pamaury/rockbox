@@ -51,7 +51,7 @@
 #include "usb_charging_only.h"
 #endif
 
-#if defined(USB_ENABLE_HID)
+#ifdef USB_ENABLE_HID
 #include "usb_hid.h"
 #endif
 

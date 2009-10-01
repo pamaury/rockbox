@@ -12631,20 +12631,20 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_LIMITER
+  id: LANG_COMPRESSOR
   desc: in sound settings
   user: core
   <source>
     *: none
-    swcodec: "Limiter Preamp"
+    swcodec: "Compressor"
   </source>
   <dest>
     *: none
-    swcodec: "Limitatore Preamp"
+    swcodec: "Compressor"
   </dest>
   <voice>
     *: none
-    swcodec: "Limitatore Preamp"
+    swcodec: "Compressor"
   </voice>
 </phrase>
 <phrase>
