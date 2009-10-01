@@ -22,6 +22,7 @@
 #define USB_MTP_H
 
 #include "usb_ch9.h"
+#include "dircache.h"
 
 #define USB_MTP_SUBCLASS    0x1
 #define USB_MTP_PROTO       0x1
@@ -133,6 +134,20 @@ struct mtp_response
 
 define_mtp_array(uint16_t)
 
+typedef void (*mtp_obj_prop_value_get)(const struct dircache_entry *);
+
+struct mtp_obj_prop
+{
+    const struct mtp_array_uint16_t *obj_fmt;
+    uint16_t obj_prop_code;
+    uint16_t data_type;
+    uint8_t get_set;
+    const void *default_value;
+    uint8_t form;
+    const void *form_value;
+    mtp_obj_prop_value_get get;
+};
+
 struct device_info
 {
     uint16_t std_version; /* Standard Version */
@@ -201,12 +216,15 @@ struct device_info
 #define MTP_OP_GET_OBJECT_HANDLES   0x1007
 #define MTP_OP_GET_OBJECT_INFO      0x1008
 #define MTP_OP_GET_OBJECT           0x1009
+#define MTP_OP_DELETE_OBJECT        0x100B
 #define MTP_OP_SEND_OBJECT_INFO     0x100C
 #define MTP_OP_SEND_OBJECT          0x100D
 #define MTP_OP_RESET_DEVICE         0x1010
 #define MTP_OP_POWER_DOWN           0x1013
 #define MTP_OP_GET_DEV_PROP_DESC    0x1014
 #define MTP_OP_GET_DEV_PROP_VALUE   0x1015
+#define MTP_OP_MOVE_OBJECT          0x1019
+#define MTP_OP_COPY_OBJECT          0x101A
 #define MTP_OP_GET_OBJ_PROPS_SUPPORTED  0x9801
 #define MTP_OP_GET_OBJ_PROP_DESC    0x9802
 #define MTP_OP_GET_OBJ_PROP_VALUE   0x9803
