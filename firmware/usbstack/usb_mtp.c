@@ -732,7 +732,7 @@ static void close_session(bool send_resp)
     if(mtp_state.has_pending_oi)
     {
         const struct dircache_entry *entry = mtp_handle_to_dircache_entry(mtp_state.pending_oi.handle, false);
-        char path[MAX_PATH];
+        static char path[MAX_PATH];
         if(entry != NULL)
         {
             dircache_copy_path(entry, path, sizeof(path));
@@ -1008,7 +1008,7 @@ static void get_object(uint32_t object_handle)
 {
     const struct dircache_entry *entry = mtp_handle_to_dircache_entry(object_handle, false);
     static struct get_object_st st;
-    char buffer[MAX_PATH];
+    static char buffer[MAX_PATH];
     
     logf("mtp: get object: entry=\"%s\" attr=0x%x size=%ld", entry->d_name, entry->attribute, entry->size);
     
