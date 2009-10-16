@@ -672,6 +672,14 @@ static void fail_op_with(uint16_t error_code, enum data_phase_type dht)
 }
 
 /*
+ * A function to check whether a dircache entry is valid or not
+ */
+static bool is_dircache_entry_valid(const struct dircache_entry *entry)
+{
+    return entry->name_len != 0;
+}
+
+/*
  * Handle conversions
  */
 static bool check_dircache(void)
@@ -852,6 +860,8 @@ static bool list_files2(const struct dircache_entry *direntry, bool recursive)
     
     for(entry = direntry; entry != NULL; entry = entry->next)
     {
+        if(!is_dircache_entry_valid(entry))
+            continue;
         /* skip "." and ".." and files that begin with "<"*/
         /*logf("mtp: add entry \"%s\"(len=%ld, 0x%lx)", entry->d_name, entry->name_len, (uint32_t)entry);*/
         if(entry->d_name[0] == '.' && entry->d_name[1] == '\0')
@@ -1259,13 +1269,12 @@ static bool recursive_delete(const struct dircache_entry *entry)
     const struct dircache_entry *cur;
     bool bret;
     
-    dircache_copy_path(entry, path, MAX_PATH);
-    logf("mtp: delete '%s'", path);
-    
     if(entry->attribute & ATTR_DIRECTORY)
     {
         for(cur = entry->down; cur != NULL; cur = cur->next)
         {
+            if(!is_dircache_entry_valid(entry))
+                continue;
             /* skip "." and ".." and files that begin with "<"*/
             if(cur->d_name[0] == '.' && cur->d_name[1] == '\0')
                 continue;
@@ -1275,20 +1284,28 @@ static bool recursive_delete(const struct dircache_entry *entry)
                 continue;
 
             dircache_copy_path(cur, path, MAX_PATH);
-            logf("mtp: delete '%s'", path);
             bret = recursive_delete(cur);
             if(!bret)
                 return false;
+            /* NOTE: assume removal does not invalidates valid dircache entries and 
+             does not the changed their relative order
+            */
         }
         
+        dircache_copy_path(entry, path, MAX_PATH);
+        logf("mtp: delete dir '%s'", path);
         int ret = rmdir(path);
-        logf("mtp: rmdir ret=%d", ret);
+        if(ret != 0)
+            logf("mtp: error: rmdir ret=%d", ret);
         return ret == 0;
     }
     else
     {
+        dircache_copy_path(entry, path, MAX_PATH);
+        logf("mtp: delete file '%s'", path);
         int ret = remove(path);
-        logf("mtp: remove ret=%d", ret);
+        if(ret != 0)
+            logf("mtp: error: remove ret=%d", ret);
         return ret == 0;
     }
 }
