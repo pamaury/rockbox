@@ -676,7 +676,7 @@ static void fail_op_with(uint16_t error_code, enum data_phase_type dht)
  */
 static bool is_dircache_entry_valid(const struct dircache_entry *entry)
 {
-    return entry->name_len != 0;
+    return entry!=NULL && entry->name_len != 0;
 }
 
 /*
@@ -1250,7 +1250,6 @@ static void send_object(void)
     
     logf("mtp: send object: associated objectinfo=0x%lx", mtp_state.pending_oi.handle);
     
-    
     if(entry == NULL)
         return fail_op_with(ERROR_NO_VALID_OBJECTINFO, RECV_DATA_PHASE);
     dircache_copy_path(entry, path, sizeof(path));
@@ -1273,7 +1272,7 @@ static bool recursive_delete(const struct dircache_entry *entry)
     {
         for(cur = entry->down; cur != NULL; cur = cur->next)
         {
-            if(!is_dircache_entry_valid(entry))
+            if(!is_dircache_entry_valid(cur))
                 continue;
             /* skip "." and ".." and files that begin with "<"*/
             if(cur->d_name[0] == '.' && cur->d_name[1] == '\0')
