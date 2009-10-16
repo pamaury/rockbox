@@ -1099,8 +1099,10 @@ static void send_object_info_split_routine(unsigned char *data, int length, uint
     if(oi.object_format == OBJ_FMT_ASSOCIATION)
     {
         /* sanity check */
+        /* Too strong check
         if(oi.association_type != ASSOC_TYPE_FOLDER)
             return fail_op_with(ERROR_INVALID_DATASET, NO_DATA_PHASE);
+        */
         /* create directory */
         if(mkdir(path) < 0)
             return fail_op_with(ERROR_GENERAL_ERROR, NO_DATA_PHASE);
@@ -1251,6 +1253,46 @@ static void send_object(void)
     receive_split_data(&send_object_split_routine, &finish_send_object_split_routine, &st);
 }
 
+static bool recursive_delete(const struct dircache_entry *entry)
+{
+    static char path[MAX_PATH];
+    const struct dircache_entry *cur;
+    bool bret;
+    
+    dircache_copy_path(entry, path, MAX_PATH);
+    logf("mtp: delete '%s'", path);
+    
+    if(entry->attribute & ATTR_DIRECTORY)
+    {
+        for(cur = entry->down; cur != NULL; cur = cur->next)
+        {
+            /* skip "." and ".." and files that begin with "<"*/
+            if(cur->d_name[0] == '.' && cur->d_name[1] == '\0')
+                continue;
+            if(cur->d_name[0] == '.' && cur->d_name[1] == '.'  && cur->d_name[2] == '\0')
+                continue;
+            if(cur->d_name[0] == '<')
+                continue;
+
+            dircache_copy_path(cur, path, MAX_PATH);
+            logf("mtp: delete '%s'", path);
+            bret = recursive_delete(cur);
+            if(!bret)
+                return false;
+        }
+        
+        int ret = rmdir(path);
+        logf("mtp: rmdir ret=%d", ret);
+        return ret == 0;
+    }
+    else
+    {
+        int ret = remove(path);
+        logf("mtp: remove ret=%d", ret);
+        return ret == 0;
+    }
+}
+
 static void delete_object(int nb_params, uint32_t obj_handle, uint32_t __unused)
 {
     if(nb_params == 2 && __unused != 0x00000000)
@@ -1260,12 +1302,12 @@ static void delete_object(int nb_params, uint32_t obj_handle, uint32_t __unused)
     if(entry == NULL)
         return fail_op_with(ERROR_INVALID_OBJ_HANDLE, NO_DATA_PHASE);
     
-    static char path[MAX_PATH];
-    dircache_copy_path(entry, path, MAX_PATH);
+    bool ret = recursive_delete(entry);
     
-    logf("mtp: delete '%s'", path);
+    cur_resp.code = ret ? ERROR_OK : ERROR_PARTIAL_DELETION;
+    cur_resp.nb_parameters = 0;
     
-    return fail_op_with(ERROR_GENERAL_ERROR, NO_DATA_PHASE);
+    send_response();
 }
 
 static void copy_object(int nb_params, uint32_t obj_handle, uint32_t stor_id, uint32_t obj_parent_handle)
