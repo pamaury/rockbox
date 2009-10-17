@@ -1357,6 +1357,12 @@ static void copy_object(int nb_params, uint32_t obj_handle, uint32_t stor_id, ui
 
 static void move_object(int nb_params, uint32_t obj_handle, uint32_t stor_id, uint32_t obj_parent_handle)
 {
+    /* FIXME it's impossible to implement the current specification in a simple way because
+      the spec requires that the object handle doesn't change. As the mvoe will change the handle,
+      the only way to implement that is to have conversion a table and even with this it would fail in
+      tricky cases because empty entries are reused by dircache.
+      Perhaps we should not implement move_object or perhaps this detail in the specification
+      was not taken into account it any MTP implementation */
     const struct dircache_entry *entry = mtp_handle_to_dircache_entry(obj_handle, false);
     if(stor_id != 0x00010001)
         return fail_op_with(ERROR_INVALID_STORAGE_ID, NO_DATA_PHASE);
