@@ -1507,7 +1507,9 @@ static void get_device_prop_desc(uint32_t device_prop)
         case DEV_PROP_BATTERY_LEVEL: return get_battery_level(true);
         case DEV_PROP_DATE_TIME: return get_date_time(true);
         case DEV_PROP_FRIENDLY_NAME: return get_friendly_name(true);
-        default: return fail_op_with(ERROR_DEV_PROP_NOT_SUPPORTED, SEND_DATA_PHASE);
+        default: 
+            logf("mtp: unsupported device property %lx", device_prop);
+            return fail_op_with(ERROR_DEV_PROP_NOT_SUPPORTED, SEND_DATA_PHASE);
     }
 }
 
@@ -1518,7 +1520,9 @@ static void get_device_prop_value(uint32_t device_prop)
         case DEV_PROP_BATTERY_LEVEL: return get_battery_level(false);
         case DEV_PROP_DATE_TIME: return get_date_time(false);
         case DEV_PROP_FRIENDLY_NAME: return get_friendly_name(false);
-        default: return fail_op_with(ERROR_DEV_PROP_NOT_SUPPORTED, SEND_DATA_PHASE);
+        default: 
+            logf("mtp: unsupported device property %lx", device_prop);
+            return fail_op_with(ERROR_DEV_PROP_NOT_SUPPORTED, SEND_DATA_PHASE);
     }
 }
 
