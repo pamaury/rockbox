@@ -793,11 +793,29 @@ static int volume_to_storage_id(int volume)
     return (0x00010000 | (uint16_t)(volume+1));
 }
 
+static uint32_t get_first_storage_id(void)
+{
+    return volume_to_storage_id(0);
+}
+
+/* returns 0 if it's the last one */
+static uint32_t get_next_storage_id(uint32_t stor_id)
+{
+    /* assume valid id */
+    int vol = storage_id_to_volume(stor_id);
+    
+    while((++vol)<NUM_VOLUMES && !valid_volume[vol])
+        ;
+    
+    return vol==NUM_VOLUMES ? 0 : volume_to_storage_id(vol);
+}
+
 static const char *get_storage_description(uint32_t stor_id)
 {
     static char buffer[64];
-    int volume = storage_id_to_volume(stor_id);
     /* assume valid volume */
+    int volume = storage_id_to_volume(stor_id);
+    
     if(volume == 0)
         snprintf(buffer, sizeof buffer, "Rockbox Internal Storage");
     else
@@ -810,6 +828,20 @@ static inline const char *get_volume_identifier(uint32_t stor_id)
 {
     (void) stor_id;
     return "";
+}
+
+static const char *get_storage_id_mount_point(uint32_t stor_id)
+{
+    static char buffer[32];
+    /* assume valid volume */
+    int volume = storage_id_to_volume(stor_id);
+    
+    if(volume == 0)
+        snprintf(buffer, sizeof buffer, "/");
+    else
+        snprintf(buffer, sizeof buffer, "/" VOL_NAMES, volume);
+    
+    return &buffer[0];
 }
 #else
 static inline bool is_valid_storage_id(uint32_t stor_id)
@@ -834,6 +866,18 @@ static inline int volume_to_storage_id(int volume)
     return 0x00010001;
 }
 
+static inline uint32_t get_first_storage_id(void)
+{
+    return volume_to_storage_id(0);
+}
+
+/* returns 0 if it's the last one */
+static inline uint32_t get_next_storage_id(uint32_t stor_id)
+{
+    (void) stor_id;
+    return 0;
+}
+
 static inline const char *get_storage_description(uint32_t stor_id)
 {
     (void) stor_id;
@@ -844,6 +888,11 @@ static inline const char *get_volume_identifier(uint32_t stor_id)
 {
     (void) stor_id;
     return "";
+}
+
+static inline const char *get_storage_id_mount_point(uint32_t stor_id)
+{
+    return "/";
 }
 #endif
 
@@ -923,21 +972,17 @@ static void get_device_info(void)
 
 static void get_storage_ids(void)
 {
-    int i;
+    uint32_t stor_id = get_first_storage_id();
     logf("mtp: get storage ids");
     
     start_pack_data_block();
     start_pack_data_block_array();
     
-    for(i = 0; i < NUM_VOLUMES; i++)
+    do
     {
-        uint32_t stor_id = volume_to_storage_id(i);
-        if(is_valid_storage_id(stor_id))
-        {
-            logf("add %lx", stor_id);
-            pack_data_block_array_elem_uint32_t(stor_id);
-        }
-    }
+        logf("mtp: storage %lx -> %s", stor_id, get_storage_id_mount_point(stor_id));
+        pack_data_block_array_elem_uint32_t(stor_id);
+    }while((stor_id = get_next_storage_id(stor_id)));
     
     finish_pack_data_block_array();
     finish_pack_data_block();
@@ -980,7 +1025,8 @@ static void get_storage_info(uint32_t stor_id)
  * Objet operations
  */
 
-static bool list_files2(const struct dircache_entry *direntry, bool recursive)
+/* accept stor_id=0x0 if and only if direntry is well specified (ie not root) */
+static bool list_files2(uint32_t stor_id, const struct dircache_entry *direntry, bool recursive)
 {
     const struct dircache_entry *entry;
     uint32_t *ptr;
@@ -989,7 +1035,15 @@ static bool list_files2(const struct dircache_entry *direntry, bool recursive)
     logf("mtp: list_files entry=0x%lx rec=%s", (uint32_t)direntry, recursive ? "yes" : "no");
     
     if((uint32_t)direntry == 0xffffffff)
-        direntry = dircache_get_entry_ptr("/");
+    {
+        /* check stor_id is valid */
+        if(!is_valid_storage_id(stor_id))
+        {
+            fail_op_with(ERROR_INVALID_STORAGE_ID, SEND_DATA_PHASE);
+            return false;
+        }
+        direntry = dircache_get_entry_ptr(get_storage_id_mount_point(stor_id));
+    }
     else
     {
         if(!(direntry->attribute & ATTR_DIRECTORY))
@@ -1006,6 +1060,7 @@ static bool list_files2(const struct dircache_entry *direntry, bool recursive)
     {
         if(!is_dircache_entry_valid(entry))
             continue;
+        /* FIXME this code depends on how mount points are named ! */
         /* skip "." and ".." and files that begin with "<"*/
         /*logf("mtp: add entry \"%s\"(len=%ld, 0x%lx)", entry->d_name, entry->name_len, (uint32_t)entry);*/
         if(entry->d_name[0] == '.' && entry->d_name[1] == '\0')
@@ -1020,19 +1075,36 @@ static bool list_files2(const struct dircache_entry *direntry, bool recursive)
         
         /* handle recursive listing */
         if(recursive && (entry->attribute & ATTR_DIRECTORY))
-            if (!list_files2(entry, recursive))
+            if (!list_files2(stor_id, entry, recursive))
                 return false;
     }
 
     return true;
 }
 
-static void list_files(const struct dircache_entry *direntry, bool recursive)
+/* accept stor_id=0x0 if and only if direntry is well specified (ie not root) */
+static void list_files(uint32_t stor_id, const struct dircache_entry *direntry, bool recursive)
 {
     start_pack_data_block();
     start_pack_data_block_array();
 
-    if (!list_files2(direntry,recursive)) return;
+    /* handle all storages if necessary */
+    if(stor_id == 0xffffffff)
+    {
+        /* if all storages are requested, only root is a valid parent object */
+        if((uint32_t)direntry != 0xffffffff)
+            return fail_op_with(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE);
+        
+        stor_id = get_first_storage_id();
+        
+        do
+        {
+            if(!list_files2(stor_id, (const struct dircache_entry *)0xffffffff, recursive))
+                return;
+        }while((stor_id = get_next_storage_id(stor_id)));
+    }
+    else if (!list_files2(stor_id, direntry, recursive))
+        return; /* the error response is sent by list_files2 */
 
     finish_pack_data_block_array();
     finish_pack_data_block();
@@ -1070,18 +1142,19 @@ static void get_object_handles(int nb_params, uint32_t stor_id, uint32_t obj_fmt
             return fail_op_with(ERROR_SPEC_BY_FMT_UNSUPPORTED, SEND_DATA_PHASE);
     }
     
-    if(stor_id != 0xffffffff && stor_id != 0x00010001)
+    if(stor_id != 0xffffffff && !is_valid_storage_id(stor_id))
         return fail_op_with(ERROR_INVALID_STORAGE_ID, SEND_DATA_PHASE);
     
+    /* parent_handle=0x00000000 means all objects*/
     if(obj_handle_parent == 0x00000000)
-        list_files((const struct dircache_entry *)0xffffffff, true); /* recursive, at root */
+        list_files(stor_id, (const struct dircache_entry *)0xffffffff, true); /* recursive, at root */
     else
     {
-        const struct dircache_entry *entry=mtp_handle_to_dircache_entry(obj_handle_parent, true);
+        const struct dircache_entry *entry=mtp_handle_to_dircache_entry(obj_handle_parent, true); /* handle root */
         if(entry == NULL)
             return fail_op_with(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE);
         else
-            list_files(entry, false); /* not recursive, at entry */
+            list_files(stor_id, entry, false); /* not recursive, at entry */
     }
 }
 
@@ -1575,7 +1648,7 @@ static void get_object_references(uint32_t object_handle)
     logf("mtp: get object references: handle=0x%lx (\"%s\")", object_handle, entry->d_name);
     
     if(entry->attribute & ATTR_DIRECTORY)
-        return list_files(entry, false); /* not recursive, at entry */
+        return list_files(0, entry, false); /* not recursive, at entry */
     else
     {
         start_pack_data_block();
