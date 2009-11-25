@@ -39,6 +39,10 @@
 #include "usb_serial.h"
 #endif
 
+#if defined(USB_ENABLE_MTP)
+#include "usb_mtp.h"
+#endif
+
 #if defined(USB_ENABLE_CHARGING_ONLY)
 #include "usb_charging_only.h"
 #endif
@@ -153,6 +157,20 @@ static const struct usb_string_descriptor __attribute__((aligned(2)))
     {0x0409} /* LANGID US English */
 };
 
+#ifdef USB_ENABLE_MS_DESCRIPTOR
+/* This special string is used to indicate the the device supports Microsoft OS Descriptors
+   and to retrieve the request number of GET_MS_DESCRIPTORS (defined in usb_ch9.h) */
+static const struct usb_ms_os_string_descriptor __attribute__((aligned(2)))
+                                    ms_os_string_descriptor =
+{
+    0x12,
+    USB_DT_STRING,
+    {'M','S','F','T','1','0','0'},
+    USB_GET_MS_DESCRIPTOR,
+    0x00
+};
+#endif
+
 static const struct usb_string_descriptor* const usb_strings[] =
 {
    &lang_descriptor,
@@ -214,6 +232,28 @@ static struct usb_class_driver drivers[USB_NUM_DRIVERS] =
         .control_request = usb_serial_control_request,
 #ifdef HAVE_HOTSWAP
         .notify_hotswap = NULL,
+#endif
+    },
+#endif
+#ifdef USB_ENABLE_MTP
+    [USB_DRIVER_MTP] = {
+        .enabled = false,
+        .needs_exclusive_storage = false,
+        .first_interface = 0,
+        .last_interface = 0,
+        .request_endpoints = usb_mtp_request_endpoints,
+        .set_first_interface = usb_mtp_set_first_interface,
+        .get_config_descriptor = usb_mtp_get_config_descriptor,
+        .init_connection = usb_mtp_init_connection,
+        .init = usb_mtp_init,
+        .disconnect = usb_mtp_disconnect,
+        .transfer_complete = usb_mtp_transfer_complete,
+        .control_request = usb_mtp_control_request,
+#ifdef HAVE_HOTSWAP
+        .notify_hotswap = NULL,
+#endif
+#ifdef USB_ENABLE_MS_DESCRIPTOR
+        .get_ms_descriptor = usb_mtp_get_ms_descriptor,
 #endif
     },
 #endif
@@ -591,6 +631,13 @@ static void request_handler_device_get_descriptor(struct usb_ctrlrequest* req)
                 size = usb_strings[index]->bLength;
                 ptr = usb_strings[index];
             }
+#ifdef USB_ENABLE_MS_DESCRIPTOR
+            else if(index == USB_MS_DESCRIPTOR_STRING_INDEX) {
+                logf("MS OS STRING DESCRIPTOR");
+                size = ms_os_string_descriptor.bLength;
+                ptr = &ms_os_string_descriptor;
+            }
+#endif
             else {
                 logf("bad string id %d",index);
                 usb_drv_stall(EP_CONTROL,true,true);
@@ -679,6 +726,30 @@ static void request_handler_device(struct usb_ctrlrequest* req)
             usb_drv_recv(EP_CONTROL,NULL,0);
             usb_drv_send(EP_CONTROL, response_data, 2);
             break;
+#ifdef USB_ENABLE_MS_DESCRIPTOR
+        case USB_GET_MS_DESCRIPTOR:
+            {
+                int size = 0;
+                logf("usb_core: GET_MS_DESCRIPTOR");
+                
+                for(i=0;i<USB_NUM_DRIVERS;i++)
+                    if(drivers[i].enabled && drivers[i].get_ms_descriptor)
+                    {
+                        size = drivers[i].get_ms_descriptor(req->wValue, req->wIndex, response_data, sizeof response_data);
+                        /* stop at the first driver returning some data */
+                        if(size > 0)
+                            break;
+                    }
+                
+                if(size > 0)
+                {
+                    logf("data %d (%d)", size, req->wLength);
+                    usb_drv_recv(EP_CONTROL, NULL, 0);
+                    usb_drv_send(EP_CONTROL, response_data, MIN(size, req->wLength));
+                }
+            }
+            break;
+#endif
         default:
             break;
     }

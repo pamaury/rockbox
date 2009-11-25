@@ -290,6 +290,9 @@ usbstack/usb_storage.c
 #ifdef USB_ENABLE_SERIAL
 usbstack/usb_serial.c
 #endif
+#ifdef USB_ENABLE_MTP
+usbstack/usb_mtp.c
+#endif
 #ifdef USB_ENABLE_CHARGING_ONLY
 usbstack/usb_charging_only.c
 #endif

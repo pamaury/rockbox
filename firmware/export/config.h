@@ -865,6 +865,8 @@ Lyre prototype 1 */
 #ifndef SIMULATOR
 //#define USB_ENABLE_SERIAL
 #define USB_ENABLE_STORAGE
+#define USB_ENABLE_MTP
+#define USB_ENABLE_MS_DESCRIPTOR
 
 #ifdef USB_HAS_INTERRUPT
 #define USB_ENABLE_HID

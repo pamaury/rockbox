@@ -451,4 +451,45 @@ struct usb_gadget_strings {
         struct usb_string* strings;
 };
 
+/*
+ *
+ * Microsoft OS Descriptors
+ *
+ */
+
+/* Magic constant to retrieve the OS string descriptor. */
+#define USB_MS_DESCRIPTOR_STRING_INDEX  0xee
+/* Arbitrary constant that can be changed safely as long as it's not overlapping with other usb requests.
+ * This constant is the device request number used to retrieve OS descriptors.
+ */
+#define USB_GET_MS_DESCRIPTOR           0xfe
+#define USB_MS_DT_COMPAT_ID             0x04
+
+struct usb_ms_os_string_descriptor {
+        uint8_t  bLength;
+        uint8_t  bDescriptorType;
+
+        uint16_t qwSignature[7];             /* UTF-16LE encoded */
+        uint8_t bMS_VendorCode;
+        uint8_t bPad;
+} __attribute__ ((packed));
+
+struct usb_ms_compat_id_descriptor_header {
+        uint32_t dwLength;
+        uint16_t bcdVersion;
+        uint16_t wIndex;
+        uint8_t bCount;
+        
+        uint8_t bRESERVED[7];
+} __attribute__ ((packed));
+
+struct usb_ms_compat_id_descriptor_function {
+        uint8_t bFirstInterfaceNumber;
+        uint8_t bRESERVED1;
+        uint8_t compatibleID[8];
+        uint8_t subCompatibleID[8];
+        
+        uint8_t bRESERVED2[6];
+} __attribute__ ((packed));
+
 #endif /*_CH9_H_*/

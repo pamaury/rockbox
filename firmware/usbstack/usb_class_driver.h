@@ -83,6 +83,14 @@ struct usb_class_driver {
 	   Optional function */
     void (*notify_hotswap)(int volume, bool inserted);
 #endif
+
+#ifdef USB_ENABLE_MS_DESCRIPTOR
+    /* Asks the driver to put the Microsoft OS descriptor(s) and all other needed 
+       descriptorat dest.
+       Returns the number of bytes taken by these descriptors.
+       Optional function */
+    int (*get_ms_descriptor)(uint16_t wValue, uint16_t wIndex, unsigned char *dest, int max_length);
+#endif
 };
 
 #define PACK_DATA(dest, data) \
