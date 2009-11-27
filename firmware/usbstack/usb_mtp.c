@@ -739,7 +739,15 @@ static const struct dircache_entry *mtp_handle_to_dircache_entry(uint32_t handle
 
 static uint32_t dircache_entry_to_mtp_handle(const struct dircache_entry *entry)
 {
-    return (uint32_t)entry;
+    if(entry==0)
+        return 0x00000000;
+    else
+    {
+        if(entry->d_name[0] == '<')
+            return 0x00000000;
+        else
+            return (uint32_t)entry;
+    }
 }
 
 /*
@@ -788,7 +796,7 @@ static void probe_storages(void)
     }
 }
 
-static int volume_to_storage_id(int volume)
+static uint32_t volume_to_storage_id(int volume)
 {
     /* assume valid volume */
     return (0x00010000 | (uint16_t)(volume+1));
@@ -820,7 +828,7 @@ static const char *get_storage_description(uint32_t stor_id)
     if(volume == 0)
         snprintf(buffer, sizeof buffer, "Rockbox Internal Storage");
     else
-        snprintf(buffer, sizeof buffer, "Rockbox Volume %d", volume + 1);
+        snprintf(buffer, sizeof buffer, "Rockbox Volume %d", volume);
     
     return &buffer[0];
 }
@@ -1033,7 +1041,7 @@ static bool list_files2(uint32_t stor_id, const struct dircache_entry *direntry,
     uint32_t *ptr;
     uint32_t nb_elems=0;
     
-    logf("mtp: list_files entry=0x%lx rec=%s", (uint32_t)direntry, recursive ? "yes" : "no");
+    logf("mtp: list_files stor_id=0x%lx entry=0x%lx rec=%s",stor_id, (uint32_t)direntry, recursive ? "yes" : "no");
     
     if((uint32_t)direntry == 0xffffffff)
     {
@@ -1159,6 +1167,8 @@ static void get_object_handles(int nb_params, uint32_t stor_id, uint32_t obj_fmt
     }
 }
 
+uint32_t get_object_storage_id(const struct dircache_entry *entry);
+
 static void get_object_info(uint32_t object_handle)
 {
     const struct dircache_entry *entry = mtp_handle_to_dircache_entry(object_handle, false);
@@ -1166,7 +1176,7 @@ static void get_object_info(uint32_t object_handle)
     logf("mtp: get object info: entry=\"%s\" attr=0x%x", entry->d_name, entry->attribute);
     
     struct object_info oi;
-    oi.storage_id = 0x00010001;
+    oi.storage_id = get_object_storage_id(entry);
     oi.object_format = (entry->attribute & ATTR_DIRECTORY) ? OBJ_FMT_ASSOCIATION : OBJ_FMT_UNDEFINED;
     oi.protection = 0x0000;
     oi.compressed_size = entry->size;
@@ -1177,7 +1187,7 @@ static void get_object_info(uint32_t object_handle)
     oi.image_pix_width = 0;
     oi.image_pix_height = 0;
     oi.image_bit_depth = 0;
-    oi.parent_handle = dircache_entry_to_mtp_handle(entry->up); /* works also for root */
+    oi.parent_handle = dircache_entry_to_mtp_handle(entry->up); /* works also for root(s) */
     oi.association_type = (entry->attribute & ATTR_DIRECTORY) ? ASSOC_TYPE_FOLDER : ASSOC_TYPE_NONE;
     oi.association_desc = (entry->attribute & ATTR_DIRECTORY) ? 0x1 : 0x0;
     oi.sequence_number = 0;
@@ -1933,6 +1943,19 @@ uint16_t get_object_format(const struct dircache_entry *entry)
         return OBJ_FMT_UNDEFINED;
 }
 
+uint32_t get_object_storage_id(const struct dircache_entry *entry)
+{
+    /* FIXME ugly but efficient */
+    while(entry->up)
+    {
+        entry = entry->up;
+        if(entry->d_name[0] == '<')
+            return volume_to_storage_id(entry->d_name[VOL_ENUM_POS] - '0');
+    }
+    
+    return volume_to_storage_id(0);
+}
+
 static void get_object_prop_value(uint32_t obj_handle, uint32_t obj_prop)
 {
     logf("mtp: get object props value: handle=0x%lx prop=0x%lx", obj_handle, obj_prop);
@@ -1963,8 +1986,7 @@ static void get_object_prop_value(uint32_t obj_handle, uint32_t obj_prop)
 
 void prop_stor_id_get(const struct dircache_entry *entry)
 {
-    (void) entry;
-    pack_data_block_uint32_t(0x00010001);
+    pack_data_block_uint32_t(get_object_storage_id(entry));
 }
 
 void prop_obj_fmt_get(const struct dircache_entry *entry)

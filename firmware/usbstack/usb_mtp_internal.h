@@ -21,6 +21,8 @@
 #ifndef USB_MTP_INT_H
 #define USB_MTP_INT_H
 
+#include <dircache.h>
+
 #define USB_MTP_SUBCLASS    0x1
 #define USB_MTP_PROTO       0x1
 
