@@ -98,15 +98,6 @@ static const struct mtp_string mtp_manufacturer =
     {'R','o','c','k','b','o','x','.','o','r','g','\0'} /* null-terminated */
 };
 
-
-static const struct mtp_string mtp_model =
-{
-    21,
-    {'R','o','c','k','b','o','x',' ',
-     'm','e','d','i','a',' ',
-     'p','l','a','y','e','r','\0'} /* null-terminated */
-};
-
 static const struct mtp_string device_friendly_name =
 {
     21,
@@ -265,7 +256,7 @@ void get_device_info(void)
     pack_data_block_array_uint16_t(&mtp_capture_fmt);
     pack_data_block_array_uint16_t(&mtp_playback_fmt);
     pack_data_block_string(&mtp_manufacturer);
-    pack_data_block_string(&mtp_model);
+    pack_data_block_string_charz(MODEL_NAME);
     pack_data_block_string(&mtp_dev_version);
     pack_data_block_string(&mtp_serial);
     finish_pack_data_block();
@@ -305,17 +296,12 @@ void get_storage_info(uint32_t stor_id)
     if(!is_valid_storage_id(stor_id))
         return fail_op_with(ERROR_INVALID_STORAGE_ID, SEND_DATA_PHASE);
     
-    unsigned long size, free;
-    fat_size(IF_MV2(storage_id_to_volume(stor_id),) &size, &free);
-    size *= SECTOR_SIZE;
-    free *= SECTOR_SIZE;
-    
     start_pack_data_block();
     pack_data_block_uint16_t(STOR_TYPE_FIXED_RAM); /* Storage Type */
     pack_data_block_uint16_t(FS_TYPE_GENERIC_HIERARCHICAL); /* Filesystem Type */
     pack_data_block_uint16_t(ACCESS_CAP_RW); /* Access Capability */
-    pack_data_block_uint64_t(size); /* Max Capacity (optional for read only) */
-    pack_data_block_uint64_t(free); /* Free Space in bytes (optional for read only) */
+    pack_data_block_uint64_t(get_storage_size(stor_id)); /* Max Capacity (optional for read only) */
+    pack_data_block_uint64_t(get_storage_free_space(stor_id)); /* Free Space in bytes (optional for read only) */
     pack_data_block_uint32_t(0); /* Free Space in objects (optional for read only) */
     pack_data_block_string_charz(get_storage_description(stor_id)); /* Storage Description */
     pack_data_block_string_charz(get_volume_identifier(stor_id)); /* Volume Identifier */

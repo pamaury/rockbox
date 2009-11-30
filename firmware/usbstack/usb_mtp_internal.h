@@ -428,6 +428,8 @@ uint32_t volume_to_storage_id(int volume);
 const char *get_storage_description(uint32_t stor_id);
 const char *get_volume_identifier(uint32_t stor_id);
 const char *get_storage_id_mount_point(uint32_t stor_id);
+uint32_t get_storage_size(uint32_t stor_id);
+uint32_t get_storage_free_space(uint32_t stor_id);
 
 /*
  * usb_mtp_operations.c

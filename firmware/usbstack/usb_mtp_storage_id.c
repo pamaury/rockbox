@@ -23,7 +23,7 @@
 #include "storage.h"
 #include "fat.h"
 
-#ifdef HAVE_MULTIVOLUME2
+#ifdef HAVE_MULTIVOLUME
 /* For now, if there are several volumes, there are coded 0x0001000x with x=1,2,3,... */
 static bool valid_volume[NUM_VOLUMES];
 
@@ -120,6 +120,7 @@ const char *get_storage_id_mount_point(uint32_t stor_id)
     
     return &buffer[0];
 }
+
 #else
 bool is_valid_storage_id(uint32_t stor_id)
 {
@@ -174,3 +175,24 @@ const char *get_storage_id_mount_point(uint32_t stor_id)
     return "/";
 }
 #endif
+
+/*
+ * Common
+ */
+
+uint32_t get_storage_size(uint32_t stor_id)
+{
+    unsigned long size, free;
+    
+    fat_size(IF_MV2(storage_id_to_volume(stor_id),) &size, &free);
+    return size * SECTOR_SIZE;
+}
+
+uint32_t get_storage_free_space(uint32_t stor_id)
+{
+    unsigned long size, free;
+    
+    fat_size(IF_MV2(storage_id_to_volume(stor_id),) &size, &free);
+    return free * SECTOR_SIZE;
+}
+
