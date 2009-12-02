@@ -30,8 +30,6 @@
 #include "errno.h"
 #include "string.h"
 
-#include <dircache.h>
-
 #define USB_MTP_SUBCLASS    0x1
 #define USB_MTP_PROTO       0x1
 
@@ -138,11 +136,11 @@ struct mtp_response
     { \
         uint32_t length; \
         type data[]; \
-    }; \
+    };
 
 define_mtp_array(uint16_t)
 
-typedef void (*mtp_obj_prop_value_get)(const struct dircache_entry *);
+typedef void (*mtp_obj_prop_value_get)(uint32_t obj_handle);
 
 struct mtp_obj_prop
 {
@@ -370,8 +368,6 @@ void fail_op_with(uint16_t error_code, enum data_phase_type dht);
 #define define_pack_array_elem(type) \
     void pack_data_block_array_elem_##type(type val);
 
-
-
 void start_pack_data_block(void);
 void start_unpack_data_block(void *data, uint32_t data_len);
 
@@ -430,6 +426,47 @@ const char *get_volume_identifier(uint32_t stor_id);
 const char *get_storage_id_mount_point(uint32_t stor_id);
 uint32_t get_storage_size(uint32_t stor_id);
 uint32_t get_storage_free_space(uint32_t stor_id);
+
+/*
+ *
+ * usb_mtp_object_handle.c
+ * - object handle abstraction api
+ *
+ */
+enum
+{
+    /* stop or continue the whole research */
+    LF_STOP=0x0,
+    LF_CONTINUE=0x1,
+    /* (directory only) skip or enter the directory */
+    LF_SKIP=0x0,
+    LF_ENTER=0x2
+};
+
+typedef unsigned (*list_file_func_t)(uint32_t stor_id, uint32_t obj_handle, void *arg);
+
+void init_object_mgr(void);
+void deinit_object_mgr(void);
+
+bool is_valid_object_handle(uint32_t obj_handle, bool accept_root);
+void copy_object_path(uint32_t obj_handle, char *buffer, int size);
+const char *get_object_filename(uint32_t handle);
+/* return 0x00000000 on error */
+uint32_t get_object_handle_by_name(const char *ptr);
+uint32_t get_object_storage_id(uint32_t obj_handle);
+bool is_directory_object(uint32_t handle);
+bool is_hidden_object(uint32_t handle);
+bool is_system_object(uint32_t handle);
+uint32_t get_object_size(uint32_t handle);
+/* return 0x00000000 if at root level */
+uint32_t get_parent_object(uint32_t handle);
+void copy_object_date_created(uint32_t handle, struct tm *filetm);
+void copy_object_date_modified(uint32_t handle, struct tm *filetm);
+
+/* accept stor_id=0x00000000 iff handle is well specified (ie not root) */
+/* depth first search */
+/* returns mtp error code */
+uint16_t generic_list_files(uint32_t stor_id, uint32_t obj_handle, list_file_func_t lff, void *arg);
 
 /*
  * usb_mtp_operations.c

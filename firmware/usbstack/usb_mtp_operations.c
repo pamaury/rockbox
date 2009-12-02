@@ -20,11 +20,6 @@
 #include "usb_mtp_internal.h"
 #define LOGF_ENABLE
 #include "logf.h"
-#include "dircache.h"
-
-#if !defined(HAVE_DIRCACHE)
-#error USB-MTP requires dircache to be enabled
-#endif
 
 /*
  *
@@ -134,65 +129,6 @@ static const struct device_info dev_info=
  *
  */
 
-/* TODO: find a better place for this function. */
-static void fat2tm(struct tm *tm, unsigned short date, unsigned short time)
-{
-    tm->tm_year = ((date >> 9 ) & 0x7F) + 80;
-    tm->tm_mon  =  (date >> 5 ) & 0x0F;
-    tm->tm_mday =  (date      ) & 0x1F;
-    tm->tm_hour =  (time >> 11) & 0x1F;
-    tm->tm_min  =  (time >> 5 ) & 0x3F;
-    tm->tm_sec  =  (time & 0x1F) << 1;
-}
-
-/*
- * A function to check whether a dircache entry is valid or not
- */
-static bool is_dircache_entry_valid(const struct dircache_entry *entry)
-{
-    return entry!=NULL && entry->name_len != 0;
-}
-
-/*
- * Handle conversions
- */
-static bool check_dircache(void)
-{
-    if(!dircache_is_enabled() || dircache_is_initializing())
-    {
-        logf("mtp: oops, dircache is not enabled, trying something...");
-        return false;
-    }
-    else
-        return true;
-}
-
-static const struct dircache_entry *mtp_handle_to_dircache_entry(uint32_t handle, bool accept_root)
-{
-    /* NOTE invalid entry for 0xffffffff but works with it */
-    struct dircache_entry *entry = (struct dircache_entry *)handle;
-    if(entry == (struct dircache_entry *)0xffffffff)
-        return accept_root ? entry : NULL;
-    
-    if(!dircache_is_valid_ptr(entry))
-        return NULL;
-
-    return entry;
-}
-
-static uint32_t dircache_entry_to_mtp_handle(const struct dircache_entry *entry)
-{
-    if(entry==0)
-        return 0x00000000;
-    else
-    {
-        if(entry->d_name[0] == '<')
-            return 0x00000000;
-        else
-            return (uint32_t)entry;
-    }
-}
-
 /*
  *
  * Operation handling
@@ -221,14 +157,10 @@ void close_session(bool send_resp)
     /* destroy pending object (if any) */
     if(mtp_state.has_pending_oi)
     {
-        const struct dircache_entry *entry = mtp_handle_to_dircache_entry(mtp_state.pending_oi.handle, false);
         static char path[MAX_PATH];
-        if(entry != NULL)
-        {
-            dircache_copy_path(entry, path, sizeof(path));
-            logf("mtp: remove unfinished pending object: \"%s\"", path);
-            remove(path);
-        }
+        copy_object_path(mtp_state.pending_oi.handle, path, sizeof(path));
+        logf("mtp: remove unfinished pending object: \"%s\"", path);
+        remove(path);
         mtp_state.has_pending_oi = false;
     }
     
@@ -317,91 +249,36 @@ void get_storage_info(uint32_t stor_id)
  * Objet operations
  */
 
-/* accept stor_id=0x0 if and only if direntry is well specified (ie not root) */
-static bool list_files2(uint32_t stor_id, const struct dircache_entry *direntry, bool recursive)
+static unsigned list_and_pack_files_lff(uint32_t stor_id, uint32_t obj_handle, void *arg)
 {
-    const struct dircache_entry *entry;
-    uint32_t *ptr;
-    uint32_t nb_elems=0;
+    bool *recursive = arg;
+    (void) stor_id;
     
-    logf("mtp: list_files stor_id=0x%lx entry=0x%lx rec=%s",stor_id, (uint32_t)direntry, recursive ? "yes" : "no");
+    pack_data_block_array_elem_uint32_t(obj_handle);
     
-    if((uint32_t)direntry == 0xffffffff)
-    {
-        /* check stor_id is valid */
-        if(!is_valid_storage_id(stor_id))
-        {
-            fail_op_with(ERROR_INVALID_STORAGE_ID, SEND_DATA_PHASE);
-            return false;
-        }
-        direntry = dircache_get_entry_ptr(get_storage_id_mount_point(stor_id));
-    }
+    if(*recursive)
+        return LF_CONTINUE|LF_ENTER;
     else
-    {
-        if(!(direntry->attribute & ATTR_DIRECTORY))
-        {
-            fail_op_with(ERROR_INVALID_PARENT_OBJ, SEND_DATA_PHASE);
-            return false;
-        }
-        direntry = direntry->down;
-    }
-    
-    ptr = (uint32_t *)get_data_block_ptr();
-    
-    for(entry = direntry; entry != NULL; entry = entry->next)
-    {
-        if(!is_dircache_entry_valid(entry))
-            continue;
-        /* FIXME this code depends on how mount points are named ! */
-        /* skip "." and ".." and files that begin with "<"*/
-        /*logf("mtp: add entry \"%s\"(len=%ld, 0x%lx)", entry->d_name, entry->name_len, (uint32_t)entry);*/
-        if(entry->d_name[0] == '.' && entry->d_name[1] == '\0')
-            continue;
-        if(entry->d_name[0] == '.' && entry->d_name[1] == '.'  && entry->d_name[2] == '\0')
-            continue;
-        if(entry->d_name[0] == '<')
-            continue;
-        
-        pack_data_block_array_elem_uint32_t(dircache_entry_to_mtp_handle(entry));
-        nb_elems++;
-        
-        /* handle recursive listing */
-        if(recursive && (entry->attribute & ATTR_DIRECTORY))
-            if (!list_files2(stor_id, entry, recursive))
-                return false;
-    }
-
-    return true;
+        return LF_CONTINUE|LF_SKIP;
 }
 
-/* accept stor_id=0x0 if and only if direntry is well specified (ie not root) */
-static void list_files(uint32_t stor_id, const struct dircache_entry *direntry, bool recursive)
+static void list_and_pack_files(uint32_t stor_id, uint32_t obj_handle, bool recursive)
 {
+    uint16_t err;
+    
     start_pack_data_block();
     start_pack_data_block_array();
-
-    /* handle all storages if necessary */
-    if(stor_id == 0xffffffff)
-    {
-        /* if all storages are requested, only root is a valid parent object */
-        if((uint32_t)direntry != 0xffffffff)
-            return fail_op_with(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE);
-        
-        stor_id = get_first_storage_id();
-        
-        do
-        {
-            if(!list_files2(stor_id, (const struct dircache_entry *)0xffffffff, recursive))
-                return;
-        }while((stor_id = get_next_storage_id(stor_id)));
-    }
-    else if (!list_files2(stor_id, direntry, recursive))
-        return; /* the error response is sent by list_files2 */
-
+    
+    err = generic_list_files(stor_id, obj_handle, &list_and_pack_files_lff, &recursive);
+    
     finish_pack_data_block_array();
     finish_pack_data_block();
+    
+    /* if an error occured, restart packing to have a zero size overhead */
+    if(err != ERROR_OK)
+        return fail_op_with(err, SEND_DATA_PHASE);
 
-    mtp_cur_resp.code = ERROR_OK;
+    mtp_cur_resp.code = err;
     mtp_cur_resp.nb_parameters = 0;
 
     send_data_block();
@@ -418,9 +295,6 @@ void get_num_objects(int nb_params, uint32_t stor_id, uint32_t obj_fmt, uint32_t
 
 void get_object_handles(int nb_params, uint32_t stor_id, uint32_t obj_fmt, uint32_t obj_handle_parent)
 {
-    if(!check_dircache())
-        return fail_op_with(ERROR_DEV_BUSY, SEND_DATA_PHASE);
-    
     logf("mtp: get object handles: nb_params=%d stor_id=0x%lx obj_fmt=0x%lx obj_handle_parent=0x%lx",
         nb_params, stor_id, obj_fmt, obj_handle_parent);
     
@@ -439,30 +313,29 @@ void get_object_handles(int nb_params, uint32_t stor_id, uint32_t obj_fmt, uint3
     
     /* parent_handle=0x00000000 means all objects*/
     if(obj_handle_parent == 0x00000000)
-        list_files(stor_id, (const struct dircache_entry *)0xffffffff, true); /* recursive, at root */
+        list_and_pack_files(stor_id, 0xffffffff, true); /* recursive, at root */
     else
     {
-        const struct dircache_entry *entry=mtp_handle_to_dircache_entry(obj_handle_parent, true); /* handle root */
-        if(entry == NULL)
+        if(!is_valid_object_handle(obj_handle_parent, true)) /* handle root */
             return fail_op_with(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE);
         else
-            list_files(stor_id, entry, false); /* not recursive, at entry */
+            list_and_pack_files(stor_id, obj_handle_parent, false); /* not recursive, at entry */
     }
 }
 
-static uint32_t get_object_storage_id(const struct dircache_entry *entry);
-
-void get_object_info(uint32_t object_handle)
+void get_object_info(uint32_t handle)
 {
-    const struct dircache_entry *entry = mtp_handle_to_dircache_entry(object_handle, false);
+    if(!is_valid_object_handle(handle, false))
+        return fail_op_with(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE);
+    
     struct tm filetm;
-    logf("mtp: get object info: entry=\"%s\" attr=0x%x", entry->d_name, entry->attribute);
+    logf("mtp: get object info: %s", get_object_filename(handle));
     
     struct object_info oi;
-    oi.storage_id = get_object_storage_id(entry);
-    oi.object_format = (entry->attribute & ATTR_DIRECTORY) ? OBJ_FMT_ASSOCIATION : OBJ_FMT_UNDEFINED;
+    oi.storage_id = get_object_storage_id(handle);
+    oi.object_format = is_directory_object(handle) ? OBJ_FMT_ASSOCIATION : OBJ_FMT_UNDEFINED;
     oi.protection = 0x0000;
-    oi.compressed_size = entry->size;
+    oi.compressed_size = get_object_size(handle);
     oi.thumb_fmt = 0;
     oi.thumb_compressed_size = 0;
     oi.thumb_pix_width = 0;
@@ -470,16 +343,17 @@ void get_object_info(uint32_t object_handle)
     oi.image_pix_width = 0;
     oi.image_pix_height = 0;
     oi.image_bit_depth = 0;
-    oi.parent_handle = dircache_entry_to_mtp_handle(entry->up); /* works also for root(s) */
-    oi.association_type = (entry->attribute & ATTR_DIRECTORY) ? ASSOC_TYPE_FOLDER : ASSOC_TYPE_NONE;
-    oi.association_desc = (entry->attribute & ATTR_DIRECTORY) ? 0x1 : 0x0;
+    oi.parent_handle = get_parent_object(handle); /* works also for root(s) */
+    oi.association_type = is_directory_object(handle) ? ASSOC_TYPE_FOLDER : ASSOC_TYPE_NONE;
+    oi.association_desc = is_directory_object(handle) ? 0x1 : 0x0;
     oi.sequence_number = 0;
     
     start_pack_data_block();
     pack_data_block_ptr(&oi, sizeof(oi));
-    pack_data_block_string_charz(entry->d_name); /* Filename */
-    fat2tm(&filetm, entry->wrtdate, entry->wrttime);
+    pack_data_block_string_charz(get_object_filename(handle)); /* Filename */
+    copy_object_date_created(handle, &filetm);
     pack_data_block_date_time(&filetm); /* Date Created */
+    copy_object_date_modified(handle, &filetm);
     pack_data_block_date_time(&filetm); /* Date Modified */
     pack_data_block_string_charz(NULL); /* Keywords */
     finish_pack_data_block();
@@ -525,23 +399,22 @@ static void finish_get_object_split_routine(bool error, void *user)
     generic_finish_split_routine(error, user);
 }
 
-void get_object(uint32_t object_handle)
+void get_object(uint32_t handle)
 {
-    const struct dircache_entry *entry = mtp_handle_to_dircache_entry(object_handle, false);
     static struct get_object_st st;
     static char buffer[MAX_PATH];
     
-    logf("mtp: get object: entry=\"%s\" attr=0x%x size=%ld", entry->d_name, entry->attribute, entry->size);
-    
     /* can't be invalid handle, can't be root, can't be a directory */
-    if(entry == NULL || (entry->attribute & ATTR_DIRECTORY))
+    if(!is_valid_object_handle(handle, false) || is_directory_object(handle))
         return fail_op_with(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE);
     
-    dircache_copy_path(entry, buffer, MAX_PATH);
+    logf("mtp: get object: %s size=%lu", get_object_filename(handle), get_object_size(handle));
+    
+    copy_object_path(handle, buffer, MAX_PATH);
     /*logf("mtp: get_object: path=\"%s\"", buffer);*/
     
     st.offset = 0;
-    st.size = entry->size;
+    st.size = get_object_size(handle);
     st.fd = open(buffer, O_RDONLY);
     if(st.fd < 0)
         return fail_op_with(ERROR_GENERAL_ERROR, SEND_DATA_PHASE);
@@ -549,30 +422,30 @@ void get_object(uint32_t object_handle)
     mtp_cur_resp.code = ERROR_OK;
     mtp_cur_resp.nb_parameters = 0;
     
-    send_split_data(entry->size, &get_object_split_routine, &finish_get_object_split_routine, &st);
+    send_split_data(st.size, &get_object_split_routine, &finish_get_object_split_routine, &st);
 }
 
-void get_partial_object(uint32_t object_handle,uint32_t offset,uint32_t max_size)
+void get_partial_object(uint32_t handle,uint32_t offset,uint32_t max_size)
 {
-    const struct dircache_entry *entry = mtp_handle_to_dircache_entry(object_handle, false);
     static struct get_object_st st;
     static char buffer[MAX_PATH];
     
-    logf("mtp: get partial object: entry=\"%s\" attr=0x%x size=%ld off=%lu max_asked_size=%lu",
-        entry->d_name, entry->attribute, entry->size, offset, max_size);
-    
     /* can't be invalid handle, can't be root, can't be a directory */
-    if(entry == NULL || (entry->attribute & ATTR_DIRECTORY))
+    if(!is_valid_object_handle(handle, false) || is_directory_object(handle))
         return fail_op_with(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE);
+    
+    logf("mtp: get partial object: %s size=%lu off=%lu max_size=%lu", get_object_filename(handle), 
+        get_object_size(handle), offset, max_size);
+    
     /* offset can't be beyond end of file */
-    if(offset > (uint32_t)entry->size)
+    if(offset > get_object_size(handle))
         return fail_op_with(ERROR_INVALID_PARAMETER, SEND_DATA_PHASE);
     
-    dircache_copy_path(entry, buffer, MAX_PATH);
+    copy_object_path(handle, buffer, MAX_PATH);
     /*logf("mtp: get partial object: path=\"%s\"", buffer);*/
     
     st.offset = offset;
-    st.size = MIN(entry->size - offset, max_size);
+    st.size = MIN(get_object_size(handle) - offset, max_size);
     st.fd = open(buffer, O_RDONLY);
     if(st.fd < 0)
         return fail_op_with(ERROR_GENERAL_ERROR, SEND_DATA_PHASE);
@@ -581,7 +454,7 @@ void get_partial_object(uint32_t object_handle,uint32_t offset,uint32_t max_size
     mtp_cur_resp.nb_parameters = 1;
     mtp_cur_resp.param[0] = st.size;
     
-    send_split_data(entry->size, &get_object_split_routine, &finish_get_object_split_routine, &st);
+    send_split_data(st.size, &get_object_split_routine, &finish_get_object_split_routine, &st);
 }
 
 struct send_object_info_st
@@ -598,52 +471,45 @@ static void send_object_info_split_routine(unsigned char *data, int length, uint
     static char path[MAX_PATH];
     uint32_t path_len;
     uint32_t filename_len;
-    const struct dircache_entry *this_entry;
-    const struct dircache_entry *parent_entry = mtp_handle_to_dircache_entry(st->obj_handle_parent, false);
+    uint32_t this_handle;
 
     logf("mtp: send_object_info_split_routine stor_id=0x%lx obj_handle_parent=0x%lx", st->stor_id, st->obj_handle_parent);
 
-    if (st->obj_handle_parent == 0xffffffff)
+    if(st->obj_handle_parent == 0xffffffff)
     {
-        path_len = 0;
+        strlcpy(path, get_storage_id_mount_point(st->stor_id), MAX_PATH);
+        path_len = strlen(path);
     }
     else
     {
-        dircache_copy_path(parent_entry, path, MAX_PATH);
+        copy_object_path(st->obj_handle_parent, path, MAX_PATH);
+        /* add trailing '/' */
+        strcat(path, "/"); /* possible overflow */
         path_len = strlen(path);
     }
 
-    if (0 != rem_bytes) /* Does the ObjectInfo span multiple packets? (unhandled case) */
+    if(rem_bytes != 0) /* Does the ObjectInfo span multiple packets? (unhandled case) */
         return fail_op_with(ERROR_INVALID_DATASET, RECV_DATA_PHASE); /* NOTE continue reception and throw data */
 
     start_unpack_data_block(data, length);
-    if (!unpack_data_block_ptr(&oi, sizeof(oi)))
+    if(!unpack_data_block_ptr(&oi, sizeof(oi)))
         return fail_op_with(ERROR_INVALID_DATASET, NO_DATA_PHASE);
-    if (!unpack_data_block_string_charz(filename, sizeof(filename))) /* Filename */
+    if(!unpack_data_block_string_charz(filename, sizeof(filename))) /* Filename */
         return fail_op_with(ERROR_INVALID_DATASET, NO_DATA_PHASE);
-    if (!unpack_data_block_string_charz(NULL, 0)) /* Date Created */
+    if(!unpack_data_block_string_charz(NULL, 0)) /* Date Created */
         return fail_op_with(ERROR_INVALID_DATASET, NO_DATA_PHASE);
-    if (!unpack_data_block_string_charz(NULL, 0)) /* Date Modified */
+    if(!unpack_data_block_string_charz(NULL, 0)) /* Date Modified */
         return fail_op_with(ERROR_INVALID_DATASET, NO_DATA_PHASE);
-    if (!unpack_data_block_string_charz(NULL, 0)) /* Keywords */
+    if(!unpack_data_block_string_charz(NULL, 0)) /* Keywords */
         return fail_op_with(ERROR_INVALID_DATASET, NO_DATA_PHASE);
-    if (!finish_unpack_data_block())
+    if(!finish_unpack_data_block())
         return fail_op_with(ERROR_INVALID_DATASET, NO_DATA_PHASE);
 
     logf("mtp: successfully unpacked");
 
-    if (path_len < MAX_PATH-1)
-    {
-        path[path_len] = '/';
-        path[path_len+1] = 0;
-        path_len++;
-    }
-    else
-        return fail_op_with(ERROR_GENERAL_ERROR, NO_DATA_PHASE);
-
     filename_len = strlen(filename);
-    if ((path_len + filename_len) < MAX_PATH-1)
-        strlcpy(path+path_len, filename, MAX_PATH-path_len);
+    if((path_len + filename_len) < MAX_PATH-1)
+        strlcpy(path + path_len, filename, MAX_PATH-path_len);
     else
         return fail_op_with(ERROR_GENERAL_ERROR, NO_DATA_PHASE);
 
@@ -671,20 +537,16 @@ static void send_object_info_split_routine(unsigned char *data, int length, uint
     
     logf("mtp: object created");
 
-    /* get object pointer */
-    this_entry = dircache_get_entry_ptr(path);
-    /* to one level up for directory */
-    if(this_entry != NULL && oi.object_format == OBJ_FMT_ASSOCIATION)
-        this_entry = this_entry->up;
-    if(this_entry == NULL)
+    this_handle = get_object_handle_by_name(path);
+    if(this_handle == 0x00000000)
         return fail_op_with(ERROR_GENERAL_ERROR, NO_DATA_PHASE);
  
     /* if file size is nonzero, add a pending OI (except if there is one) */
-    if(oi.object_format != OBJ_FMT_ASSOCIATION && oi.compressed_size!=0)
+    if(oi.object_format != OBJ_FMT_ASSOCIATION && oi.compressed_size != 0)
     {
         if(mtp_state.has_pending_oi)
             return fail_op_with(ERROR_GENERAL_ERROR, NO_DATA_PHASE);
-        mtp_state.pending_oi.handle = dircache_entry_to_mtp_handle(this_entry);
+        mtp_state.pending_oi.handle = this_handle;
         mtp_state.pending_oi.size = oi.compressed_size;
         mtp_state.has_pending_oi = true;
     }
@@ -693,7 +555,7 @@ static void send_object_info_split_routine(unsigned char *data, int length, uint
     mtp_cur_resp.nb_parameters = 3;
     mtp_cur_resp.param[0] = st->stor_id;
     mtp_cur_resp.param[1] = st->obj_handle_parent;
-    mtp_cur_resp.param[2] = dircache_entry_to_mtp_handle(this_entry);
+    mtp_cur_resp.param[2] = this_handle;
 }
 
 static void finish_send_object_info_split_routine(bool error, void *user)
@@ -704,29 +566,27 @@ static void finish_send_object_info_split_routine(bool error, void *user)
 void send_object_info(int nb_params, uint32_t stor_id, uint32_t obj_handle_parent)
 {
     static struct send_object_info_st st;
-    const struct dircache_entry *parent_entry = mtp_handle_to_dircache_entry(obj_handle_parent, false);
 
     logf("mtp: send object info: stor_id=0x%lx obj_handle_parent=0x%lx", stor_id, obj_handle_parent);
 
     /* default store is main store */
-    if (nb_params < 1)
-        stor_id = 0x00010001;
+    if(nb_params < 1 || stor_id == 0x00000000)
+        stor_id = get_first_storage_id();
 
-    if (stor_id != 0x00000000 && stor_id != 0x00010001)
+    if(!is_valid_storage_id(stor_id))
         return fail_op_with(ERROR_INVALID_STORAGE_ID, RECV_DATA_PHASE);
 
-    stor_id = 0x00010001;
     /* default parent if root */
-    if (nb_params < 2 || obj_handle_parent == 0x00000000)
+    if(nb_params < 2 || obj_handle_parent == 0x00000000)
         obj_handle_parent = 0xffffffff;
 
     /* check parent is root or a valid directory */
-    if (obj_handle_parent != 0xffffffff)
+    if(obj_handle_parent != 0xffffffff)
     {
-        if (parent_entry == NULL)
+        if(!is_valid_object_handle(obj_handle_parent, false))
             return fail_op_with(ERROR_INVALID_OBJ_HANDLE, RECV_DATA_PHASE);
 
-        if (!(parent_entry->attribute & ATTR_DIRECTORY))
+        if(!is_directory_object(obj_handle_parent))
             return fail_op_with(ERROR_INVALID_PARENT_OBJ, RECV_DATA_PHASE);
     }
 
@@ -786,16 +646,16 @@ void send_object(void)
 {
     static struct send_object_st st;
     static char path[MAX_PATH];
-    const struct dircache_entry *entry = mtp_handle_to_dircache_entry(mtp_state.pending_oi.handle, false);
     /* check there is a pending OI */
     if(!mtp_state.has_pending_oi)
         return fail_op_with(ERROR_NO_VALID_OBJECTINFO, RECV_DATA_PHASE);
     
     logf("mtp: send object: associated objectinfo=0x%lx", mtp_state.pending_oi.handle);
     
-    if(entry == NULL)
+    /* sanity check */
+    if(!is_valid_object_handle(mtp_state.pending_oi.handle, false))
         return fail_op_with(ERROR_NO_VALID_OBJECTINFO, RECV_DATA_PHASE);
-    dircache_copy_path(entry, path, sizeof(path));
+    copy_object_path(mtp_state.pending_oi.handle, path, sizeof(path));
     
     st.fd = open(path, O_RDWR|O_TRUNC);
     if(st.fd < 0)
@@ -805,6 +665,7 @@ void send_object(void)
     receive_split_data(&send_object_split_routine, &finish_send_object_split_routine, &st);
 }
 
+#if 0
 static bool recursive_delete(const struct dircache_entry *entry)
 {
     static char path[MAX_PATH];
@@ -932,17 +793,18 @@ void move_object(int nb_params, uint32_t obj_handle, uint32_t stor_id, uint32_t 
     
     return fail_op_with(ERROR_GENERAL_ERROR, NO_DATA_PHASE);
 }
+#endif
 
 void get_object_references(uint32_t object_handle)
 {
-    const struct dircache_entry *entry=mtp_handle_to_dircache_entry(object_handle, false);
-    if(entry == NULL)
+    /* can't be root it seems */
+    if(!is_valid_object_handle(object_handle, false))
         return fail_op_with(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE);
     
-    logf("mtp: get object references: handle=0x%lx (\"%s\")", object_handle, entry->d_name);
+    logf("mtp: get object references: handle=0x%lx (\"%s\")", object_handle, get_object_filename(object_handle));
     
-    if(entry->attribute & ATTR_DIRECTORY)
-        return list_files(0, entry, false); /* not recursive, at entry */
+    if(is_directory_object(object_handle))
+        return list_and_pack_files(0x00000000, object_handle, false); /* not recursive, at entry */
     else
     {
         start_pack_data_block();
@@ -1098,18 +960,18 @@ prop_name_default = {0, {}},
 prop_c_date_default = {0, {}},
 prop_m_date_default = {0, {}};
 
-static void prop_stor_id_get(const struct dircache_entry *);
-static void prop_obj_fmt_get(const struct dircache_entry *);
-static void prop_assoc_type_get(const struct dircache_entry *);
-static void prop_assoc_desc_get(const struct dircache_entry *);
-static void prop_obj_size_get(const struct dircache_entry *);
-static void prop_filename_get(const struct dircache_entry *);
-static void prop_c_date_get(const struct dircache_entry *);
-static void prop_m_date_get(const struct dircache_entry *);
-static void prop_parent_obj_get(const struct dircache_entry *);
-static void prop_hidden_get(const struct dircache_entry *);
-static void prop_system_get(const struct dircache_entry *);
-static void prop_name_get(const struct dircache_entry *);
+static void prop_stor_id_get(uint32_t handle);
+static void prop_obj_fmt_get(uint32_t handle);
+static void prop_assoc_type_get(uint32_t handle);
+static void prop_assoc_desc_get(uint32_t handle);
+static void prop_obj_size_get(uint32_t handle);
+static void prop_filename_get(uint32_t handle);
+static void prop_c_date_get(uint32_t handle);
+static void prop_m_date_get(uint32_t handle);
+static void prop_parent_obj_get(uint32_t handle);
+static void prop_hidden_get(uint32_t handle);
+static void prop_system_get(uint32_t handle);
+static void prop_name_get(uint32_t handle);
 
 static const struct mtp_obj_prop mtp_obj_prop_desc[] =
 {
@@ -1218,36 +1080,22 @@ void get_object_prop_desc(uint32_t obj_prop, uint32_t obj_fmt)
     send_data_block();
 }
 
-static uint16_t get_object_format(const struct dircache_entry *entry)
+static uint16_t get_object_format(uint32_t handle)
 {
-    if(entry->attribute & ATTR_DIRECTORY)
+    if(is_directory_object(handle))
         return OBJ_FMT_ASSOCIATION;
     else
         return OBJ_FMT_UNDEFINED;
 }
 
-static uint32_t get_object_storage_id(const struct dircache_entry *entry)
+void get_object_prop_value(uint32_t handle, uint32_t obj_prop)
 {
-    /* FIXME ugly but efficient */
-    while(entry->up)
-    {
-        entry = entry->up;
-        if(entry->d_name[0] == '<')
-            return volume_to_storage_id(entry->d_name[VOL_ENUM_POS] - '0');
-    }
+    logf("mtp: get object props value: handle=0x%lx prop=0x%lx", handle, obj_prop);
     
-    return volume_to_storage_id(0);
-}
-
-void get_object_prop_value(uint32_t obj_handle, uint32_t obj_prop)
-{
-    logf("mtp: get object props value: handle=0x%lx prop=0x%lx", obj_handle, obj_prop);
-    
-    const struct dircache_entry *entry = mtp_handle_to_dircache_entry(obj_handle, false);
-    if(entry == NULL)
+    if(!is_valid_object_handle(handle, false))
         return fail_op_with(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE);
     
-    uint16_t obj_fmt = get_object_format(entry);
+    uint16_t obj_fmt = get_object_format(handle);
     uint32_t i, j;
     for(i = 0; i < sizeof(mtp_obj_prop_desc)/sizeof(mtp_obj_prop_desc[0]); i++)
         if(mtp_obj_prop_desc[i].obj_prop_code == obj_prop)
@@ -1258,7 +1106,7 @@ void get_object_prop_value(uint32_t obj_handle, uint32_t obj_prop)
     
     Lok:
     start_pack_data_block();
-    mtp_obj_prop_desc[i].get(entry);
+    mtp_obj_prop_desc[i].get(handle);
     finish_pack_data_block();
     
     mtp_cur_resp.code = ERROR_OK;
@@ -1267,77 +1115,77 @@ void get_object_prop_value(uint32_t obj_handle, uint32_t obj_prop)
     send_data_block();
 }
 
-static void prop_stor_id_get(const struct dircache_entry *entry)
+static void prop_stor_id_get(uint32_t handle)
 {
-    pack_data_block_uint32_t(get_object_storage_id(entry));
+    pack_data_block_uint32_t(get_object_storage_id(handle));
 }
 
-static void prop_obj_fmt_get(const struct dircache_entry *entry)
+static void prop_obj_fmt_get(uint32_t handle)
 {
-    pack_data_block_uint16_t(get_object_format(entry));
+    pack_data_block_uint16_t(get_object_format(handle));
 }
 
-static void prop_assoc_type_get(const struct dircache_entry *entry)
+static void prop_assoc_type_get(uint32_t handle)
 {
-    (void) entry;
+    (void) handle;
     pack_data_block_uint16_t(ASSOC_TYPE_FOLDER);
 }
 
-static void prop_assoc_desc_get(const struct dircache_entry *entry)
+static void prop_assoc_desc_get(uint32_t handle)
 {
-    (void) entry;
+    (void) handle;
     pack_data_block_uint32_t(0x1);
 }
 
-static void prop_obj_size_get(const struct dircache_entry *entry)
+static void prop_obj_size_get(uint32_t handle)
 {
-    pack_data_block_uint32_t(entry->size);
+    pack_data_block_uint32_t(get_object_size(handle));
 }
 
-static void prop_filename_get(const struct dircache_entry *entry)
+static void prop_filename_get(uint32_t handle)
 {
-    pack_data_block_string_charz(entry->d_name);
+    pack_data_block_string_charz(get_object_filename(handle));
 }
 
-static void prop_c_date_get(const struct dircache_entry *entry)
+static void prop_c_date_get(uint32_t handle)
 {
     struct tm filetm;
-    fat2tm(&filetm, entry->wrtdate, entry->wrttime);
+    copy_object_date_created(handle, &filetm);
     pack_data_block_date_time(&filetm);
 }
 
-static void prop_m_date_get(const struct dircache_entry *entry)
+static void prop_m_date_get(uint32_t handle)
 {
     struct tm filetm;
-    fat2tm(&filetm, entry->wrtdate, entry->wrttime);
+    copy_object_date_modified(handle, &filetm);
     pack_data_block_date_time(&filetm);
 }
 
-static void prop_parent_obj_get(const struct dircache_entry *entry)
+static void prop_parent_obj_get(uint32_t handle)
 {
-    pack_data_block_uint32_t(dircache_entry_to_mtp_handle(entry->up));
+    pack_data_block_uint32_t(get_parent_object(handle));
 }
 
-static void prop_hidden_get(const struct dircache_entry *entry)
+static void prop_hidden_get(uint32_t handle)
 {
-    if(entry->attribute & ATTR_HIDDEN)
+    if(is_hidden_object(handle))
         pack_data_block_uint16_t(0x1);
     else
         pack_data_block_uint16_t(0x0);
 }
 
-static void prop_system_get(const struct dircache_entry *entry)
+static void prop_system_get(uint32_t handle)
 {
-    if(entry->attribute & ATTR_SYSTEM)
+    if(is_system_object(handle))
         pack_data_block_uint16_t(0x1);
     else
         pack_data_block_uint16_t(0x0);
 }
 
-static void prop_name_get(const struct dircache_entry *entry)
+static void prop_name_get(uint32_t handle)
 {
     static char path[MAX_PATH];
-    dircache_copy_path(entry, path, MAX_PATH);
+    copy_object_path(handle, path, MAX_PATH);
     pack_data_block_string_charz(path);
 }
 

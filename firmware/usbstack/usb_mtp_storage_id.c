@@ -116,7 +116,7 @@ const char *get_storage_id_mount_point(uint32_t stor_id)
     if(volume == 0)
         snprintf(buffer, sizeof buffer, "/");
     else
-        snprintf(buffer, sizeof buffer, "/" VOL_NAMES, volume);
+        snprintf(buffer, sizeof buffer, "/" VOL_NAMES "/", volume);
     
     return &buffer[0];
 }
