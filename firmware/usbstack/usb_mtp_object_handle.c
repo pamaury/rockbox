@@ -88,21 +88,24 @@ static uint32_t dircache_entry_to_mtp_handle(const struct dircache_entry *entry)
 /* accept stor_id=0x00000000 iff direntry is well specified (ie not root) */
 /* depth first search */
 /* returns mtp error code */
-uint16_t generic_list_files(uint32_t stor_id, uint32_t obj_handle, list_file_func_t lff, void *arg)
+uint16_t generic_list_files2(uint32_t stor_id, const struct dircache_entry *direntry, list_file_func_t lff, void *arg)
 {
-    const struct dircache_entry *direntry = mtp_handle_to_dircache_entry(obj_handle, true);
     const struct dircache_entry *entry;
     uint16_t ret;
     unsigned status;
     
-    logf("mtp: list_files stor_id=0x%lx entry=0x%lx",stor_id, (uint32_t)direntry);
+    logf("mtp: list_files stor_id=0x%lx entry=0x%lx", stor_id, (uint32_t)direntry);
     
     if((uint32_t)direntry == 0xffffffff)
     {
         /* check stor_id is valid */
         if(!is_valid_storage_id(stor_id))
             return ERROR_INVALID_STORAGE_ID;
+        logf("try to get dircache entry for '%s'...", get_storage_id_mount_point(stor_id));
         direntry = dircache_get_entry_ptr(get_storage_id_mount_point(stor_id));
+        logf("result is %lx\n", (uint32_t)direntry);
+        if(!dircache_is_valid_ptr(direntry))
+            return ERROR_INVALID_OBJ_HANDLE;
     }
     else
     {
@@ -131,13 +134,40 @@ uint16_t generic_list_files(uint32_t stor_id, uint32_t obj_handle, list_file_fun
         /* handle recursive listing */
         if((entry->attribute & ATTR_DIRECTORY) && (status & LF_ENTER))
         {
-            ret = generic_list_files(stor_id, dircache_entry_to_mtp_handle(entry), lff, arg);
+            ret = generic_list_files2(stor_id, entry, lff, arg);
             if(ret != ERROR_OK)
                 return ret;
         }
     }
 
     return ERROR_OK;
+}
+
+uint16_t generic_list_files(uint32_t stor_id, uint32_t obj_handle, list_file_func_t lff, void *arg)
+{
+    const struct dircache_entry *direntry = mtp_handle_to_dircache_entry(obj_handle, true);
+    uint16_t ret;
+    
+    /* handle all storages if necessary */
+    if(stor_id == 0xffffffff)
+    {
+        /* if all storages are requested, only root is a valid parent object */
+        if((uint32_t)direntry != 0xffffffff)
+            return ERROR_INVALID_OBJ_HANDLE;
+        
+        stor_id = get_first_storage_id();
+        
+        do
+        {
+            ret = generic_list_files2(stor_id, direntry, lff, arg);
+            if(ret != ERROR_OK)
+                return ret;
+        }while((stor_id = get_next_storage_id(stor_id)));
+        
+        return ERROR_OK;
+    }
+    else
+        return generic_list_files2(stor_id, direntry, lff, arg);
 }
 
 uint32_t get_object_storage_id(uint32_t handle)

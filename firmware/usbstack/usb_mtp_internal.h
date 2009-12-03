@@ -463,7 +463,7 @@ uint32_t get_parent_object(uint32_t handle);
 void copy_object_date_created(uint32_t handle, struct tm *filetm);
 void copy_object_date_modified(uint32_t handle, struct tm *filetm);
 
-/* accept stor_id=0x00000000 iff handle is well specified (ie not root) */
+/* accept stor_id=0xffffffff whichs means all storages */
 /* depth first search */
 /* returns mtp error code */
 uint16_t generic_list_files(uint32_t stor_id, uint32_t obj_handle, list_file_func_t lff, void *arg);
