@@ -530,24 +530,34 @@ static void send_object_info_split_routine(unsigned char *data, int length, uint
         /* create empty file */
         int fd = open(path, O_RDWR|O_CREAT|O_TRUNC);
         if(fd < 0)
+        {
+            logf("mtp: oops, couldn't create file");
             return fail_op_with(ERROR_GENERAL_ERROR, NO_DATA_PHASE);
+        }
         close(fd);
     }
     
-    logf("mtp: object created");
+    logf("mtp: object created (size=%lu)", oi.compressed_size);
 
     this_handle = get_object_handle_by_name(path);
     if(this_handle == 0x00000000)
+    {
+        logf("mtp: oops, file was no created ?");
         return fail_op_with(ERROR_GENERAL_ERROR, NO_DATA_PHASE);
+    }
  
     /* if file size is nonzero, add a pending OI (except if there is one) */
     if(oi.object_format != OBJ_FMT_ASSOCIATION && oi.compressed_size != 0)
     {
         if(mtp_state.has_pending_oi)
+        {
+            logf("mtp: oops, there is a pending object info");
             return fail_op_with(ERROR_GENERAL_ERROR, NO_DATA_PHASE);
+        }
         mtp_state.pending_oi.handle = this_handle;
         mtp_state.pending_oi.size = oi.compressed_size;
         mtp_state.has_pending_oi = true;
+        logf("mtp: pending OI created");
     }
  
     mtp_cur_resp.code = ERROR_OK;
@@ -647,18 +657,28 @@ void send_object(void)
     static char path[MAX_PATH];
     /* check there is a pending OI */
     if(!mtp_state.has_pending_oi)
+    {
+        logf("mtp: oops, no pending object info !");
         return fail_op_with(ERROR_NO_VALID_OBJECTINFO, RECV_DATA_PHASE);
+    }
     
     logf("mtp: send object: associated objectinfo=0x%lx", mtp_state.pending_oi.handle);
     
     /* sanity check */
     if(!is_valid_object_handle(mtp_state.pending_oi.handle, false))
+    {
+        logf("mtp: oops, pending oi handle is not valid !");
         return fail_op_with(ERROR_NO_VALID_OBJECTINFO, RECV_DATA_PHASE);
+    }
     copy_object_path(mtp_state.pending_oi.handle, path, sizeof(path));
+    logf("mtp: path=%s", path);
     
     st.fd = open(path, O_RDWR|O_TRUNC);
     if(st.fd < 0)
+    {
+        logf("mtp: oops, couldn't open pending object !(errno=%d)", errno);
         return fail_op_with(ERROR_NO_VALID_OBJECTINFO, RECV_DATA_PHASE);
+    }
     st.first_xfer = true;
     /* wait data */
     receive_split_data(&send_object_split_routine, &finish_send_object_split_routine, &st);
