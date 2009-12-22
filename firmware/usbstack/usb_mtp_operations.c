@@ -270,8 +270,7 @@ static void list_and_pack_files(uint32_t stor_id, uint32_t obj_handle, bool recu
     start_pack_data_block_array();
     
     err = generic_list_files(stor_id, obj_handle, &list_and_pack_files_lff, &recursive);
-    
-    finish_pack_data_block_array();
+    logf("mtp: lapf h=0x%lx c=%lu",obj_handle,finish_pack_data_block_array());
     finish_pack_data_block();
     
     /* if an error occured, restart packing to have a zero size overhead */
@@ -960,6 +959,9 @@ prop_name_default = {0, {}},
 prop_c_date_default = {0, {}},
 prop_m_date_default = {0, {}};
 
+static const persistent_unique_id_t
+prop_persistent_unique_id_default = {{0}};
+
 static void prop_stor_id_get(uint32_t handle);
 static void prop_obj_fmt_get(uint32_t handle);
 static void prop_assoc_type_get(uint32_t handle);
@@ -972,6 +974,7 @@ static void prop_parent_obj_get(uint32_t handle);
 static void prop_hidden_get(uint32_t handle);
 static void prop_system_get(uint32_t handle);
 static void prop_name_get(uint32_t handle);
+static void prop_persistent_unique_id_get(uint32_t handle);
 
 static const struct mtp_obj_prop mtp_obj_prop_desc[] =
 {
@@ -1010,12 +1013,15 @@ static const struct mtp_obj_prop mtp_obj_prop_desc[] =
      &prop_system_default, OBJ_PROP_FORM_ENUM, &prop_system_enum, &prop_system_get},
     /* Name */
     {&prop_fmt_all, OBJ_PROP_NAME, TYPE_STR, OBJ_PROP_GET,
-     &prop_name_default, OBJ_PROP_FORM_NONE, NULL, &prop_name_get}
+     &prop_name_default, OBJ_PROP_FORM_NONE, NULL, &prop_name_get},
+    /* Persistent Unique Object Id */
+    {&prop_fmt_all, OBJ_PROP_PERSISTENT, TYPE_UINT128, OBJ_PROP_GET,
+     &prop_persistent_unique_id_default, OBJ_PROP_FORM_NONE, NULL, &prop_persistent_unique_id_get}
 };
 
 void get_object_props_supported(uint32_t object_fmt)
 {
-    logf("mtp: get object props supported: fmt=0x%lx", object_fmt);
+    //logf("mtp: get object props supported: fmt=0x%lx", object_fmt);
     
     uint32_t i, j;
     
@@ -1036,7 +1042,7 @@ void get_object_props_supported(uint32_t object_fmt)
 
 void get_object_prop_desc(uint32_t obj_prop, uint32_t obj_fmt)
 {
-    logf("mtp: get object props desc: prop=0x%lx fmt=0x%lx", obj_prop, obj_fmt);
+    //logf("mtp: get object props desc: prop=0x%lx fmt=0x%lx", obj_prop, obj_fmt);
     
     uint32_t i, j;
     for(i = 0; i < sizeof(mtp_obj_prop_desc)/sizeof(mtp_obj_prop_desc[0]); i++)
@@ -1115,41 +1121,54 @@ void get_object_prop_value(uint32_t handle, uint32_t obj_prop)
     send_data_block();
 }
 
+#if 0
+#define prop_logf logf
+#else
+#define prop_logf(...)
+#endif
+
 static void prop_stor_id_get(uint32_t handle)
 {
+    prop_logf("mtp: %s -> stor_id=0x%lx",get_object_filename(handle),get_object_storage_id(handle));
     pack_data_block_uint32_t(get_object_storage_id(handle));
 }
 
 static void prop_obj_fmt_get(uint32_t handle)
 {
+    prop_logf("mtp: %s -> obj_fmt=0x%x",get_object_filename(handle),get_object_format(handle));
     pack_data_block_uint16_t(get_object_format(handle));
 }
 
 static void prop_assoc_type_get(uint32_t handle)
 {
     (void) handle;
+    prop_logf("mtp: %s -> assoc_type=0x%x",get_object_filename(handle),ASSOC_TYPE_FOLDER);
     pack_data_block_uint16_t(ASSOC_TYPE_FOLDER);
 }
 
 static void prop_assoc_desc_get(uint32_t handle)
 {
     (void) handle;
+    prop_logf("mtp: %s -> assoc_desc=%u",get_object_filename(handle),0x1);
     pack_data_block_uint32_t(0x1);
 }
 
 static void prop_obj_size_get(uint32_t handle)
 {
+    prop_logf("mtp: %s -> obj_size=%lu",get_object_filename(handle),get_object_size(handle));
     pack_data_block_uint32_t(get_object_size(handle));
 }
 
 static void prop_filename_get(uint32_t handle)
 {
+    prop_logf("mtp: %s -> filename=%s",get_object_filename(handle),get_object_filename(handle));
     pack_data_block_string_charz(get_object_filename(handle));
 }
 
 static void prop_c_date_get(uint32_t handle)
 {
     struct tm filetm;
+    prop_logf("mtp: %s -> c_date=<date>",get_object_filename(handle));
     copy_object_date_created(handle, &filetm);
     pack_data_block_date_time(&filetm);
 }
@@ -1157,17 +1176,21 @@ static void prop_c_date_get(uint32_t handle)
 static void prop_m_date_get(uint32_t handle)
 {
     struct tm filetm;
+    prop_logf("mtp: %s -> m_date=<date>",get_object_filename(handle));
     copy_object_date_modified(handle, &filetm);
     pack_data_block_date_time(&filetm);
 }
 
 static void prop_parent_obj_get(uint32_t handle)
 {
+    prop_logf("mtp: %s -> parent=%lu(%s)",get_object_filename(handle),get_parent_object(handle),
+        get_parent_object(handle)==0?NULL:get_object_filename(get_parent_object(handle)));
     pack_data_block_uint32_t(get_parent_object(handle));
 }
 
 static void prop_hidden_get(uint32_t handle)
 {
+    prop_logf("mtp: %s -> hidden=%d",get_object_filename(handle),is_hidden_object(handle));
     if(is_hidden_object(handle))
         pack_data_block_uint16_t(0x1);
     else
@@ -1176,6 +1199,7 @@ static void prop_hidden_get(uint32_t handle)
 
 static void prop_system_get(uint32_t handle)
 {
+    prop_logf("mtp: %s -> system=%d",get_object_filename(handle),is_hidden_object(handle));
     if(is_system_object(handle))
         pack_data_block_uint16_t(0x1);
     else
@@ -1184,8 +1208,15 @@ static void prop_system_get(uint32_t handle)
 
 static void prop_name_get(uint32_t handle)
 {
-    static char path[MAX_PATH];
-    copy_object_path(handle, path, MAX_PATH);
-    pack_data_block_string_charz(path);
+    prop_logf("mtp: %s -> name=%s",get_object_filename(handle),get_object_filename(handle));
+    pack_data_block_string_charz(get_object_filename(handle));
+}
+
+static void prop_persistent_unique_id_get(uint32_t handle)
+{
+    persistent_unique_id_t pui=get_object_persistent_unique_id(handle);
+    prop_logf("mtp: %s -> pui=[0x%lx,0x%lx,0x%lx,0x%lx]",get_object_filename(handle),
+        pui.u32[0],pui.u32[1],pui.u32[2],pui.u32[3]);
+    pack_data_block_typed_ptr(&pui,TYPE_UINT128);
 }
 

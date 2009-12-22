@@ -249,6 +249,18 @@ void copy_object_date_modified(uint32_t handle, struct tm *filetm)
     const struct dircache_entry *entry = mtp_handle_to_dircache_entry(handle, false);
     fat2tm(filetm, entry->wrtdate, entry->wrttime);
 }
+
+persistent_unique_id_t get_object_persistent_unique_id(uint32_t handle)
+{
+    /*const struct dircache_entry *entry = mtp_handle_to_dircache_entry(handle, false);*/
+    persistent_unique_id_t pui;
+    
+    /* Persistent Unique Object Identifier: md5sum of the complete filename ? */
+    /* For now, it's only the handle repeated 4 times */
+    pui.u32[0]=pui.u32[1]=pui.u32[2]=pui.u32[3]=handle;
+    
+    return pui;
+}
 /*
  * Init
  */

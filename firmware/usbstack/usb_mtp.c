@@ -254,9 +254,11 @@ uint32_t get_type_size(uint16_t type)
 {
     switch(type)
     {
-        case TYPE_UINT8: return 1;
-        case TYPE_UINT16: return 2;
-        case TYPE_UINT32: return 4;
+        case TYPE_UINT8:case TYPE_INT8: return 1;
+        case TYPE_UINT16:case TYPE_INT16: return 2;
+        case TYPE_UINT32:case TYPE_INT32: return 4;
+        case TYPE_UINT64:case TYPE_INT64: return 8;
+        case TYPE_UINT128:case TYPE_INT128: return 16;
         default:
             logf("mtp: error: get_type_size called with an unknown type(%hu)", type);
             return 0;
@@ -776,8 +778,8 @@ int usb_mtp_get_ms_descriptor(uint16_t wValue, uint16_t wIndex, unsigned char *d
     else
     {
         logf("mtp: invalid request (probably from libmtp)");
-        usb_drv_stall(EP_CONTROL, true, true);
         usb_ack_control();
+        usb_drv_stall(EP_CONTROL, true, true);
     }
     
     return 0;

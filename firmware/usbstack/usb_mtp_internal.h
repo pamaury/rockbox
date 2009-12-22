@@ -304,6 +304,7 @@ struct device_info
 #define OBJ_PROP_PARENT_OBJ 0xdc0b
 #define OBJ_PROP_HIDDEN     0xdc0d
 #define OBJ_PROP_SYS_OBJ    0xdc0e
+#define OBJ_PROP_PERSISTENT 0xdc41
 #define OBJ_PROP_NAME       0xdc44
 
 enum data_phase_type
@@ -346,6 +347,16 @@ struct mtp_state_t
     bool has_pending_oi;/* is there an object with ObjectInfo but without ObjectBinary ? */
     struct mtp_pending_objectinfo pending_oi;
 };
+
+/* 128-bit unique identifier (persistent) */
+union persistent_unique_id_t
+{
+    uint32_t u32[4];
+    uint16_t u16[8];
+    uint8_t u8[16];
+} __attribute__ ((packed));
+
+typedef union persistent_unique_id_t persistent_unique_id_t;
 
 /*
  * usb_mtp.c:
@@ -458,12 +469,14 @@ bool is_directory_object(uint32_t handle);
 bool is_hidden_object(uint32_t handle);
 bool is_system_object(uint32_t handle);
 uint32_t get_object_size(uint32_t handle);
+persistent_unique_id_t get_object_persistent_unique_id(uint32_t handle);
 /* return 0x00000000 if at root level */
 uint32_t get_parent_object(uint32_t handle);
 void copy_object_date_created(uint32_t handle, struct tm *filetm);
 void copy_object_date_modified(uint32_t handle, struct tm *filetm);
 
 /* accept stor_id=0xffffffff whichs means all storages */
+/* accept stor_id=0x00000000 if obj_handle!=0xffffffff */
 /* depth first search */
 /* returns mtp error code */
 uint16_t generic_list_files(uint32_t stor_id, uint32_t obj_handle, list_file_func_t lff, void *arg);
