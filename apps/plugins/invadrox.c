@@ -139,7 +139,7 @@ PLUGIN_HEADER
 #define RIGHT BUTTON_RIGHT
 #define FIRE BUTTON_SELECT
 
-#elif CONFIG_KEYPAD == ELIO_TPJ1022_PAD
+#elif CONFIG_KEYPAD == TATUNG_TPJ1022_PAD
 
 /* TODO: Figure out which buttons to use for Tatung Elio TPJ-1022 */
 #define QUIT BUTTON_AB
@@ -154,9 +154,12 @@ PLUGIN_HEADER
 #define RIGHT BUTTON_RIGHT
 #define FIRE BUTTON_SELECT
 
-#elif CONFIG_KEYPAD == COWOND2_PAD
+#elif CONFIG_KEYPAD == COWON_D2_PAD
 
 #define QUIT BUTTON_POWER
+#define LEFT BUTTON_MINUS
+#define RIGHT BUTTON_PLUS
+#define FIRE BUTTON_MENU
 
 #elif CONFIG_KEYPAD == IAUDIO67_PAD
 
@@ -171,6 +174,13 @@ PLUGIN_HEADER
 #define LEFT BUTTON_LEFT
 #define RIGHT BUTTON_RIGHT
 #define FIRE BUTTON_SELECT
+
+#elif CONFIG_KEYPAD == PHILIPS_SA9200_PAD
+
+#define QUIT BUTTON_POWER
+#define LEFT BUTTON_PREV
+#define RIGHT BUTTON_NEXT
+#define FIRE BUTTON_PLAY
 
 #elif CONFIG_KEYPAD == ONDAVX747_PAD || \
 CONFIG_KEYPAD == ONDAVX777_PAD || \
@@ -189,19 +199,42 @@ CONFIG_KEYPAD == MROBE500_PAD
     #error INVADROX: Unsupported keypad
 #endif
 
+#ifndef RC_QUIT
+#define RC_QUIT 0
+#endif
+
 #ifdef HAVE_TOUCHSCREEN
+
 #ifndef QUIT
-#define QUIT     BUTTON_TOPLEFT
+#define QUIT 0
 #endif
 #ifndef LEFT
-#define LEFT     BUTTON_MIDLEFT
+#define LEFT 0
 #endif
 #ifndef RIGHT
-#define RIGHT    BUTTON_MIDRIGHT
+#define RIGHT 0
 #endif
 #ifndef FIRE
-#define FIRE     BUTTON_CENTER
+#define FIRE 0
 #endif
+
+#define TOUCHSCREEN_QUIT    BUTTON_TOPLEFT
+#define TOUCHSCREEN_LEFT    (BUTTON_MIDLEFT | BUTTON_BOTTOMLEFT)
+#define TOUCHSCREEN_RIGHT   (BUTTON_MIDRIGHT | BUTTON_BOTTOMRIGHT)
+#define TOUCHSCREEN_FIRE    (BUTTON_CENTER | BUTTON_BOTTOMMIDDLE)
+
+#define ACTION_QUIT     (QUIT | TOUCHSCREEN_QUIT | RC_QUIT)
+#define ACTION_LEFT     (LEFT | TOUCHSCREEN_LEFT)
+#define ACTION_RIGHT    (RIGHT | TOUCHSCREEN_RIGHT)
+#define ACTION_FIRE     (FIRE | TOUCHSCREEN_FIRE)
+
+#else /* HAVE_TOUCHSCREEN */
+
+#define ACTION_QUIT  (QUIT | RC_QUIT)
+#define ACTION_LEFT  LEFT
+#define ACTION_RIGHT RIGHT
+#define ACTION_FIRE  FIRE
+
 #endif
 
 #ifndef UNUSED
@@ -1643,17 +1676,17 @@ inline bool handle_buttons(void)
     pressed = newbuttonstate & ~oldbuttonstate;
     oldbuttonstate = newbuttonstate;
     if (pressed) {
-        if (pressed & LEFT) {
+        if (pressed & ACTION_LEFT) {
             if (ship_acc > -1) {
                 ship_acc--;
             }
         }
-        if (pressed & RIGHT) {
+        if (pressed & ACTION_RIGHT) {
             if (ship_acc < 1) {
                 ship_acc++;
             }
         }
-        if (pressed & FIRE) {
+        if (pressed & ACTION_FIRE) {
             if (fire == S_IDLE) {
                 /* Fire shot */
                 fire_x = ship_x + SHIP_WIDTH / 2;
@@ -1662,24 +1695,18 @@ inline bool handle_buttons(void)
                 /* TODO: play fire sound */
             }
         }
-#ifdef RC_QUIT
-        if (pressed & RC_QUIT) {
-            rb->splash(HZ * 1, "Quit");
-            return true;
-        }
-#endif
-        if (pressed & QUIT) {
+        if (pressed & ACTION_QUIT) {
             rb->splash(HZ * 1, "Quit");
             return true;
         }
     }
     if (released) {
-        if ((released & LEFT)) {
+        if ((released & ACTION_LEFT)) {
             if (ship_acc < 1) {
                 ship_acc++;
             }
         }
-        if ((released & RIGHT)) {
+        if ((released & ACTION_RIGHT)) {
             if (ship_acc > -1) {
                 ship_acc--;
             }

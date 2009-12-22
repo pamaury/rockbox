@@ -192,7 +192,15 @@ CONFIG_KEYPAD == SANSA_M200_PAD
 #define UP BUTTON_UP
 #define DOWN BUTTON_DOWN
 
-#elif CONFIG_KEYPAD == COWOND2_PAD
+#elif CONFIG_KEYPAD == PHILIPS_SA9200_PAD
+#define QUIT BUTTON_POWER
+#define LEFT BUTTON_PREV
+#define RIGHT BUTTON_NEXT
+#define SELECT BUTTON_PLAY
+#define UP BUTTON_UP
+#define DOWN BUTTON_DOWN
+
+#elif CONFIG_KEYPAD == COWON_D2_PAD
 #define QUIT    BUTTON_POWER
 
 #elif CONFIG_KEYPAD == ONDAVX747_PAD
@@ -258,13 +266,7 @@ CONFIG_KEYPAD == SANSA_M200_PAD
 #include "pluginbitmaps/brickmania_gameover.h"
 
 #define GAMESCREEN_WIDTH    FIXED3(LCD_WIDTH)
-
-#if LCD_WIDTH<=LCD_HEIGHT
-/* Maintain a 4/3 ratio (width/height) */
-#define GAMESCREEN_HEIGHT   (GAMESCREEN_WIDTH * 3 / 4)
-#else
 #define GAMESCREEN_HEIGHT   FIXED3(LCD_HEIGHT)
-#endif
 
 #define PAD_WIDTH        FIXED3(BMPWIDTH_brickmania_pads)
 #define PAD_HEIGHT       FIXED3(BMPHEIGHT_brickmania_pads/3)
@@ -1038,6 +1040,8 @@ static void brickmania_savegame(void)
 
     /* write out the game state to the save file */
     fd = rb->open(SAVE_FILE, O_WRONLY|O_CREAT);
+    if(fd < 0) return;
+
     rb->write(fd, &pad_pos_x, sizeof(pad_pos_x));
     rb->write(fd, &life, sizeof(life));
     rb->write(fd, &game_state, sizeof(game_state));
@@ -1579,9 +1583,9 @@ static int brickmania_game_loop(void)
                         rght_brick.p2.y = brick[bnum].powertop + BRICK_HEIGHT;
                     
                         /* Check if any of the active fires hit a brick */
-                        if (pad_type == SHOOTER) 
+                        for (k=0;k<30;k++) 
                         {
-                            for (k=0;k<30;k++) 
+                            if(fire[k].top > 0)
                             {
                                 /* Use misc_line to check if fire hit brick */
                                 misc_line.p1.x = fire[k].x_pos;
@@ -1591,8 +1595,7 @@ static int brickmania_game_loop(void)
                                 misc_line.p2.y = fire[k].top + SPEED_FIRE;
                             
                                 /* If the fire hit the brick take care of it */
-                                if (fire[k].top > 0 && 
-                                    check_lines(&misc_line, &bot_brick, 
+                                if (check_lines(&misc_line, &bot_brick, 
                                                 &pt_hit)) 
                                 {
                                     score+=13;
@@ -1602,7 +1605,7 @@ static int brickmania_game_loop(void)
                                 }
                             }
                         }
-
+                            
                         /* Draw the brick */
                         rb->lcd_bitmap_part(brickmania_bricks,0,
                             INT3(BRICK_HEIGHT)*brick[bnum].color,

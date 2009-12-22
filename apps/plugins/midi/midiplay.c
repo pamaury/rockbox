@@ -139,7 +139,7 @@ PLUGIN_IRAM_DECLARE
 #define BTN_PLAY         BUTTON_RC_PLAY
 
 
-#elif CONFIG_KEYPAD == COWOND2_PAD
+#elif CONFIG_KEYPAD == COWON_D2_PAD
 #define BTN_QUIT         BUTTON_POWER
 
 #elif CONFIG_KEYPAD == IAUDIO67_PAD
@@ -162,6 +162,14 @@ PLUGIN_IRAM_DECLARE
 #define BTN_QUIT         BUTTON_POWER
 #define BTN_RIGHT        BUTTON_RIGHT
 #define BTN_LEFT         BUTTON_LEFT
+#define BTN_UP           BUTTON_UP
+#define BTN_DOWN         BUTTON_DOWN
+#define BTN_PLAY         BUTTON_MENU
+
+#elif CONFIG_KEYPAD == PHILIPS_SA9200_PAD
+#define BTN_QUIT         BUTTON_POWER
+#define BTN_RIGHT        BUTTON_NEXT
+#define BTN_LEFT         BUTTON_PREV
 #define BTN_UP           BUTTON_UP
 #define BTN_DOWN         BUTTON_DOWN
 #define BTN_PLAY         BUTTON_MENU

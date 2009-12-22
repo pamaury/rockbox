@@ -143,7 +143,7 @@ const unsigned char rockbox16x7[] = {
 #define LP_DEC_Y BUTTON_RC_VOL_DOWN
 #define LP_INC_Y BUTTON_RC_VOL_UP
 
-#elif CONFIG_KEYPAD == COWOND2_PAD
+#elif CONFIG_KEYPAD == COWON_D2_PAD
 #define LP_QUIT BUTTON_POWER
 
 #elif CONFIG_KEYPAD == IAUDIO67_PAD
@@ -164,6 +164,13 @@ const unsigned char rockbox16x7[] = {
 #define LP_QUIT BUTTON_POWER
 #define LP_DEC_X BUTTON_LEFT
 #define LP_INC_X BUTTON_RIGHT
+#define LP_DEC_Y BUTTON_DOWN
+#define LP_INC_Y BUTTON_UP
+
+#elif CONFIG_KEYPAD == PHILIPS_SA9200_PAD
+#define LP_QUIT BUTTON_POWER
+#define LP_DEC_X BUTTON_PREV
+#define LP_INC_X BUTTON_NEXT
 #define LP_DEC_Y BUTTON_DOWN
 #define LP_INC_Y BUTTON_UP
 

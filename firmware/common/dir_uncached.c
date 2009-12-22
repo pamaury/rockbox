@@ -26,6 +26,7 @@
 #include "fat.h"
 #include "dir.h"
 #include "debug.h"
+#include "filefuncs.h"
 
 #if ((defined(MEMORYSIZE) && (MEMORYSIZE > 8)) || MEM > 8)
 #define MAX_OPEN_DIRS 12
@@ -34,36 +35,6 @@
 #endif
 
 static DIR_UNCACHED opendirs[MAX_OPEN_DIRS];
-
-#ifdef HAVE_MULTIVOLUME
-
-/* returns on which volume this is, and copies the reduced name
-   (sortof a preprocessor for volume-decorated pathnames) */
-int strip_volume(const char* name, char* namecopy)
-{
-    int volume = 0;
-    const char *temp = name;
-    
-    while (*temp == '/')          /* skip all leading slashes */
-        ++temp;
-        
-    if (*temp && !strncmp(temp, VOL_NAMES, VOL_ENUM_POS))
-    {
-        temp += VOL_ENUM_POS;     /* behind special name */
-        volume = atoi(temp);      /* number is following */
-        temp = strchr(temp, '/'); /* search for slash behind */
-        if (temp != NULL)
-            name = temp;          /* use the part behind the volume */
-        else
-            name = "/";           /* else this must be the root dir */
-    }
-
-    strlcpy(namecopy, name, MAX_PATH);
-
-    return volume;
-}
-#endif /* #ifdef HAVE_MULTIVOLUME */
-
 
 #ifdef HAVE_HOTSWAP
 // release all dir handles on a given volume "by force", to avoid leaks
@@ -74,7 +45,11 @@ int release_dirs(int volume)
     int closed = 0;
     for ( dd=0; dd<MAX_OPEN_DIRS; dd++, pdir++)
     {
+#ifdef HAVE_MULTIVOLUME
         if (pdir->fatdir.file.volume == volume)
+#else
+        (void)volume;
+#endif
         {
             pdir->busy = false; /* mark as available, no further action */
             closed++;

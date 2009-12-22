@@ -207,7 +207,7 @@ CONFIG_KEYPAD == SANSA_M200_PAD
 
 #define JEWELS_RC_CANCEL BUTTON_REC
 
-#elif CONFIG_KEYPAD == COWOND2_PAD
+#elif CONFIG_KEYPAD == COWON_D2_PAD
 #define JEWELS_CANCEL BUTTON_POWER
 #define HK_CANCEL "POWER"
 
@@ -239,6 +239,16 @@ CONFIG_KEYPAD == SANSA_M200_PAD
 #define JEWELS_SELECT BUTTON_SELECT
 #define JEWELS_CANCEL BUTTON_POWER
 #define HK_SELECT "SELECT"
+#define HK_CANCEL "POWER"
+
+#elif CONFIG_KEYPAD == PHILIPS_SA9200_PAD
+#define JEWELS_UP     BUTTON_UP
+#define JEWELS_DOWN   BUTTON_DOWN
+#define JEWELS_LEFT   BUTTON_PREV
+#define JEWELS_RIGHT  BUTTON_NEXT
+#define JEWELS_SELECT BUTTON_PLAY
+#define JEWELS_CANCEL BUTTON_POWER
+#define HK_SELECT "PLAY"
 #define HK_CANCEL "POWER"
 
 #elif CONFIG_KEYPAD == ONDAVX747_PAD || \
@@ -470,6 +480,8 @@ static void jewels_savegame(struct game_context* bj)
     int fd;
     /* write out the game state to the save file */
     fd = rb->open(SAVE_FILE, O_WRONLY|O_CREAT);
+    if(fd < 0) return;
+
     rb->write(fd, &bj->tmp_type, sizeof(bj->tmp_type));
     rb->write(fd, &bj->type, sizeof(bj->type));
     rb->write(fd, &bj->score, sizeof(bj->score));

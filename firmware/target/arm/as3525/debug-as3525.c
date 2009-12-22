@@ -30,6 +30,7 @@
 #include "pl180.h"
 #include "ascodec-target.h"
 #include "adc.h"
+#include "storage.h"
 
 #define ON "Enabled"
 #define OFF "Disabled"
@@ -51,8 +52,8 @@
 #define CLK_I2SI             8
 #define CLK_I2SO             9
 #define CLK_DBOP             10
-#define CLK_SD_MCLK_NAND    11
-#define CLK_SD_MCLK_MSD     12
+#define CLK_SD_MCLK_NAND     11
+#define CLK_SD_MCLK_MSD      12
 #define CLK_USB              13
 
 #define I2C2_CPSR0      *((volatile unsigned int *)(I2C_AUDIO_BASE + 0x1C))
@@ -60,6 +61,7 @@
 #define MCI_NAND        *((volatile unsigned long *)(NAND_FLASH_BASE + 0x04))
 #define MCI_SD          *((volatile unsigned long *)(SD_MCI_BASE + 0x04))
 
+extern bool sd_enabled;
 
 /* FIXME: target tree is including ./debug-target.h rather than the one in
  * sansa-fuze/, even though deps contains the correct one
@@ -77,7 +79,7 @@ static inline unsigned read_cp15 (void)
     return (cp15_value);
 }
 
-int calc_freq(int clk)
+static int calc_freq(int clk)
 {
     int out_div;
     unsigned int prediv = ((unsigned int)CGU_PROC>>2) & 0x3;
@@ -183,9 +185,9 @@ int calc_freq(int clk)
             if(!(MCI_NAND & (1<<8)))
                 return 0;
             else if(MCI_NAND & (1<<10))
-                return calc_freq(CLK_PCLK);
+                return calc_freq(CLK_IDE);
             else
-                return calc_freq(CLK_PCLK)/(((MCI_NAND & 0xff)+1)*2);
+                return calc_freq(CLK_IDE)/(((MCI_NAND & 0xff)+1)*2);
         case CLK_SD_MCLK_MSD:
             if(!(MCI_SD & (1<<8)))
                 return 0;
@@ -289,18 +291,25 @@ bool __dbg_hw_info(void)
 
         lcd_putsf(0, line++, "I2SO: %s      %3dMHz", (CGU_AUDIO & (1<<11)) ?
                                     "on " : "off", calc_freq(CLK_I2SO)/1000000);
-        if(MCI_NAND)
+
+        /* If disabled, enable SD cards so we can read the registers */
+        if(sd_enabled == false)
+        {
+            sd_enable(true);
             last_nand = MCI_NAND;
-                                                /*  MCLK == PCLK  */
+#ifdef HAVE_MULTIDRIVE
+            last_sd = MCI_SD;
+#endif
+            sd_enable(false);
+        }
+
         lcd_putsf(0, line++, "SD  :%3dMHz    %3dMHz",
-            ((last_nand ? (AS3525_PCLK_FREQ/ 1000000): 0) /
+            ((AS3525_IDE_FREQ/ 1000000) /
             ((last_nand & MCI_CLOCK_BYPASS)? 1:(((last_nand & 0xff)+1) * 2))),
             calc_freq(CLK_SD_MCLK_NAND)/1000000);
 #ifdef HAVE_MULTIDRIVE
-        if(MCI_SD)
-            last_sd = MCI_SD;
         lcd_putsf(0, line++, "uSD :%3dMHz    %3dMHz",
-            ((last_sd ? (AS3525_PCLK_FREQ/ 1000000): 0) /
+            ((AS3525_PCLK_FREQ/ 1000000) /
             ((last_sd & MCI_CLOCK_BYPASS) ? 1: (((last_sd & 0xff) + 1) * 2))),
             calc_freq(CLK_SD_MCLK_MSD)/1000000);
 #endif

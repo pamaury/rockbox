@@ -84,29 +84,13 @@ enum {
 #define ANGLE_STEP_REP 4
 #endif
 
-#define BUBBLES_QUIT        PLA_QUIT
-#define BUBBLES_START       PLA_START
-#define BUBBLES_SELECT      PLA_FIRE
-#define BUBBLES_RESUME      PLA_MENU
-
-#if CONFIG_KEYPAD != ONDIO_PAD
-
-#define BUBBLES_LVLINC      PLA_UP
-#define BUBBLES_LVLINC_REP  PLA_UP_REPEAT
-#define BUBBLES_LVLDEC      PLA_DOWN
-#define BUBBLES_LVLDEC_REP  PLA_DOWN_REPEAT
-
-#else /* ondio keys */
-
-#define BUBBLES_LVLINC      PLA_RIGHT
-#define BUBBLES_LVLINC_REP  PLA_RIGHT_REPEAT
-#define BUBBLES_LVLDEC      PLA_LEFT
-#define BUBBLES_LVLDEC_REP  PLA_LEFT_REPEAT
-
-#endif
+#define BUBBLES_QUIT1       PLA_QUIT
+#define BUBBLES_QUIT2       PLA_MENU
+#define BUBBLES_PAUSE       PLA_START
+#define BUBBLES_FIRE        PLA_FIRE
 
 /* external bitmaps */
-#ifdef HAVE_LCD_COLOR 
+#ifdef HAVE_LCD_COLOR
 #include "pluginbitmaps/bubbles_background.h"
 #endif
 #include "pluginbitmaps/bubbles_bubble.h"
@@ -137,7 +121,7 @@ enum {
 #define XOFS          64
 #define MAX_FPS       30
 
-/* 16x16 bubbles (H300, iPod Color) */
+/* 16x16 bubbles (H300, iPod Color, HDD6330) */
 #elif (LCD_HEIGHT == 176) && (LCD_WIDTH == 220)
 #define XOFS          46
 #define MAX_FPS       30
@@ -164,9 +148,16 @@ enum {
 #define XOFS          40
 #define MAX_FPS       40
 
-/* 12x12 bubbles (H100, H10, iAudio X5, iPod 3G, iPod 4G grayscale) */
+/* 12x12 bubbles (H100, H10, iAudio X5, HDD1630, iPod 3G, iPod 4G grayscale) */
 #elif (LCD_HEIGHT == 128) && ((LCD_WIDTH == 160) || (LCD_WIDTH == 128))
 #define XOFS          33
+#define MAX_FPS       30
+
+/* 12x12 bubbles (GoGear SA9200) */
+#elif (LCD_HEIGHT == 160) && (LCD_WIDTH == 128)
+#define XOFS          33
+#define ROW_HEIGHT    10
+#define ROW_INDENT     6
 #define MAX_FPS       30
 
 /* 10x10 bubbles (iPod Mini) */
@@ -1442,8 +1433,8 @@ static void bubbles_drawboard(struct game_context* bb) {
         for(j=0; j<colmax; j++) {
             if(bb->playboard[i][j].type >= 0 && !bb->playboard[i][j].delete) {
                 rb->lcd_bitmap_part(bubbles_emblem,
-                  0, EMBLEM_HEIGHT*bb->playboard[i][j].type, 
-                  STRIDE(   SCREEN_MAIN, 
+                  0, EMBLEM_HEIGHT*bb->playboard[i][j].type,
+                  STRIDE(   SCREEN_MAIN,
                             BMPWIDTH_bubbles_emblem, BMPHEIGHT_bubbles_emblem),
                   XOFS+indent+BUBBLE_WIDTH*j+(BUBBLE_WIDTH-EMBLEM_WIDTH)/2,
                   YOFS+ROW_HEIGHT*i+(BUBBLE_HEIGHT-EMBLEM_HEIGHT)/2+bb->compress*ROW_HEIGHT,
@@ -1460,8 +1451,8 @@ static void bubbles_drawboard(struct game_context* bb) {
 
     /* display bubble to be shot */
     rb->lcd_bitmap_part(bubbles_emblem,
-               0, EMBLEM_HEIGHT*bb->queue[bb->nextinq], 
-               STRIDE(  SCREEN_MAIN, 
+               0, EMBLEM_HEIGHT*bb->queue[bb->nextinq],
+               STRIDE(  SCREEN_MAIN,
                         BMPWIDTH_bubbles_emblem, BMPHEIGHT_bubbles_emblem),
                SHOTX+(BUBBLE_WIDTH-EMBLEM_WIDTH)/2,
                SHOTY+(BUBBLE_HEIGHT-EMBLEM_HEIGHT)/2,
@@ -1475,8 +1466,8 @@ static void bubbles_drawboard(struct game_context* bb) {
     /* display next bubble to be shot */
 #ifndef NEXT_BB_X
     rb->lcd_bitmap_part(bubbles_emblem,
-               0, EMBLEM_HEIGHT*bb->queue[(bb->nextinq+1)%NUM_QUEUE], 
-               STRIDE(  SCREEN_MAIN, 
+               0, EMBLEM_HEIGHT*bb->queue[(bb->nextinq+1)%NUM_QUEUE],
+               STRIDE(  SCREEN_MAIN,
                         BMPWIDTH_bubbles_emblem, BMPHEIGHT_bubbles_emblem),
                XOFS/2-BUBBLE_WIDTH/2+(BUBBLE_WIDTH-EMBLEM_WIDTH)/2,
                SHOTY+(BUBBLE_HEIGHT-EMBLEM_HEIGHT)/2,
@@ -1488,8 +1479,8 @@ static void bubbles_drawboard(struct game_context* bb) {
     rb->lcd_set_drawmode(DRMODE_SOLID);
 #else
     rb->lcd_bitmap_part(bubbles_emblem,
-               0, EMBLEM_HEIGHT*bb->queue[(bb->nextinq+1)%NUM_QUEUE], 
-               STRIDE(  SCREEN_MAIN, 
+               0, EMBLEM_HEIGHT*bb->queue[(bb->nextinq+1)%NUM_QUEUE],
+               STRIDE(  SCREEN_MAIN,
                         BMPWIDTH_bubbles_emblem, BMPHEIGHT_bubbles_emblem),
                NEXT_BB_X + NEXT_BB_WIDTH/2-BUBBLE_WIDTH/2+(BUBBLE_WIDTH-EMBLEM_WIDTH)/2,
                NEXT_BB_Y + (BUBBLE_HEIGHT-EMBLEM_HEIGHT)/2 + h,
@@ -1552,7 +1543,7 @@ static void bubbles_drawboard(struct game_context* bb) {
 #else
     rb->lcd_putsxy(NEXT_BB_X+(NEXT_BB_WIDTH/2-w1/2), NEXT_BB_Y, next);
 #endif
-    
+
 
     if(bb->elapsedshot >= (MAX_SHOTTIME*7)/10) {
         rb->lcd_getstringsize(hurry, &w1, &h);
@@ -1612,9 +1603,9 @@ static int bubbles_fire(struct game_context* bb) {
 
         /* display shot */
         bubbles_drawboard(bb);
-        rb->lcd_bitmap_part(bubbles_emblem, 0, EMBLEM_HEIGHT*bubblecur, 
-                       STRIDE(  SCREEN_MAIN, 
-                                BMPWIDTH_bubbles_emblem, 
+        rb->lcd_bitmap_part(bubbles_emblem, 0, EMBLEM_HEIGHT*bubblecur,
+                       STRIDE(  SCREEN_MAIN,
+                                BMPWIDTH_bubbles_emblem,
                                 BMPHEIGHT_bubbles_emblem),
                        SHOTX+tempxofs+(BUBBLE_WIDTH-EMBLEM_WIDTH)/2,
                        SHOTY+tempyofs+(BUBBLE_HEIGHT-EMBLEM_HEIGHT)/2,
@@ -2077,9 +2068,9 @@ static int bubbles_fall(struct game_context* bb) {
                         onscreen = true;
 
                         rb->lcd_bitmap_part(bubbles_emblem, 0,
-                                EMBLEM_HEIGHT*bb->playboard[i][j].type, 
-                                STRIDE( SCREEN_MAIN, 
-                                        BMPWIDTH_bubbles_emblem, 
+                                EMBLEM_HEIGHT*bb->playboard[i][j].type,
+                                STRIDE( SCREEN_MAIN,
+                                        BMPWIDTH_bubbles_emblem,
                                         BMPHEIGHT_bubbles_emblem),
                                 XOFS+indent+BUBBLE_WIDTH*j+
                                     (BUBBLE_WIDTH-EMBLEM_WIDTH)/2+xofs,
@@ -2301,11 +2292,11 @@ static int bubbles_handlebuttons(struct game_context* bb, bool animblock,
     int buttonres;
     long start;
     const struct button_mapping *plugin_contexts[]
-#if (CONFIG_KEYPAD != SANSA_E200_PAD) && \
-      (CONFIG_KEYPAD != SANSA_FUZE_PAD)
-                     = {generic_left_right_fire,generic_actions};
-#else
+#if (CONFIG_KEYPAD == SANSA_E200_PAD) || \
+      (CONFIG_KEYPAD == SANSA_FUZE_PAD)
                      = {generic_directions,generic_actions};
+#else
+                     = {generic_left_right_fire,generic_actions};
 #endif
 
     if (timeout < 0)
@@ -2314,7 +2305,7 @@ static int bubbles_handlebuttons(struct game_context* bb, bool animblock,
 #if defined(HAS_BUTTON_HOLD) && !defined(HAVE_REMOTE_LCD_AS_MAIN)
     /* FIXME: Should probably check remote hold here */
     if (rb->button_hold())
-        button = BUBBLES_START;
+        button = BUBBLES_PAUSE;
 #endif
 
     switch(button){
@@ -2330,7 +2321,7 @@ static int bubbles_handlebuttons(struct game_context* bb, bool animblock,
             if(bb->angle < MAX_ANGLE) bb->angle += ANGLE_STEP;
             break;
 
-        case BUBBLES_SELECT: /* fire the shot */
+        case BUBBLES_FIRE: /* fire the shot */
             if(!animblock) {
                 bb->elapsedlvl += bb->elapsedshot;
                 bb->elapsedshot = 0;
@@ -2342,18 +2333,18 @@ static int bubbles_handlebuttons(struct game_context* bb, bool animblock,
             }
             break;
 
-        case BUBBLES_START:  /* pause the game */
+        case BUBBLES_PAUSE:  /* pause the game */
             start = *rb->current_tick;
             rb->splash(0, "Paused");
             while(pluginlib_getaction(TIMEOUT_BLOCK,plugin_contexts,2)
-                 != (BUBBLES_START));
+                 != BUBBLES_PAUSE);
             bb->startedshot += *rb->current_tick-start;
             bubbles_drawboard(bb);
             rb->lcd_update();
             break;
 
-        case BUBBLES_RESUME: /* save and end the game */
-        case BUBBLES_QUIT:   /* end the game */
+        case BUBBLES_QUIT1:
+        case BUBBLES_QUIT2:   /* end the game */
             if(!animblock) {
                 resume = true;
                 return BB_END;
@@ -2374,15 +2365,24 @@ static int bubbles_handlebuttons(struct game_context* bb, bool animblock,
     return BB_NONE;
 }
 
+static int bubbles_menu_cb(int action, const struct menu_item_ex *this_item)
+{
+    int i = ((intptr_t)this_item);
+    if(action == ACTION_REQUEST_MENUITEM
+       && !resume && (i==0 || i==5))
+        return ACTION_EXIT_MENUITEM;
+    return action;
+}
+
 /*****************************************************************************
 * bubbles_menu() is the initial menu at the start of the game.
 ******************************************************************************/
 static int bubbles_menu(struct game_context* bb) {
     static unsigned int startlevel = 0;
-    int selected = resume?0:1;
+    int selected = 0;
     bool startgame = false;
 
-    MENUITEM_STRINGLIST(menu,"Bubbles Menu",NULL,
+    MENUITEM_STRINGLIST(menu,"Bubbles Menu",bubbles_menu_cb,
                         "Resume Game", "Start New Game",
                         "Level", "High Scores", "Playback Control",
                         "Quit without Saving", "Quit");
@@ -2391,10 +2391,7 @@ static int bubbles_menu(struct game_context* bb) {
         switch (rb->do_menu(&menu, &selected, NULL, false))
         {
             case 0: /* resume game */
-                if (!resume)
-                    rb->splash(HZ/2, "Nothing to resume");
-                else
-                    startgame = true;
+                startgame = true;
                 if(resume_file)
                     rb->remove(SAVE_FILE);
                 resume_file = false;
@@ -2420,7 +2417,10 @@ static int bubbles_menu(struct game_context* bb) {
             case 5: /* quit but don't save */
                 return BB_QUIT_WITHOUT_SAVING;
             case 6: /* save and quit  */
-                return BB_QUIT;
+                if (resume)
+                    return BB_QUIT;
+                else
+                    return BB_QUIT_WITHOUT_SAVING;
             case MENU_ATTACHED_USB:
                 bubbles_callback(bb);
                 return BB_USB;
@@ -2537,14 +2537,8 @@ enum plugin_status plugin_start(const void* parameter) {
                 break;
 
             case BB_QUIT:
-#define SAVE_MESSAGE "Saving Game and Scores..."
-                /* the first splash is to make sure it's read, but don't make it
-                 * too long to not delay the saving further */
-                rb->splash(HZ/5, SAVE_MESSAGE);
-                rb->splash(0, SAVE_MESSAGE);
+                rb->splash(HZ*1, "Saving game ...");
                 bubbles_savegame(&bb);
-                bubbles_savedata();
-                highscore_save(SCORE_FILE, highscores, NUM_SCORES);
                 /* fall through */
 
             case BB_QUIT_WITHOUT_SAVING:
@@ -2555,7 +2549,8 @@ enum plugin_status plugin_start(const void* parameter) {
                 break;
         }
     }
-
+    bubbles_savedata();
+    highscore_save(SCORE_FILE, highscores, NUM_SCORES);
     rb->lcd_setfont(FONT_UI);
     return ret;
 }

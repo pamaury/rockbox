@@ -1,0 +1,25 @@
+% $Id$ %
+\def\UseOption{h10_5gb}
+\edef\UseOption{\UseOption,HAVE_RB_BL_ON_DISK}
+\edef\UseOption{\UseOption,IRIVER_H10_PAD}
+\edef\UseOption{\UseOption,HAVE_BACKLIGHT}
+\edef\UseOption{\UseOption,HAVE_DISK_STORAGE}
+\edef\UseOption{\UseOption,HAVE_CAR_ADAPTER_MODE}
+\edef\UseOption{\UseOption,iriver}
+
+\newcommand{\playerman}{Iriver}
+\newcommand{\playertype}{H10}
+\newcommand{\playerlongtype}{\playertype{} 5GB and 6GB}
+\newcommand{\genericimg}{128x128x16}
+\newcommand{\specimg}{iriverh10_5gb}
+%Used to name the player, e.g. ...to the \dap
+\newcommand{\dap}{player}
+%For use when referring to the player. E.g. the \daps\ capacity ...
+\newcommand{\daps}{player's}
+\newcommand{\firmwarefilename}{\fname{rockbox.mi4}}
+\newcommand{\firmwareextension}{\fname{mi4}}
+\newcommand{\screenshotsize}{4cm}
+\newcommand{\disk}{hard disk}
+
+% link external keymap file
+\input{platform/keymap-iriverh10.tex}

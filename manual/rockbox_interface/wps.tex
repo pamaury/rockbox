@@ -5,7 +5,7 @@ currently playing audio file.
 %
 \opt{lcd_bitmap}{%
   The appearance of the WPS can be configured using WPS configuration files.
-  The items shown depend on your configuration -- all item can be turned on
+  The items shown depend on your configuration -- all items can be turned on
   or off independently. Refer to \reference{ref:wps_tags} for details on how
   to change the display of the WPS.
   \begin{itemize}
@@ -64,7 +64,7 @@ your WPS (While Playing Screen).
       \ActionWpsSkipPrev
        \opt{HAVEREMOTEKEYMAP}{& \ActionRCWpsSkipPrev}
       & Go to beginning of track, or if pressed while in the
-        first seconds of a track, go to previous track.\\
+        first seconds of a track, go to the previous track.\\
       %
       \ActionWpsSeekBack
       \opt{HAVEREMOTEKEYMAP}{& \ActionRCWpsSeekBack}
@@ -72,7 +72,7 @@ your WPS (While Playing Screen).
       %
       \ActionWpsSkipNext
       \opt{HAVEREMOTEKEYMAP}{& \ActionRCWpsSkipNext}
-      & Go to next track.\\
+      & Go to the next track.\\
       %
       \ActionWpsSeekFwd
       \opt{HAVEREMOTEKEYMAP}{& \ActionRCWpsSeekFwd}
@@ -88,7 +88,7 @@ your WPS (While Playing Screen).
       %
       \ActionWpsBrowse
       \opt{HAVEREMOTEKEYMAP}{& \ActionRCWpsBrowse}
-      & Return to the \setting{File Browser}.\\
+      & Return to the \setting{File Browser} / \setting{Database}.\\
       %
       \ActionWpsContext
       \opt{HAVEREMOTEKEYMAP}{& \ActionRCWpsContext}
@@ -97,13 +97,13 @@ your WPS (While Playing Screen).
       \opt{ONDIO_PAD}{\ActionWpsContext{} twice}%
       \nopt{ONDIO_PAD}{\ActionWpsMenu}%
       \opt{HAVEREMOTEKEYMAP}{& \ActionRCWpsMenu}
-      & Enter \setting{Main Menu}%
+      & Enter \setting{Main Menu}.%
       \opt{ONDIO_PAD}{ via the \setting{WPS Context Menu}}.\\%
       %
       \opt{quickscreen}{%
         \ActionWpsQuickScreen
         \opt{HAVEREMOTEKEYMAP}{& \ActionRCWpsQuickScreen}
-          & Switches to the \setting{Quick Screen}.
+          & Switch to the \setting{Quick Screen}.
           (see \reference{ref:QuickScreen}) \\}%
       %
       % software hold targets (currently Archos only)
@@ -160,7 +160,7 @@ your WPS (While Playing Screen).
       \opt{SANSA_E200_PAD,SANSA_C200_PAD,IRIVER_H100_PAD,IRIVER_H300_PAD}{
         \ActionStdRec
           \opt{HAVEREMOTEKEYMAP}{&} 
-          & Switches to the Recording screen \\
+          & Switch to the \setting{Recording Screen}.\\
       }%
     \end{btnmap}
 \end{table}
@@ -247,7 +247,7 @@ repeat, party mode, study mode and other settings affecting the playback of your
 The menu entry is only shown if \setting{Gather Runtime Information} is
 enabled. It allows the asignment of a personal rating value (0 -- 10)
 to a track which can be displayed in the WPS and used in the Database
-browser. Press \ButtonRight{} to increment the value. The value wraps at 10.
+browser. The value wraps at 10.
 
 \subsubsection{Bookmarks}
 This allows you to create a bookmark in the currently-playing track.
@@ -258,10 +258,12 @@ This screen is accessible from the WPS screen, and provides a detailed view of
 all the identity information about the current track. This info is known as
 meta data and is stored in audio file formats to keep information on artist,
 album etc. To access this screen, % 
-\opt{PLAYER_PAD,RECORDER_PAD,IRIVER_H100_PAD,IRIVER_H300_PAD,IRIVER_H10_PAD}{
+\opt{PLAYER_PAD,RECORDER_PAD,IRIVER_H100_PAD,IRIVER_H300_PAD,IRIVER_H10_PAD,%
+      MROBE100_PAD,SANSA_C200_PAD,SANSA_CLIP_PAD,SANSA_E200_PAD,SANSA_FUZE_PAD,%
+      GIGABEAT_PAD,GIGABEAT_S_PAD}{
   press \ActionWpsIdThreeScreen. }%
-\opt{ONDIO_PAD,IPOD_4G_PAD,IPOD_3G_PAD,IAUDIO_X5_PAD}{press \ActionWpsContext{}
-  to access the \setting{WPS Context Menu} and select
+\opt{ONDIO_PAD,IPOD_4G_PAD,IPOD_3G_PAD,IAUDIO_X5_PAD,IAUDIO_M3_PAD}{press
+  \ActionWpsContext{} to access the \setting{WPS Context Menu} and select
   \setting{Show Track Info}. }%
 \opt{RECORDER_PAD,PLAYER_PAD,ONDIO_PAD}{Use \ButtonLeft\ and \ButtonRight\
   to move through the information.}%
@@ -307,24 +309,24 @@ Delete the currently playing file.
     \begin{table}
       \begin{btnmap}{}{}
         \ActionPsToggleMode
-        & Toggle pitch changing mode \\
+        & Toggle pitch changing mode. \\
         %
         \ActionPsIncSmall{} / \ActionPsDecSmall
-        & Increase / Decrease pitch by 0.1\% (in procentual mode) or by 0.1
-          semitone (in semitone mode)\\
+        & Increase~/ Decrease pitch by 0.1\% (in procentual mode) or by 0.1
+          semitone (in semitone mode).\\
         %
         \ActionPsIncBig{} / \ActionPsDecBig
-        & Increase / Decrease pitch by 1\% (in procentual mode) or a semitone
-          (in semitone mode)\\
+        & Increase~/ Decrease pitch by 1\% (in procentual mode) or a semitone
+          (in semitone mode).\\
         %
         \ActionPsNudgeLeft{} / \ActionPsNudgeRight
-        & Temporarily change pitch by 2\% (beatmatch) \\
+        & Temporarily change pitch by 2\% (beatmatch). \\
         %
         \ActionPsReset
-        & Reset rate to 100\% \\
+        & Reset rate to 100\%. \\
         %
         \ActionPsExit
-        & Leave the Pitch Screen \\
+        & Leave the \setting{Pitch Screen}. \\
         %
       \end{btnmap}
     \end{table}
@@ -337,29 +339,29 @@ Delete the currently playing file.
       \begin{btnmap}{}{}
         \ActionPsToggleMode
         \opt{HAVEREMOTEKEYMAP}{& \ActionRCPsToggleMode}
-        & Toggle pitch changing mode (cycles through all available modes)\\
+        & Toggle pitch changing mode (cycle through all available modes).\\
         %
         \ActionPsIncSmall{} / \ActionPsDecSmall
         \opt{HAVEREMOTEKEYMAP}{& \ActionRCPsIncSmall{} / \ActionRCPsDecSmall}
-        & Increase / Decrease pitch by 0.1\% (in procentual mode) or 0.1
-          semitone (in semitone mode)\\
+        & Increase~/ Decrease pitch by 0.1\% (in procentual mode) or 0.1
+          semitone (in semitone mode).\\
         %
         \ActionPsIncBig{} / \ActionPsDecBig
         \opt{HAVEREMOTEKEYMAP}{& \ActionRCPsIncBig{} / \ActionRCPsDecBig}
-        & Increase / Decrease pitch by 1\% (in procentual mode) or a semitone
-          (in semitone mode)\\
+        & Increase~/ Decrease pitch by 1\% (in procentual mode) or a semitone
+          (in semitone mode).\\
         %
         \ActionPsNudgeLeft{} / \ActionPsNudgeRight
         \opt{HAVEREMOTEKEYMAP}{& \ActionRCPsNudgeLeft{} / \ActionPsNudgeRight}
-        & Temporarily change pitch by 2\% (beatmatch), or modify speed (in timestretch mode) \\
+        & Temporarily change pitch by 2\% (beatmatch), or modify speed (in timestretch mode).\\
         %
         \ActionPsReset
         \opt{HAVEREMOTEKEYMAP}{& \ActionRCPsReset}
-        & Reset pitch and speed to 100\% \\
+        & Reset pitch and speed to 100\%. \\
         %
         \ActionPsExit
         \opt{HAVEREMOTEKEYMAP}{& \ActionRCPsExit}
-        & Leave the Pitch Screen \\
+        & Leave the \setting{Pitch Screen}. \\
         %
       \end{btnmap}
     \end{table}
@@ -395,9 +397,9 @@ Delete the currently playing file.
 
   \begin{table}
     \begin{btnmap}{}{}
-      \ButtonLeft & Controls Shuffle mode setting \\
-      \ButtonRight & Controls Repeat mode setting \\
-      \ButtonDown & Controls Show file setting \\
+      \ButtonLeft & Control Shuffle mode setting. \\
+      \ButtonRight & Control Repeat mode setting. \\
+      \ButtonDown & Control Show file setting. \\
     \end{btnmap}
   \end{table}
   
@@ -417,9 +419,9 @@ Delete the currently playing file.
   
   \begin{table}
     \begin{btnmap}{}{}
-      \ButtonLeft & Controls scroll bar display \\
-      \ButtonRight & Controls status bar display \\
-      \ButtonDown & Controls upside down screen setting \\
+      \ButtonLeft & Control scroll bar display. \\
+      \ButtonRight & Control status bar display. \\
+      \ButtonDown & Control upside down screen setting. \\
     \end{btnmap}
   \end{table}
 }

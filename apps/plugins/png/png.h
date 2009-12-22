@@ -262,7 +262,7 @@ You are free to name this file lodepng.cpp or lodepng.c depending on your usage.
 #define PNG_NEXT        BUTTON_RC_MODE
 #define PNG_PREVIOUS    BUTTON_RC_MENU
 
-#elif CONFIG_KEYPAD == COWOND2_PAD
+#elif CONFIG_KEYPAD == COWON_D2_PAD
 
 #elif CONFIG_KEYPAD == IAUDIO67_PAD
 #define PNG_ZOOM_IN     BUTTON_VOLUP
@@ -297,6 +297,17 @@ You are free to name this file lodepng.cpp or lodepng.c depending on your usage.
 #define PNG_MENU       BUTTON_MENU
 #define PNG_NEXT       BUTTON_VIEW
 #define PNG_PREVIOUS   BUTTON_PLAYLIST
+
+#elif CONFIG_KEYPAD == PHILIPS_SA9200_PAD
+#define PNG_ZOOM_IN    BUTTON_VOL_UP
+#define PNG_ZOOM_OUT   BUTTON_VOL_DOWN
+#define PNG_UP         BUTTON_UP
+#define PNG_DOWN       BUTTON_DOWN
+#define PNG_LEFT       BUTTON_PREV
+#define PNG_RIGHT      BUTTON_NEXT
+#define PNG_MENU       BUTTON_MENU
+#define PNG_NEXT       BUTTON_RIGHT
+#define PNG_PREVIOUS   BUTTON_LEFT
 
 #elif CONFIG_KEYPAD == ONDAVX747_PAD
 #define PNG_MENU       BUTTON_POWER
@@ -348,8 +359,8 @@ You are free to name this file lodepng.cpp or lodepng.c depending on your usage.
 #endif
 #endif
 
-#define PLUGIN_OTHER 10 /* State code for output with return. */
-#define PLUGIN_REFRESH 11 /* State code for output with return. */
-#define PLUGIN_ABORT 12
-#define OUT_OF_MEMORY 9900
-#define FILE_TOO_LARGE 9910
+#define PLUGIN_OTHER    10 /* State code for output with return. */
+#define PLUGIN_ABORT    11
+#define PLUGIN_OUTOFMEM 12
+#define OUT_OF_MEMORY   9900
+#define FILE_TOO_LARGE  9910

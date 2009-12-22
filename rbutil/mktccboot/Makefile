@@ -11,8 +11,6 @@
 TOOLSDIR=../../tools
 CFLAGS := -O -g -W -Wall -Wshadow -pedantic -I$(TOOLSDIR)
 
-CC = gcc
-
 ifndef V
 SILENT = @
 endif
@@ -56,11 +54,6 @@ $(OUT)/%.o: %.c $(OUT)
 	@echo CC $<
 	$(SILENT)$(CC) $(CFLAGS) -c -o $@ $<
 
-# building the library archive
-$(OUT)/libmktccboot.o: $(OUT)/mktccboot.o
-	@echo CC $<
-	$(SILENT)$(CC) $(CFLAGS) -DLIB -c -o $(OUT)/libmktccboot.o -W -Wall mktccboot.c
-
 libmktccboot$(RBARCH).a: $(LIBOBJS)
 	@echo AR $@
 	$(SILENT)$(AR) ruc $(TARGET_DIR)$@ $^
@@ -72,17 +65,17 @@ $(OUTPUT): $(OBJS) $(EXTRADEPS)
 
 # some trickery to build ppc and i386 from a single call
 ifeq ($(RBARCH),)
-libmktccbooti386.a:
+$(TARGET_DIR)libmktccbooti386.a:
 	make RBARCH=i386 TARGET_DIR=$(TARGET_DIR) libmktccbooti386.a
 
-libmktccbootppc.a:
+$(TARGET_DIR)libmktccbootppc.a:
 	make RBARCH=ppc TARGET_DIR=$(TARGET_DIR) libmktccbootppc.a
 endif    
     
-libmktccboot-universal: libmktccbooti386.a libmktccbootppc.a
+libmktccboot-universal: $(TARGET_DIR)libmktccbooti386.a $(TARGET_DIR)libmktccbootppc.a
 	@echo lipo $(TARGET_DIR)libmktccboot.a
 	$(SILENT) rm -f $(TARGET_DIR)libmktccboot.a
-	lipo -create $(TARGET_DIR)libmktccbootppc.a $(TARGET_DIR)libmktccbooti386.a -output $(TARGET_DIR)libmktccboot.a
+	$(SILENT)lipo -create $(TARGET_DIR)libmktccbootppc.a $(TARGET_DIR)libmktccbooti386.a -output $(TARGET_DIR)libmktccboot.a
     
 clean:
 	rm -f $(OUTPUT) $(TARGET_DIR)libmktccboot*.a mktccboot.dmg
@@ -97,7 +90,7 @@ mktccboot-ppc:
 	mv mktccboot mktccboot-ppc
 
 mktccboot-mac: mktccboot-i386 mktccboot-ppc
-	lipo -create mktccboot-ppc mktccboot-i386 -output mktccboot-mac
+	$(SILENT)lipo -create mktccboot-ppc mktccboot-i386 -output mktccboot-mac
 
 mktccboot.dmg: mktccboot-mac
 	mkdir -p mktccboot-dmg

@@ -155,17 +155,17 @@ void fiq_handler(void)
      * Based on: linux/arch/arm/kernel/entry-armv.S and system-meg-fx.c
      */
 
-    asm volatile (
-        "sub    lr, lr, #4            \r\n"
-        "stmfd  sp!, {r0-r3, ip, lr}  \r\n"
-        "mov    r0, #0x00030000       \r\n"
-        "ldr    r0, [r0, #0x510]      \r\n" /* Fetch value from IO_INTC_FIQENTRY0 */
-        "sub    r0, r0, #1            \r\n"
-        "ldr    r1, =irqvector        \r\n"
-        "ldr    r1, [r1, r0, lsl #2]  \r\n" /* Divide value by 4 (TBA0/TBA1 is set to 0) and load appropriate pointer from the vector list */
-        "blx    r1                    \r\n" /* Jump to handler */
-        "ldmfd  sp!, {r0-r3, ip, pc}^ \r\n" /* Return from FIQ */
-    );
+    asm volatile(   "stmfd sp!, {r0-r7, ip, lr} \n"   /* Store context */
+                    "sub   sp, sp, #8           \n"); /* Reserve stack */
+    unsigned short addr = IO_INTC_FIQENTRY0>>2;
+    if(addr != 0)
+    {
+        addr--;
+        irqvector[addr]();
+    }
+    asm volatile(   "add   sp, sp, #8           \n"   /* Cleanup stack   */
+                    "ldmfd sp!, {r0-r7, ip, lr} \n"   /* Restore context */
+                    "subs  pc, lr, #4           \n"); /* Return from FIQ */
 }
 
 void system_reboot(void)
@@ -199,6 +199,21 @@ void system_exception_wait(void)
 
 void system_init(void)
 {
+    /* Pin 33 is connected to a buzzer, for an annoying sound set 
+     *  PWM0C == 0x3264
+     *  PWM0H == 0x1932
+     *  Function to 1
+     *  Since this is not used in the FW, set it to a normal output at a zero
+     *  level. */
+    /*  33: output, non-inverted, no-irq, falling edge, no-chat, normal */
+    dm320_set_io(33, false, false, false, false, false, 0x00);
+    IO_GIO_BITCLR2      = 1<<1;
+
+    /* Pin 1 is the power button. Right now it is setup without IRQ, but that
+     *  may be needed for wakeup if a different shutdown method is used. */
+    /*  1: input , non-inverted, no-irq, falling edge, no-chat, normal */
+    dm320_set_io(1, true, false, false, false, false, 0x00);
+
     /* taken from linux/arch/arm/mach-itdm320-20/irq.c */
 
     /* Clearing all FIQs and IRQs. */
@@ -334,5 +349,89 @@ void udelay(int usec) {
     while(temp) {
         temp--;
     }
+}
+
+/* This function sets the specified pin up */
+void dm320_set_io (char pin_num, bool input, bool invert, bool irq, bool irqany,
+                    bool chat, char func_num )
+{
+    volatile short  *pio;
+    char            reg_offset; /* Holds the offset to the register */
+    char            shift_val;  /* Holds the shift offset to the GPIO bit(s) */
+    short           io_val;     /* Used as an intermediary to prevent glitchy
+                                 *  assignments. */
+    
+    /* Make sure this is a valid pin number */
+    if( (unsigned) pin_num > 40 )
+        return;
+        
+    /* Clamp the function number */
+    func_num    &=  0x03;
+    
+    /* Note that these are integer calculations */
+    reg_offset  =   (pin_num / 16);
+    shift_val   =   (pin_num - (16 * reg_offset));
+    
+    /* Handle the direction */
+    /* Calculate the pointer to the direction register */
+    pio         = &IO_GIO_DIR0 + reg_offset;
+    
+    if(input)
+        *pio        |=  ( 1 << shift_val );
+    else
+        *pio        &= ~( 1 << shift_val );
+    
+    /* Handle the inversion */
+    /* Calculate the pointer to the inversion register */
+    pio         = &IO_GIO_INV0 + reg_offset;
+    
+    if(invert)
+        *pio        |=  ( 1 << shift_val );
+    else
+        *pio        &= ~( 1 << shift_val );
+        
+    /* Handle the chat */
+    /* Calculate the pointer to the chat register */
+    pio         = &IO_GIO_CHAT0 + reg_offset;
+    
+    if(chat)
+        *pio        |=  ( 1 << shift_val );
+    else
+        *pio        &= ~( 1 << shift_val );
+        
+    /* Handle interrupt configuration */
+    if(pin_num < 16)
+    {
+        /* Sets whether the pin is an irq or not */
+        if(irq)
+            IO_GIO_IRQPORT |=  (1 << pin_num );
+        else
+            IO_GIO_IRQPORT &= ~(1 << pin_num );
+        
+        /* Set whether this is a falling or any edge sensitive irq */
+        if(irqany)
+            IO_GIO_IRQEDGE |=  (1 << pin_num );
+        else
+            IO_GIO_IRQEDGE &= ~(1 << pin_num );
+    }
+    
+    /* Handle the function number */
+    /* Calculate the pointer to the function register */
+    reg_offset  =   (  (pin_num - 9) / 8 );
+    shift_val   =   ( ((pin_num - 9) - (8 * reg_offset)) * 2 );
+    
+    if( pin_num < 9 )
+    {
+        reg_offset  =   0;
+        shift_val   =   0;
+    }
+
+    /* Calculate the pointer to the function register */
+    pio         =   &IO_GIO_FSEL0 + reg_offset;
+
+    io_val      =   *pio;
+    io_val      &= ~( 3 << shift_val );         /* zero previous value */
+    io_val      |=  ( func_num << shift_val );  /* Store new value */
+    *pio        =   io_val;
 }
 

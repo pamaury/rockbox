@@ -399,15 +399,13 @@ typedef real_t complex_t[2];
 /* common functions */
 uint8_t cpu_has_sse(void);
 uint32_t random_int(void);
-uint32_t ones32(uint32_t x);
-uint32_t floor_log2(uint32_t x);
-uint32_t wl_min_lzc(uint32_t x);
+#define wl_min_lzc(x) bs_generic(x, BS_LOG2|BS_0_0)
 #ifdef FIXED_POINT
 #define LOG2_MIN_INF REAL_CONST(-10000)
 int32_t log2_int(uint32_t val);
 int32_t log2_fix(uint32_t val);
-int32_t pow2_int(real_t val);
-real_t pow2_fix(real_t val);
+uint32_t pow2_int(real_t val);
+uint32_t pow2_fix(real_t val);
 #endif
 uint8_t get_sr_index(const uint32_t samplerate);
 uint8_t max_pred_sfb(const uint8_t sr_index);

@@ -19,6 +19,9 @@
  *
  ****************************************************************************/
 
+#ifndef __CODECLIB_H__
+#define __CODECLIB_H__
+
 #include "config.h"
 #include "codecs.h"
 #include <sys/types.h>
@@ -71,6 +74,81 @@ unsigned udiv32_arm(unsigned a, unsigned b);
 #define UDIV32(a, b) (a / b)
 #endif
 
+#if !defined(CPU_ARM) || ARM_ARCH < 5
+/* From libavutil/common.h */
+extern const uint8_t bs_log2_tab[256] ICONST_ATTR;
+extern const uint8_t bs_clz_tab[256] ICONST_ATTR;
+#endif
+
+#define BS_LOG2  0 /* default personality, equivalent floor(log2(x)) */
+#define BS_CLZ   1 /* alternate personality, Count Leading Zeros */
+#define BS_SHORT 2 /* input guaranteed not to exceed 16 bits */
+#define BS_0_0   4 /* guarantee mapping of 0 input to 0 output */
+
+/* Generic bit-scanning function, used to wrap platform CLZ instruction or
+   scan-and-lookup code, and to provide control over output for 0 inputs. */
+static inline unsigned int bs_generic(unsigned int v, int mode)
+{
+#if defined(CPU_ARM) && ARM_ARCH >= 5
+    unsigned int r = __builtin_clz(v);
+    if (mode & BS_CLZ)
+    {
+        if (mode & BS_0_0)
+            r &= 31;
+    } else {
+        r = 31 - r;
+	/* If mode is constant, this is a single conditional instruction */
+        if (mode & BS_0_0 && (signed)r < 0) 
+            r += 1;
+    }
+#else
+    const uint8_t *bs_tab;
+    unsigned int r;
+    unsigned int n = v;
+    int inc;
+    /* Set up table, increment, and initial result value based on
+       personality. */
+    if (mode & BS_CLZ)
+    {
+        bs_tab = bs_clz_tab;
+        r = 24;
+        inc = -16;
+    } else {
+        bs_tab = bs_log2_tab;
+        r = 0;
+        inc = 16;
+    }
+    if (!(mode & BS_SHORT) && n >= 0x10000) {
+        n >>= 16;
+        r += inc;
+    }
+    if (n > 0xff) {
+        n >>= 8;
+        r += inc / 2;
+    }
+#ifdef CPU_COLDFIRE
+    /* The high 24 bits of n are guaranteed empty after the above, so a
+       superfluous ext.b instruction can be saved by loading the LUT value over
+       n with asm */
+    asm volatile (
+        "move.b (%1,%0.l),%0"
+        : "+d" (n)
+        : "a" (bs_tab)
+    );
+#else
+    n = bs_tab[n];
+#endif
+    r += n;
+    if (mode & BS_CLZ && mode & BS_0_0 && v == 0)
+        r = 0;
+#endif
+    return r;
+}
+
+/* TODO figure out if we really need to care about calculating
+   av_log2(0) */
+#define av_log2(v) bs_generic(v, BS_0_0)
+
 /* Various codec helper functions */
 
 int codec_init(void);
@@ -82,3 +160,5 @@ void __cyg_profile_func_enter(void *this_fn, void *call_site)
 void __cyg_profile_func_exit(void *this_fn, void *call_site)
     NO_PROF_ATTR ICODE_ATTR;
 #endif
+
+#endif /* __CODECLIB_H__ */

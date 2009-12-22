@@ -6,7 +6,6 @@ endif
 
 # We use the UCL code available in the Rockbox tools/ directory
 CFLAGS=-I../../tools/ucl/include -Wall -DVERSION=\"$(APPVERSION)\"
-CC = gcc
 
 ifndef V
 SILENT = @
@@ -52,11 +51,6 @@ $(OUT)/%.o: %.c $(OUT)
 	@echo CC $< $
 	$(SILENT)$(CC) $(CFLAGS) -c -o $@ $<
 
-# building the library archive
-$(OUT)/libmkamsboot.o: $(OUT)/mkamsboot.o
-	@echo CC $<
-	$(SILENT)$(CC) $(CFLAGS) -DLIB -c -o $(OUT)/libmkamsboot.o -W -Wall mkamsboot.c
-
 libmkamsboot$(RBARCH).a: $(LIBOBJS)
 	@echo AR $@
 	$(SILENT)$(AR) ruc $(TARGET_DIR)$@ $^
@@ -68,17 +62,17 @@ $(OUTPUT): $(OBJS) $(EXTRADEPS)
 
 # some trickery to build ppc and i386 from a single call
 ifeq ($(RBARCH),)
-libmkamsbooti386.a:
+$(TARGET_DIR)libmkamsbooti386.a:
 	make RBARCH=i386 TARGET_DIR=$(TARGET_DIR) libmkamsbooti386.a
 
-libmkamsbootppc.a:
+$(TARGET_DIR)libmkamsbootppc.a:
 	make RBARCH=ppc TARGET_DIR=$(TARGET_DIR) libmkamsbootppc.a
 endif    
     
-libmkamsboot-universal: libmkamsbooti386.a libmkamsbootppc.a
+libmkamsboot-universal: $(TARGET_DIR)libmkamsbooti386.a $(TARGET_DIR)libmkamsbootppc.a
 	@echo lipo $(TARGET_DIR)libmkamsboot.a
 	$(SILENT) rm -f $(TARGET_DIR)libmkamsboot.a
-	lipo -create $(TARGET_DIR)libmkamsbootppc.a $(TARGET_DIR)libmkamsbooti386.a -output $(TARGET_DIR)libmkamsboot.a
+	$(SILENT)lipo -create $(TARGET_DIR)libmkamsbootppc.a $(TARGET_DIR)libmkamsbooti386.a -output $(TARGET_DIR)libmkamsboot.a
     
 clean:
 	rm -f $(OUTPUT) libmkamsboot.o $(TARGET_DIR)libmkamsboot*.a mkamsboot.dmg
@@ -93,7 +87,7 @@ mkamsboot-ppc:
 	mv mkamsboot mkamsboot-ppc
 
 mkamsboot-mac: mkamsboot-i386 mkamsboot-ppc
-	lipo -create mkamsboot-ppc mkamsboot-i386 -output mkamsboot-mac
+	$(SILENT)lipo -create mkamsboot-ppc mkamsboot-i386 -output mkamsboot-mac
 
 mkamsboot.dmg: mkamsboot-mac
 	mkdir -p mkamsboot-dmg

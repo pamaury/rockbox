@@ -248,7 +248,7 @@ PLUGIN_HEADER
 #define ROCKBLOX_DROP          BUTTON_RC_PLAY
 #define ROCKBLOX_RESTART       BUTTON_RC_MODE
 
-#elif CONFIG_KEYPAD == COWOND2_PAD
+#elif CONFIG_KEYPAD == COWON_D2_PAD
 #define ROCKBLOX_OFF           BUTTON_POWER
 #define ROCKBLOX_RESTART       BUTTON_MENU
 
@@ -283,6 +283,18 @@ PLUGIN_HEADER
 #define ROCKBLOX_LEFT          BUTTON_LEFT
 #define ROCKBLOX_RIGHT         BUTTON_RIGHT
 #define ROCKBLOX_DROP          BUTTON_SELECT
+#define ROCKBLOX_RESTART       BUTTON_MENU
+
+# elif CONFIG_KEYPAD == PHILIPS_SA9200_PAD
+
+#define ROCKBLOX_OFF           BUTTON_POWER
+#define ROCKBLOX_ROTATE_RIGHT  BUTTON_VOL_DOWN
+#define ROCKBLOX_ROTATE_LEFT   BUTTON_VOL_UP
+#define ROCKBLOX_ROTATE        BUTTON_UP
+#define ROCKBLOX_DOWN          BUTTON_DOWN
+#define ROCKBLOX_LEFT          BUTTON_PREV
+#define ROCKBLOX_RIGHT         BUTTON_NEXT
+#define ROCKBLOX_DROP          BUTTON_PLAY
 #define ROCKBLOX_RESTART       BUTTON_MENU
 
 #elif CONFIG_KEYPAD == ONDAVX747_PAD
@@ -483,6 +495,21 @@ PLUGIN_HEADER
 #define LINES_Y 50
 
 #elif (LCD_WIDTH == 128) && (LCD_HEIGHT == 128)
+
+#define BLOCK_WIDTH 6
+#define BLOCK_HEIGHT 6
+#define BOARD_X 4
+#define BOARD_Y 3
+#define PREVIEW_X 84
+#define PREVIEW_Y 100
+#define LABEL_X 71
+#define SCORE_Y 17
+#define LEVEL_Y 49
+#define LINES_Y 82
+
+/* NOTE: This is for the GoGear SA9200 and is only
+   temporary until I can get better coordinates! */
+#elif (LCD_WIDTH == 128) && (LCD_HEIGHT == 160)
 
 #define BLOCK_WIDTH 6
 #define BLOCK_HEIGHT 6
@@ -1252,7 +1279,7 @@ static int rockblox_menu(void)
 #ifdef HAVE_LCD_BITMAP
                 highscore_show(MAX_HIGH_SCORES, highest, MAX_HIGH_SCORES, true);
 #else
-                rb->splashf(2*HZ, "High Score: %d", highest[MAX_HIGH_SCORES].score);
+                rb->splashf(2*HZ, "High Score: %d", highest[0].score);
 #endif
                 break;
             case 4:

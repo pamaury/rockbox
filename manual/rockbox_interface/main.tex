@@ -18,9 +18,27 @@
 \end{center}
 
 Throughout this manual, the buttons on the \dap{} are labelled according to the
-picture above. Whenever a button name is prefixed by ``Long'', a long press of
-approximately one second should be performed on that button. The buttons are
-described in detail in the following paragraph.
+picture above.
+\opt{touchscreen}{
+The areas of the touchscreen in the 3x3 grid mode are in turn referred as follows:
+\begin{table}
+    \begin{center}
+    %\begin{tabularx}{.82\textwidth}{l|c|r}
+    \begin{tabularx}{.9\textwidth}{X|X|X}
+    \toprule
+        \TouchTopLeft & \TouchTopMiddle & \TouchTopRight \\
+    \midrule
+        \TouchMidLeft & \TouchCenter & \TouchMidRight \\
+    \midrule
+        \TouchBottomLeft & \TouchBottomMiddle & \TouchBottomRight \\
+    \bottomrule
+    \end{tabularx}
+    \end{center}
+\end{table}
+}
+Whenever a button name is prefixed by ``Long'', a long press of approximately
+one second should be performed on that button. The buttons are described in
+detail in the following paragraph.
 
 \blind{
   Additional information for blind users is available on the Rockbox website at 
@@ -443,6 +461,8 @@ described in detail in the following paragraph.
 }
 
 \subsection{Turning the \dap{} on and off}
+\opt{cowond2}{Rockbox has a dual-boot feature with the original firmware being
+  the default.\\}
 To turn on and off your Rockbox enabled \dap{} use the following keys:
   \begin{table}
     \begin{btnmap}{}{}
@@ -451,23 +471,25 @@ To turn on and off your Rockbox enabled \dap{} use the following keys:
       \opt{IPOD_3G_PAD}{\ButtonMenu{} / \ButtonPlay}%
       \opt{ONDIO_PAD}{\ButtonOff}\opt{RECORDER_PAD,PLAYER_PAD}%
           {Long \ButtonOn}%
-      \opt{IAUDIO_X5_PAD,IRIVER_H10_PAD,SANSA_E200_PAD,SANSA_C200_PAD,GIGABEAT_PAD,MROBE100_PAD,GIGABEAT_S_PAD,sansaAMS}
-          {\ButtonPower}%
+      \opt{IAUDIO_X5_PAD,IRIVER_H10_PAD,SANSA_E200_PAD,SANSA_C200_PAD%
+          ,GIGABEAT_PAD,MROBE100_PAD,GIGABEAT_S_PAD,sansaAMS}{\ButtonPower}%
+      \opt{COWON_D2_PAD} {\ButtonPower{}, then \ButtonHold}%
     \opt{HAVEREMOTEKEYMAP}{&
       \opt{IRIVER_RC_H100_PAD}{\ButtonRCOn}%
           }
-      & Start Rockbox\\
+      & Start Rockbox.\\
       \opt{IRIVER_H100_PAD,IRIVER_H300_PAD}{Long \ButtonOff}%
       \opt{IPOD_4G_PAD,IPOD_3G_PAD}{Long \ButtonPlay}%
       \opt{ONDIO_PAD,recorderv2fm}{Long \ButtonOff}%
       \opt{recorder}{Double tap \ButtonOff\ when playback is stopped}%
       \opt{PLAYER_PAD}{From the Main Menu, select \textbf{Shutdown}}%
-      \opt{IAUDIO_X5_PAD,IRIVER_H10_PAD,SANSA_E200_PAD,SANSA_C200_PAD,GIGABEAT_PAD,MROBE100_PAD,GIGABEAT_S_PAD,sansaAMS}%
+      \opt{IAUDIO_X5_PAD,IRIVER_H10_PAD,SANSA_E200_PAD,SANSA_C200_PAD%
+          ,GIGABEAT_PAD,MROBE100_PAD,GIGABEAT_S_PAD,sansaAMS,COWON_D2_PAD}%
           {Long \ButtonPower}%
     \opt{HAVEREMOTEKEYMAP}{& 
       \opt{IRIVER_RC_H100_PAD}{Long \ButtonRCStop}%
           }
-      & Shutdown Rockbox\\
+      & Shutdown Rockbox.\\
     \end{btnmap}
   \end{table}
 
@@ -577,12 +599,19 @@ To turn on and off your Rockbox enabled \dap{} use the following keys:
     turn the \ButtonHold{} switch on just after turning on the \dap{}.
     }
 
+  \opt{cowond2}
+    {
+    Use \ButtonPower{} to boot the original \playerman{} firmware.
+    }
+
   }
 \subsection{Putting music on your \dap{}}
 
+\opt{usb_hid}{
 \note{Due to a bug in some OS X versions, the \dap{} can not be mounted, unless
     the USB HID feature is disabled. See \reference{ref:USB_HID} for more
     information.\newline
+}
 }
 
 With the \dap{} connected to the computer as an MSC/UMS device (like a
@@ -677,8 +706,8 @@ your \dap{}.
 \note{Some of the themes shipped with Rockbox need additional
 fonts from the fonts package, so make sure you installed them.
 Also, if you downloaded additional themes from the Internet make sure you
-have the needed fonts installed as otherwise the theme may get displayed
-garbled.}
+have the needed fonts installed as otherwise the theme may not display
+properly.}
 }
 
 \opt{usb_charging}

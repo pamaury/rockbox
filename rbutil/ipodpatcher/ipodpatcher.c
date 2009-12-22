@@ -37,10 +37,10 @@
 #include "ipod1g2g.h"
 #include "ipod3g.h"
 #include "ipod4g.h"
-#include "ipodmini.h"
+#include "ipodmini1g.h"
 #include "ipodmini2g.h"
 #include "ipodcolor.h"
-#include "ipodnano.h"
+#include "ipodnano1g.h"
 #include "ipodvideo.h"
 #include "ipodnano2g.h"
 #endif
@@ -1648,8 +1648,8 @@ int getmodel(struct ipod_t* ipod, int ipod_version)
             ipod->modelname = "mini";
             ipod->targetname = "ipodmini1g";
 #ifdef WITH_BOOTOBJS
-            ipod->bootloader = ipodmini;
-            ipod->bootloader_len = LEN_ipodmini;
+            ipod->bootloader = ipodmini1g;
+            ipod->bootloader_len = LEN_ipodmini1g;
 #endif
             break;
         case 0x50:
@@ -1686,10 +1686,10 @@ int getmodel(struct ipod_t* ipod, int ipod_version)
             ipod->modelstr="1st Generation Nano";
             ipod->modelnum = 4;
             ipod->modelname = "nano";
-            ipod->targetname = "ipodnano";
+            ipod->targetname = "ipodnano1g";
 #ifdef WITH_BOOTOBJS
-            ipod->bootloader = ipodnano;
-            ipod->bootloader_len = LEN_ipodnano;
+            ipod->bootloader = ipodnano1g;
+            ipod->bootloader_len = LEN_ipodnano1g;
 #endif
             break;
         case 0xb0:

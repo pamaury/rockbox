@@ -29,27 +29,25 @@ RBBASE_DIR = $$replace(RBBASE_DIR,/rbutil/rbutilqt,)
 
 message("Rockbox Base dir: "$$RBBASE_DIR)
 
-# check for system speex. Add a custom rule for pre-building librbspeex if not found.
-LIBSPEEX = $$system(pkg-config --silence-errors --libs speex)
+# check for system speex. Add a custom rule for pre-building librbspeex if not
+# found. Newer versions of speex are split up into libspeex and libspeexdsp,
+# and some distributions package them separately. Check for both and fall back
+# to librbspeex if not found.
+LIBSPEEX = $$system(pkg-config --silence-errors --libs speex speexdsp)
 !static:!isEmpty(LIBSPEEX) {
-    # newer versions of speex are split up into libspeex and libspeexdsp.
-    # avoid checking twice if libspeex is missing.
-    LIBSPEEX += $$system(pkg-config --silence-errors --libs speexdsp)
     LIBS += $$LIBSPEEX
 }
 # custom rules for rockbox-specific libs
 !mac {
-rbspeex.commands = @$(MAKE) TARGET_DIR=$$MYBUILDDIR -C $$RBBASE_DIR/tools/rbspeex librbspeex.a
-libucl.commands = @$(MAKE) TARGET_DIR=$$MYBUILDDIR -C $$RBBASE_DIR/tools/ucl/src libucl.a
-libmkamsboot.commands = @$(MAKE) TARGET_DIR=$$MYBUILDDIR -C $$RBBASE_DIR/rbutil/mkamsboot libmkamsboot.a
-libmktccboot.commands = @$(MAKE) TARGET_DIR=$$MYBUILDDIR -C $$RBBASE_DIR/rbutil/mktccboot libmktccboot.a
+    RBLIBPOSTFIX = .a
 }
 mac {
-rbspeex.commands = @$(MAKE) TARGET_DIR=$$MYBUILDDIR -C $$RBBASE_DIR/tools/rbspeex librbspeex-universal
-libucl.commands = @$(MAKE) TARGET_DIR=$$MYBUILDDIR -C $$RBBASE_DIR/tools/ucl/src libucl-universal
-libmkamsboot.commands = @$(MAKE) TARGET_DIR=$$MYBUILDDIR -C $$RBBASE_DIR/rbutil/mkamsboot libmkamsboot-universal
-libmktccboot.commands = @$(MAKE) TARGET_DIR=$$MYBUILDDIR -C $$RBBASE_DIR/rbutil/mktccboot libmktccboot-universal
+    RBLIBPOSTFIX = -universal
 }
+rbspeex.commands = @$(MAKE) TARGET_DIR=$$MYBUILDDIR -C $$RBBASE_DIR/tools/rbspeex librbspeex$$RBLIBPOSTFIX CC=\"$$QMAKE_CC\"
+libucl.commands = @$(MAKE) TARGET_DIR=$$MYBUILDDIR -C $$RBBASE_DIR/tools/ucl/src libucl$$RBLIBPOSTFIX CC=\"$$QMAKE_CC\"
+libmkamsboot.commands = @$(MAKE) TARGET_DIR=$$MYBUILDDIR -C $$RBBASE_DIR/rbutil/mkamsboot libmkamsboot$$RBLIBPOSTFIX CC=\"$$QMAKE_CC\"
+libmktccboot.commands = @$(MAKE) TARGET_DIR=$$MYBUILDDIR -C $$RBBASE_DIR/rbutil/mktccboot libmktccboot$$RBLIBPOSTFIX CC=\"$$QMAKE_CC\"
 QMAKE_EXTRA_TARGETS += rbspeex libucl libmkamsboot libmktccboot
 PRE_TARGETDEPS += rbspeex libucl libmkamsboot libmktccboot
 
@@ -271,7 +269,7 @@ macx {
     QMAKE_LFLAGS_PPC=-mmacosx-version-min=10.4 -arch ppc
     QMAKE_LFLAGS_X86=-mmacosx-version-min=10.4 -arch i386
     CONFIG+=x86 ppc
-    LIBS += -L/usr/local/lib -framework IOKit
+    LIBS += -L/usr/local/lib -framework IOKit -lz
     INCLUDEPATH += /usr/local/include
     QMAKE_INFO_PLIST = Info.plist
     RC_FILE = icons/rbutilqt.icns

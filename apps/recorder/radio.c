@@ -49,6 +49,9 @@
 #ifdef HAVE_RECORDING
 #include "recording.h"
 #endif
+#ifdef IPOD_ACCESSORY_PROTOCOL
+#include "iap.h"
+#endif
 #include "talk.h"
 #include "tuner.h"
 #include "power.h"
@@ -107,13 +110,22 @@
 #define FM_PRESET
 #define FM_MODE
 
-#elif (CONFIG_KEYPAD == COWOND2_PAD)
+#elif (CONFIG_KEYPAD == COWON_D2_PAD)
 #define FM_MENU
 #define FM_PRESET
 #define FM_STOP
 #define FM_MODE
 #define FM_EXIT
 #define FM_PLAY
+
+#elif (CONFIG_KEYPAD == IPOD_4G_PAD) || (CONFIG_KEYPAD == IPOD_3G_PAD) || \
+    (CONFIG_KEYPAD == IPOD_1G2G_PAD)
+#define FM_MENU
+#define FM_STOP
+#define FM_EXIT
+#define FM_PLAY
+#define FM_MODE
+
 #endif
 
 #define RADIO_SCAN_MODE 0
@@ -482,7 +494,6 @@ int radio_screen(void)
     int button_timeout = current_tick + (2*HZ);
 #endif
     struct viewport vp[NB_SCREENS];
-    int oldbars = 0, fmbars = VP_SB_ALLSCREENS;
 #ifdef HAVE_BUTTONBAR
     struct gui_buttonbar buttonbar;
     gui_buttonbar_init(&buttonbar);
@@ -493,9 +504,6 @@ int radio_screen(void)
     in_screen = true;
 
     /* always display status bar in radio screen for now */
-    FOR_NB_SCREENS(i)
-        fmbars |= VP_SB_IGNORE_SETTING(i);
-    oldbars = viewportmanager_set_statusbar(fmbars);
     FOR_NB_SCREENS(i)
     {
         viewport_set_defaults(&vp[i], i);
@@ -586,7 +594,6 @@ int radio_screen(void)
                 end_search();
                 talk = true;
             }
-
             trigger_cpu_boost();
         }
 
@@ -750,14 +757,14 @@ int radio_screen(void)
                 break;
 
             case ACTION_FM_MENU:
-                viewportmanager_set_statusbar(oldbars);
-                FOR_NB_SCREENS(i)
-                    screens[i].scroll_stop(&vp[i]);
-                radio_menu();
-                curr_preset = find_preset(curr_freq);
-                viewportmanager_set_statusbar(fmbars);
                 FOR_NB_SCREENS(i)
                 {
+                    screens[i].scroll_stop(&vp[i]);
+                }
+                radio_menu();
+                curr_preset = find_preset(curr_freq);
+                FOR_NB_SCREENS(i)
+                {                
                     screens[i].set_viewport(&vp[i]);
                     screens[i].clear_viewport();
                     screens[i].update_viewport();
@@ -787,9 +794,7 @@ int radio_screen(void)
 
                     break;
                 }
-                viewportmanager_set_statusbar(oldbars);
                 handle_radio_presets();
-                viewportmanager_set_statusbar(fmbars);
                 FOR_NB_SCREENS(i)
                 {
                     screens[i].set_viewport(&vp[i]);
@@ -873,6 +878,33 @@ int radio_screen(void)
 
             default:
                 default_event_handler(button);
+#ifdef HAVE_RDS_CAP
+                if (tuner_get(RADIO_EVENT))
+                    update_screen = true;
+#endif
+                if (!tuner_get(RADIO_PRESENT))
+                {
+#if CONFIG_CODEC != SWCODEC && !defined(SIMULATOR)
+                    if(audio_status() == AUDIO_STATUS_RECORD)
+                        audio_stop();
+#endif
+                    keep_playing = false;
+                    done = true;
+                    ret_val = GO_TO_ROOT;
+                    if(presets_changed)
+                    {
+                        if(yesno_pop(ID2P(LANG_FM_SAVE_CHANGES)))
+                        {
+                            if(filepreset[0] == '\0')
+                                save_preset_list();
+                            else
+                                radio_save_presets();
+                        }
+                    }
+
+                    /* Clear the preset list on exit. */
+                    clear_preset_list();
+                }
                 break;
         } /*switch(button)*/
 
@@ -894,11 +926,8 @@ int radio_screen(void)
                 FOR_NB_SCREENS(i)
                 {
                     screens[i].set_viewport(&vp[i]);
-                    peak_meter_screen(&screens[i],0,
-                                      STATUSBAR_HEIGHT + fh*(top_of_screen + 4),
-                                      fh);
-                    screens[i].update_rect(0,
-                                      STATUSBAR_HEIGHT + fh*(top_of_screen + 4),
+                    peak_meter_screen(&screens[i],0, fh*(top_of_screen + 4),fh);
+                    screens[i].update_rect(0, fh*(top_of_screen + 4),
                                            screens[i].getwidth(), fh);
                     screens[i].set_viewport(NULL);
                 }
@@ -963,7 +992,18 @@ int radio_screen(void)
                                       str(LANG_RADIO_SCAN_MODE));
                 FOR_NB_SCREENS(i)
                     screens[i].puts_scroll(0, top_of_screen + 3, buf);
+#ifndef SIMULATOR
+#ifdef HAVE_RDS_CAP
+                snprintf(buf, 128, "%s",tuner_get_rds_info(RADIO_RDS_NAME));
+                FOR_NB_SCREENS(i)
+                    screens[i].puts_scroll(0, top_of_screen + 4, buf);
 
+                snprintf(buf, 128, "%s",tuner_get_rds_info(RADIO_RDS_TEXT));
+                FOR_NB_SCREENS(i)
+                    screens[i].puts_scroll(0, top_of_screen + 5, buf);
+#endif
+#endif /* SIMULATOR */
+                
 #if CONFIG_CODEC != SWCODEC
                 if(audio_status() == AUDIO_STATUS_RECORD)
                 {
@@ -1085,8 +1125,9 @@ int radio_screen(void)
     cpu_idle_mode(false);
 #endif
     FOR_NB_SCREENS(i)
+    {
         screens[i].scroll_stop(&vp[i]);
-    viewportmanager_set_statusbar(oldbars);
+    }
     in_screen = false;
 #if CONFIG_CODEC != SWCODEC
     return have_recorded;
@@ -1498,6 +1539,7 @@ static int scan_presets(void *viewports)
         curr_freq = fmr->freq_min;
         num_presets = 0;
         memset(presets, 0, sizeof(presets));
+
         tuner_set(RADIO_MUTE, 1);
 
         while(curr_freq <= fmr->freq_max)
@@ -1563,7 +1605,6 @@ static int fm_recording_screen(void)
     /* switch recording source to FMRADIO for the duration */
     int rec_source = global_settings.rec_source;
     global_settings.rec_source = AUDIO_SRC_FMRADIO;
-
     ret = recording_screen(true);
 
     /* safe to reset as changing sources is prohibited here */
@@ -1649,7 +1690,7 @@ MAKE_MENU(radio_settings_menu, ID2P(LANG_FM_MENU), NULL,
 static bool radio_menu(void)
 {
     return do_menu(&radio_settings_menu, NULL, NULL, false) ==
-                                                              MENU_ATTACHED_USB;
+                                                            MENU_ATTACHED_USB;
 }
 
 #endif

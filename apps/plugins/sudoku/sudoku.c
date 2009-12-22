@@ -122,7 +122,7 @@ static const char default_game[9][9] =
 #define MARK_SIZE   1   /* Mark width and height */
 
 #elif (LCD_HEIGHT==110) && (LCD_WIDTH==138) \
-   || (LCD_HEIGHT==128) && (LCD_WIDTH==128)
+   || (LCD_HEIGHT==128) && (LCD_WIDTH==128) 
 /* iPod Mini - 138x110, 9 cells @ 10x10 with 14 border lines */
 /* iriver H10 5-6GB - 128x128, 9 cells @ 10x10 with 14 border lines */
 #define MARK_OFFS   1   /* Pixels between border and mark */
@@ -173,6 +173,12 @@ static const char default_game[9][9] =
 #define MARK_OFFS   1   /* Pixels between border and mark */
 #define MARK_SPACE  2   /* Pixels between two marks */
 #define MARK_SIZE   6   /* Mark width and height */
+
+#elif ((LCD_HEIGHT==160) && (LCD_WIDTH==128))
+/* Philips GoGear SA9200 - 128x160, 9 cells @ 10x10 with 14 border tiles */
+#define MARK_OFFS   1   /* Pixels between border and mark */
+#define MARK_SPACE  1   /* Pixels between two marks */
+#define MARK_SIZE   2   /* Mark width and height */
 
 #else
   #error SUDOKU: Unsupported LCD size
@@ -277,6 +283,10 @@ static unsigned int cellypos[9]={
 #define YOFS ((LCD_HEIGHT-BOARD_HEIGHT)/2)
 #endif
 
+#define BLOCK        3
+#define SIZE         (BLOCK*BLOCK)
+
+#if 0
 /****** Solver routine by Tom Shackell <shackell@cs.york.ac.uk>
 
 Downloaded from:
@@ -288,9 +298,6 @@ Released under GPLv2
 */
 
 typedef unsigned int  Bitset;
-
-#define BLOCK        3
-#define SIZE         (BLOCK*BLOCK)
 
 #define true  1
 #define false 0
@@ -558,6 +565,18 @@ void sudoku_solve(struct sudoku_state_t* state)
             }
         }
     } else {
+        rb->splash(HZ*2, "Solve failed");
+    }
+
+    return;
+}
+#endif /* 0 */
+
+void sudoku_solve(struct sudoku_state_t* state)
+{
+    bool ret = sudoku_solve_board(state);
+
+    if (!ret) {
         rb->splash(HZ*2, "Solve failed");
     }
 

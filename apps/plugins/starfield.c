@@ -112,7 +112,7 @@ PLUGIN_HEADER
 #define STARFIELD_DECREASE_NB_STARS BUTTON_RIGHT
 #define STARFIELD_TOGGLE_COLOR BUTTON_MENU
 
-#elif (CONFIG_KEYPAD == COWOND2_PAD)
+#elif (CONFIG_KEYPAD == COWON_D2_PAD)
 #define STARFIELD_QUIT BUTTON_POWER
 
 #elif CONFIG_KEYPAD == CREATIVEZVM_PAD
@@ -131,7 +131,15 @@ PLUGIN_HEADER
 #define STARFIELD_DECREASE_NB_STARS BUTTON_LEFT
 #define STARFIELD_TOGGLE_COLOR BUTTON_SELECT
 
-#elif (CONFIG_KEYPAD == ONDAVX747_PAD) || CONFIG_KEYPAD == MROBE500_PAD
+#elif CONFIG_KEYPAD == PHILIPS_SA9200_PAD
+#define STARFIELD_QUIT BUTTON_POWER
+#define STARFIELD_INCREASE_ZMOVE BUTTON_UP
+#define STARFIELD_DECREASE_ZMOVE BUTTON_DOWN
+#define STARFIELD_INCREASE_NB_STARS BUTTON_NEXT
+#define STARFIELD_DECREASE_NB_STARS BUTTON_PREV
+#define STARFIELD_TOGGLE_COLOR BUTTON_PLAY
+
+#elif (CONFIG_KEYPAD == ONDAVX747_PAD) || (CONFIG_KEYPAD == ONDAVX777_PAD) || (CONFIG_KEYPAD == MROBE500_PAD)
 #define STARFIELD_QUIT BUTTON_POWER
 
 #elif CONFIG_KEYPAD == SAMSUNG_YH_PAD
@@ -474,8 +482,6 @@ int plugin_main(void)
 #endif
             case(STARFIELD_QUIT):
             case(SYS_USB_CONNECTED):
-                /* Turn on backlight timeout (revert to settings) */
-                backlight_use_settings(); /* backlight control in lib/helper.c*/
                 return PLUGIN_OK;
                 break;
         }
@@ -493,6 +499,9 @@ enum plugin_status plugin_start(const void* parameter)
     backlight_force_on(); /* backlight control in lib/helper.c */
 
     ret = plugin_main();
+
+    /* Turn on backlight timeout (revert to settings) */
+    backlight_use_settings(); /* backlight control in lib/helper.c*/
 
     return ret;
 }

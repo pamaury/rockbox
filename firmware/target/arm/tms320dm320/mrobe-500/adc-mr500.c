@@ -24,6 +24,7 @@
 #include "adc-target.h"
 #include "kernel.h"
 #include "tsc2100.h"
+#include "system-target.h"
 #include "button-target.h"
 
 void adc_init(void)
@@ -32,16 +33,25 @@ void adc_init(void)
      *  touchscreen does not work, audio has not been tested, but it is
      *  expected that is will also not work when low.
      */
-    IO_GIO_DIR0     &= ~(1<<15);     /* output */
-    IO_GIO_INV0     &= ~(1<<15);     /* non-inverted */
-    IO_GIO_FSEL0    &= ~(0x03<<12);  /* normal pin */
-    IO_GIO_BITSET0  =   (1<<15);
+     
+    /* Setup touchscreen (tsc2100) pins:
+     *  14 - input, touchscreen irq
+     *  15 - output, touchscreen nPWD? */
+    /*  14: input , non-inverted,    irq, falling edge, no-chat, normal */
+    dm320_set_io(14, true, false, true, false, false, 0x00);
+    
+    /*  15: output, non-inverted, no-irq, falling edge, no-chat, normal */
+    dm320_set_io(15, false, false, false, false, false, 0x00);
+    IO_GIO_BITSET0  =   (1<<15); /* Turn on TSC2100 */
 
     /* Initialize the touchscreen and the battery readout */
     tsc2100_adc_init();
     
     /* Enable the tsc2100 interrupt */
     IO_INTC_EINT2 |= (1<<3); /* IRQ_GIO14 */
+    
+    /* Read all registers to make sure they are clear */
+    tsc2100_read_data();
 }
 
 /* Touchscreen data available interupt */
@@ -49,31 +59,11 @@ void GIO14(void)
 {
     /* Interrupts work properly when cleared first */
     IO_INTC_IRQ2 = (1<<3); /* IRQ_GIO14 == 35 */
-    
-    short tsadc = tsc2100_readreg(TSADC_PAGE, TSADC_ADDRESS);
-    short adscm = (tsadc&TSADC_ADSCM_MASK)>>TSADC_ADSCM_SHIFT;
-    
+
     /* Always read all registers in one go to clear any missed flags */
     tsc2100_read_data();
     
-    switch (adscm)
-    {
-        case 0x01:
-        case 0x02:
-        case 0x03:
-        case 0x04:
-        case 0x05:
-            /* do a battery read - this will shutdown the adc till the next tick
-             */
-//            tsc2100_set_mode(true, 0x0B); 
-            break;
-        case 0x06:
-        case 0x07:
-        case 0x08:
-        case 0x09:
-        case 0x0B:
-            tsc2100_set_mode(true, 0x01);
-            break;
-    }    
+    /* Stop the scan, firmware will initiate another scan with a mode set */
+    tsc2100_set_mode(true, 0x00);  
 }
 

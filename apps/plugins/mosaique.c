@@ -129,8 +129,10 @@ PLUGIN_HEADER
 #define MOSAIQUE_SPEED BUTTON_RC_MENU
 #define MOSAIQUE_RESTART BUTTON_RC_PLAY
 
-#elif CONFIG_KEYPAD == COWOND2_PAD
+#elif CONFIG_KEYPAD == COWON_D2_PAD
 #define MOSAIQUE_QUIT BUTTON_POWER
+#define MOSAIQUE_SPEED BUTTON_MINUS
+#define MOSAIQUE_RESTART BUTTON_MENU
 
 #elif CONFIG_KEYPAD == IAUDIO67_PAD
 #define MOSAIQUE_QUIT BUTTON_POWER
@@ -145,6 +147,11 @@ PLUGIN_HEADER
 #elif CONFIG_KEYPAD == PHILIPS_HDD1630_PAD
 #define MOSAIQUE_QUIT BUTTON_POWER
 #define MOSAIQUE_SPEED BUTTON_VIEW
+#define MOSAIQUE_RESTART BUTTON_MENU
+
+#elif CONFIG_KEYPAD == PHILIPS_SA9200_PAD
+#define MOSAIQUE_QUIT BUTTON_POWER
+#define MOSAIQUE_SPEED BUTTON_RIGHT
 #define MOSAIQUE_RESTART BUTTON_MENU
 
 #elif CONFIG_KEYPAD == ONDAVX747_PAD
@@ -201,20 +208,20 @@ enum plugin_status plugin_start(const void* parameter)
             x = 2*GFX_WIDTH-x;
             sx=-sx;
         }
-	
+
         if (x<0) 
         {
             x = -x;
             sx = -sx;
         }
-	
+
         y+=sy;
         if (y>GFX_HEIGHT) 
         {
             y = 2*GFX_HEIGHT-y;
             sy=-sy;
         }
-	
+
         if (y<0) 
         {
             y = -y;
@@ -228,7 +235,7 @@ enum plugin_status plugin_start(const void* parameter)
         MYLCD(update)();
 
         rb->sleep(HZ/timer);
-        
+
         button = rb->button_get(false);
         switch (button)
         {
@@ -247,7 +254,7 @@ enum plugin_status plugin_start(const void* parameter)
                 if (timer>20)
                     timer=5;
                 break;
-                
+
             case MOSAIQUE_RESTART:
 
                 sx = rb->rand() % (GFX_HEIGHT/2) + 1;
@@ -271,5 +278,3 @@ enum plugin_status plugin_start(const void* parameter)
         }
     }
 }
-
-

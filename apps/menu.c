@@ -209,7 +209,7 @@ static void init_menu_lists(const struct menu_item_ex *menu,
     else
         icon = menu->callback_and_desc->icon_id;
     gui_synclist_set_title(lists, P2STR(menu->callback_and_desc->desc), icon);
-    gui_synclist_set_icon_callback(lists, menu_get_icon);
+    gui_synclist_set_icon_callback(lists, global_settings.show_icons?menu_get_icon:NULL);
 #else
     (void)icon;
     gui_synclist_set_icon_callback(lists, NULL);
@@ -343,8 +343,8 @@ int do_menu(const struct menu_item_ex *start_menu, int *start_selected,
     const struct menu_item_ex *temp, *menu;
     int ret = 0, i;
     bool redraw_lists;
-    int oldbars = viewportmanager_get_statusbar();
-    viewportmanager_set_statusbar(hide_bars ? VP_SB_HIDE_ALL : oldbars);
+    FOR_NB_SCREENS(i)
+        viewportmanager_theme_enable(i, !hide_bars, NULL);
     
     const struct menu_item_ex *menu_stack[MAX_MENUS];
     int menu_stack_selected_item[MAX_MENUS];
@@ -515,7 +515,7 @@ int do_menu(const struct menu_item_ex *start_menu, int *start_selected,
             /* might be leaving list, so stop scrolling */
             FOR_NB_SCREENS(i)
             {
-                screens[i].stop_scroll();
+                screens[i].scroll_stop(&vps[i]);
             }
             if (menu_callback)
                 menu_callback(ACTION_EXIT_MENUITEM, menu);
@@ -548,7 +548,7 @@ int do_menu(const struct menu_item_ex *start_menu, int *start_selected,
             /* entering an item that may not be a list, so stop scrolling */
             FOR_NB_SCREENS(i)
             {
-                screens[i].stop_scroll();
+                screens[i].scroll_stop(&vps[i]);
             }
 #ifdef HAVE_BUTTONBAR
             if (!hide_bars)
@@ -686,7 +686,8 @@ int do_menu(const struct menu_item_ex *start_menu, int *start_selected,
         *start_selected = get_menu_selection(
                             gui_synclist_get_sel_pos(&lists), menu);
     }
-    viewportmanager_set_statusbar(oldbars);
+   FOR_NB_SCREENS(i)
+       viewportmanager_theme_undo(i, false);
     return ret;
 }
 

@@ -61,6 +61,9 @@ void pcm_play_dma_init(void)
     IO_INTC_IRQ0 = 1 << 11;
     IO_INTC_EINT0 |= 1 << 11;
     
+    /* Set this as a FIQ */
+    IO_INTC_FISEL0 |= 1 << 11;
+    
     IO_DSPC_HPIB_CONTROL = 1 << 10 | 1 << 9 | 1 << 8 | 1 << 7 | 1 << 3 | 1 << 0;
     
     dsp_reset();
@@ -91,6 +94,7 @@ void pcm_play_dma_start(const void *addr, size_t size)
 void pcm_play_dma_stop(void)
 {
     DSP_(_dma0_stopped)=1;
+    dsp_wake();
 }
 
 void pcm_play_lock(void)
@@ -108,6 +112,7 @@ void pcm_play_dma_pause(bool pause)
     if (pause)
     {
         DSP_(_dma0_stopped)=2;
+        dsp_wake();
     }
     else
     {
@@ -131,7 +136,7 @@ void DSPHINT(void)
 	
     unsigned int i;
 
-    IO_INTC_IRQ0 = 1 << 11;
+    IO_INTC_FIQ0 = 1 << 11;
     
     switch (dsp_message.msg) 
     {

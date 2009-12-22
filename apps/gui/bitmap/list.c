@@ -173,8 +173,7 @@ void list_draw(struct screen *display, struct gui_synclist *list)
 
     /* setup icon placement */
     list_icons = *list_text_vp;
-    int icon_count = global_settings.show_icons &&
-            (list->callback_get_item_icon != NULL) ? 1 : 0;
+    int icon_count = (list->callback_get_item_icon != NULL) ? 1 : 0;
     if (show_cursor)
         icon_count++;
     if (icon_count)
@@ -341,7 +340,12 @@ unsigned gui_synclist_do_touchscreen(struct gui_synclist * gui_list)
 
     if (button == BUTTON_NONE)
         return ACTION_NONE;
-    if (x < list_text_vp->x)
+    if (x > list_text_vp->x + list_text_vp->width)
+    {
+        /* wider than the list's viewport, ignore it */
+        return ACTION_NONE;
+    }
+    else if (x < list_text_vp->x)
     {
         /* Top left corner is GO_TO_ROOT */
         if (y<list_text[SCREEN_MAIN].y)

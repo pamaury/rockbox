@@ -1,0 +1,24 @@
+% $Id$ %
+\def\UseOption{ipodmini}
+\edef\UseOption{\UseOption,HAVE_RB_BL_ON_DISK}
+\edef\UseOption{\UseOption,IPOD_4G_PAD}
+\edef\UseOption{\UseOption,HAVE_BACKLIGHT}
+\edef\UseOption{\UseOption,HAVE_DISK_STORAGE}
+\edef\UseOption{\UseOption,ipod}
+
+\newcommand{\playerman}{Ipod}
+\newcommand{\playertype}{Mini}
+\newcommand{\playerlongtype}{\playertype}
+\newcommand{\genericimg}{138x110x2}
+\newcommand{\specimg}{ipodmini1g}
+%Used to name the player, e.g. ...to the \dap
+\newcommand{\dap}{player}
+%For use when referring to the player. E.g. the \daps\ capacity ...
+\newcommand{\daps}{player's}
+\newcommand{\firmwarefilename}{\fname{rockbox.ipod}}
+\newcommand{\firmwareextension}{\fname{ipod}}
+\newcommand{\screenshotsize}{4cm}
+\newcommand{\disk}{hard disk}
+
+% link external keymap file
+\input{platform/keymap-ipod4g.tex}

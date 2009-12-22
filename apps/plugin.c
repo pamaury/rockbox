@@ -230,7 +230,6 @@ static const struct plugin_api rockbox_api = {
     lcd_remote_bitmap,
 #endif
     viewport_set_defaults,
-    viewportmanager_set_statusbar,
     
     /* list */
     gui_synclist_init,
@@ -676,12 +675,16 @@ static const struct plugin_api rockbox_api = {
     pcmbuf_beep,
 #endif
     crc_32,
+    open_utf8,
+#ifdef HAVE_LCD_BITMAP
+    viewportmanager_theme_enable,
+    viewportmanager_theme_undo,
+#endif
 };
 
 int plugin_load(const char* plugin, const void* parameter)
 {
-    int rc;
-    int oldbars;
+    int rc, i;
     struct plugin_header *hdr;
 #ifdef SIMULATOR
     void *pd;
@@ -787,7 +790,8 @@ int plugin_load(const char* plugin, const void* parameter)
     lcd_remote_update();
 #endif
 
-    oldbars = viewportmanager_set_statusbar(VP_SB_HIDE_ALL);
+    FOR_NB_SCREENS(i)
+       viewportmanager_theme_enable(i, false, NULL);
 
     cpucache_invalidate();
     
@@ -803,11 +807,6 @@ int plugin_load(const char* plugin, const void* parameter)
 #endif
 
     button_clear_queue();
-
-    lcd_clear_display();
-#ifdef HAVE_LCD_REMOTE
-    lcd_remote_clear_display();
-#endif
 
 #ifdef HAVE_LCD_BITMAP
     lcd_setfont(FONT_UI);
@@ -834,12 +833,13 @@ int plugin_load(const char* plugin, const void* parameter)
 #endif
 #endif
 
-    viewportmanager_set_statusbar(oldbars);
+    lcd_clear_display();
+#ifdef HAVE_LCD_REMOTE
+    lcd_remote_clear_display();
+#endif
 
-    if (rc != PLUGIN_GOTO_WPS)
-    {
-        send_event(GUI_EVENT_REFRESH, NULL);
-    }
+    FOR_NB_SCREENS(i)
+        viewportmanager_theme_undo(i, false);
 
     if (pfn_tsr_exit == NULL)
         plugin_loaded = false;

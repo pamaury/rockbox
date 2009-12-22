@@ -22,10 +22,6 @@ CFLAGS = $(SPEEXOPTS) $(INCLUDES) -O3 -fomit-frame-pointer -Wno-unused-parameter
 ifeq ($(findstring CYGWIN,$(shell uname)),CYGWIN)
 CFLAGS+=-mno-cygwin
 endif
-# on mingw32, make sure CC is set to gcc
-ifeq ($(findstring MINGW,$(shell uname)),MINGW)
-CC = gcc
-endif
 
 ifdef RBARCH
 CFLAGS += -arch $(RBARCH)
@@ -33,10 +29,7 @@ endif
 
 # don't try to use the systems libspeex when building a static binary.
 ifndef STATIC
-SYS_SPEEX = $(shell pkg-config --silence-errors --libs speex)
-ifneq ($(SYS_SPEEX),)
-SYS_SPEEX += $(shell pkg-config --silence-errors --libs speexdsp)
-endif
+SYS_SPEEX = $(shell pkg-config --silence-errors --libs speex speexdsp)
 endif
 
 # fall back to our own librbspeex if no suitable found.
@@ -108,7 +101,7 @@ endif
 librbspeex-universal: librbspeexi386.a librbspeexppc.a
 	@echo lipo librbspeex.a
 	$(SILENT) rm -f $(TARGET_DIR)librbspeex.a
-	lipo -create $(TARGET_DIR)librbspeexppc.a $(TARGET_DIR)librbspeexi386.a -output $(TARGET_DIR)librbspeex.a
+	$(SILENT)lipo -create $(TARGET_DIR)librbspeexppc.a $(TARGET_DIR)librbspeexi386.a -output $(TARGET_DIR)librbspeex.a
 
 clean:
 	rm -f $(OBJS) $(TARGET_DIR)librbspeex* ../rbspeexenc ../rbspeexdec $(TARGET_DIR)dep-speex

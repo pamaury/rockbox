@@ -1077,7 +1077,7 @@ CONFIG_KEYPAD == SANSA_M200_PAD
 #define CHIP8_KEY6 BUTTON_RC_FF
 #define CHIP8_KEY8 BUTTON_RC_VOL_DOWN
 
-#elif (CONFIG_KEYPAD == COWOND2_PAD)
+#elif (CONFIG_KEYPAD == COWON_D2_PAD)
 #define CHIP8_OFF  BUTTON_POWER
 
 #elif CONFIG_KEYPAD == CREATIVEZVM_PAD
@@ -1101,6 +1101,19 @@ CONFIG_KEYPAD == SANSA_M200_PAD
 #define CHIP8_KEY7 BUTTON_VOL_UP
 #define CHIP8_KEY8 BUTTON_DOWN
 #define CHIP8_KEY9 BUTTON_VIEW
+
+#elif CONFIG_KEYPAD == PHILIPS_SA9200_PAD
+#define CHIP8_OFF  BUTTON_POWER
+#define CHIP8_KEY1 BUTTON_LEFT
+#define CHIP8_KEY2 BUTTON_UP
+#define CHIP8_KEY3 BUTTON_RIGHT
+#define CHIP8_KEY4 BUTTON_PREV
+#define CHIP8_KEY5 BUTTON_PLAY
+#define CHIP8_KEY6 BUTTON_NEXT
+#define CHIP8_KEY7 BUTTON_MENU
+#define CHIP8_KEY8 BUTTON_DOWN
+#define CHIP8_KEY9 BUTTON_VOL_UP
+#define CHIP8_KEY0 BUTTON_VOL_DOWN
 
 #elif (CONFIG_KEYPAD == ONDAVX747_PAD) || \
 CONFIG_KEYPAD == ONDAVX777_PAD || \
@@ -1329,7 +1342,7 @@ static bool chip8_init(const char* file)
     int i;
 
     fd = rb->open(file, O_RDONLY);
-    if (fd==-1) {
+    if (fd < 0) {
 	rb->lcd_puts(0, 6, "File Error.");
 	return false;
     }
@@ -1351,7 +1364,7 @@ static bool chip8_init(const char* file)
     c8kname[len-2] = '8';
     c8kname[len-1] = 'k';
     fd = rb->open(c8kname, O_RDONLY);
-    if (fd!=-1) {
+    if (fd >= 0) {
 	rb->lcd_puts(0, 6, "File&Keymap OK.");
 	numread = rb->read(fd, chip8_keymap, 16);
 	rb->close(fd);

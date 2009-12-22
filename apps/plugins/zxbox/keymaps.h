@@ -129,7 +129,7 @@
 #define ZX_SELECT       BUTTON_RC_PLAY
 #define ZX_MENU         BUTTON_RC_REC
 
-#elif CONFIG_KEYPAD == COWOND2_PAD
+#elif CONFIG_KEYPAD == COWON_D2_PAD
 #define ZX_MENU         (BUTTON_MENU|BUTTON_REL)
 
 #elif CONFIG_KEYPAD == IAUDIO67_PAD
@@ -155,6 +155,14 @@
 #define ZX_LEFT         BUTTON_LEFT
 #define ZX_RIGHT        BUTTON_RIGHT
 #define ZX_SELECT       BUTTON_SELECT
+#define ZX_MENU         BUTTON_MENU
+
+#elif CONFIG_KEYPAD == PHILIPS_SA9200_PAD
+#define ZX_UP           BUTTON_UP
+#define ZX_DOWN         BUTTON_DOWN
+#define ZX_LEFT         BUTTON_PREV
+#define ZX_RIGHT        BUTTON_NEXT
+#define ZX_SELECT       BUTTON_RIGHT
 #define ZX_MENU         BUTTON_MENU
 
 #elif CONFIG_KEYPAD == ONDAVX747_PAD

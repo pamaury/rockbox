@@ -128,7 +128,7 @@ char buf[255];
 #define SUPERDOM_RIGHT BUTTON_RIGHT
 #define SUPERDOM_CANCEL BUTTON_BACK
 
-#elif CONFIG_KEYPAD == COWOND2_PAD
+#elif CONFIG_KEYPAD == COWON_D2_PAD
 #define SUPERDOM_CANCEL BUTTON_POWER
 
 #elif CONFIG_KEYPAD == CREATIVEZVM_PAD
@@ -138,6 +138,14 @@ char buf[255];
 #define SUPERDOM_LEFT BUTTON_LEFT
 #define SUPERDOM_RIGHT BUTTON_RIGHT
 #define SUPERDOM_CANCEL BUTTON_BACK
+
+#elif CONFIG_KEYPAD == PHILIPS_SA9200_PAD
+#define SUPERDOM_OK BUTTON_PLAY
+#define SUPERDOM_UP BUTTON_UP
+#define SUPERDOM_DOWN BUTTON_DOWN
+#define SUPERDOM_LEFT BUTTON_PREV
+#define SUPERDOM_RIGHT BUTTON_NEXT
+#define SUPERDOM_CANCEL BUTTON_LEFT
 
 #elif (CONFIG_KEYPAD == ONDAVX747_PAD) || (CONFIG_KEYPAD == MROBE500_PAD)
 #define SUPERDOM_CANCEL BUTTON_POWER
@@ -1927,7 +1935,7 @@ static int load_game(const char* file) {
     int fd;
 
     fd = rb->open(file, O_RDONLY);
-    if(fd == 0) {
+    if(fd < 0) {
         DEBUGF("Couldn't open savegame\n");
         return -1;
     }

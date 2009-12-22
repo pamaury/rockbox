@@ -158,7 +158,7 @@ PLUGIN_HEADER
 #define PONG_RIGHT_UP BUTTON_VOL_UP
 #define PONG_RIGHT_DOWN BUTTON_VOL_DOWN
 
-#elif (CONFIG_KEYPAD == COWOND2_PAD)
+#elif (CONFIG_KEYPAD == COWON_D2_PAD)
 #define PONG_QUIT BUTTON_POWER
 
 #elif CONFIG_KEYPAD == IAUDIO67_PAD
@@ -177,6 +177,14 @@ PLUGIN_HEADER
 #define PONG_RIGHT_DOWN BUTTON_MENU
 
 #elif CONFIG_KEYPAD == PHILIPS_HDD1630_PAD
+#define PONG_QUIT BUTTON_POWER
+#define PONG_PAUSE BUTTON_MENU
+#define PONG_LEFT_UP BUTTON_UP
+#define PONG_LEFT_DOWN BUTTON_DOWN
+#define PONG_RIGHT_UP BUTTON_VOL_UP
+#define PONG_RIGHT_DOWN BUTTON_VOL_DOWN
+
+#elif CONFIG_KEYPAD == PHILIPS_SA9200_PAD
 #define PONG_QUIT BUTTON_POWER
 #define PONG_PAUSE BUTTON_MENU
 #define PONG_LEFT_UP BUTTON_UP
@@ -362,7 +370,7 @@ void score(struct pong *p, int pad)
     /* avoid hitting the pad with the new ball */
     p->ballx = (p->ballx < 0) ?
         (RES * PAD_WIDTH) : (RES * (LCD_WIDTH - PAD_WIDTH - BALL_WIDTH));
-    
+
     /* restore Y-speed to default */
     p->ballspeedy = (p->ballspeedy > 0) ? SPEEDY : -SPEEDY;
 
@@ -452,7 +460,7 @@ int keys(struct pong *p)
 
     while(TIME_BEFORE(*rb->current_tick, end)) {
         key = rb->button_get_w_tmo(end - *rb->current_tick);
-        
+
 #ifdef HAVE_TOUCHSCREEN
         short touch_x, touch_y;
         if(key & BUTTON_TOUCHSCREEN)
@@ -461,7 +469,7 @@ int keys(struct pong *p)
             touch_y = rb->button_get_data() & 0xFFFF;
             if(touch_x >= xpos[0] && touch_x <= xpos[0]+(PAD_WIDTH*4))
                 padmove(&p->w_pad[0], touch_y-(p->e_pad[0]*2+PAD_HEIGHT)/2);
-            
+
             if(touch_x >= xpos[1]-(PAD_WIDTH*4) && touch_x <= xpos[1])
                 padmove(&p->w_pad[1], touch_y-(p->e_pad[1]*2+PAD_HEIGHT)/2);
         }
@@ -499,7 +507,7 @@ int keys(struct pong *p)
 
         if(key & PONG_RIGHT_UP)   /* player right goes up */
             padmove(&p->w_pad[1], -MOVE_STEP);
-        
+
         if(rb->default_event_handler(key) == SYS_USB_CONNECTED)
             return -1; /* exit game because of USB */
     }
@@ -540,7 +548,7 @@ enum plugin_status plugin_start(const void* parameter)
     /* if you don't use the parameter, you can do like
        this to avoid the compiler warning about it */
     (void)parameter;
-  
+
     /* Clear screen */
     rb->lcd_clear_display();
 

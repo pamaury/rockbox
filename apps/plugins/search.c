@@ -29,7 +29,7 @@ PLUGIN_HEADER
 static int fd;
 static int fdw;
 
-static int file_size;
+static int file_size, bomsize;
 static int results = 0;
 
 static char buffer[BUFFER_SIZE+1];
@@ -57,13 +57,8 @@ static void fill_buffer(int pos){
     int found = false ;
     const char crlf = '\n';
 
-    if (pos>=file_size-BUFFER_SIZE)
-        pos = file_size-BUFFER_SIZE;
-    if (pos<0)
-        pos = 0;
-
-    rb->lseek(fd, pos, SEEK_SET);
-    numread = rb->read(fd, buffer, BUFFER_SIZE);
+    rb->lseek(fd, pos+bomsize, SEEK_SET);
+    numread = rb->read(fd, buffer, MIN(BUFFER_SIZE, file_size-pos));
 
     buffer[numread] = 0;
     line_end = 0;
@@ -120,11 +115,15 @@ static bool search_init(const char* file){
     if (!rb->kbd_input(search_string,sizeof search_string)){
         clear_display();
         rb->splash(0, "Searching...");
-        fd = rb->open(file, O_RDONLY);
-        if (fd==-1)
+        fd = rb->open_utf8(file, O_RDONLY);
+        if (fd < 0)
             return false;
 
-        fdw = rb->creat(resultfile);
+        bomsize = rb->lseek(fd, 0, SEEK_CUR);
+        if (bomsize)
+            fdw = rb->open_utf8(resultfile, O_WRONLY|O_CREAT|O_TRUNC);
+        else
+            fdw = rb->open(resultfile, O_WRONLY|O_CREAT|O_TRUNC);
 
         if (fdw < 0) {
 #ifdef HAVE_LCD_BITMAP
@@ -132,10 +131,11 @@ static bool search_init(const char* file){
 #else
             rb->splash(HZ, "File creation failed");
 #endif
+            rb->close(fd);
             return false;
         }
 
-        file_size = rb->lseek(fd, 0, SEEK_END);
+        file_size = rb->lseek(fd, 0, SEEK_END) - bomsize;
 
         return true;
     }
@@ -153,8 +153,9 @@ enum plugin_status plugin_start(const void* parameter)
 
     DEBUGF("%s - %s\n", (char *)parameter, &filename[rb->strlen(filename)-4]);
     /* Check the extension. We only allow .m3u files. */
-    if(rb->strcasecmp(&filename[rb->strlen(filename)-4], ".m3u") &&
-       rb->strcasecmp(&filename[rb->strlen(filename)-5], ".m3u8")) {
+    if (!(p = rb->strrchr(filename, '.')) ||
+        (rb->strcasecmp(p, ".m3u") && rb->strcasecmp(p, ".m3u8")))
+    {
         rb->splash(HZ, "Not a .m3u or .m3u8 file");
         return PLUGIN_ERROR;
     }
@@ -175,7 +176,7 @@ enum plugin_status plugin_start(const void* parameter)
     rb->splash(HZ, "Done");
     rb->close(fdw);
     rb->close(fd);
+    rb->reload_directory();
 
-    /* We fake a USB connection to force a reload of the file browser */
-    return PLUGIN_USB_CONNECTED;
+    return PLUGIN_OK;
 }
