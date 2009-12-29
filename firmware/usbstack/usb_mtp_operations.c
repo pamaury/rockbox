@@ -684,64 +684,77 @@ void send_object(void)
     receive_split_data(&send_object_split_routine, &finish_send_object_split_routine, &st);
 }
 
-#if 0
-static bool recursive_delete(const struct dircache_entry *entry)
+static bool recursive_delete(uint32_t handle);
+
+/*
+ * WARNING FIXME TODO WTF
+ * This code assumes that deleting an entry of a directory does not confuse the list_dir function
+ * This is true with dircache, this could be false with other systems, beware !
+ */
+
+unsigned lff_delete(uint32_t stor_id,uint32_t handle,void *arg)
+{
+    bool *bret = (bool *)arg;
+    (void) stor_id;
+    
+    *bret = recursive_delete(handle);
+    
+    return LF_CONTINUE | LF_ENTER;
+}
+
+bool recursive_delete(uint32_t handle)
 {
     static char path[MAX_PATH];
-    const struct dircache_entry *cur;
-    bool bret;
     
-    if(entry->attribute & ATTR_DIRECTORY)
+    if(is_directory_object(handle))
     {
-        for(cur = entry->down; cur != NULL; cur = cur->next)
+        bool bret;
+        uint16_t err = generic_list_files(0x0, handle, &lff_delete, (void *)&bret);
+        if(err != ERROR_OK)
         {
-            if(!is_dircache_entry_valid(cur))
-                continue;
-            /* skip "." and ".." and files that begin with "<"*/
-            if(cur->d_name[0] == '.' && cur->d_name[1] == '\0')
-                continue;
-            if(cur->d_name[0] == '.' && cur->d_name[1] == '.'  && cur->d_name[2] == '\0')
-                continue;
-            if(cur->d_name[0] == '<')
-                continue;
-
-            dircache_copy_path(cur, path, MAX_PATH);
-            bret = recursive_delete(cur);
-            if(!bret)
-                return false;
-            /* NOTE: assume removal does not invalidates valid dircache entries and 
-             does not the changed their relative order
-            */
+            logf("mtp: oops, something went wrong with generic_list_file !");
+            return false;
         }
+        if(!bret)
+            return false;
         
-        dircache_copy_path(entry, path, MAX_PATH);
+        copy_object_path(handle, path, MAX_PATH);
         logf("mtp: delete dir '%s'", path);
+        /*
         int ret = rmdir(path);
         if(ret != 0)
             logf("mtp: error: rmdir ret=%d", ret);
         return ret == 0;
+        */
+        return true;
     }
     else
     {
-        dircache_copy_path(entry, path, MAX_PATH);
+        copy_object_path(handle, path, MAX_PATH);
         logf("mtp: delete file '%s'", path);
+        /*
         int ret = remove(path);
         if(ret != 0)
             logf("mtp: error: remove ret=%d", ret);
         return ret == 0;
+        */
+        return true;
     }
 }
 
-void delete_object(int nb_params, uint32_t obj_handle, uint32_t __unused)
+void delete_object(int nb_params, uint32_t obj_handle, uint32_t obj_format)
 {
-    if(nb_params == 2 && __unused != 0x00000000)
+    /* deletion of files of a certain kind is unsupported for now */
+    if(nb_params == 2 && obj_format != 0x00000000)
         return fail_op_with(ERROR_SPEC_BY_FMT_UNSUPPORTED, NO_DATA_PHASE);
     
-    const struct dircache_entry *entry = mtp_handle_to_dircache_entry(obj_handle, false); /* don't allow to destroy / */
-    if(entry == NULL)
+    /* don't allow to delete root */
+    if(!is_valid_object_handle(obj_handle,false))
         return fail_op_with(ERROR_INVALID_OBJ_HANDLE, NO_DATA_PHASE);
     
-    bool ret = recursive_delete(entry);
+    logf("mtp: delete object(0x%lx, %s)", obj_handle, get_object_filename(obj_handle));
+    
+    bool ret = recursive_delete(obj_handle);
     
     mtp_cur_resp.code = ret ? ERROR_OK : ERROR_PARTIAL_DELETION;
     mtp_cur_resp.nb_parameters = 0;
@@ -751,33 +764,29 @@ void delete_object(int nb_params, uint32_t obj_handle, uint32_t __unused)
 
 void copy_object(int nb_params, uint32_t obj_handle, uint32_t stor_id, uint32_t obj_parent_handle)
 {
-    const struct dircache_entry *entry = mtp_handle_to_dircache_entry(obj_handle, false);
-    if(stor_id != 0x00010001)
-        return fail_op_with(ERROR_INVALID_STORAGE_ID, NO_DATA_PHASE);
-    
     if(nb_params == 2)
         obj_parent_handle = 0xffffffff;
+    if(nb_params == 3 && obj_parent_handle == 0x00000000)
+        obj_parent_handle = 0xffffffff;
     
-    const struct dircache_entry *parent_entry = mtp_handle_to_dircache_entry(obj_parent_handle, true);
-    if(parent_entry == NULL)
+    /* don't allow root */
+    if(!is_valid_object_handle(obj_handle, false))
+        return fail_op_with(ERROR_INVALID_OBJ_HANDLE, NO_DATA_PHASE);
+    if(!is_valid_storage_id(stor_id))
+        return fail_op_with(ERROR_INVALID_STORAGE_ID, NO_DATA_PHASE);
+    /* allow root on any storage */
+    if(!is_valid_object_handle(obj_parent_handle, true))
         return fail_op_with(ERROR_INVALID_PARENT_OBJ, NO_DATA_PHASE);
-    if((uint32_t)parent_entry != 0xffffffff && !(parent_entry->attribute & ATTR_DIRECTORY))
+    if(!is_directory_object(obj_parent_handle))
         return fail_op_with(ERROR_INVALID_PARENT_OBJ, NO_DATA_PHASE);
     
-    static char source_path[MAX_PATH];
-    static char dest_path[MAX_PATH];
-    
-    dircache_copy_path(entry, source_path, MAX_PATH);
-    if((uint32_t)parent_entry != 0xffffffff)
-        dircache_copy_path(parent_entry, dest_path, MAX_PATH);
-    else
-        strcpy(dest_path,"");
-
-    logf("mtp: copy object: '%s' -> '%s'", source_path, dest_path);
+    logf("mtp: copy object(0x%lx, %s) to storage 0x%lx under object 0x%lx", obj_handle,
+        get_object_filename(obj_handle), stor_id, obj_parent_handle);
     
     return fail_op_with(ERROR_GENERAL_ERROR, NO_DATA_PHASE);
 }
 
+#if 0
 void move_object(int nb_params, uint32_t obj_handle, uint32_t stor_id, uint32_t obj_parent_handle)
 {
     /* FIXME it's impossible to implement the current specification in a simple way because

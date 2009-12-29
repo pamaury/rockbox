@@ -586,12 +586,10 @@ void handle_command2(void)
             want_nb_params(1, SEND_DATA_PHASE) /* one parameter */
             want_session(SEND_DATA_PHASE) /* must be called in a session */
             return get_object(mtp_cur_cmd.param[0]);
-        #if 0
         case MTP_OP_DELETE_OBJECT:
             want_nb_params_range(1, 2, NO_DATA_PHASE)
             want_session(NO_DATA_PHASE)
             return delete_object(mtp_cur_cmd.nb_parameters, mtp_cur_cmd.param[0], mtp_cur_cmd.param[1]);
-        #endif
         case MTP_OP_SEND_OBJECT_INFO:
             want_nb_params_range(0, 2, SEND_DATA_PHASE)
             want_session(RECV_DATA_PHASE)
