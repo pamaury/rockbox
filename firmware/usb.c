@@ -42,6 +42,7 @@
 #ifdef HAVE_USBSTACK
 #include "usb_core.h"
 #endif
+#define LOGF_ENABLE
 #include "logf.h"
 #include "screendump.h"
 
@@ -60,7 +61,7 @@
 bool do_screendump_instead_of_usb = false;
 #endif
 
-#if !defined(SIMULATOR) && !defined(USB_NONE)
+#if !defined(USB_NONE)
 
 static int usb_state;
 
@@ -232,6 +233,11 @@ static void usb_thread(void)
         queue_wait(&usb_queue, &ev);
         switch(ev.id)
         {
+#ifdef SIMULATOR
+            case USB_ASK:
+                usb_ask((unsigned int)ev.data);
+                break;
+#endif
 #ifdef USB_DRIVER_CLOSE
             case USB_QUIT:
                 return;
@@ -314,7 +320,7 @@ static void usb_thread(void)
                 usb_core_enable_driver(USB_DRIVER_HID, usb_hid);
 #endif
 #ifdef USB_ENABLE_CHARGING_ONLY
-                usb_core_enable_driver(USB_DRIVER_CHARGING_ONLY, false);
+                usb_core_enable_driver(USB_DRIVER_CHARGING_ONLY, true);
 #endif
 
                 /* Check any drivers enabled at this point for exclusive storage
@@ -447,7 +453,9 @@ void usb_status_event(int current_status)
      */
     if(usb_monitor_enabled)
     {
+#ifndef SIMULATOR
         int oldstatus = disable_irq_save(); /* Dual-use function */
+#endif
 
         if(last_usb_status != current_status)
         {
@@ -455,13 +463,17 @@ void usb_status_event(int current_status)
             queue_post(&usb_queue, current_status, 0);
         }
 
+#ifndef SIMULATOR
         restore_irq(oldstatus);
+#endif
     }
 }
 
 void usb_start_monitoring(void)
 {
+#ifndef SIMULATOR
     int oldstatus = disable_irq_save(); /* Sync to event */
+#endif
     int status = usb_detect();
 
     usb_monitor_enabled = true;
@@ -476,7 +488,9 @@ void usb_start_monitoring(void)
         usb_firewire_connect_event();
 #endif
 
+#ifndef SIMULATOR
     restore_irq(oldstatus);
+#endif
 }
 
 #ifdef USB_FIREWIRE_HANDLING
@@ -532,6 +546,7 @@ static void usb_tick(void)
                readings in a row */
             if(countdown == 0)
             {
+                DEBUGF("usb_tick: post %d\n", current_status);
                 queue_post(&usb_queue, current_status, 0);
             }
         }
@@ -560,6 +575,7 @@ void usb_acknowledge(long id)
 
 void usb_init(void)
 {
+    DEBUGF("usb_init\n");
     /* We assume that the USB cable is extracted */
     usb_state = USB_EXTRACTED;
 #ifdef USB_DETECT_BY_DRV

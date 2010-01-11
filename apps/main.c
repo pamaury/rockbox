@@ -326,6 +326,7 @@ static void init(void)
     viewportmanager_init();
 
     gui_sync_wps_init();
+    usb_init();
     storage_init();
     settings_reset();
     settings_load(SETTINGS_ALL);

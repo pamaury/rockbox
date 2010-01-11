@@ -29,6 +29,7 @@
 #include "misc.h"
 #include "sim_tasks.h"
 #include "button-sdl.h"
+#include "usb.h"
 
 #include "debug.h"
 
@@ -76,8 +77,10 @@ void button_event(int key, bool pressed)
 {
     int new_btn = 0;
     static bool usb_connected = false;
+    /*
     if (usb_connected && key != SDLK_u)
         return;
+    */
     switch (key)
     {
 
@@ -142,10 +145,11 @@ void button_event(int key, bool pressed)
         if (!pressed)
         {
             usb_connected = !usb_connected;
+            /* Broadcast because we don't have access to usb_queue. Only usb thread will treat the message */
             if (usb_connected)
-                queue_post(&button_queue, SYS_USB_CONNECTED, 0);
+                queue_broadcast(USB_ASK, USB_ASK_SIMULATE_INSERTION);
             else
-                queue_post(&button_queue, SYS_USB_DISCONNECTED, 0);
+                queue_broadcast(USB_ASK, USB_ASK_SIMULATE_EXTRACTION);
         }
         return;
 

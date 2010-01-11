@@ -56,12 +56,25 @@ bool fat_ismounted(int volume)
     return true;
 }
 
+void fat_init(void)
+{
+}
+
+int fat_mount(IF_MV2(int volume,) IF_MD2(int drive,) long startsector)
+{
+    IF_MV2((void)volume,);
+    IF_MD2((void)drive,);
+    (void)startsector;
+    /* fails nicely */
+    return -1;
+}
+
 int storage_init(void)
 {
     return 1;
 }
 
-int storage_write_sectors(IF_MV2(int drive,)
+int storage_write_sectors(IF_MD2(int drive,)
                       unsigned long start,
                       int count,
                       const void* buf)
@@ -83,7 +96,7 @@ int storage_write_sectors(IF_MV2(int drive,)
     return 1;
 }
 
-int storage_read_sectors(IF_MV2(int drive,)
+int storage_read_sectors(IF_MD2(int drive,)
                      unsigned long start,
                      int count,
                      void* buf)
@@ -212,11 +225,6 @@ bool is_new_player(void)
 }
 
 #ifdef HAVE_USB_POWER
-bool usb_powered(void)
-{
-    return false;
-}
-
 bool usb_charging_enable(bool on)
 {
     (void)on;
@@ -249,13 +257,6 @@ bool charging_state(void)
     return false;
 }
 #endif /* CONFIG_CHARGING */
-
-#ifndef USB_NONE
-bool usb_inserted(void)
-{
-    return false;
-}
-#endif
 
 #ifdef HAVE_REMOTE_LCD_TICKING
 void lcd_remote_emireduce(bool state)
@@ -335,4 +336,3 @@ void system_reboot(void)
 {
     thread_sdl_exception_wait();
 }
-

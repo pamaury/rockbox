@@ -52,6 +52,9 @@ enum {
     USB_REQUEST_REBOOT,      /* Event */
 #endif
     USB_QUIT,                /* Event */
+#ifdef SIMULATOR
+    USB_ASK,                 /* Event */
+#endif
 };
 
 #ifdef HAVE_USB_POWER
@@ -129,6 +132,11 @@ struct usb_transfer_completion_event_data
 };
 #endif /* HAVE_USBSTACK */
 
+#ifdef SIMULATOR
+#define USB_ASK_SIMULATE_INSERTION      1
+#define USB_ASK_SIMULATE_EXTRACTION     2
+void usb_ask(unsigned int what); /* Simulator: ask something (simulate insertion,extraction,...) */
+#endif
 void usb_init(void);
 void usb_enable(bool on);
 void usb_attach(void);

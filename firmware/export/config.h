@@ -843,7 +843,10 @@ Lyre prototype 1 */
 
 #if defined(HAVE_USBSTACK)
 /* Define the implemented USB transport classes */
-#if CONFIG_USBOTG == USBOTG_ISP1583
+#if defined(SIMULATOR)
+#define USB_HAS_BULK
+#define USB_HAS_INTERRUPT
+#elif CONFIG_USBOTG == USBOTG_ISP1583
 #define USB_HAS_BULK
 #elif (CONFIG_USBOTG == USBOTG_ARC) || \
     (CONFIG_USBOTG == USBOTG_JZ4740) || \
@@ -878,8 +881,12 @@ Lyre prototype 1 */
 #define USB_ENABLE_HID
 #else
 #define USB_ENABLE_CHARGING_ONLY
-#endif
-#endif
+#endif /* USB_HAS_INTERRUPT */
+#else /* SIMULATOR */
+//#define USB_ENABLE_HID
+#define USB_ENABLE_SERIAL
+//#define USB_ENABLE_STORAGE
+#endif /* SIMULATOR */
 
 #endif /* BOOTLOADER */
 

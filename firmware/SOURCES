@@ -288,7 +288,6 @@ drivers/audio/uda1341.c
 #endif /* !defined(SIMULATOR) && !defined(BOOTLOADER) */
 
 /* USB Stack */
-#if !defined(SIMULATOR)
 #ifdef HAVE_USBSTACK
 usbstack/usb_core.c
 #ifdef USB_ENABLE_STORAGE
@@ -319,7 +318,6 @@ drivers/isp1362.c
 drivers/m5636.c
 #endif
 #endif /* !defined(HAVE_USBSTACK) */
-#endif /* !defined(SIMULATOR) */
 
 /* Other Random Hardware */
 #ifdef HAVE_TSC2100

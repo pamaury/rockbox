@@ -10,4 +10,6 @@ sim_tasks.c
 stubs.c
 powermgmt-sim.c
 backlight-sim.c
-
+#ifdef HAVE_USBSTACK
+usb-drv.c
+#endif

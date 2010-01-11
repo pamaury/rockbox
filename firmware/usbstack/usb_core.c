@@ -22,7 +22,7 @@
 #include "thread.h"
 #include "kernel.h"
 #include "string.h"
-/*#define LOGF_ENABLE*/
+#define LOGF_ENABLE
 #include "logf.h"
 
 #include "usb.h"
@@ -263,7 +263,7 @@ static unsigned char response_data[256] USB_DEVBSS_ATTR;
 
 static short hex[16] = {'0','1','2','3','4','5','6','7',
                         '8','9','A','B','C','D','E','F'};
-#ifdef IPOD_ARCH
+#if defined(IPOD_ARCH) && !defined(SIMULATOR)
 static void set_serial_descriptor(void)
 {
 #ifdef IPOD_VIDEO
@@ -287,7 +287,7 @@ static void set_serial_descriptor(void)
     }
     usb_string_iSerial.bLength=52;
 }
-#elif defined(HAVE_AS3514)
+#elif defined(HAVE_AS3514) && !defined(SIMULATOR)
 static void set_serial_descriptor(void)
 {
     unsigned char serial[16];
@@ -321,7 +321,7 @@ static void set_serial_descriptor(void)
     }
     usb_string_iSerial.bLength=84;
 }
-#elif (CONFIG_STORAGE & STORAGE_RAMDISK)
+#elif (CONFIG_STORAGE & STORAGE_RAMDISK) || defined(SIMULATOR)
 /* This "serial number" isn't unique, but it should never actually
    appear in non-testing use */
 static void set_serial_descriptor(void)
