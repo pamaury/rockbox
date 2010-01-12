@@ -218,7 +218,7 @@ void usb_serial_transfer_complete(int ep,int dir, int status, int length)
 
     switch (dir) {
         case USB_DIR_OUT:
-            logf("serial: %s", receive_buffer);
+            DEBUGF("serial: %s", receive_buffer);
             /* Data received. TODO : Do something with it ? */
 
             /* Get the next bit */

@@ -883,7 +883,7 @@ Lyre prototype 1 */
 #define USB_ENABLE_CHARGING_ONLY
 #endif /* USB_HAS_INTERRUPT */
 #else /* SIMULATOR */
-//#define USB_ENABLE_HID
+#define USB_ENABLE_HID
 #define USB_ENABLE_SERIAL
 //#define USB_ENABLE_STORAGE
 #endif /* SIMULATOR */

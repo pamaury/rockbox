@@ -27,7 +27,10 @@
 #include "cpu.h"
 #include "kernel.h"
 #include "thread.h"
-#include "system.h"
+#ifdef SIMULATOR
+#include "system-sdl.h"
+#include "debug.h"
+#endif
 #include "debug.h"
 #include "storage.h"
 #include "fat.h"
@@ -453,9 +456,7 @@ void usb_status_event(int current_status)
      */
     if(usb_monitor_enabled)
     {
-#ifndef SIMULATOR
         int oldstatus = disable_irq_save(); /* Dual-use function */
-#endif
 
         if(last_usb_status != current_status)
         {
@@ -463,17 +464,13 @@ void usb_status_event(int current_status)
             queue_post(&usb_queue, current_status, 0);
         }
 
-#ifndef SIMULATOR
         restore_irq(oldstatus);
-#endif
     }
 }
 
 void usb_start_monitoring(void)
 {
-#ifndef SIMULATOR
     int oldstatus = disable_irq_save(); /* Sync to event */
-#endif
     int status = usb_detect();
 
     usb_monitor_enabled = true;
@@ -488,9 +485,7 @@ void usb_start_monitoring(void)
         usb_firewire_connect_event();
 #endif
 
-#ifndef SIMULATOR
     restore_irq(oldstatus);
-#endif
 }
 
 #ifdef USB_FIREWIRE_HANDLING
