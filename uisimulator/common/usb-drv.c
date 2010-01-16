@@ -22,7 +22,7 @@
  ****************************************************************************/
 
 /* parts of this driver are based on the usb-arc driver */
-#define USB_VHCI_DRIVER_DEBUG
+/*#define USB_VHCI_DRIVER_DEBUG*/
 
 #include "errno.h"
 #include "libusb_vhci/libusb_vhci.h"
@@ -88,10 +88,10 @@ static struct usb_endpoint_t endpoints[USB_NUM_ENDPOINTS];
       ((type) == USB_VHCI_URB_TYPE_BULK ? USB_ENDPOINT_XFER_BULK : \
        ((type) == USB_VHCI_URB_TYPE_INT ? USB_ENDPOINT_XFER_INT : 4))))
 
-void bus_reset(void);
+static void bus_reset(void);
 
 /* general part */
-void change_usb_status(int status)
+static void change_usb_status(int status)
 {
     usb_status = status;
     usb_status_event(status);
@@ -124,7 +124,7 @@ void usb_enable(bool on)
     }
 }
 
-int stall_urb(struct usb_vhci_urb *urb)
+static int stall_urb(struct usb_vhci_urb *urb)
 {
     if(urb == NULL)
     {
@@ -141,7 +141,7 @@ int stall_urb(struct usb_vhci_urb *urb)
     return ret;
 }
 
-int complete_urb(struct usb_vhci_urb *urb)
+static int complete_urb(struct usb_vhci_urb *urb)
 {
     if(urb == NULL)
     {
@@ -158,7 +158,7 @@ int complete_urb(struct usb_vhci_urb *urb)
     return ret;
 }
 
-void clear_endpoint(int ep_num, bool ep_in)
+static void clear_endpoint(int ep_num, bool ep_in)
 {
     endpoints[ep_num].buffer[ep_in] = NULL;
     endpoints[ep_num].buffer_length[ep_in] = 0;
@@ -166,7 +166,7 @@ void clear_endpoint(int ep_num, bool ep_in)
     memset(&endpoints[ep_num].urb[ep_in], 0, sizeof(struct usb_vhci_urb));
 }
 
-int cancel_endpoint_urb(int ep_num, bool ep_in)
+static int cancel_endpoint_urb(int ep_num, bool ep_in)
 {
     /* FIXME seynchro issue here */
     if(!endpoints[ep_num].has_urb[ep_in])
@@ -186,7 +186,7 @@ int cancel_endpoint_urb(int ep_num, bool ep_in)
     return 0;
 }
 
-int usb_meet_up(int ep_num, bool ep_in)
+static int usb_meet_up(int ep_num, bool ep_in)
 {
     /* WARNING: for control endpoints, ep_in=false because of ^^^^ */
     /* But, the real direction is still available in the urb */
@@ -265,7 +265,7 @@ int usb_meet_up(int ep_num, bool ep_in)
     }
 }
 
-void dump_pending_urbs(void)
+static void dump_pending_urbs(void)
 {
     #ifdef USB_VHCI_DRIVER_DEBUG
     int ep_num;
@@ -291,7 +291,7 @@ void dump_pending_urbs(void)
     #endif
 }
 
-void process_urb(struct usb_vhci_urb *urb)
+static void process_urb(struct usb_vhci_urb *urb)
 {
     int ep_num = usb_vhci_ep_num(urb->epadr);
     bool ep_in = usb_vhci_is_in(urb->epadr);
@@ -425,7 +425,7 @@ void process_urb(struct usb_vhci_urb *urb)
 #define USB_VHCI_PORT_STAT_TRIGGER_POWER_ON  0x10
 #define USB_VHCI_PORT_STAT_TRIGGER_POWER_OFF 0x20
 
-uint16_t compute_trigger(uint16_t prev, uint16_t cur)
+static uint16_t compute_trigger(uint16_t prev, uint16_t cur)
 {
     uint16_t trigger = 0;
     #define CHECK_GAIN(val, trig_val) if(!(prev & val) && (cur & val)) trigger |= trig_val;
@@ -441,7 +441,7 @@ uint16_t compute_trigger(uint16_t prev, uint16_t cur)
     return trigger;
 }
 
-void vhci_hcd_thread(void)
+static void vhci_hcd_thread(void)
 {
     struct usb_vhci_work work;
     uint16_t last_status = 0;
@@ -524,7 +524,7 @@ void vhci_hcd_thread(void)
     }
 }
 
-void usb_simulate_power()
+static void usb_simulate_power()
 {
     int32_t id,usb_busnum;
     char *bus_id;
@@ -540,7 +540,7 @@ void usb_simulate_power()
         USB_DEBUGF("usb-vhci: couldn't add host controller\n");
 }
 
-void usb_simulate_unpower()
+static void usb_simulate_unpower()
 {
     change_usb_status(USB_UNPOWERED);
 }
@@ -599,7 +599,7 @@ void usb_drv_exit(void)
     usb_vhci_close(vhci_hcd_fd);
 }
 
-void bus_reset(void)
+static void bus_reset(void)
 {
     int ep_num;
     USB_DEBUGF("usb: bus reset\n");
@@ -633,7 +633,7 @@ bool usb_drv_stalled(int endpoint,bool in)
     return endpoints[endpoint].stalled[in];
 }
 
-int usb_drv_ack_send_recv(int num, bool in)
+static int usb_drv_ack_send_recv(int num, bool in)
 {
     if(num != 0 && !endpoints[num].allocated[in])
     {
@@ -675,7 +675,7 @@ int usb_drv_ack_send_recv(int num, bool in)
     }
 }
 
-int usb_drv_send_recv(int epadr, bool send, void *ptr, int length, bool wait)
+static int usb_drv_send_recv(int epadr, bool send, void *ptr, int length, bool wait)
 {
     /* check epadr */
     int ep_num = EP_NUM(epadr);
