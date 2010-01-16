@@ -31,7 +31,9 @@
 /* This needs to be 2048 byte aligned, but USB_QHARRAY_ATTR should take care
  * of that */
 #define USB_QHARRAY_ATTR   __attribute__((section(".qharray"),nocommon,aligned(4)))
+#ifndef SIMULATOR
 #define USB_DEVBSS_ATTR    IBSS_ATTR
+#endif /* SIMULATOR */
 
 /* DRAM starts at 0x10000000, but in Rockbox we remap it to 0x00000000 */
 #define DRAM_START       0x10000000

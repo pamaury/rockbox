@@ -41,6 +41,7 @@ int set_irq_level(int level);
 
 #define cpu_idle_mode(on_off)
 
+void system_reboot(void);
 void sim_enter_irq_handler(void);
 void sim_exit_irq_handler(void);
 bool sim_kernel_init(void);

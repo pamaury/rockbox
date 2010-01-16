@@ -287,7 +287,9 @@
 #define USB_BASE 0xf0010000
 
 #define USB_NUM_ENDPOINTS 3
+#ifndef SIMULATOR
 #define USB_DEVBSS_ATTR   IBSS_ATTR
+#endif /* SIMULATOR */
 
 /* Timer frequency */
 /* Timer is based on PCK_TCT (set to 2Mhz in system.c) */

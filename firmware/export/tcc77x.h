@@ -251,7 +251,9 @@
 #define USB_BASE 0x90000b00
 
 #define USB_NUM_ENDPOINTS 3
+#ifndef SIMULATOR
 #define USB_DEVBSS_ATTR   IBSS_ATTR
+#endif /* SIMULATOR */
 
 /* Timer frequency */
 /* timers are based on XIN (12Mhz) */

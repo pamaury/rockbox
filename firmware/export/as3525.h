@@ -505,7 +505,9 @@ interface */
 
 /* USB : TODO */
 #define USB_NUM_ENDPOINTS 4
+#ifndef SIMULATOR
 #define USB_DEVBSS_ATTR IBSS_ATTR
+#endif /* SIMULATOR */
 
 /* I2SIN registers */
 

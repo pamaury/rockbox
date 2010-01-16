@@ -42,10 +42,10 @@
 
 #undef USB_NUM_ENDPOINTS
 #define USB_NUM_ENDPOINTS    8
-#ifdef USB_DEVBSS_ATTR
-#undef USB_DEVBSS_ATTR
-#endif
+/* with the simulator, the previous definition can't be dangerous so keep it if already defined */
+#ifndef USB_DEVBSS_ATTR
 #define USB_DEVBSS_ATTR
+#endif /* USB_DEVBSS_ATTR */
 #define USB_STATUS_BY_EVENT
 #define USB_DETECT_BY_DRV
 

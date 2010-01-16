@@ -49,7 +49,9 @@ extern unsigned long _ttbstart;
 /* This needs to be 2048 byte aligned, but USB_QHARRAY_ATTR should take care
  * of that */
 #define USB_QHARRAY_ATTR   __attribute__((section(".qharray"),nocommon,aligned(4)))
+#ifndef SIMULATOR
 #define USB_DEVBSS_ATTR    IBSS_ATTR
+#endif /* SIMULATOR */
 
 
 /* Timer 0-3 */

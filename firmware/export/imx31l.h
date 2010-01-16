@@ -41,7 +41,9 @@
 /* USBOTG */
 #define USB_QHARRAY_ATTR    __attribute__((section(".qharray"),nocommon,aligned(2048)))
 #define USB_NUM_ENDPOINTS   8
+#ifndef SIMULATOR
 #define USB_DEVBSS_ATTR     DEVBSS_ATTR
+#endif /* SIMULATOR */
 #define USB_BASE            OTG_BASE_ADDR
 
 /*

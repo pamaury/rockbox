@@ -5207,7 +5207,9 @@ struct Ration2m
 
 /* Rockbox USB defines */
 #define USB_NUM_ENDPOINTS  3
+#ifndef SIMULATOR
 #define USB_DEVBSS_ATTR    IBSS_ATTR
+#endif /* SIMULATOR */
 
 /* Timer frequency */
 #define TIMER_FREQ (CFG_EXTAL) /* For full precision! */
