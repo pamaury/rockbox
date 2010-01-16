@@ -22,7 +22,7 @@
 #include "thread.h"
 #include "kernel.h"
 #include "string.h"
-#define LOGF_ENABLE
+//#define LOGF_ENABLE
 #include "logf.h"
 
 #include "usb.h"
@@ -386,12 +386,6 @@ void usb_core_handle_transfer_completion(
 {
     completion_handler_t handler;
     int ep = event->endpoint;
-
-    DEBUGF("usb_core: transfer complete on EP%d %s with status %d (%d bytes transfered)\n", 
-        event->endpoint, 
-        event->dir==DIR_IN ? "IN" : "OUT", 
-        event->status, 
-        event->length);
 
     switch(ep) {
         case EP_CONTROL:
