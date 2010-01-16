@@ -22,7 +22,7 @@
  ****************************************************************************/
 
 /* parts of this driver are based on the usb-arc driver */
-//#define USB_VHCI_DRIVER_DEBUG
+#define USB_VHCI_DRIVER_DEBUG
 
 #include "errno.h"
 #include <libusb_vhci.h>
@@ -45,18 +45,20 @@
  * is used regardeless of the endpoint direction */
 struct usb_endpoint_t
 {
-    int type[2];
-    bool allocated[2];
-    bool has_urb[2];
-    struct usb_vhci_urb urb[2];
-    void *buffer[2];
-    int buffer_length[2];
-    struct usb_ctrlrequest setup_data;
-    struct mutex mutex[2];
-    bool stalled[2];
+    int type[2];/* type of endpoint, must be the same on both directions */
+    bool allocated[2];/* is the endpoint allocated ? */
+    bool has_urb[2];/* is there an pending URB ? */
+    struct usb_vhci_urb urb[2];/* copy of the URB */
+    void *buffer[2];/* is there a pending buffer ? NULL if no, address otherwise */
+    int buffer_length[2];/* length of the buffer */
+    struct usb_ctrlrequest setup_data;/* copy of setup data sent to core */
+    struct mutex mutex[2];/* mutex for buffer/buffer_length/has_urb/urb */
+    struct wakeup xfer_completion[2];/* wakeup for blocking transfers (see drv_send) */
+    int xfer_status[2];/* status of the transfer (used for blocking transfers) */
+    bool stalled[2];/* is endpoint stalled ? */    
 };
 
-static int vhci_hcd_fd = -1;
+static int vhci_hcd_fd = -1;/* handle of the vhci control device */
 static int usb_status = USB_UNPOWERED;
 static const int vhci_hcd_port = 1;
 
@@ -64,8 +66,6 @@ static const char vhci_hcd_thread_name[] = "vhci-hcd";
 static unsigned int vhci_hcd_thread_entry = 0;
 
 static struct usb_endpoint_t endpoints[USB_NUM_ENDPOINTS];
-
-#define CHECK_VHCI_HCD() if(vhci_hcd_fd < 0) { USB_DEBUGF("usb: vhci-hcd not initialized !\n"); return; }
 
 #define usb_vhci_ep_num(epadr) (epadr & 0x07)
 
@@ -180,6 +180,9 @@ int cancel_endpoint_urb(int ep_num, bool ep_in)
     /* notify the core that the transfer failed */
     usb_core_transfer_complete(ep_num, ep_in ? USB_DIR_IN : USB_DIR_OUT, 1, 0);
     
+    endpoints[ep_num].xfer_status[ep_in] = -1;
+    wakeup_signal(&endpoints[ep_num].xfer_completion[ep_in]);
+    
     return 0;
 }
 
@@ -230,6 +233,9 @@ int usb_meet_up(int ep_num, bool ep_in)
         
         clear_endpoint(ep_num, ep_in);
         
+        endpoints[ep_num].xfer_status[ep_in] = ret;
+        wakeup_signal(&endpoints[ep_num].xfer_completion[ep_in]);
+        
         return ret;
     }
     else
@@ -251,6 +257,9 @@ int usb_meet_up(int ep_num, bool ep_in)
             complete_urb(urb);
         
         clear_endpoint(ep_num, ep_in);
+        
+        endpoints[ep_num].xfer_status[ep_in] = ret;
+        wakeup_signal(&endpoints[ep_num].xfer_completion[ep_in]);
         
         return ret;
     }
@@ -556,31 +565,35 @@ void usb_ask(unsigned int what)
 /* driver part */
 void usb_init_device(void)
 {
+    int ep_num, ep_dir;
     USB_DEBUGF("usb_init_device\n");
+    /* preallocate EP0 (to avoid special cases)*/
+    endpoints[0].allocated[0] = endpoints[0].allocated[1] = true,
+    endpoints[0].type[0] = endpoints[0].type[1] = USB_ENDPOINT_XFER_CONTROL;
+    
+    /* init mutexes and wakeups */
+    for(ep_num = 0; ep_num < USB_NUM_ENDPOINTS; ep_num++)
+        for(ep_dir = 0; ep_dir <= 1; ep_dir++)
+        {
+            mutex_init(&endpoints[ep_num].mutex[ep_dir]);
+            wakeup_init(&endpoints[ep_num].xfer_completion[ep_dir]);
+        }
 }
 
 void usb_drv_init(void)
 {
     USB_DEBUGF("usb_drv_init\n");
-    CHECK_VHCI_HCD()
     
     if(usb_vhci_port_connect(vhci_hcd_fd, vhci_hcd_port, USB_VHCI_DATA_RATE_HIGH) < 0)
     {
         USB_DEBUGF("usb: vhci-hcd: couldn't connect port !");
         return;
     }
-    
-    /* preallocate EP0 (to avoid special cases)*/
-    endpoints[0].allocated[0] = endpoints[0].allocated[1] = true,
-    endpoints[0].type[0] = endpoints[0].type[1] = USB_ENDPOINT_XFER_CONTROL;
-    mutex_init(&endpoints[0].mutex[0]);
-    mutex_init(&endpoints[0].mutex[1]);
 }
 
 void usb_drv_exit(void)
 {
     USB_DEBUGF("usb_drv_exit\n");
-    CHECK_VHCI_HCD()
     
     usb_vhci_port_disconnect(vhci_hcd_fd, vhci_hcd_port);
     usb_vhci_close(vhci_hcd_fd);
@@ -700,20 +713,14 @@ int usb_drv_send_recv(int epadr, bool send, void *ptr, int length, bool wait)
         
         if(wait)
         {
-            /* wait for .buffer to be cleared */
+            /* wait for transfer completion */
             USB_DEBUGF("usb: wait for transfer completion...\n");
-            /* FIXME use wakeup instead */
-            while(1)
-            {
-                sleep(HZ/100);
-                if(endpoints[ep_num].buffer[ep_in] == NULL)
-                    break;
-            }
             
-            USB_DEBUGF("usb: Back again on EP%d %s: wait finished but I don't know the result :( !\n", 
-                ep_num, XFER_DIR_STR(ep_in));
-            /* FIXME: implement a way to get the return code */
-            return 0;
+            wakeup_wait(&endpoints[ep_num].xfer_completion[ep_in], TIMEOUT_BLOCK);
+            
+            USB_DEBUGF("usb: Back again on EP%d %s: wait finished, result is %d !\n", 
+                ep_num, XFER_DIR_STR(ep_in), endpoints[ep_num].xfer_status[ep_in]);
+            return endpoints[ep_num].xfer_status[ep_in];
         }
         else
             return 0;
@@ -823,7 +830,6 @@ int usb_drv_request_endpoint(int type, int dir)
         endpoint->allocated[ep_dir] = true;
         endpoint->type[ep_dir] = ep_type;
 
-        mutex_init(&endpoint->mutex[ep_dir]);
         /* clear everything */
         clear_endpoint(ep_num, ep_dir);
         USB_DEBUGF("usb: allocate EP%d %s\n", ep_num, XFER_DIR_STR(ep_dir));
