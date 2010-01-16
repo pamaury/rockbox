@@ -236,7 +236,7 @@ static void usb_thread(void)
         queue_wait(&usb_queue, &ev);
         switch(ev.id)
         {
-#ifdef SIMULATOR
+#if defined(SIMULATOR) && defined(HAVE_USBSTACK)
             case USB_ASK:
                 usb_ask((unsigned int)ev.data);
                 break;

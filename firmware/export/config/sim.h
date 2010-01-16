@@ -42,6 +42,9 @@
 
 #undef USB_NUM_ENDPOINTS
 #define USB_NUM_ENDPOINTS    8
+#ifdef USB_DEVBSS_ATTR
+#undef USB_DEVBSS_ATTR
+#endif
 #define USB_DEVBSS_ATTR
 #define USB_STATUS_BY_EVENT
 #define USB_DETECT_BY_DRV

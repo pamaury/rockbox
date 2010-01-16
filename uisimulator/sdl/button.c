@@ -145,11 +145,13 @@ void button_event(int key, bool pressed)
         if (!pressed)
         {
             usb_connected = !usb_connected;
+#if defined(HAVE_USBSTACK)
             /* Broadcast because we don't have access to usb_queue. Only usb thread will treat the message */
             if (usb_connected)
                 queue_broadcast(USB_ASK, USB_ASK_SIMULATE_INSERTION);
             else
                 queue_broadcast(USB_ASK, USB_ASK_SIMULATE_EXTRACTION);
+#endif /* defined(HAVE_USBSTACK) */
         }
         return;
 

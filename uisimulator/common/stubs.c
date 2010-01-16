@@ -35,6 +35,8 @@
 
 #include "ata.h" /* for volume definitions */
 
+#include "usb.h" /* for usb_detect and USB_EXTRACTED */
+
 extern char having_new_lcd;
 static bool storage_spinning = false;
 
@@ -336,3 +338,43 @@ void system_reboot(void)
 {
     thread_sdl_exception_wait();
 }
+
+#ifdef USB_FIREWIRE_HANDLING
+bool firewire_detect(void)
+{
+    return false;
+}
+#endif
+
+#ifdef HAVE_DISK_STORAGE
+void storage_sleepnow(void)
+{
+}
+#endif
+
+#ifndef HAVE_USBSTACK
+/* these are only called in usb.c is usb slave mode which is not handled by the simulator usb drive, so stub them */
+int storage_soft_reset(void)
+{
+    return 0;
+}
+
+void storage_enable(bool on)
+{
+    (void)on;
+}
+
+void usb_enable(bool on)
+{
+    (void)on;
+}
+
+void usb_init_device(void)
+{
+}
+
+int usb_detect(void)
+{
+    return USB_EXTRACTED;
+}
+#endif
