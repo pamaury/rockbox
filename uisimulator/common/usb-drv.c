@@ -25,7 +25,7 @@
 #define USB_VHCI_DRIVER_DEBUG
 
 #include "errno.h"
-#include <libusb_vhci.h>
+#include "libusb_vhci/libusb_vhci.h"
 
 #include "debug.h"
 #include "kernel.h"

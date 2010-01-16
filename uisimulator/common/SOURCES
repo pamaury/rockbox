@@ -12,4 +12,5 @@ powermgmt-sim.c
 backlight-sim.c
 #ifdef HAVE_USBSTACK
 usb-drv.c
+libusb_vhci/libusb_vhci.c
 #endif
