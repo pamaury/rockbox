@@ -76,6 +76,10 @@ static int button_yield(void *ctx)
 #ifdef FRACTAL_ZOOM_IN_PRE
         case FRACTAL_ZOOM_IN_PRE:
 #endif
+#if defined(FRACTAL_ZOOM_OUT_PRE) && \
+            (FRACTAL_ZOOM_OUT_PRE != FRACTAL_ZOOM_IN_PRE)
+        case FRACTAL_ZOOM_OUT_PRE:
+#endif
             return 1;
         default:
             *button = BUTTON_NONE;

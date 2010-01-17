@@ -46,6 +46,12 @@ static int mouse_coords = 0;
 /* speed repeat finishes at */
 #define REPEAT_INTERVAL_FINISH  2
 
+#ifdef HAVE_TOUCHSCREEN
+#define USB_KEY SDLK_c /* SDLK_u is taken by BUTTON_MIDLEFT */
+#else
+#define USB_KEY SDLK_u
+#endif
+
 #if defined(IRIVER_H100_SERIES) || defined (IRIVER_H300_SERIES)
 int _remote_type=REMOTETYPE_H100_LCD;
 
@@ -78,7 +84,7 @@ void button_event(int key, bool pressed)
     int new_btn = 0;
     static bool usb_connected = false;
     /*
-    if (usb_connected && key != SDLK_u)
+    if (usb_connected && key != USB_KEY)
         return;
     */
     switch (key)
@@ -106,30 +112,43 @@ void button_event(int key, bool pressed)
         }
         break;
     case SDLK_KP7:
+    case SDLK_7:
         new_btn = BUTTON_TOPLEFT;
         break;
     case SDLK_KP8:
+    case SDLK_8:
+    case SDLK_UP:
         new_btn = BUTTON_TOPMIDDLE;
         break;
     case SDLK_KP9:
+    case SDLK_9:
         new_btn = BUTTON_TOPRIGHT;
         break;
     case SDLK_KP4:
+    case SDLK_u:
+    case SDLK_LEFT:
         new_btn = BUTTON_MIDLEFT;
         break;
     case SDLK_KP5:
+    case SDLK_i:
         new_btn = BUTTON_CENTER;
         break;
     case SDLK_KP6:
+    case SDLK_o:
+    case SDLK_RIGHT:
         new_btn = BUTTON_MIDRIGHT;
         break;
     case SDLK_KP1:
+    case SDLK_j:
         new_btn = BUTTON_BOTTOMLEFT;
         break;
     case SDLK_KP2:
+    case SDLK_k:
+    case SDLK_DOWN:
         new_btn = BUTTON_BOTTOMMIDDLE;
         break;
     case SDLK_KP3:
+    case SDLK_l:
         new_btn = BUTTON_BOTTOMRIGHT;
         break;
     case SDLK_F4:
@@ -141,7 +160,7 @@ void button_event(int key, bool pressed)
         break;
             
 #endif
-    case SDLK_u:
+    case USB_KEY:
         if (!pressed)
         {
             usb_connected = !usb_connected;
@@ -716,16 +735,22 @@ void button_event(int key, bool pressed)
     case SDLK_F12:
         new_btn = BUTTON_RC_VOL_UP;
         break;
-    case SDLK_LEFT:
+    case SDLK_MINUS:
+    case SDLK_LESS:
+    case SDLK_LEFTBRACKET:
+    case SDLK_KP_DIVIDE:
         new_btn = BUTTON_LEFT;
         break;
-    case SDLK_RIGHT:
+    case SDLK_PLUS:
+    case SDLK_GREATER:
+    case SDLK_RIGHTBRACKET:
+    case SDLK_KP_MULTIPLY:
         new_btn = BUTTON_RIGHT;
         break;
-    case SDLK_UP:
+    case SDLK_PAGEUP:
         new_btn = BUTTON_RC_PLAY;
         break;
-    case SDLK_DOWN:
+    case SDLK_PAGEDOWN:
         new_btn = BUTTON_RC_DOWN;
         break;
     case SDLK_F8:
@@ -789,16 +814,25 @@ void button_event(int key, bool pressed)
         break;
     
 #elif CONFIG_KEYPAD == COWON_D2_PAD
+    case SDLK_KP_MULTIPLY:
+    case SDLK_F8:
     case SDLK_ESCAPE:
+    case SDLK_BACKSPACE:
+    case SDLK_DELETE:
         new_btn = BUTTON_POWER;
         break;
     case SDLK_KP_PLUS:
+    case SDLK_EQUALS:
         new_btn = BUTTON_PLUS;
         break;
     case SDLK_KP_MINUS:
+    case SDLK_MINUS:
         new_btn = BUTTON_MINUS;
         break;
     case SDLK_KP_ENTER:
+    case SDLK_RETURN:
+    case SDLK_SPACE:
+    case SDLK_INSERT:
         new_btn = BUTTON_MENU;
         break;
 #elif CONFIG_KEYPAD == IAUDIO67_PAD
@@ -1128,11 +1162,17 @@ void button_event(int key, bool pressed)
         new_btn = BUTTON_POWER;
         break;
     case SDLK_KP_PLUS:
-    case SDLK_RIGHT:
+    case SDLK_PLUS:
+    case SDLK_GREATER:
+    case SDLK_RIGHTBRACKET:
+    case SDLK_KP_MULTIPLY:
         new_btn = BUTTON_VOL_UP;
         break;
     case SDLK_KP_MINUS:
-    case SDLK_LEFT:
+    case SDLK_MINUS:
+    case SDLK_LESS:
+    case SDLK_LEFTBRACKET:
+    case SDLK_KP_DIVIDE:
         new_btn = BUTTON_VOL_DOWN;
         break;
     case SDLK_KP_ENTER:

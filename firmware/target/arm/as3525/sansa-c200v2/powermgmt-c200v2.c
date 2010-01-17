@@ -7,7 +7,8 @@
  *                     \/            \/     \/    \/            \/
  * $Id$
  *
- * Copyright (C) 2009 Tomer Shalev
+ * Copyright (C) 2002 by Heikki Hannikainen, Uwe Freese
+ * Revisions copyright (C) 2005 by Gerald Van Baren
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -18,18 +19,30 @@
  * KIND, either express or implied.
  *
  ****************************************************************************/
-#ifndef _FRACTAL_RECT_H
-#define _FRACTAL_RECT_H
 
-#include "fractal_sets.h"
+#include "config.h"
+#include "powermgmt.h"
 
-void rects_queue_init(void);
-void rects_calc_all(int (*calc)(struct fractal_rect *, int (*)(void *), void *),
-        int (*button_yield_cb)(void *), void *ctx);
-int rects_move_up(void);
-int rects_move_down(void);
-int rects_move_left(void);
-int rects_move_right(void);
+const unsigned short battery_level_dangerous[BATTERY_TYPES_COUNT] =
+{
+    3400
+};
 
-#endif
+const unsigned short battery_level_shutoff[BATTERY_TYPES_COUNT] =
+{
+    3300
+};
 
+/* voltages (millivolt) of 0%, 10%, ... 100% when charging disabled */
+const unsigned short percent_to_volt_discharge[BATTERY_TYPES_COUNT][11] =
+{
+    /* TODO: calibrate, copied from powermgmt-c200.c svn r22636 */
+    { 3400, 3689, 3744, 3773, 3798, 3831, 3886, 3947, 4005, 4102, 4220 },
+};
+
+/* voltages (millivolt) of 0%, 10%, ... 100% when charging enabled */
+const unsigned short percent_to_volt_charge[11] =
+{
+    /* TODO: simple uncalibrated curve with 10% knee at 3.60V */
+    3400, 3600, 3670, 3740, 3810, 3880, 3950, 4020, 4090, 4160, 4230
+};
