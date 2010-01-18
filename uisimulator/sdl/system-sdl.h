@@ -41,6 +41,14 @@ int set_irq_level(int level);
 
 #define cpu_idle_mode(on_off)
 
+#ifndef MIN
+#define MIN(a, b) (((a)<(b))?(a):(b))
+#endif
+
+#ifndef MAX
+#define MAX(a, b) (((a)>(b))?(a):(b))
+#endif
+
 void system_reboot(void);
 void sim_enter_irq_handler(void);
 void sim_exit_irq_handler(void);

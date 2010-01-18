@@ -23,7 +23,7 @@
 #include "usb_core.h"
 #include "usb_drv.h"
 #include "usb_class_driver.h"
-/*#define LOGF_ENABLE*/
+#define LOGF_ENABLE
 #include "logf.h"
 #include "storage.h"
 #include "hotswap.h"
@@ -342,6 +342,7 @@ static void fix_mbr(unsigned char* mbr)
 static bool check_disk_present(IF_MD_NONVOID(int volume))
 {
 #ifdef USB_USE_RAMDISK
+    (void)volume;
     return true;
 #else
     unsigned char sector[SECTOR_SIZE];
@@ -1046,7 +1047,7 @@ static void handle_scsi(struct command_block_wrapper* cbw)
                  cbw->command_block[8]);
             cur_cmd.orig_count = cur_cmd.count;
 
-            //logf("scsi read %d %d", cur_cmd.sector, cur_cmd.count);
+            logf("scsi read %d %d", cur_cmd.sector, cur_cmd.count);
 
             if((cur_cmd.sector + cur_cmd.count) > block_count) {
                 send_csw(UMS_STATUS_FAIL);

@@ -38,7 +38,6 @@
 #include "usb.h" /* for usb_detect and USB_EXTRACTED */
 
 extern char having_new_lcd;
-static bool storage_spinning = false;
 
 #if CONFIG_CODEC != SWCODEC
 void audio_set_buffer_margin(int seconds)
@@ -64,81 +63,11 @@ void fat_init(void)
 
 int fat_mount(IF_MV2(int volume,) IF_MD2(int drive,) long startsector)
 {
-    IF_MV2((void)volume,);
-    IF_MD2((void)drive,);
+    IF_MV((void)volume);
+    IF_MD((void)drive);
     (void)startsector;
     /* fails nicely */
     return -1;
-}
-
-int storage_init(void)
-{
-    return 1;
-}
-
-int storage_write_sectors(IF_MD2(int drive,)
-                      unsigned long start,
-                      int count,
-                      const void* buf)
-{
-    IF_MV((void)drive;)
-    int i;
-
-    for (i=0; i<count; i++ ) {
-        FILE* f;
-        char name[32];
-
-        sprintf(name,"sector%lX.bin",start+i);
-        f=fopen(name,"wb");
-        if (f) {
-            fwrite(buf,512,1,f);
-            fclose(f);
-        }
-    }
-    return 1;
-}
-
-int storage_read_sectors(IF_MD2(int drive,)
-                     unsigned long start,
-                     int count,
-                     void* buf)
-{
-    IF_MV((void)drive;)
-    int i;
-
-    for (i=0; i<count; i++ ) {
-        FILE* f;
-        char name[32];
-
-        DEBUGF("Reading sector %lX\n",start+i);
-        sprintf(name,"sector%lX.bin",start+i);
-        f=fopen(name,"rb");
-        if (f) {
-            fread(buf,512,1,f);
-            fclose(f);
-        }
-    }
-    return 1;
-}
-
-void storage_spin(void)
-{
-    storage_spinning = true;
-}
-
-void storage_sleep(void)
-{
-}
-
-bool storage_disk_is_active(void)
-{
-    return storage_spinning;
-}
-
-void storage_spindown(int s)
-{
-    (void)s;
-    storage_spinning = false;
 }
 
 void rtc_init(void)
@@ -343,12 +272,6 @@ void system_reboot(void)
 bool firewire_detect(void)
 {
     return false;
-}
-#endif
-
-#ifdef HAVE_DISK_STORAGE
-void storage_sleepnow(void)
-{
 }
 #endif
 
