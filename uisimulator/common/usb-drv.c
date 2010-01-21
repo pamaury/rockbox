@@ -22,7 +22,7 @@
  ****************************************************************************/
 
 /* parts of this driver are based on the usb-arc driver */
-#define USB_VHCI_DRIVER_DEBUG
+#define USB_VHCI_DRIVER_DEBUG_LEVEL 1
 
 #include "errno.h"
 #include "libusb_vhci/libusb_vhci.h"
@@ -35,12 +35,21 @@
 #include "usb_drv.h"
 #include "system-sdl.h"
 #include "malloc.h"
+#include <SDL_thread.h>
 
-#ifdef USB_VHCI_DRIVER_DEBUG
+#if USB_VHCI_DRIVER_DEBUG_LEVEL >= 2
+#define USB_ERRORF DEBUGF
 #define USB_DEBUGF DEBUGF
+#elif USB_VHCI_DRIVER_DEBUG_LEVEL >= 1
+#define USB_ERRORF DEBUGF
+#define USB_DEBUGF(...) ({})
 #else
+#define USB_ERRORF(...) ({})
 #define USB_DEBUGF(...) ({})
 #endif
+
+#define mutex_lock(...)
+#define mutex_unlock(...)
 
 struct urb_list
 {
@@ -49,7 +58,7 @@ struct urb_list
 };
 /* If an endpoint is a control endpoint, is must be bidirectional so only the [0]
  * is used regardeless of the endpoint direction
- * In case of IN transfer, a buffer is allocated for the URB and stored in ->buffer */
+ * In case of IN and OUT transfers, a buffer is allocated for the URB and stored in ->buffer */
 struct usb_endpoint_t
 {
     int type[2];/* type of endpoint, must be the same on both directions */
@@ -135,7 +144,7 @@ static int stall_urb(struct usb_vhci_urb *urb)
 {
     if(urb == NULL)
     {
-        USB_DEBUGF("vhci-hcd: hey, I can't stall a NULL urb !\n");
+        USB_ERRORF("vhci-hcd: hey, I can't stall a NULL urb !\n");
         return -1;
     }
     urb->status = -EPIPE;
@@ -144,7 +153,7 @@ static int stall_urb(struct usb_vhci_urb *urb)
         XFER_DIR_STR(usb_vhci_is_in(urb->epadr)));
     int ret= usb_vhci_giveback(vhci_hcd_fd, urb);
     if(ret < 0)
-        USB_DEBUGF("vhci-hcd: giveback failed (ret=%d)!\n", ret);
+        USB_ERRORF("vhci-hcd: giveback failed (ret=%d)!\n", ret);
     return ret;
 }
 
@@ -152,7 +161,7 @@ static int complete_urb(struct usb_vhci_urb *urb)
 {
     if(urb == NULL)
     {
-        USB_DEBUGF("vhci-hcd: hey, I can't complete a NULL urb !\n");
+        USB_ERRORF("vhci-hcd: hey, I can't complete a NULL urb !\n");
         return -1;
     }
     urb->status = 0;
@@ -161,7 +170,7 @@ static int complete_urb(struct usb_vhci_urb *urb)
         XFER_DIR_STR(usb_vhci_is_in(urb->epadr)));
     int ret= usb_vhci_giveback(vhci_hcd_fd, urb);
     if(ret < 0)
-        USB_DEBUGF("vhci-hcd: giveback failed (ret=%d)!\n", ret);
+        USB_ERRORF("vhci-hcd: giveback failed (ret=%d)!\n", ret);
     return ret;
 }
 
@@ -174,7 +183,7 @@ static void clear_endpoint_buffer(int ep_num, bool ep_in)
 
 /* enqueue an URB, either in pending list or set it as current URB */
 /* NOTE: assume endpoint lock */
-static void enqueue_endpoint_urb(int ep_num, bool ep_in, struct usb_vhci_urb *urb)
+static int enqueue_endpoint_urb(int ep_num, bool ep_in, struct usb_vhci_urb *urb)
 {   
     USB_DEBUGF("vhci-hcd: enqueue URB on EP%d %s\n", ep_num, XFER_DIR_STR(ep_in));
     
@@ -184,13 +193,41 @@ static void enqueue_endpoint_urb(int ep_num, bool ep_in, struct usb_vhci_urb *ur
     entry->next = NULL;
     
     /* allocate buffer */
-    if(usb_vhci_is_in(urb->epadr) && urb->buffer_length != 0)
+    if(urb->buffer_length != 0)
+    {
         entry->urb.buffer = malloc(urb->buffer_length);
+        entry->urb.buffer_actual = 0;
+        /* retrieve data for OUT transfer */
+        if(usb_vhci_is_out(entry->urb.epadr))
+        {
+            int ret = usb_vhci_fetch_data(vhci_hcd_fd, &entry->urb);
+            if(ret < 0)
+            {
+                USB_ERRORF("vhci-hcd: fetch data failed(ret=%d) !\n", ret);
+                /* stall URB */
+                stall_urb(urb);
+                /* free data */
+                free(entry->urb.buffer);
+                /* don't add URB to the list */
+                USB_ERRORF("vhci-hcd: don't enqueue URB on EP%d %s !\n", ep_num, XFER_DIR_STR(ep_in));
+                return -1;
+            }
+        }
+    }
     
+    int d = 0;
     while(*cur)
+    {
         cur = &(*cur)->next;
+        d++;
+    }
+    
+    if(d > 100)
+        USB_ERRORF("vhci-hcd: more than 100 pending URBs !\n");
     
     *cur = entry;
+    
+    return 0;
 }
 
 /* dequeue the first URB */
@@ -199,7 +236,7 @@ static void dequeue_endpoint_urb(int ep_num, bool ep_in)
 {
     if(endpoints[ep_num].pending_urbs[ep_in] == NULL)
     {
-        USB_DEBUGF("vhci-hcd: hey I can't dequeue a NULL urb on EP%d %s !\n", ep_num, XFER_DIR_STR(ep_in));
+        USB_ERRORF("vhci-hcd: hey I can't dequeue a NULL urb on EP%d %s !\n", ep_num, XFER_DIR_STR(ep_in));
         return;
     }
     
@@ -209,7 +246,7 @@ static void dequeue_endpoint_urb(int ep_num, bool ep_in)
     
     /* free buffer */
     struct usb_vhci_urb *urb = &endpoints[ep_num].pending_urbs[ep_in]->urb;
-    if(usb_vhci_is_in(urb->epadr) && urb->buffer_length != 0)
+    if(urb->buffer_length != 0)
         free(endpoints[ep_num].pending_urbs[ep_in]->urb.buffer);
     
     free(endpoints[ep_num].pending_urbs[ep_in]);
@@ -229,7 +266,8 @@ static int cancel_endpoint_urbs(int ep_num, bool ep_in)
     while(endpoints[ep_num].pending_urbs[ep_in] != NULL)
     {
         stall_urb(&endpoints[ep_num].pending_urbs[ep_in]->urb);
-        memset(&endpoints[ep_num].pending_urbs[ep_in]->urb, 0, sizeof(struct usb_vhci_urb)); /* paranoid */
+         /* paranoid */
+        /*memset(&endpoints[ep_num].pending_urbs[ep_in]->urb, 0, sizeof(struct usb_vhci_urb));*/
         dequeue_endpoint_urb(ep_num, ep_in);
     }
     
@@ -257,7 +295,7 @@ static int usb_meet_up(int ep_num, bool ep_in)
     /* But, the real direction is still available in the urb */
     if(endpoints[ep_num].pending_urbs[ep_in] == NULL)
     {
-        USB_DEBUGF("vhci-hcd: hey I can't meet up a NULL urb on EP%d %s !\n", ep_num, XFER_DIR_STR(ep_in));
+        USB_ERRORF("vhci-hcd: hey I can't meet up a NULL urb on EP%d %s !\n", ep_num, XFER_DIR_STR(ep_in));
         
         mutex_unlock(&endpoints[ep_num].mutex[ep_in]);
         return -1;
@@ -265,7 +303,7 @@ static int usb_meet_up(int ep_num, bool ep_in)
     
     if(endpoints[ep_num].buffer[ep_in] == NULL)
     {
-        USB_DEBUGF("vhci-hcd: hey I can't meet up a NULL buffer EP%d %s\n", ep_num, XFER_DIR_STR(ep_in));
+        USB_ERRORF("vhci-hcd: hey I can't meet up a NULL buffer EP%d %s\n", ep_num, XFER_DIR_STR(ep_in));
         
         mutex_unlock(&endpoints[ep_num].mutex[ep_in]);
         return -1;
@@ -275,7 +313,7 @@ static int usb_meet_up(int ep_num, bool ep_in)
     
     while(endpoints[ep_num].pending_urbs[ep_in] != NULL &&
             endpoints[ep_num].buffer[ep_in] != NULL)
-    {
+    {   
         struct usb_vhci_urb *urb = &endpoints[ep_num].pending_urbs[ep_in]->urb;
         void *buffer = endpoints[ep_num].buffer[ep_in];
         int buffer_length = endpoints[ep_num].buffer_length[ep_in];
@@ -283,7 +321,7 @@ static int usb_meet_up(int ep_num, bool ep_in)
         
         if(ep_num != usb_vhci_ep_num(urb->epadr))
         {
-            USB_DEBUGF("vhci-hcd: WARNING: there is a problem, I complete on EP%d %s but the urb says it's on EP%d %s\n",
+            USB_ERRORF("vhci-hcd: WARNING: there is a problem, I complete on EP%d %s but the urb says it's on EP%d %s\n",
                 ep_num, XFER_DIR_STR(ep_in), usb_vhci_ep_num(urb->epadr),
                 XFER_DIR_STR(usb_vhci_is_in(urb->epadr)));
             
@@ -303,12 +341,14 @@ static int usb_meet_up(int ep_num, bool ep_in)
              *       in this case, clear_endpoint is not called not keep the buffer
              *       For IN transfers, a URB buffer is allocated by enqueue, so copy */
             
-            int xfer_actual = MIN(buffer_length, urb->buffer_length);
+            int xfer_actual = MIN(buffer_length, urb->buffer_length - urb->buffer_actual);
             memcpy(urb->buffer + urb->buffer_actual, buffer, xfer_actual);
             /* update ->buffer_actual (actual URB buffer size) */
             urb->buffer_actual += xfer_actual;
             /* subtract transfered data */
             endpoints[ep_num].buffer_length[ep_in] -= xfer_actual;
+            /* advance buffer */
+            endpoints[ep_num].buffer[ep_in] += xfer_actual;
             
             /* URB is complete when one of the following condition is met:
                -URB buffer is filled
@@ -320,7 +360,7 @@ static int usb_meet_up(int ep_num, bool ep_in)
             {
                 ret = complete_urb(urb);
                 if(ret < 0)
-                    USB_DEBUGF("vhci-hcd: meet up failed !\n");
+                    USB_ERRORF("vhci-hcd: meet up failed !\n");
                 /* dequeue URB */
                 dequeue_endpoint_urb(ep_num, ep_in);
             }
@@ -359,39 +399,52 @@ static int usb_meet_up(int ep_num, bool ep_in)
         }
         else
         {
-            urb->buffer = buffer;
             /* NOTE: for recv(aka OUT) transfers, buffer_length is used ! */
-            int xfer_actual = MIN(buffer_length, urb->buffer_length);
-            urb->buffer_length = xfer_actual;
+            int xfer_actual = MIN(buffer_length, urb->buffer_length - urb->buffer_actual);
+            
+            memcpy(buffer, urb->buffer + urb->buffer_actual, xfer_actual);
+            /* advance buffer */
+            endpoints[ep_num].buffer[ep_in] += xfer_actual;
+            /* update lengths */
             endpoints[ep_num].buffer_length[ep_in] -= xfer_actual;
+            urb->buffer_actual += xfer_actual;
             
-            USB_DEBUGF("vhci-hcd: try to fetch %d bytes of data\n", urb->buffer_length);
-            
-            ret = usb_vhci_fetch_data(vhci_hcd_fd, urb);
-            if(ret < 0)
+            /* when an URB is less than 1024 bytes, it's the end of the transfer */
+            bool short_urb = (urb->buffer_length < 1024);
+            /* URB is complete if one of the following condition is met:
+               -URB buffer is empty
+               -URB buffer is not empty but buffer is < 1024 */
+            if(urb->buffer_actual == urb->buffer_length ||
+                    short_urb)
             {
-                stall_urb(urb);
-                USB_DEBUGF("vhci-hcd: fetch data failed (ret=%d)!\n", ret);
+                ret = complete_urb(urb);
+                if(ret < 0)
+                    USB_ERRORF("vhci-hcd: meet up failed !\n");
+                /* dequeue URB */
+                dequeue_endpoint_urb(ep_num, ep_in);
             }
             else
-                complete_urb(urb);
+            {
+                USB_DEBUGF("vhci-hcd: URB partially unfilled: %d/%d\n", urb->buffer_actual, urb->buffer_length);
+                ret = 0;/* success */
+            }
             
-            dequeue_endpoint_urb(ep_num, ep_in);
-            
-            /* transfer is complete is one of the following condition is met:
-               -buffer is full
-               -buffer is not full but URB buffer is < 1024 */
-            if(endpoints[ep_num].buffer_length[ep_in] == 0 ||
-                    urb->buffer_length < 1024)
+            /* end of buffer ? short urb ? or error ? */
+            if(endpoints[ep_num].buffer_length[ep_in] == 0 || short_urb || ret < 0)
             {
                 endpoints[ep_num].xfer_status[ep_in] = ret;
                 clear_endpoint_buffer(ep_num, ep_in);
                 
                 mutex_unlock(&endpoints[ep_num].mutex[ep_in]);
                 
-                USB_DEBUGF("vhci-hcd: transfer complete on EP%d OUT, %d bytes transfered\n", ep_num, real_buffer_length);
-                usb_core_transfer_complete(ep_num, USB_DIR_OUT, ret < 0 ? 1 : 0, buffer_length);
+                /* total transfered length can be lower than buffer length */
+                int total_xfered = real_buffer_length - endpoints[ep_num].buffer_length[ep_in];
+                
+                USB_DEBUGF("vhci-hcd: transfer complete on EP%d OUT, %d bytes transfered\n", ep_num, total_xfered);
+                usb_core_transfer_complete(ep_num, USB_DIR_OUT, ret < 0 ? 1 : 0, total_xfered);
                 wakeup_signal(&endpoints[ep_num].xfer_completion[ep_in]);
+                
+                return ret;
             }
             else
             {
@@ -399,10 +452,9 @@ static int usb_meet_up(int ep_num, bool ep_in)
                     ep_num, xfer_actual, endpoints[ep_num].buffer_length[ep_in],
                     endpoints[ep_num].real_buffer_length[ep_in]);
                 
-                mutex_unlock(&endpoints[ep_num].mutex[ep_in]);
+                /* continue by unfilling next URB (if there's one) */
+                continue;
             }
-            
-            return ret;
         }
     }
     
@@ -411,6 +463,7 @@ static int usb_meet_up(int ep_num, bool ep_in)
     return ret;
 }
 
+#if USB_VHCI_DRIVER_DEBUG_LEVEL >= 2
 static void dump_urb(struct usb_vhci_urb *urb)
 {
     USB_DEBUGF("[%s,EP%d %s,%d",  usb_vhci_type_str(urb->type),
@@ -422,10 +475,11 @@ static void dump_urb(struct usb_vhci_urb *urb)
         USB_DEBUGF(",NS");
     USB_DEBUGF("]");
 }
+#endif
 
 static void dump_pending_urbs(void)
 {
-    #ifdef USB_VHCI_DRIVER_DEBUG
+    #if USB_VHCI_DRIVER_DEBUG_LEVEL >= 2
     int ep_num;
     int ep_in;
     
@@ -476,7 +530,7 @@ static void process_urb(struct usb_vhci_urb *urb)
     switch(urb->type)
     {
         case USB_VHCI_URB_TYPE_ISO:
-            USB_DEBUGF("Rockbox doesn't handle isochronous transfers !\n");
+            USB_ERRORF("Rockbox doesn't handle isochronous transfers !\n");
             stall_urb(urb);
             break;
         case USB_VHCI_URB_TYPE_INT:
@@ -496,12 +550,12 @@ static void process_urb(struct usb_vhci_urb *urb)
                 {
                     /* <debug> */
                     if(!endpoints[ep_num].allocated[ep_in])
-                        USB_DEBUGF("vhci-hcd: endpoint EP%d %s is not allocated\n", ep_num, XFER_DIR_STR(ep_in));
+                        USB_ERRORF("vhci-hcd: endpoint EP%d %s is not allocated\n", ep_num, XFER_DIR_STR(ep_in));
                     else if(endpoints[ep_num].type[ep_in] != usb_vhci_type_to_usb_xfr_type(urb->type))
-                        USB_DEBUGF("vhci-hcd: endpoint EP%d %s is not a(n) %s endpoint\n", ep_num, XFER_DIR_STR(ep_in),
+                        USB_ERRORF("vhci-hcd: endpoint EP%d %s is not a(n) %s endpoint\n", ep_num, XFER_DIR_STR(ep_in),
                             usb_vhci_type_str(urb->type));
                     else if(endpoints[ep_num].stalled[ep_in])
-                        USB_DEBUGF("vhci-hcd: endpoint EP%d %s is stalled\n", ep_num, XFER_DIR_STR(ep_in));
+                        USB_ERRORF("vhci-hcd: endpoint EP%d %s is stalled\n", ep_num, XFER_DIR_STR(ep_in));
                     /* </debug> */
                     stall_urb(urb);
                     return;
@@ -547,11 +601,11 @@ static void process_urb(struct usb_vhci_urb *urb)
                 {
                     /* <debug> */
                     if(!endpoints[ep_num].allocated[0])
-                        USB_DEBUGF("vhci-hcd: endpoint EP%d is not allocated\n", ep_num);
+                        USB_ERRORF("vhci-hcd: endpoint EP%d is not allocated\n", ep_num);
                     else if(endpoints[ep_num].type[0] != usb_vhci_type_to_usb_xfr_type(urb->type))
-                        USB_DEBUGF("vhci-hcd: endpoint EP%d is not a control endpoint\n", ep_num);
+                        USB_ERRORF("vhci-hcd: endpoint EP%d is not a control endpoint\n", ep_num);
                     else if(endpoints[ep_num].stalled[ep_in])
-                        USB_DEBUGF("vhci-hcd: endpoint EP%d is stalled\n", ep_num);
+                        USB_ERRORF("vhci-hcd: endpoint EP%d is stalled\n", ep_num);
                     /* </debug> */
                     stall_urb(urb);
                     return;
@@ -611,7 +665,11 @@ static uint16_t compute_trigger(uint16_t prev, uint16_t cur)
     return trigger;
 }
 
+#if 0
 static void vhci_hcd_thread(void)
+#else
+static int vhci_hcd_thread(void *unused)
+#endif
 {
     struct usb_vhci_work work;
     uint16_t last_status = 0;
@@ -620,10 +678,10 @@ static void vhci_hcd_thread(void)
     {
         if(usb_vhci_fetch_work(vhci_hcd_fd, &work) < 0)
         {
-            /* in case of repeat error, avoid using 100% cpu */
-            sleep(HZ/10);
             continue;
         }
+        
+        sim_enter_irq_handler();
         
         if(work.type == USB_VHCI_WORK_TYPE_PORT_STAT)
         {
@@ -706,16 +764,23 @@ static void vhci_hcd_thread(void)
                 }
             }
             
-            USB_DEBUGF("vhci-hcd: WARNING: couldn't find URB to cancel !\n");
+            USB_ERRORF("vhci-hcd: WARNING: couldn't find URB to cancel !\n");
             
             Lend_cancel:
-            continue;
+            ;
         }
         else
         {
-            USB_DEBUGF("vhci-hcd: unknown work type\n");
+            USB_ERRORF("vhci-hcd: unknown work type\n");
         }
+        
+        sim_exit_irq_handler();
     }
+    
+#if 1
+    (void) unused;
+    return 0;
+#endif
 }
 
 static void usb_simulate_power()
@@ -728,10 +793,11 @@ static void usb_simulate_power()
     if(vhci_hcd_fd >= 0)
     {
         USB_DEBUGF("usb-vhci: host controller at %d:%d (%s)\n", usb_busnum, id, bus_id);
-        vhci_hcd_thread_entry = create_thread(vhci_hcd_thread, NULL, 0, 0, vhci_hcd_thread_name);
+        //vhci_hcd_thread_entry = create_thread(vhci_hcd_thread, NULL, 0, 0, vhci_hcd_thread_name);
+        SDL_CreateThread(vhci_hcd_thread, NULL);
     }
     else
-        USB_DEBUGF("usb-vhci: couldn't add host controller\n");
+        USB_ERRORF("usb-vhci: couldn't add host controller\n");
 }
 
 static void usb_simulate_unpower()
@@ -752,7 +818,7 @@ void usb_ask(unsigned int what)
             usb_simulate_unpower();
             break;
         default:
-            USB_DEBUGF("  unknown usb_ask request\n");
+            USB_ERRORF("  unknown usb_ask request\n");
     }
 }
 
@@ -780,7 +846,7 @@ void usb_drv_init(void)
     
     if(usb_vhci_port_connect(vhci_hcd_fd, vhci_hcd_port, USB_VHCI_DATA_RATE_HIGH) < 0)
     {
-        USB_DEBUGF("usb: vhci-hcd: couldn't connect port !");
+        USB_ERRORF("usb: vhci-hcd: couldn't connect port !");
         return;
     }
 }
@@ -832,13 +898,13 @@ static int usb_drv_ack_send_recv(int num, bool in)
     
     if(num != 0 && !endpoints[num].allocated[in])
     {
-        USB_DEBUGF("usb: oops, endpoint EP%d %s is not allocated !\n", num, XFER_DIR_STR(in));
+        USB_ERRORF("usb: oops, endpoint EP%d %s is not allocated !\n", num, XFER_DIR_STR(in));
         mutex_unlock(&endpoints[num].mutex[in]);
         return -1;
     }
     if(num != 0 && endpoints[num].type[in] != USB_ENDPOINT_XFER_CONTROL)
     {
-        USB_DEBUGF("usb: oops, endpoint EP%d is not a control endpoint !\n", num);
+        USB_ERRORF("usb: oops, endpoint EP%d is not a control endpoint !\n", num);
         mutex_unlock(&endpoints[num].mutex[in]);
         return -1;
     }
@@ -852,7 +918,7 @@ static int usb_drv_ack_send_recv(int num, bool in)
     /* use [0], see previous comments */
     if(endpoints[num].pending_urbs[0] == NULL)
     {
-        USB_DEBUGF("usb: no pending urb to ack on EP%d\n", num);
+        USB_ERRORF("usb: no pending urb to ack on EP%d\n", num);
         mutex_unlock(&endpoints[num].mutex[in]);
         return -1;
     }
@@ -886,12 +952,12 @@ static int usb_drv_send_recv(int epadr, bool send, void *ptr, int length, bool w
     /* EP0 is special */
     if(ep_num != 0 && ep_in != send)
     {
-        USB_DEBUGF("usb: oops, I can't %s on EP%d %s !\n", send ? "send" : "recv", ep_num, XFER_DIR_STR(ep_in));
+        USB_ERRORF("usb: oops, I can't %s on EP%d %s !\n", send ? "send" : "recv", ep_num, XFER_DIR_STR(ep_in));
         return -1;
     }
     if(ep_num !=0 && !endpoints[ep_num].allocated[ep_in])
     {
-        USB_DEBUGF("usb: oops, EP%d %s is not allocated !\n", ep_num, XFER_DIR_STR(ep_in));
+        USB_ERRORF("usb: oops, EP%d %s is not allocated !\n", ep_num, XFER_DIR_STR(ep_in));
         return -1;
     }
     /* if control endpoint, set ep_in to false */
@@ -900,7 +966,7 @@ static int usb_drv_send_recv(int epadr, bool send, void *ptr, int length, bool w
 
     if(endpoints[ep_num].buffer[ep_in] != NULL)
     {
-        USB_DEBUGF("usb: oops, send/recv on EP%d %s with already set buffer, overwrite !\n",
+        USB_ERRORF("usb: oops, send/recv on EP%d %s with already set buffer, overwrite !\n",
             ep_num, XFER_DIR_STR(ep_in));
     }
     

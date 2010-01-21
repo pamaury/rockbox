@@ -45,7 +45,7 @@
 #ifdef HAVE_USBSTACK
 #include "usb_core.h"
 #endif
-#define LOGF_ENABLE
+/*#define LOGF_ENABLE*/
 #include "logf.h"
 #include "screendump.h"
 

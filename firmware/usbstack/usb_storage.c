@@ -23,7 +23,7 @@
 #include "usb_core.h"
 #include "usb_drv.h"
 #include "usb_class_driver.h"
-#define LOGF_ENABLE
+/*#define LOGF_ENABLE*/
 #include "logf.h"
 #include "storage.h"
 #include "hotswap.h"
@@ -41,7 +41,7 @@
 //#define ONLY_EXPOSE_CARD_SLOT
 
 #ifdef USB_USE_RAMDISK
-#define RAMDISK_SIZE 2048
+#define RAMDISK_SIZE /*2048*/(2048*10)
 #endif
 
 #ifndef SECTOR_SIZE
