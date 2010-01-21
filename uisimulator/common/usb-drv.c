@@ -22,7 +22,7 @@
  ****************************************************************************/
 
 /* parts of this driver are based on the usb-arc driver */
-#define USB_VHCI_DRIVER_DEBUG_LEVEL 1
+#define USB_VHCI_DRIVER_DEBUG_LEVEL 2
 
 #include "errno.h"
 #include "libusb_vhci/libusb_vhci.h"
@@ -35,6 +35,7 @@
 #include "usb_drv.h"
 #include "system-sdl.h"
 #include "malloc.h"
+#include <SDL.h>
 #include <SDL_thread.h>
 
 #if USB_VHCI_DRIVER_DEBUG_LEVEL >= 2
@@ -48,8 +49,11 @@
 #define USB_DEBUGF(...) ({})
 #endif
 
-#define mutex_lock(...)
-#define mutex_unlock(...)
+typedef SDL_mutex *mutex_t;
+
+#define mutex_lock(m) SDL_LockMutex(*m)
+#define mutex_unlock(m) SDL_UnlockMutex(*m)
+#define mutex_init(m) *m = SDL_CreateMutex()
 
 struct urb_list
 {
@@ -68,7 +72,7 @@ struct usb_endpoint_t
     int buffer_length[2];/* length of the buffer(remaining data to send/recv) */
     int real_buffer_length[2];/* length of the buffer(total transfer size) */
     struct usb_ctrlrequest setup_data;/* copy of setup data sent to core */
-    struct mutex mutex[2];/* mutex for buffer/buffer_length/has_urb/urb/pending_urbs */
+    mutex_t mutex[2];/* mutex for buffer/buffer_length/has_urb/urb/pending_urbs */
     struct wakeup xfer_completion[2];/* wakeup for blocking transfers (see drv_send) */
     int xfer_status[2];/* status of the transfer (used for blocking transfers) */
     bool stalled[2];/* is endpoint stalled ? */    
