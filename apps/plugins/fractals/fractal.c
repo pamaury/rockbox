@@ -46,9 +46,10 @@ static unsigned char *gbuf;
 static size_t gbuf_size = 0;
 #endif
 
-#define REDRAW_NONE    0
-#define REDRAW_PARTIAL 1
-#define REDRAW_FULL    2
+#define REDRAW_NONE         0
+#define REDRAW_PARTIAL      1
+#define REDRAW_FULL         2
+#define REDRAW_FULL_OVERLAY 3
 
 PLUGIN_HEADER
 
@@ -79,6 +80,13 @@ static int button_yield(void *ctx)
 #if defined(FRACTAL_ZOOM_OUT_PRE) && \
             (FRACTAL_ZOOM_OUT_PRE != FRACTAL_ZOOM_IN_PRE)
         case FRACTAL_ZOOM_OUT_PRE:
+#endif
+#ifdef FRACTAL_PRECISION_INC_PRE
+        case FRACTAL_PRECISION_INC_PRE:
+#endif
+#if defined(FRACTAL_PRECISION_DEC_PRE) && \
+            (FRACTAL_PRECISION_DEC_PRE != FRACTAL_PRECISION_INC_PRE)
+        case FRACTAL_PRECISION_DEC_PRE:
 #endif
             return 1;
         default:
@@ -132,11 +140,17 @@ enum plugin_status plugin_start(const void* parameter)
 #ifdef HAVE_ADJUSTABLE_CPU_FREQ
             rb->cpu_boost(true);
 #endif
-            if (redraw == REDRAW_FULL)
+            switch (redraw)
             {
-                MYLCD(clear_display)();
-                MYLCD_UPDATE();
-                rects_queue_init();
+                case REDRAW_FULL:
+                    MYLCD(clear_display)();
+                    MYLCD_UPDATE();
+                    /* fall-through */
+                case REDRAW_FULL_OVERLAY:
+                    rects_queue_init();
+                    break;
+                default:
+                    break;
             }
 
             /* paint all rects */
@@ -167,8 +181,8 @@ enum plugin_status plugin_start(const void* parameter)
             if (lastbutton != FRACTAL_ZOOM_OUT_PRE)
                 break;
 #endif
-            ops->zoom(-1);
-            redraw = REDRAW_FULL;
+            if (!ops->zoom(-1))
+                redraw = REDRAW_FULL;
             break;
 
 
@@ -180,8 +194,8 @@ enum plugin_status plugin_start(const void* parameter)
 #ifdef FRACTAL_ZOOM_IN2
         case FRACTAL_ZOOM_IN2:
 #endif
-            ops->zoom(1);
-            redraw = REDRAW_FULL;
+            if (!ops->zoom(1))
+                redraw = REDRAW_FULL;
             break;
 
         case FRACTAL_UP:
@@ -222,7 +236,7 @@ enum plugin_status plugin_start(const void* parameter)
                 break;
 #endif
             if (ops->precision(-1))
-                redraw = REDRAW_FULL;
+                redraw = REDRAW_FULL_OVERLAY;
 
             break;
 
@@ -232,7 +246,7 @@ enum plugin_status plugin_start(const void* parameter)
                 break;
 #endif
             if (ops->precision(+1))
-                redraw = REDRAW_FULL;
+                redraw = REDRAW_FULL_OVERLAY;
 
             break;
 

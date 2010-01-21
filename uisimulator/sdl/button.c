@@ -30,6 +30,7 @@
 #include "sim_tasks.h"
 #include "button-sdl.h"
 #include "usb.h"
+#include "backlight.h"
 
 #include "debug.h"
 
@@ -1281,6 +1282,12 @@ void button_event(int key, bool pressed)
          *  store the scroll forward/back buttons in their button data for
          *  the button_read call.
          */
+#ifdef HAVE_BACKLIGHT
+        backlight_on();
+#endif
+#ifdef HAVE_BUTTON_LIGHT
+        buttonlight_on();
+#endif
         queue_post(&button_queue, new_btn, 1<<24);
         new_btn &= ~(BUTTON_SCROLL_FWD | BUTTON_SCROLL_BACK);
     }

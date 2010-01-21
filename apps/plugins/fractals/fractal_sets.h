@@ -21,8 +21,14 @@
 #ifndef _FRACTAL_SETS_H
 #define _FRACTAL_SETS_H
 
+#include "plugin.h"
+
+#if (LCD_DEPTH < 8)
+#define USEGSLIB
 #include "lib/grey.h"
+#else
 #include "lib/xlcd.h"
+#endif
 
 #define DELTA 8 /* Panning moves 1/DELTA of screen */
 
@@ -47,7 +53,7 @@ struct fractal_ops
     int (*calc)(struct fractal_rect *rect, int (*button_yield_cb)(void *ctx),
             void *button_yield_ctx);
     void (*move)(int dx, int dy);
-    void (*zoom)(int factor);
+    int (*zoom)(int factor);
     int (*precision)(int d);
 };
 

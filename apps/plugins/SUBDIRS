@@ -21,12 +21,13 @@ pictureflow
 #endif
 chessbox
 fractals
-jpeg
+imageviewer
 sudoku
 reversi
 goban
-#ifdef HAVE_LCD_COLOR
-png
+/* setjmp/longjmp are not implemented on sh */
+#if (CONFIG_CPU != SH7034)
+frotz
 #endif
 #ifndef OLYMPUS_MROBE_500
 zxbox

@@ -25,6 +25,7 @@
 #include "system.h"
 #include "kernel.h"
 #include "button-target.h"
+#include "synaptics-mep.h"
 
 /*#define LOGF_ENABLE*/
 #include "logf.h"
@@ -53,7 +54,8 @@
                 GPIO_CLEAR_BITWISE(GPIOD_OUTPUT_VAL, 0x4)
 #define DATA_CL GPIO_CLEAR_BITWISE(GPIOD_OUTPUT_EN, 0x4)
 
-#elif defined(PHILIPS_HDD1630) || defined(PHILIPS_HDD6330)
+#elif defined(PHILIPS_HDD1630) || defined(PHILIPS_HDD6330) || \
+      defined(PBELL_VIBE500)
 #define INT_ENABLE  GPIO_CLEAR_BITWISE(GPIOA_INT_LEV, 0x20);\
                     GPIO_SET_BITWISE(GPIOA_INT_EN, 0x20)
 #define INT_DISABLE GPIO_CLEAR_BITWISE(GPIOA_INT_EN, 0x20);\
@@ -578,7 +580,7 @@ int touchpad_read_device(char *data, int len)
     return val;
 }
 
-int touchpad_set_buttonlights(int led_mask, char brightness)
+int touchpad_set_buttonlights(unsigned int led_mask, char brightness)
 {
     char data[6];
     int val = 0;
@@ -586,7 +588,26 @@ int touchpad_set_buttonlights(int led_mask, char brightness)
     if (syn_status)
     {
         syn_enable_int(false);
+#if defined(PBELL_VIBE500)
+        /* In Packard Bell Vibe 500 leds are controlled through the MEP parameters 0x62 - 0x63 
+           There is no 0x31 order - grup led control */
 
+        /* Make sure we have a led_block_mask = 0 - obtained experimentally */
+        data[0] = 0x03; /* header - addr:0,global:0,control:0,len:3 */
+        data[1] = 0x63; /* parameter nr: 0x23 (-0x40) - led_block_mask */
+        data[2] = 0x00; /* par_hi = 0 */
+        data[3] = 0x00; /* par_lo = 0 */
+        syn_send(data,4);
+        val = syn_read(data, 1); /* get the simple ACK = 0x18 */
+
+        /* Turn on/off the lights (there is no brightness control) - obtained experimentally */
+        data[0] = 0x03; /* header - addr:0,global:0,control:0,len:3 */
+        data[1] = 0x62; /* parameter nr: 0x22 (-0x40) - led_mask */
+        data[2] = 0x00; /* par_hi = 0 */
+        data[3] = (led_mask & 0x0f) | (brightness&0);  /* par_lo = led_mask */ 
+        syn_send(data,4);
+        val = syn_read(data, 1); /* get the simple ACK = 0x18 */
+#else
         /* turn on all touchpad leds */
         data[0] = 0x05;
         data[1] = 0x31;
@@ -598,7 +619,7 @@ int touchpad_set_buttonlights(int led_mask, char brightness)
 
         /* device responds with a single-byte ACK packet */
         val = syn_read(data, 2);
-
+#endif
         syn_enable_int(true);
     }
 

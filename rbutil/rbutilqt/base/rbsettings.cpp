@@ -94,9 +94,24 @@ const static struct {
     { RbSettings::EncoderVolume,        ":encoder:/volume",     "1.0" },
 };
 
+// server settings
+const static struct {
+    RbSettings::ServerSettings setting;
+    const char* name;
+    const char* def;
+} ServerSettingsList[] = {
+    { RbSettings::CurReleaseVersion,    ":platform:/releaseversion", "" },
+    { RbSettings::CurStatus,            ":platform:/status", "" },
+    { RbSettings::DailyRevision,        "dailyrev",             "" },
+    { RbSettings::DailyDate,            "dailydate",            "" },
+    { RbSettings::BleedingRevision,     "bleedingrev",          "" },
+    { RbSettings::BleedingDate,         "bleedingdate",         "" },
+};  
+
 //! pointer to setting object to NULL
 QSettings* RbSettings::systemSettings = NULL;
 QSettings* RbSettings::userSettings = NULL;
+QMap<QString, QVariant> RbSettings::serverSettings;
 
 void RbSettings::ensureRbSettingsExists()
 {
@@ -106,7 +121,7 @@ void RbSettings::ensureRbSettingsExists()
         // only use built-in rbutil.ini
         systemSettings = new QSettings(":/ini/rbutil.ini", QSettings::IniFormat, 0);
     }
-
+    
     if(userSettings == NULL)
     {
         // portable installation:
@@ -200,6 +215,20 @@ QVariant RbSettings::subValue(QString sub, enum UserSettings setting)
     return userSettings->value(s, UserSettingsList[i].def);
 }
 
+QVariant RbSettings::value(enum ServerSettings setting)
+{
+    ensureRbSettingsExists();
+
+    // locate setting item
+    int i = 0;
+    while(ServerSettingsList[i].setting != setting)
+        i++;
+
+    QString s = constructSettingPath(ServerSettingsList[i].name);
+    qDebug() << "[Settings] GET SERV:" << s << serverSettings.value(s, ServerSettingsList[i].def).toString();
+    return serverSettings.value(s);
+}
+
 void RbSettings::setValue(enum UserSettings setting , QVariant value)
 {
    QString empty;
@@ -216,8 +245,29 @@ void RbSettings::setSubValue(QString sub, enum UserSettings setting, QVariant va
         i++;
 
     QString s = constructSettingPath(UserSettingsList[i].name, sub);
-    qDebug() << "[Settings] SET U:" << s << userSettings->value(s).toString();
     userSettings->setValue(s, value);
+    qDebug() << "[Settings] SET U:" << s << userSettings->value(s).toString();
+}
+
+void RbSettings::setValue(enum ServerSettings setting, QVariant value)
+{
+    QString empty;
+    return setPlatformValue(empty, setting, value);
+}
+
+void RbSettings::setPlatformValue(QString platform, enum ServerSettings setting, QVariant value)
+{
+    ensureRbSettingsExists();
+
+    // locate setting item
+    int i = 0;
+    while(ServerSettingsList[i].setting != setting)
+        i++;
+
+    QString s = ServerSettingsList[i].name;
+    s.replace(":platform:", platform);
+    serverSettings.insert(s, value);
+    qDebug() << "[Settings] SET SERV:" << s << serverSettings.value(s).toString();
 }
 
 
