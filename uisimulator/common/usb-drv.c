@@ -618,6 +618,7 @@ static void process_urb(struct usb_vhci_urb *urb)
                 mutex_lock(&endpoints[ep_num].mutex[0]);
                 enqueue_endpoint_urb(ep_num, 0, urb);
                 
+                
                 USB_DEBUGF("vhci-hcd: bmRequestType=0x%02x bRequest=0x%02x wValue=0x%04x\n", urb->bmRequestType, urb->bRequest,
                     urb->wValue);
                 USB_DEBUGF("vhci-hcd: wIndex=0x%04x wLength=0x%04x epadr=0x%02x urb_length=0x%x\n", urb->wIndex,
@@ -628,6 +629,7 @@ static void process_urb(struct usb_vhci_urb *urb)
                 req->wValue = urb->wValue;
                 req->wIndex = urb->wIndex;
                 req->wLength = urb->wLength;
+                mutex_unlock(&endpoints[ep_num].mutex[0]);
                 
                 if(ep_num == 0)
                     usb_core_control_request(req);
@@ -635,8 +637,6 @@ static void process_urb(struct usb_vhci_urb *urb)
                 /* FIXME should call usb_core_transfer_complete at some point ? */
                 /* FIXME should handle no data control transfers only ? */
                 USB_DEBUGF("vhci-hcd: Not sending a transfer complete message for now !\n");
-                
-                mutex_unlock(&endpoints[ep_num].mutex[0]);
             }
             break;
         default:
@@ -758,6 +758,8 @@ static int vhci_hcd_thread(void *unused)
                             temp = *cur;
                             *cur = (*cur)->next;
                             free(temp);
+                            
+                            mutex_unlock(&endpoints[ep_num].mutex[ep_in]);
                             goto Lend_cancel;
                         }
                         else
@@ -880,7 +882,7 @@ void usb_drv_stall(int endpoint, bool stall,bool in)
 {
     USB_DEBUGF("usb: stall endpoint=%d stall=%d in=%d\n", endpoint, stall, in);
     
-    endpoints[endpoint].stalled[in] = stall;
+    //endpoints[endpoint].stalled[in] = stall;
     
     if(endpoints[endpoint].type[in] == USB_ENDPOINT_XFER_CONTROL)
         in = false;
@@ -1011,7 +1013,7 @@ int usb_drv_send(int endpoint, void* ptr, int length)
 {
     /* check for ack */
     if(ptr == NULL && length == 0)
-        return usb_drv_ack_send_recv(endpoint, false);
+        return usb_drv_ack_send_recv(endpoint, true);
     else
         return usb_drv_send_recv(endpoint, true, ptr, length, true);
 }
@@ -1029,7 +1031,7 @@ int usb_drv_recv(int endpoint, void* ptr, int length)
 {
     /* check for ack */
     if(ptr == NULL && length == 0)
-        return usb_drv_ack_send_recv(endpoint, true);
+        return usb_drv_ack_send_recv(endpoint, false);
     else
         return usb_drv_send_recv(endpoint, false, ptr, length, false);
 }

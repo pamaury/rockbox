@@ -22,7 +22,7 @@
 #include "thread.h"
 #include "kernel.h"
 #include "string.h"
-/*#define LOGF_ENABLE*/
+#define LOGF_ENABLE
 #include "logf.h"
 
 #include "usb.h"
@@ -680,6 +680,10 @@ static void request_handler_device(struct usb_ctrlrequest* req)
             usb_drv_send(EP_CONTROL, response_data, 2);
             break;
         default:
+            /* nope. flag error */
+            logf("usb bad req %d",req->bRequest);
+            usb_drv_stall(EP_CONTROL,true,true);
+            usb_core_ack_control(req);
             break;
     }
 }
@@ -725,6 +729,10 @@ static void request_handler_interface(struct usb_ctrlrequest* req)
             control_request_handler_drivers(req);
             break;
         case USB_TYPE_VENDOR:
+            /* nope. flag error */
+            logf("usb bad req %d",req->bRequest);
+            usb_drv_stall(EP_CONTROL,true,true);
+            usb_core_ack_control(req);
             break;
     }
 }
@@ -800,7 +808,7 @@ static void usb_core_control_request_handler(struct usb_ctrlrequest* req)
             logf("unsupported recipient");
             break;
     }
-    //logf("control handled");
+    logf("control handled");
 }
 
 /* called by usb_drv_int() */
