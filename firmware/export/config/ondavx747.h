@@ -31,9 +31,6 @@
 #define MODEL_NAME  "Onda VX747+"
 #define MODEL_NUMBER 54
 /* Define something for camera interface... */
-#elif defined(ONDA_VX777)
-#define MODEL_NAME  "Onda VX777"
-#define MODEL_NUMBER 61
 #else
 #define MODEL_NAME  "Onda VX747"
 #define MODEL_NUMBER 45
@@ -89,11 +86,8 @@
 /* Define this if your LCD can be enabled/disabled */
 #define HAVE_LCD_ENABLE
 
-#ifdef ONDA_VX777
-#define CONFIG_KEYPAD ONDAVX777_PAD
-#else
 #define CONFIG_KEYPAD ONDAVX747_PAD
-#endif
+
 #define HAVE_TOUCHSCREEN
 #define HAVE_BUTTON_DATA
 
@@ -165,10 +159,8 @@
 /* Hardware controlled charging with monitoring */
 #define CONFIG_CHARGING CHARGING_MONITOR
 
-#ifndef ONDA_VX777 /* Doesn't have any physical buttons */
 /* There is only USB charging */
 #define HAVE_USB_POWER
-#endif
 
 #define CFG_EXTAL 12000000    /* EXT clock: 12 Mhz */
 
@@ -213,11 +205,10 @@ No access to the NAND yet..
 
 #ifdef ONDA_VX747P
 #define BOOTFILE_EXT "vx747p"
-#elif defined(ONDA_VX777)
-#define BOOTFILE_EXT "vx777"
 #else
 #define BOOTFILE_EXT "vx747"
 #endif
+
 #define BOOTFILE     "rockbox." BOOTFILE_EXT
 #define BOOTDIR      "/.rockbox"
 

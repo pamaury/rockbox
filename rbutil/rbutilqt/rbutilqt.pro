@@ -97,6 +97,8 @@ SOURCES += rbutilqt.cpp \
  base/voicefile.cpp \
  createvoicewindow.cpp \
  base/rbsettings.cpp \
+ base/serverinfo.cpp \
+ base/systeminfo.cpp \
  base/rbunzip.cpp \
  base/rbzip.cpp \
  base/system.cpp \
@@ -158,6 +160,8 @@ HEADERS += rbutilqt.h \
  base/voicefile.h \
  createvoicewindow.h \
  base/rbsettings.h \
+ base/serverinfo.h \
+ base/systeminfo.h \
  base/rbunzip.h \
  base/rbzip.h \
  sysinfo.h \
@@ -226,6 +230,7 @@ TRANSLATIONS += lang/rbutil_cs.ts \
  lang/rbutil_fr.ts \
  lang/rbutil_gr.ts \
  lang/rbutil_he.ts \
+ lang/rbutil_it.ts \
  lang/rbutil_ja.ts \
  lang/rbutil_nl.ts \
  lang/rbutil_pl.ts \

@@ -39,12 +39,14 @@ include $(APPSDIR)/codecs/libwma/libwma.make
 include $(APPSDIR)/codecs/libcook/libcook.make
 include $(APPSDIR)/codecs/librm/librm.make
 include $(APPSDIR)/codecs/libatrac/libatrac.make
+include $(APPSDIR)/codecs/libpcm/libpcm.make
 
 # compile flags for codecs
 CODECFLAGS = $(filter-out -fno-strict-aliasing,$(CFLAGS)) -fstrict-aliasing \
 	-I$(APPSDIR)/codecs -I$(APPSDIR)/codecs/lib -DCODEC
 
 ifndef SIMVER
+  CONFIGFILE := $(FIRMDIR)/export/config/$(MODELNAME).h
   CODEC_LDS := $(APPSDIR)/plugins/plugin.lds # codecs and plugins use same file
   CODECLINK_LDS := $(CODECDIR)/codec.link
 endif
@@ -59,7 +61,7 @@ CODECLIBS := $(DEMACLIB) $(A52LIB) $(ALACLIB) $(ASAPLIB) \
 
 $(CODECS): $(CODEC_CRT0) $(CODECLINK_LDS) 
 
-$(CODECLINK_LDS): $(CODEC_LDS)
+$(CODECLINK_LDS): $(CODEC_LDS) $(CONFIGFILE)
 	$(call PRINTS,PP $(@F))
 	$(shell mkdir -p $(dir $@))
 	$(call preprocess2file, $<, $@, -DCODEC)
@@ -84,6 +86,8 @@ $(CODECDIR)/cook.codec : $(CODECDIR)/libcook.a $(CODECDIR)/librm.a
 $(CODECDIR)/raac.codec : $(CODECDIR)/libfaad.a $(CODECDIR)/librm.a
 $(CODECDIR)/a52_rm.codec : $(CODECDIR)/liba52.a $(CODECDIR)/librm.a
 $(CODECDIR)/atrac3_rm.codec : $(CODECDIR)/libatrac.a $(CODECDIR)/librm.a
+$(CODECDIR)/aiff.codec : $(CODECDIR)/libpcm.a
+$(CODECDIR)/wav.codec : $(CODECDIR)/libpcm.a
 
 $(CODECS): $(CODECLIB) # this must be last in codec dependency list
 

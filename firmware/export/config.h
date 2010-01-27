@@ -355,11 +355,11 @@ Lyre prototype 1 */
 #elif defined(COWON_D2)
 #include "config/cowond2.h"
 #elif defined(CREATIVE_ZVM)
-#include "config/zenvisionm.h"
+#include "config/zenvisionm30gb.h"
 #elif defined(CREATIVE_ZVM60GB)
 #include "config/zenvisionm60gb.h"
 #elif defined(CREATIVE_ZV)
-#include "config/zenvisionm.h"
+#include "config/zenvision.h"
 #elif defined(PHILIPS_SA9200)
 #include "config/gogearsa9200.h"
 #elif defined(PHILIPS_HDD1630)
@@ -374,8 +374,10 @@ Lyre prototype 1 */
 #include "config/meizum6sp.h"
 #elif defined(MEIZU_M3)
 #include "config/meizum3.h"
-#elif defined(ONDA_VX747) || defined(ONDA_VX747P) || defined(ONDA_VX777)
+#elif defined(ONDA_VX747) || defined(ONDA_VX747P)
 #include "config/ondavx747.h"
+#elif defined(ONDA_VX777)
+#include "config/ondavx777.h"
 #elif defined(ONDA_VX767)
 #include "config/ondavx767.h"
 #elif defined(SANSA_CLIP)
