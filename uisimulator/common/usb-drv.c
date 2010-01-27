@@ -289,33 +289,52 @@ static int fill_ctrlrequest_setup_data(int ep_num)
     return 0;
 }
 
+static int cancel_endpoint_transfer(int ep_num, bool ep_in)
+{
+    /* get lock */
+    mutex_lock(&endpoints[ep_num].mutex[ep_in]);
+    
+    if(endpoints[ep_num].buffer[ep_in] == NULL)
+    {
+        mutex_unlock(&endpoints[ep_num].mutex[ep_in]);
+        return -1;
+    }
+    
+    USB_DEBUGF("vhci-hcd: cancel transfer on EP%d %s\n", ep_num, XFER_DIR_STR(ep_in));
+    /* clear endpoint buffers */
+    clear_endpoint_buffer(ep_num, ep_in);
+    /* set xfer status to failure */
+    endpoints[ep_num].xfer_status[ep_in] = -1;
+    /* release lock */
+    mutex_unlock(&endpoints[ep_num].mutex[ep_in]);
+
+    /* notify the core that the transfer failed */
+    usb_core_transfer_complete(ep_num, ep_in ? USB_DIR_IN : USB_DIR_OUT, 1, 0);
+    /* wakup waiting thread if any */
+    wakeup_signal(&endpoints[ep_num].xfer_completion[ep_in]);
+    
+    return 0;
+}
+
 /* cancel ONE endpoint urb */
 static int cancel_endpoint_urb(int ep_num, bool ep_in)
 {
-    if(endpoints[ep_num].pending_urbs[ep_in] == NULL)
-        return 0;
-    
-    USB_DEBUGF("vhci-hcd: cancel URB on EP%d %s\n", ep_num, XFER_DIR_STR(ep_in));
     /* get lock */
     mutex_lock(&endpoints[ep_num].mutex[ep_in]);
+    
+    if(endpoints[ep_num].pending_urbs[ep_in] == NULL)
+    {
+        mutex_unlock(&endpoints[ep_num].mutex[ep_in]);
+        return -1;
+    }
+    
+    USB_DEBUGF("vhci-hcd: cancel URB on EP%d %s\n", ep_num, XFER_DIR_STR(ep_in));
+    
     /* stall first pending URB */
     stall_urb(&endpoints[ep_num].pending_urbs[ep_in]->urb);
     dequeue_endpoint_urb(ep_num, ep_in);
     
-    if(endpoints[ep_num].buffer[ep_in] != NULL)
-    {
-        /* clear endpoint buffers */
-        clear_endpoint_buffer(ep_num, ep_in);
-        /* set xfer status to failure */
-        endpoints[ep_num].xfer_status[ep_in] = -1;
-        /* release lock */
-        mutex_unlock(&endpoints[ep_num].mutex[ep_in]);
-    
-        /* notify the core that the transfer failed */
-        usb_core_transfer_complete(ep_num, ep_in ? USB_DIR_IN : USB_DIR_OUT, 1, 0);
-        /* wakup waiting thread if any */
-        wakeup_signal(&endpoints[ep_num].xfer_completion[ep_in]);
-    }
+    mutex_unlock(&endpoints[ep_num].mutex[ep_in]);
     
     return 0;
 }
@@ -323,7 +342,7 @@ static int cancel_endpoint_urb(int ep_num, bool ep_in)
 /* cancel ALL endpoint urbs */
 static int cancel_endpoint_all_urbs(int ep_num, bool ep_in)
 {
-    while(endpoints[ep_num].pending_urbs[ep_in] == NULL)
+    while(endpoints[ep_num].pending_urbs[ep_in] != NULL)
         cancel_endpoint_urb(ep_num, ep_in);
 
     return 0;
@@ -541,12 +560,17 @@ static void dump_pending_urbs(void)
     {
         for(ep_in=0;ep_in<=1;ep_in++)
         {
+            mutex_lock(&endpoints[ep_num].mutex[ep_in]);
+            
             struct urb_list *cur = endpoints[ep_num].pending_urbs[ep_in];
             int buffer_length = endpoints[ep_num].buffer_length[ep_in];
             int real_buffer_length = endpoints[ep_num].real_buffer_length[ep_in];
             
             if(cur == NULL && buffer_length == 0)
+            {
+                mutex_unlock(&endpoints[ep_num].mutex[ep_in]);
                 continue;
+            }
             
             if(endpoints[ep_num].type[ep_in] == USB_ENDPOINT_XFER_CONTROL)
                 USB_DEBUGF("  EP%d /%s: ", ep_num,
@@ -571,6 +595,8 @@ static void dump_pending_urbs(void)
             }
             
             USB_DEBUGF("\n");
+            
+            mutex_unlock(&endpoints[ep_num].mutex[ep_in]);
         }
     }
     USB_DEBUGF("[--------------------------------------------------]\n");
@@ -904,8 +930,8 @@ void usb_drv_stall(int endpoint, bool stall, bool in)
     endpoints[endpoint].stalled[in] = stall;
     
     /* STALL current transfer */
-    if(endpoints[endpoint].pending_urbs[in] != NULL)
-        cancel_endpoint_urb(endpoint, in);
+    cancel_endpoint_urb(endpoint, in);
+    cancel_endpoint_transfer(endpoint, in);
 }
 
 bool usb_drv_stalled(int endpoint,bool in)
@@ -969,6 +995,15 @@ static int usb_drv_send_recv(int epadr, bool send, void *ptr, int length, bool w
     int ep_num = EP_NUM(epadr);
     bool ep_in = (EP_DIR(epadr) == DIR_IN);
     
+    /* if length=0 (which is valid), ptr can't possibly be NULL, because of the way all this works (yes it's bad) */
+    if(length == 0 && ptr == NULL)
+    {
+        USB_DEBUGF("usb: change NULL ptr to dummy ptr for length = 0 on EP%d %s !\n", ep_num, XFER_DIR_STR(ep_in));
+        static int dummy;
+        /* take the address of anything, it's 0 size anyway */
+        ptr = &dummy;
+    }
+    
     /* EP0 is special */
     if(ep_num != 0 && ep_in != send)
     {
@@ -1023,10 +1058,15 @@ static int usb_drv_send_recv(int epadr, bool send, void *ptr, int length, bool w
     
 }
 
+static bool usb_is_ack(int endpoint, void *ptr, int length)
+{
+    return (ptr == NULL || length == 0) && endpoints[EP_NUM(endpoint)].type[0] == USB_ENDPOINT_XFER_CONTROL;
+}
+
 int usb_drv_send(int endpoint, void* ptr, int length)
 {
     /* check for ack */
-    if(ptr == NULL || length == 0)
+    if(usb_is_ack(endpoint, ptr, length))
         return usb_drv_ack_send_recv(EP_NUM(endpoint));
     else
         return usb_drv_send_recv(endpoint, true, ptr, length, true);
@@ -1035,7 +1075,7 @@ int usb_drv_send(int endpoint, void* ptr, int length)
 int usb_drv_send_nonblocking(int endpoint, void* ptr, int length)
 {
     /* check for ack */
-    if(ptr == NULL || length == 0)
+    if(usb_is_ack(endpoint, ptr, length))
         return usb_drv_ack_send_recv(EP_NUM(endpoint));
     else
         return usb_drv_send_recv(endpoint, true, ptr, length, false);
@@ -1044,7 +1084,7 @@ int usb_drv_send_nonblocking(int endpoint, void* ptr, int length)
 int usb_drv_recv(int endpoint, void* ptr, int length)
 {
     /* check for ack */
-    if(ptr == NULL || length == 0)
+    if(usb_is_ack(endpoint, ptr, length))
         return usb_drv_ack_send_recv(EP_NUM(endpoint));
     else
         return usb_drv_send_recv(endpoint, false, ptr, length, false);
@@ -1070,7 +1110,10 @@ void usb_drv_cancel_all_transfers(void)
     int ep_num, ep_in;
     for(ep_num = 0; ep_num < USB_NUM_ENDPOINTS; ep_num++)
         for(ep_in = 0; ep_in <= 1; ep_in++)
+        {
             cancel_endpoint_all_urbs(ep_num, ep_in);
+            cancel_endpoint_transfer(ep_num, ep_in);
+        }
 }
 
 void usb_drv_set_test_mode(int mode)
