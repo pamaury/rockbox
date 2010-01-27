@@ -680,7 +680,6 @@ static void request_handler_device(struct usb_ctrlrequest* req)
             usb_drv_send(EP_CONTROL, response_data, 2);
             break;
         default:
-            /* nope. flag error */
             logf("usb bad req %d",req->bRequest);
             usb_drv_stall(EP_CONTROL,true,true);
             usb_core_ack_control(req);
@@ -729,7 +728,6 @@ static void request_handler_interface(struct usb_ctrlrequest* req)
             control_request_handler_drivers(req);
             break;
         case USB_TYPE_VENDOR:
-            /* nope. flag error */
             logf("usb bad req %d",req->bRequest);
             usb_drv_stall(EP_CONTROL,true,true);
             usb_core_ack_control(req);
