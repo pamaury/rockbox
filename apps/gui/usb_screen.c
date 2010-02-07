@@ -54,8 +54,6 @@ int usb_keypad_mode;
 static bool usb_hid;
 #endif
 
-#ifndef SIMULATOR
-
 static int handle_usb_events(void)
 {
 #if (CONFIG_STORAGE & STORAGE_MMC)
@@ -108,7 +106,6 @@ static int handle_usb_events(void)
 
     return 0;
 }
-#endif
 
 #ifdef USB_NONE
 void gui_usb_screen_run(void)
@@ -258,9 +255,7 @@ void gui_usb_screen_run(void)
     touchscreen_set_mode(TOUCHSCREEN_BUTTON);
 #endif
 
-#ifndef SIMULATOR
     usb_acknowledge(SYS_USB_CONNECTED_ACK);
-#endif
 
 #ifdef USB_ENABLE_HID
     usb_hid = global_settings.usb_hid;
@@ -280,14 +275,8 @@ void gui_usb_screen_run(void)
     while (1)
     {
         usb_screens_draw(usb_screen_vps_ar);
-#ifdef SIMULATOR
-        if (button_get_w_tmo(HZ/2))
-            break;
-        send_event(GUI_EVENT_ACTIONUPDATE, NULL);
-#else
         if (handle_usb_events())
             break;
-#endif /* SIMULATOR */
     }
 
     FOR_NB_SCREENS(i)

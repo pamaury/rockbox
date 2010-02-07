@@ -127,8 +127,6 @@ static void try_reboot(void)
 static inline void usb_slave_mode(bool on)
 {
 #ifdef USE_ROCKBOX_USB
-    int rc;
-
     if (on)
     {
         trigger_cpu_boost();
@@ -145,10 +143,13 @@ static inline void usb_slave_mode(bool on)
 #ifdef HAVE_PRIORITY_SCHEDULING
         thread_set_priority(THREAD_ID_CURRENT, PRIORITY_SYSTEM);
 #endif
+
+#ifndef SIMULATOR
         /* Entered exclusive mode */
-        rc = disk_mount_all();
+        int rc = disk_mount_all();
         if (rc <= 0) /* no partition */
             panicf("mount: %d",rc);
+#endif /* SIMULATOR */
 
         cancel_cpu_boost();
     }

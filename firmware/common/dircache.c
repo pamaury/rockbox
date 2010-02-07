@@ -678,12 +678,10 @@ static void dircache_thread(void)
                 dircache_initialized = false;
                 break ;
             
-#ifndef SIMULATOR
             case SYS_USB_CONNECTED:
                 usb_acknowledge(SYS_USB_CONNECTED_ACK);
                 usb_wait_for_disconnect(&dircache_queue);
                 break ;
-#endif
         }
     }
 }

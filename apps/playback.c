@@ -2003,7 +2003,6 @@ static void audio_thread(void)
                 LOGFQUEUE("audio < Q_AUDIO_TRACK_CHANGED");
                 audio_finalise_track_change();
                 break;
-#ifndef SIMULATOR
             case SYS_USB_CONNECTED:
                 LOGFQUEUE("audio < SYS_USB_CONNECTED");
                 if (playing)
@@ -2020,7 +2019,6 @@ static void audio_thread(void)
                 /* release tracks to make sure all handles are closed */
                 audio_release_tracks();
                 break;
-#endif
 
             case SYS_TIMEOUT:
                 LOGFQUEUE_SYS_TIMEOUT("audio < SYS_TIMEOUT");

@@ -22,7 +22,7 @@
  ****************************************************************************/
 
 /* parts of this driver are based on the usb-arc driver */
-#define USB_VHCI_DRIVER_DEBUG_LEVEL 2
+#define USB_VHCI_DRIVER_DEBUG_LEVEL 0
 
 #include "errno.h"
 #include "libusb_vhci/libusb_vhci.h"
