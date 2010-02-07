@@ -2,10 +2,13 @@ CFLAGS=-Wall -W
 
 BOOT_H = ipod1g2g.h ipod3g.h ipod4g.h ipodcolor.h ipodmini1g.h ipodmini2g.h ipodnano1g.h ipodvideo.h
 
-# Enable the next two lines to build with embedded bootloaders and the 
+# Build with "make BOOTOBJS=1" to build with embedded bootloaders and the 
 # --install option and interactive mode.  You need the full set of Rockbox 
 # bootloaders in this directory - download them from
 # http://download.rockbox.org/bootloader/ipod/bootloaders.zip
+
+# Releases of ipodpatcher are created with "make RELEASE=1".  This
+# enables BOOTOBJS and uses the VERSION string defined in main.c
 
 ifdef RELEASE
 CFLAGS+=-DRELEASE
@@ -36,8 +39,14 @@ OUTPUT=ipodpatcher
 CROSS=i586-mingw32msvc-
 endif
 endif
+ifeq ($(findstring Darwin,$(shell uname)),Darwin)
+# building against SDK 10.4 is not compatible with gcc-4.2 (default on newer Xcode)
+# might need adjustment for older Xcode.
+NATIVECC ?= gcc-4.0
+CFLAGS+=-framework CoreFoundation -framework IOKit -isysroot /Developer/SDKs/MacOSX10.4u.sdk -mmacosx-version-min=10.4
+endif
 
-NATIVECC = gcc
+NATIVECC ?= gcc
 CC = $(CROSS)gcc
 WINDRES = $(CROSS)windres
 
@@ -46,7 +55,7 @@ SRC = main.c ipodpatcher.c fat32format.c arc4.c
 all: $(OUTPUT)
 
 ipodpatcher: $(SRC) ipodio-posix.c $(BOOTSRC)
-	gcc $(CFLAGS) -o ipodpatcher $(SRC) ipodio-posix.c $(BOOTSRC)
+	$(NATIVECC) $(CFLAGS) -o ipodpatcher $(SRC) ipodio-posix.c $(BOOTSRC)
 	strip ipodpatcher
 
 ipodpatcher.exe: $(SRC) ipodio-win32.c ipodio-win32-scsi.c ipodpatcher-rc.o $(BOOTSRC)
@@ -60,11 +69,11 @@ ipodpatcher-mac: ipodpatcher-i386 ipodpatcher-ppc
 	lipo -create ipodpatcher-ppc ipodpatcher-i386 -output ipodpatcher-mac
 
 ipodpatcher-i386: $(SRC) ipodio-posix.c $(BOOTSRC)
-	gcc -isysroot /Developer/SDKs/MacOSX10.4u.sdk -mmacosx-version-min=10.4 -arch i386 $(CFLAGS) -o ipodpatcher-i386 $(SRC) ipodio-posix.c $(BOOTSRC)
+	$(NATIVECC) -arch i386 $(CFLAGS) -o ipodpatcher-i386 $(SRC) ipodio-posix.c $(BOOTSRC)
 	strip ipodpatcher-i386
 
 ipodpatcher-ppc: $(SRC) ipodio-posix.c $(BOOTSRC)
-	gcc -isysroot /Developer/SDKs/MacOSX10.4u.sdk -mmacosx-version-min=10.4 -arch ppc $(CFLAGS) -o ipodpatcher-ppc $(SRC) ipodio-posix.c $(BOOTSRC)
+	$(NATIVECC) -arch ppc $(CFLAGS) -o ipodpatcher-ppc $(SRC) ipodio-posix.c $(BOOTSRC)
 	strip ipodpatcher-ppc
 
 ipod2c: ipod2c.c

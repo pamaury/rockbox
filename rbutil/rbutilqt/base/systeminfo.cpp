@@ -81,12 +81,12 @@ QVariant SystemInfo::value(enum SystemInfos info)
     int i = 0;
     while(SystemInfosList[i].info != info)
         i++;
-
+    QString platform = RbSettings::value(RbSettings::CurrentPlatform).toString();
     QString s = SystemInfosList[i].name;
-    s.replace(":platform:", RbSettings::value(RbSettings::CurrentPlatform).toString());
+    s.replace(":platform:", platform);
     QString d = SystemInfosList[i].def;
-    d.replace(":platform:", RbSettings::value(RbSettings::CurrentPlatform).toString());
-    qDebug() << "[SystemInfos] GET:" << s << systemInfos->value(s, d).toString();
+    d.replace(":platform:", platform);
+    qDebug() << "[SystemInfo] GET:" << s << systemInfos->value(s, d).toString();
     return systemInfos->value(s, d);
 }
 
@@ -107,7 +107,7 @@ QVariant SystemInfo::platformValue(QString platform, enum SystemInfos info)
     return systemInfos->value(s, d);
 }
 
-QStringList SystemInfo::platforms()
+QStringList SystemInfo::platforms(enum SystemInfo::PlatformType type, QString variant)
 {
     ensureSystemInfoExists();
 
@@ -117,10 +117,18 @@ QStringList SystemInfo::platforms()
     systemInfos->endGroup();
     for(int i = 0; i < a.size(); i++)
     {
-        //only add not disabled targets
         QString target = systemInfos->value("platforms/"+a.at(i), "null").toString();
-        if(systemInfos->value(target+"/status").toString() != "disabled")
-            result.append(target);
+        // only add target if its not disabled
+        if(type != PlatformAllDisabled
+                && systemInfos->value(target+"/status").toString() == "disabled")
+            continue;
+        // report only base targets when PlatformBase is requested
+        if(type == PlatformBase && target.contains('.'))
+            continue;
+        // report only matching target if PlatformVariant is requested
+        if(type == PlatformVariant && !target.startsWith(variant))
+            continue;
+        result.append(target);
     }
     return result;
 }

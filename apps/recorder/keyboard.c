@@ -20,7 +20,6 @@
  ****************************************************************************/
 #include "kernel.h"
 #include "system.h"
-#include "version.h"
 #include <string.h>
 #include "font.h"
 #include "screens.h"
@@ -39,7 +38,6 @@
 #include "viewport.h"
 #include "file.h"
 #include "splash.h"
-#include "appevents.h"
 
 #ifndef O_BINARY
 #define O_BINARY 0
@@ -94,17 +92,17 @@
 
 struct keyboard_parameters
 {
-    const unsigned char* default_kbd;
-    int DEFAULT_LINES;
     unsigned short kbd_buf[KBD_BUF_SIZE];
+    int default_lines;
     int nchars;
     int font_w;
     int font_h;
     int text_w;
-    struct font* font;
     int curfont;
     int main_y;
+#ifdef HAVE_MORSE_INPUT
     int old_main_y;
+#endif
     int max_chars;
     int max_chars_text;
     int lines;
@@ -118,8 +116,23 @@ struct keyboard_parameters
 #ifdef KBD_MODES
     bool line_edit;
 #endif
+};
+
+struct edit_state
+{
+    char* text;
+    int buflen;
+    int len_utf8;
+    int editpos;        /* Edit position on all screens */
+    bool cur_blink;     /* Cursor on/off flag */
     bool hangul;
     unsigned short hlead, hvowel, htail;
+#ifdef HAVE_MORSE_INPUT
+    bool morse_mode;
+    bool morse_reading;
+    unsigned char morse_code;
+    int morse_tick;
+#endif
 };
 
 static struct keyboard_parameters kbd_param[NB_SCREENS];
@@ -134,7 +147,6 @@ static const unsigned char morse_codes[] = {
     0x06,0x0f,0x16,0x1d,0x0a,0x08,0x03,0x09,0x11,0x0b,0x19,0x1b,0x1c,
     0x2f,0x27,0x23,0x21,0x20,0x30,0x38,0x3c,0x3e,0x3f,
     0x73,0x55,0x4c,0x61,0x5a,0x80 };
-
 #endif
 
 /* Loads a custom keyboard into memory
@@ -144,12 +156,6 @@ int load_kbd(unsigned char* filename)
     int fd, l;
     int i = 0;
     unsigned char buf[4];
-
-    FOR_NB_SCREENS(l)
-    {
-        struct keyboard_parameters *pm = &kbd_param[l];
-        pm->x = pm->y = pm->page = 0;
-    }
 
     if (filename == NULL)
     {
@@ -185,18 +191,25 @@ int load_kbd(unsigned char* filename)
         }
 
         utf8decode(buf, &ch);
-        FOR_NB_SCREENS(l)
-            kbd_param[l].kbd_buf[i] = ch;
-
-        if (ch != 0xFEFF && ch != '\r') /*skip BOM & carriage returns */
+        if (ch != 0xFEFF && ch != '\r') /* skip BOM & carriage returns */
+        {
+            FOR_NB_SCREENS(l)
+                kbd_param[l].kbd_buf[i] = ch;
             i++;
+        }
     }
 
     close(fd);
     kbd_loaded = true;
 
     FOR_NB_SCREENS(l)
-        kbd_param[l].nchars = i;
+    {
+        struct keyboard_parameters *pm = &kbd_param[l];
+        pm->nchars = i;
+        /* initialize parameters */
+        pm->x = pm->y = pm->page = 0;
+        pm->default_lines = 0;
+    }
 
     return 0;
 }
@@ -211,7 +224,7 @@ static void kbd_spellchar(unsigned short c)
         unsigned char* utf8 = utf8encode(c, tmp);
         *utf8 = 0;
 
-        if(c == ' ')
+        if (c == ' ')
             talk_id(VOICE_BLANK, false);
         else
             talk_spell(tmp, false);
@@ -221,43 +234,42 @@ static void kbd_spellchar(unsigned short c)
 #ifdef KBD_MODES
 static void say_edit(void)
 {
-    if(global_settings.talk_menu)
+    if (global_settings.talk_menu)
         talk_id(VOICE_EDIT, false);
 }
 #endif
 
-static void kbd_inschar(unsigned char* text, int buflen,
-                        int* editpos, unsigned short ch)
+static void kbd_inschar(struct edit_state *state, unsigned short ch)
 {
     int i, j, len;
     unsigned char tmp[4];
     unsigned char* utf8;
 
-    len = strlen(text);
+    len = strlen(state->text);
     utf8 = utf8encode(ch, tmp);
     j = (long)utf8 - (long)tmp;
 
-    if (len + j < buflen)
+    if (len + j < state->buflen)
     {
-        i = utf8seek(text, *editpos);
-        utf8 = text + i;
+        i = utf8seek(state->text, state->editpos);
+        utf8 = state->text + i;
         memmove(utf8 + j, utf8, len - i + 1);
         memcpy(utf8, tmp, j);
-        (*editpos)++;
+        state->editpos++;
     }
 }
 
-static void kbd_delchar(unsigned char* text, int* editpos)
+static void kbd_delchar(struct edit_state *state)
 {
     int i, j, len;
     unsigned char* utf8;
 
-    if (*editpos > 0)
+    if (state->editpos > 0)
     {
-        (*editpos)--;
-        len = strlen(text);
-        i = utf8seek(text, *editpos);
-        utf8 = text + i;
+        state->editpos--;
+        len = strlen(state->text);
+        i = utf8seek(state->text, state->editpos);
+        utf8 = state->text + i;
         j = utf8seek(utf8, 1);
         memmove(utf8, utf8 + j, len - i - j + 1);
     }
@@ -270,6 +282,13 @@ static unsigned short get_kbd_ch(const struct keyboard_parameters *pm)
     return (k < pm->nchars)? pm->kbd_buf[k]: ' ';
 }
 
+static void kbd_calc_params(struct keyboard_parameters *pm,
+                            struct screen *sc, struct edit_state *state);
+static void kbd_draw_picker(struct keyboard_parameters *pm,
+                            struct screen *sc, struct edit_state *state);
+static void kbd_draw_edit_line(struct keyboard_parameters *pm,
+                               struct screen *sc, struct edit_state *state);
+
 int kbd_input(char* text, int buflen)
 {
     bool done = false;
@@ -279,246 +298,101 @@ int kbd_input(char* text, int buflen)
 #else
     struct keyboard_parameters * const param = kbd_param;
 #endif
+    struct edit_state state;
     int l; /* screen loop variable */
-    int editpos;                /* Edit position on all screens */
     unsigned short ch;
-    unsigned char *utf8;
-    bool cur_blink = true;      /* Cursor on/off flag */
     int ret = 0; /* assume success */
-#ifdef HAVE_MORSE_INPUT
-    bool morse_mode = global_settings.morse_input;
-    bool morse_reading = false;
-    unsigned char morse_code = 0;
-    int morse_tick = 0;
-#endif
     FOR_NB_SCREENS(l)
     {
-        struct keyboard_parameters *pm = &param[l];
         viewportmanager_theme_enable(l, false, NULL);
-#if LCD_WIDTH >= 160 && LCD_HEIGHT >= 96
-        struct screen *sc = &screens[l];
-
-        if (sc->getwidth() >= 160 && sc->getheight() >= 96)
-        {
-            pm->default_kbd =
-                "ABCDEFG abcdefg !?\" @#$%+'\n"
-                "HIJKLMN hijklmn 789 &_()-`\n"
-                "OPQRSTU opqrstu 456 §|{}/<\n"
-                "VWXYZ., vwxyz.,0123 ~=[]*>\n"
-                "ÀÁÂÃÄÅÆ ÌÍÎÏ ÈÉÊË ¢£¤¥¦§©®\n"
-                "àáâãäåæ ìíîï èéêë «»°ºª¹²³\n"
-                "ÓÒÔÕÖØ ÇÐÞÝß ÙÚÛÜ ¯±×÷¡¿µ·\n"
-                "òóôõöø çðþýÿ ùúûü ¼½¾¬¶¨:;";
-
-            pm->DEFAULT_LINES = 8;
-        }
-        else
-#endif /* LCD_WIDTH >= 160 && LCD_HEIGHT >= 96 */
-        {
-            pm->default_kbd =
-                "ABCDEFG !?\" @#$%+'\n"
-                "HIJKLMN 789 &_()-`\n"
-                "OPQRSTU 456 §|{}/<\n"
-                "VWXYZ.,0123 ~=[]*>\n"
-
-                "abcdefg ¢£¤¥¦§©®¬\n"
-                "hijklmn «»°ºª¹²³¶\n"
-                "opqrstu ¯±×÷¡¿µ·¨\n"
-                "vwxyz., :;¼½¾    \n"
-
-                "ÀÁÂÃÄÅÆ ÌÍÎÏ ÈÉÊË\n"
-                "àáâãäåæ ìíîï èéêë\n"
-                "ÓÒÔÕÖØ ÇÐÞÝß ÙÚÛÜ\n"
-                "òóôõöø çðþýÿ ùúûü";
-
-            pm->DEFAULT_LINES = 4;
-        }
     }
 
-    char outline[256];
 #ifdef HAVE_BUTTONBAR
     struct gui_buttonbar buttonbar;
     bool buttonbar_config = global_settings.buttonbar;
 
     global_settings.buttonbar = true;
     gui_buttonbar_init(&buttonbar);
-
-    FOR_NB_SCREENS(l)
-        gui_buttonbar_set_display(&buttonbar, &screens[l]);
+    gui_buttonbar_set_display(&buttonbar, &screens[SCREEN_MAIN]);
 #endif
 
-    FOR_NB_SCREENS(l)
-    {
-        struct keyboard_parameters *pm = &param[l];
+    /* initialize state */
+    state.text = text;
+    state.buflen = buflen;
+    /* Initial edit position is after last character */
+    state.editpos = utf8length(state.text);
+    state.cur_blink = true;
+#ifdef HAVE_MORSE_INPUT
+    state.morse_mode = global_settings.morse_input;
+    state.morse_reading = false;
+#endif
+    state.hangul = false;
 
-        if ( !kbd_loaded )
+    if (!kbd_loaded)
+    {
+        /* Copy default keyboard to buffer */
+        FOR_NB_SCREENS(l)
         {
-            /* Copy default keyboard to buffer */
-            const unsigned char *p = pm->default_kbd;
+            struct keyboard_parameters *pm = &param[l];
+            const unsigned char *p;
             int i = 0;
 
-            pm->curfont = FONT_SYSFIXED;
+#if LCD_WIDTH >= 160 && LCD_HEIGHT >= 96
+            struct screen *sc = &screens[l];
 
-            while (*p != 0)
+            if (sc->getwidth() >= 160 && sc->getheight() >= 96)
+            {
+                p = "ABCDEFG abcdefg !?\" @#$%+'\n"
+                    "HIJKLMN hijklmn 789 &_()-`\n"
+                    "OPQRSTU opqrstu 456 §|{}/<\n"
+                    "VWXYZ., vwxyz.,0123 ~=[]*>\n"
+                    "ÀÁÂÃÄÅÆ ÌÍÎÏ ÈÉÊË ¢£¤¥¦§©®\n"
+                    "àáâãäåæ ìíîï èéêë «»°ºª¹²³\n"
+                    "ÓÒÔÕÖØ ÇÐÞÝß ÙÚÛÜ ¯±×÷¡¿µ·\n"
+                    "òóôõöø çðþýÿ ùúûü ¼½¾¬¶¨:;";
+
+                pm->default_lines = 8;
+            }
+            else
+#endif /* LCD_WIDTH >= 160 && LCD_HEIGHT >= 96 */
+            {
+                p = "ABCDEFG !?\" @#$%+'\n"
+                    "HIJKLMN 789 &_()-`\n"
+                    "OPQRSTU 456 §|{}/<\n"
+                    "VWXYZ.,0123 ~=[]*>\n"
+
+                    "abcdefg ¢£¤¥¦§©®¬\n"
+                    "hijklmn «»°ºª¹²³¶\n"
+                    "opqrstu ¯±×÷¡¿µ·¨\n"
+                    "vwxyz., :;¼½¾    \n"
+
+                    "ÀÁÂÃÄÅÆ ÌÍÎÏ ÈÉÊË\n"
+                    "àáâãäåæ ìíîï èéêë\n"
+                    "ÓÒÔÕÖØ ÇÐÞÝß ÙÚÛÜ\n"
+                    "òóôõöø çðþýÿ ùúûü";
+
+                pm->default_lines = 4;
+            }
+
+            while (*p)
                 p = utf8decode(p, &pm->kbd_buf[i++]);
 
             pm->nchars = i;
+            /* initialize parameters */
+            pm->x = pm->y = pm->page = 0;
         }
-        else
-        {
-            pm->curfont = FONT_UI;
-        }
+        kbd_loaded = true;
     }
 
     FOR_NB_SCREENS(l)
     {
         struct keyboard_parameters *pm = &param[l];
         struct screen *sc = &screens[l];
-        int i, w;
-
-        pm->font = font_get(pm->curfont);
-        pm->font_h = pm->font->height;
-
-        /* check if FONT_UI fits the screen */
-        if (2*pm->font_h + 3 + BUTTONBAR_HEIGHT > sc->getheight())
-        {
-            pm->font = font_get(FONT_SYSFIXED);
-            pm->font_h = pm->font->height;
-            pm->curfont = FONT_SYSFIXED;
-        }
-
-        /* find max width of keyboard glyphs.
-         * since we're going to be adding spaces,
-         * max width is at least their width */
-        pm->font_w = font_get_width(pm->font, ' ');
-        for (i = 0; i < pm->nchars; i++)
-        {
-            if (pm->kbd_buf[i] != '\n')
-            {
-                w = font_get_width(pm->font, pm->kbd_buf[i]);
-                if (w > pm->font_w)
-                    pm->font_w = w;
-            }
-        }
+        kbd_calc_params(pm, sc, &state);
     }
 
-    FOR_NB_SCREENS(l)
-    {
-        struct keyboard_parameters *pm = &param[l];
-        struct screen *sc = &screens[l];
-        int i = 0;
-
-        pm->max_chars = sc->getwidth() / pm->font_w;
-
-        /* Pad lines with spaces */
-        while (i < pm->nchars)
-        {
-            if (pm->kbd_buf[i] == '\n')
-            {
-                int k = pm->max_chars - i % ( pm->max_chars ) - 1;
-                int j;
-
-                if (k == pm->max_chars - 1)
-                {
-                    pm->nchars--;
-
-                    for (j = i; j < pm->nchars; j++)
-                    {
-                        pm->kbd_buf[j] = pm->kbd_buf[j + 1];
-                    }
-                }
-                else
-                {
-                    if (pm->nchars + k - 1 >= KBD_BUF_SIZE)
-                    {   /* We don't want to overflow the buffer */
-                        k = KBD_BUF_SIZE - pm->nchars;
-                    }
-
-                    for (j = pm->nchars + k - 1; j > i + k; j--)
-                    {
-                        pm->kbd_buf[j] = pm->kbd_buf[j-k];
-                    }
-
-                    pm->nchars += k;
-                    k++;
-
-                    while (k--)
-                    {
-                        pm->kbd_buf[i++] = ' ';
-                    }
-                }
-            }
-            else
-            {
-                i++;
-            }
-        }
-    }
-
-    /* Find max width for text string */
-    FOR_NB_SCREENS(l)
-    {
-        struct keyboard_parameters *pm = &param[l];
-        struct screen *sc = &screens[l];
-        int icon_w, sc_w, sc_h;
-
-        pm->text_w = pm->font_w;
-
-        utf8 = text;
-        while (*utf8)
-        {
-            int w;
-            utf8 = (unsigned char*)utf8decode(utf8, &ch);
-            w = font_get_width(pm->font, ch);
-            if (w > pm->text_w)
-                pm->text_w = w;
-        }
-
-        icon_w = get_icon_width(l);
-        sc_w = sc->getwidth();
-        sc_h = sc->getheight();
-        pm->max_chars_text = (sc_w - icon_w * 2 - 2) / pm->text_w;
-        if(pm->max_chars_text < 3 && icon_w > pm->text_w)
-            pm->max_chars_text = sc_w / pm->text_w - 2;
-
-        pm->lines = (sc_h - BUTTONBAR_HEIGHT) / pm->font_h - 1;
-
-        if (!kbd_loaded && pm->lines > pm->DEFAULT_LINES)
-            pm->lines = pm->DEFAULT_LINES;
-
-        pm->keyboard_margin = sc_h - BUTTONBAR_HEIGHT
-                                - (pm->lines+1)*pm->font_h;
-
-        if (pm->keyboard_margin < 3 && pm->lines > 1)
-        {
-            pm->lines--;
-            pm->keyboard_margin += pm->font_h;
-        }
-
-        if (pm->keyboard_margin > DEFAULT_MARGIN)
-            pm->keyboard_margin = DEFAULT_MARGIN;
-
-        pm->pages = (pm->nchars + (pm->lines*pm->max_chars-1))
-                        / (pm->lines*pm->max_chars);
-
-        if (pm->pages == 1)
-            pm->lines = (pm->nchars + pm->max_chars - 1) / pm->max_chars;
-
-        pm->main_y = pm->font_h*pm->lines + pm->keyboard_margin;
-        pm->keyboard_margin -= pm->keyboard_margin/2;
-
-#ifdef HAVE_MORSE_INPUT
-        pm->old_main_y = pm->main_y;
-        if (morse_mode)
-            pm->main_y = sc_h - pm->font_h - BUTTONBAR_HEIGHT;
-#endif
-    }
-
-    /* Initial edit position is after last character */
-    editpos = utf8length(text);
-
-    if (global_settings.talk_menu) /* voice UI? */
-        talk_spell(text, true); /* spell initial text */
+    if (global_settings.talk_menu)      /* voice UI? */
+        talk_spell(state.text, true);   /* spell initial text */
 
     while (!done)
     {
@@ -534,177 +408,20 @@ int kbd_input(char* text, int buflen)
         struct keyboard_parameters *pm;
         struct screen *sc;
 
-        int len_utf8 = utf8length(text);
-
-        FOR_NB_SCREENS(l)
-            screens[l].clear_display();
-
-#ifdef HAVE_MORSE_INPUT
-        if (morse_mode)
-        {
-            FOR_NB_SCREENS(l)
-            {
-                /* declare scoped pointers inside screen loops - hide the
-                   declarations from previous block level */
-                const int w = 6; /* sysfixed font width */
-                struct screen *sc = &screens[l];
-                int i, x, y;
-
-                /* Draw morse code screen with sysfont */
-                sc->setfont(FONT_SYSFIXED);
-                x = 0;
-                y = 0;
-                outline[1] = '\0';
-
-                /* Draw morse code table with code descriptions. */
-                for (i = 0; morse_alphabets[i] != '\0'; i++)
-                {
-                    int morse_len;
-                    int j;
-
-                    outline[0] = morse_alphabets[i];
-                    sc->putsxy(x, y, outline);
-
-                    for (j = 0; (morse_codes[i] >> j) > 0x01; j++) ;
-                    morse_len = j;
-
-                    x += w + 3;
-                    for (j = 0; j < morse_len; j++)
-                    {
-                        if ((morse_codes[i] >> (morse_len-j-1)) & 0x01)
-                            sc->fillrect(x + j*4, y + 2, 3, 4);
-                        else
-                            sc->fillrect(x + j*4, y + 3, 1, 2);
-                    }
-
-                    x += w*5 - 3;
-                    if (x + w*6 >= sc->getwidth())
-                    {
-                        x = 0;
-                        y += 8; /* sysfixed font height */
-                    }
-                }
-            }
-        }
-        else
-#endif /* HAVE_MORSE_INPUT */
-        {
-            /* draw page */
-            FOR_NB_SCREENS(l)
-            {
-                struct keyboard_parameters *pm = &param[l];
-                struct screen *sc = &screens[l];
-                int i, j, k;
-
-                sc->setfont(pm->curfont);
-
-                k = pm->page*pm->max_chars*pm->lines;
-
-                for (i = j = 0; j < pm->lines && k < pm->nchars; k++)
-                {
-                    int w;
-                    utf8 = utf8encode(pm->kbd_buf[k], outline);
-                    *utf8 = 0;
-
-                    sc->getstringsize(outline, &w, NULL);
-                    sc->putsxy(i*pm->font_w + (pm->font_w-w) / 2,
-                               j*pm->font_h, outline);
-
-                    if (++i >= pm->max_chars)
-                    {
-                        i = 0;
-                        j++;
-                    }
-                }
-            }
-        }
+        state.len_utf8 = utf8length(state.text);
 
         FOR_NB_SCREENS(l)
         {
+            /* declare scoped pointers inside screen loops - hide the
+               declarations from previous block level */
             struct keyboard_parameters *pm = &param[l];
             struct screen *sc = &screens[l];
-            int i = 0, j = 0, icon_w;
-            int text_w = pm->text_w;
-            int sc_w = sc->getwidth();
-            int text_margin = (sc_w - text_w * pm->max_chars_text) / 2;
-
-            /* Clear text area one pixel above separator line so any overdraw
-               doesn't collide */
-            sc->set_drawmode(DRMODE_SOLID | DRMODE_INVERSEVID);
-            sc->fillrect(0, pm->main_y - pm->keyboard_margin - 1,
-                         sc_w, pm->font_h + 4);
-            sc->set_drawmode(DRMODE_SOLID);
-
-            sc->hline(0, sc_w - 1, pm->main_y - pm->keyboard_margin);
-
-            /* write out the text */
-            sc->setfont(pm->curfont);
-
-            pm->curpos = MIN(editpos, pm->max_chars_text
-                                - MIN(len_utf8 - editpos, 2));
-            pm->leftpos = editpos - pm->curpos;
-            utf8 = text + utf8seek(text, pm->leftpos);
-
-            while (*utf8 && i < pm->max_chars_text)
-            {
-                outline[j++] = *utf8++;
-
-                if ((*utf8 & MASK) != COMP)
-                {
-                    int w;
-                    outline[j] = 0;
-                    j = 0;
-                    sc->getstringsize(outline, &w, NULL);
-                    sc->putsxy(text_margin + i*text_w + (text_w-w)/2,
-                                pm->main_y, outline);
-                    i++;
-                }
-            }
-
-            icon_w = get_icon_width(l);
-            if (pm->leftpos > 0)
-            {
-                /* Draw nicer bitmap arrow if room, else settle for "<". */
-                if (text_margin >= icon_w)
-                {
-                    screen_put_icon_with_offset(sc, 0, 0,
-                                                (text_margin - icon_w) / 2,
-                                                pm->main_y, Icon_Reverse_Cursor);
-                }
-                else
-                {
-                    int w;
-                    sc->getstringsize("<", &w, NULL);
-                    sc->putsxy(text_margin - w, pm->main_y, "<");
-                }
-            }
-
-            if (len_utf8 - pm->leftpos > pm->max_chars_text)
-            {
-                /* Draw nicer bitmap arrow if room, else settle for ">". */
-                if (text_margin >= icon_w)
-                {
-                    screen_put_icon_with_offset(sc, 0, 0,
-                                                sc_w - (text_margin + icon_w) / 2,
-                                                pm->main_y, Icon_Cursor);
-                }
-                else
-                {
-                    sc->putsxy(sc_w - text_margin, pm->main_y, ">");
-                }
-            }
-
-            /* cursor */
-            i = text_margin + pm->curpos * text_w;
-
-            if (cur_blink)
-                sc->vline(i, pm->main_y, pm->main_y + pm->font_h - 1);
-
-            if (pm->hangul) /* draw underbar */
-                sc->hline(i - text_w, i, pm->main_y + pm->font_h - 1);
+            sc->clear_display();
+            kbd_draw_picker(pm, sc, &state);
+            kbd_draw_edit_line(pm, sc, &state);
         }
 
-        cur_blink = !cur_blink;
+        state.cur_blink = !state.cur_blink;
 
 #ifdef HAVE_BUTTONBAR
         /* draw the button bar */
@@ -713,31 +430,11 @@ int kbd_input(char* text, int buflen)
 #endif
 
         FOR_NB_SCREENS(l)
-        {
-            struct keyboard_parameters *pm = &param[l];
-            struct screen *sc = &screens[l];
-
-            sc->set_drawmode(DRMODE_COMPLEMENT);
-#ifdef KBD_MODES
-            if (pm->line_edit)
-                sc->fillrect(0, pm->main_y - pm->keyboard_margin + 2,
-                             sc->getwidth(), pm->font_h + 2);
-            else /* highlight the key that has focus */
-#endif
-#ifdef HAVE_MORSE_INPUT
-            if(!morse_mode)
-#endif
-                sc->fillrect(pm->font_w*pm->x, pm->font_h*pm->y,
-                             pm->font_w, pm->font_h);
-            sc->set_drawmode(DRMODE_SOLID);
-        }
-
-        FOR_NB_SCREENS(l)
             screens[l].update();
 
         button = get_action(
 #ifdef HAVE_MORSE_INPUT
-                morse_mode? CONTEXT_MORSE_INPUT:
+                state.morse_mode? CONTEXT_MORSE_INPUT:
 #endif
                             CONTEXT_KEYBOARD, HZ/2);
 #if NB_SCREENS > 1
@@ -750,11 +447,11 @@ int kbd_input(char* text, int buflen)
         /* Remap some buttons to allow to move
          * cursor in line edit mode and morse mode. */
 #if defined(KBD_MODES) && defined(HAVE_MORSE_INPUT)
-        if (pm->line_edit || morse_mode)
+        if (pm->line_edit || state.morse_mode)
 #elif defined(KBD_MODES)
         if (pm->line_edit)
 #else /* defined(HAVE_MORSE_INPUT) */
-        if (morse_mode)
+        if (state.morse_mode)
 #endif
         {
             if (button == ACTION_KBD_LEFT)
@@ -784,7 +481,7 @@ int kbd_input(char* text, int buflen)
 
             case ACTION_KBD_PAGE_FLIP:
 #ifdef HAVE_MORSE_INPUT
-                if (morse_mode)
+                if (state.morse_mode)
                     break;
 #endif
                 if (++pm->page >= pm->pages)
@@ -796,17 +493,14 @@ int kbd_input(char* text, int buflen)
 
 #if defined(HAVE_MORSE_INPUT) && defined(KBD_TOGGLE_INPUT)
             case ACTION_KBD_MORSE_INPUT:
-                morse_mode = !morse_mode;
+                state.morse_mode = !state.morse_mode;
 
                 FOR_NB_SCREENS(l)
                 {
                     struct keyboard_parameters *pm = &param[l];
-                    struct screen *sc = &screens[l];
-
-                    if (morse_mode)
-                        pm->main_y = sc->getheight() - pm->font_h - BUTTONBAR_HEIGHT;
-                    else
-                        pm->main_y = pm->old_main_y;
+                    int y = pm->main_y;
+                    pm->main_y = pm->old_main_y;
+                    pm->old_main_y = y;
                 }
                 /* FIXME: We should talk something like Morse mode.. */
                 break;
@@ -844,11 +538,11 @@ int kbd_input(char* text, int buflen)
 
             case ACTION_KBD_DOWN:
 #ifdef HAVE_MORSE_INPUT
-                if (morse_mode)
+                if (state.morse_mode)
                 {
 #ifdef KBD_MODES
                     pm->line_edit = !pm->line_edit;
-                    if(pm->line_edit)
+                    if (pm->line_edit)
                         say_edit();
 #endif
                     break;
@@ -880,11 +574,11 @@ int kbd_input(char* text, int buflen)
 
             case ACTION_KBD_UP:
 #ifdef HAVE_MORSE_INPUT
-                if (morse_mode)
+                if (state.morse_mode)
                 {
 #ifdef KBD_MODES
                     pm->line_edit = !pm->line_edit;
-                    if(pm->line_edit)
+                    if (pm->line_edit)
                         say_edit();
 #endif
                     break;
@@ -916,25 +610,25 @@ int kbd_input(char* text, int buflen)
 
 #ifdef HAVE_MORSE_INPUT
             case ACTION_KBD_MORSE_SELECT:
-                if (morse_mode && morse_reading)
+                if (state.morse_mode && state.morse_reading)
                 {
-                    morse_code <<= 1;
-                    if ((current_tick - morse_tick) > HZ/5)
-                        morse_code |= 0x01;
+                    state.morse_code <<= 1;
+                    if ((current_tick - state.morse_tick) > HZ/5)
+                        state.morse_code |= 0x01;
                 }
                 break;
 #endif /* HAVE_MORSE_INPUT */
 
             case ACTION_KBD_SELECT:
 #ifdef HAVE_MORSE_INPUT
-                if (morse_mode)
+                if (state.morse_mode)
                 {
-                    morse_tick = current_tick;
+                    state.morse_tick = current_tick;
 
-                    if (!morse_reading)
+                    if (!state.morse_reading)
                     {
-                        morse_reading = true;
-                        morse_code = 1;
+                        state.morse_reading = true;
+                        state.morse_code = 1;
                     }
                 }
                 else
@@ -949,103 +643,104 @@ int kbd_input(char* text, int buflen)
                     {
                         unsigned short tmp;
 
-                        if (!pm->hangul)
+                        if (!state.hangul)
                         {
-                            pm->hlead = pm->hvowel = pm->htail = 0;
-                            pm->hangul = true;
+                            state.hlead = state.hvowel = state.htail = 0;
+                            state.hangul = true;
                         }
 
-                        if (!pm->hvowel)
+                        if (!state.hvowel)
                         {
-                            pm->hvowel = ch;
+                            state.hvowel = ch;
                         }
-                        else if (!pm->htail)
+                        else if (!state.htail)
                         {
-                            pm->htail = ch;
+                            state.htail = ch;
                         }
                         else
-                        { /* previous hangul complete */
+                        {
+                            /* previous hangul complete */
                             /* check whether tail is actually lead of next char */
-                            tmp = hangul_join(pm->htail, ch, 0);
+                            tmp = hangul_join(state.htail, ch, 0);
 
                             if (tmp != 0xfffd)
                             {
-                                tmp = hangul_join(pm->hlead, pm->hvowel, 0);
-                                kbd_delchar(text, &editpos);
-                                kbd_inschar(text, buflen, &editpos, tmp);
+                                tmp = hangul_join(state.hlead, state.hvowel, 0);
+                                kbd_delchar(&state);
+                                kbd_inschar(&state, tmp);
                                 /* insert dummy char */
-                                kbd_inschar(text, buflen, &editpos, ' ');
-                                pm->hlead = pm->htail;
-                                pm->hvowel = ch;
-                                pm->htail = 0;
+                                kbd_inschar(&state, ' ');
+                                state.hlead = state.htail;
+                                state.hvowel = ch;
+                                state.htail = 0;
                             }
                             else
                             {
-                                pm->hvowel = pm->htail = 0;
-                                pm->hlead = ch;
+                                state.hvowel = state.htail = 0;
+                                state.hlead = ch;
                             }
                         }
 
                         /* combine into hangul */
-                        tmp = hangul_join(pm->hlead, pm->hvowel, pm->htail);
+                        tmp = hangul_join(state.hlead, state.hvowel, state.htail);
 
                         if (tmp != 0xfffd)
                         {
-                            kbd_delchar(text, &editpos);
+                            kbd_delchar(&state);
                             ch = tmp;
                         }
                         else
                         {
-                            pm->hvowel = pm->htail = 0;
-                            pm->hlead = ch;
+                            state.hvowel = state.htail = 0;
+                            state.hlead = ch;
                         }
                     }
                     else
                     {
-                        pm->hangul = false;
+                        state.hangul = false;
                     }
 
                     /* insert char */
-                    kbd_inschar(text, buflen, &editpos, ch);
+                    kbd_inschar(&state, ch);
 
-                    if (global_settings.talk_menu) /* voice UI? */
-                        talk_spell(text, false);   /* speak revised text */
+                    if (global_settings.talk_menu)      /* voice UI? */
+                        talk_spell(state.text, false);  /* speak revised text */
                 }
                 break;
 
             case ACTION_KBD_BACKSPACE:
-                if (pm->hangul)
+                if (state.hangul)
                 {
-                    if (pm->htail)
-                        pm->htail = 0;
-                    else if (pm->hvowel)
-                        pm->hvowel = 0;
+                    if (state.htail)
+                        state.htail = 0;
+                    else if (state.hvowel)
+                        state.hvowel = 0;
                     else
-                        pm->hangul = false;
+                        state.hangul = false;
                 }
 
-                kbd_delchar(text, &editpos);
+                kbd_delchar(&state);
 
-                if (pm->hangul)
+                if (state.hangul)
                 {
-                    if (pm->hvowel)
-                        ch = hangul_join(pm->hlead, pm->hvowel, pm->htail);
+                    if (state.hvowel)
+                        ch = hangul_join(state.hlead, state.hvowel, state.htail);
                     else
-                        ch = pm->hlead;
-                    kbd_inschar(text, buflen, &editpos, ch);
+                        ch = state.hlead;
+                    kbd_inschar(&state, ch);
                 }
 
-                if (global_settings.talk_menu) /* voice UI? */
-                    talk_spell(text, false);   /* speak revised text */
+                if (global_settings.talk_menu)      /* voice UI? */
+                    talk_spell(state.text, false);  /* speak revised text */
                 break;
 
             case ACTION_KBD_CURSOR_RIGHT:
-                pm->hangul = false;
+                state.hangul = false;
 
-                if (editpos < len_utf8)
+                if (state.editpos < state.len_utf8)
                 {
-                    int c = utf8seek(text, ++editpos);
-                    kbd_spellchar(text[c]);
+                    int c = utf8seek(state.text, ++state.editpos);
+                    kbd_spellchar(state.text[c]);
                 }
 #if CONFIG_CODEC == SWCODEC
                 else if (global_settings.talk_menu)
@@ -1054,12 +749,12 @@ int kbd_input(char* text, int buflen)
                 break;
 
             case ACTION_KBD_CURSOR_LEFT:
-                pm->hangul = false;
+                state.hangul = false;
 
-                if (editpos > 0)
+                if (state.editpos > 0)
                 {
-                    int c = utf8seek(text, --editpos);
-                    kbd_spellchar(text[c]);
+                    int c = utf8seek(state.text, --state.editpos);
+                    kbd_spellchar(state.text[c]);
                 }
 #if CONFIG_CODEC == SWCODEC
                 else if (global_settings.talk_menu)
@@ -1067,17 +762,17 @@ int kbd_input(char* text, int buflen)
 #endif
                 break;
 
-            case BUTTON_NONE:
+            case ACTION_NONE:
 #ifdef HAVE_MORSE_INPUT
-                if (morse_reading)
+                if (state.morse_reading)
                 {
                     int j;
-                    logf("Morse: 0x%02x", morse_code);
-                    morse_reading = false;
+                    logf("Morse: 0x%02x", state.morse_code);
+                    state.morse_reading = false;
 
                     for (j = 0; morse_alphabets[j] != '\0'; j++)
                     {
-                        if (morse_codes[j] == morse_code)
+                        if (morse_codes[j] == state.morse_code)
                             break ;
                     }
 
@@ -1088,12 +783,11 @@ int kbd_input(char* text, int buflen)
                     }
 
                     /* turn off hangul input */
-                    FOR_NB_SCREENS(l)
-                        param[l].hangul = false;
-                    kbd_inschar(text, buflen, &editpos, morse_alphabets[j]);
+                    state.hangul = false;
+                    kbd_inschar(&state, morse_alphabets[j]);
 
-                    if (global_settings.talk_menu) /* voice UI? */
-                        talk_spell(text, false);   /* speak revised text */
+                    if (global_settings.talk_menu)      /* voice UI? */
+                        talk_spell(state.text, false);  /* speak revised text */
                 }
 #endif /* HAVE_MORSE_INPUT */
                 break;
@@ -1108,9 +802,9 @@ int kbd_input(char* text, int buflen)
 
         } /* end switch */
 
-        if (button != BUTTON_NONE)
+        if (button != ACTION_NONE)
         {
-            cur_blink = true;
+            state.cur_blink = true;
         }
     }
 
@@ -1122,9 +816,9 @@ int kbd_input(char* text, int buflen)
         splash(HZ/2, ID2P(LANG_CANCEL));
 
 #if defined(HAVE_MORSE_INPUT) && defined(KBD_TOGGLE_INPUT)
-    if(global_settings.morse_input != morse_mode)
+    if (global_settings.morse_input != state.morse_mode)
     {
-        global_settings.morse_input = morse_mode;
+        global_settings.morse_input = state.morse_mode;
         settings_save();
     }
 #endif /* HAVE_MORSE_INPUT && KBD_TOGGLE_INPUT */
@@ -1133,6 +827,323 @@ int kbd_input(char* text, int buflen)
     {
         screens[l].setfont(FONT_UI);
         viewportmanager_theme_undo(l, false);
-   }
+    }
     return ret;
+}
+
+static void kbd_calc_params(struct keyboard_parameters *pm,
+                            struct screen *sc, struct edit_state *state)
+{
+    struct font* font;
+    const unsigned char *p;
+    unsigned short ch;
+    int icon_w, sc_w, sc_h, w;
+    int i, total_lines;
+
+    pm->curfont = pm->default_lines ? FONT_SYSFIXED : FONT_UI;
+    font = font_get(pm->curfont);
+    pm->font_h = font->height;
+
+    /* check if FONT_UI fits the screen */
+    if (2*pm->font_h + 3 + BUTTONBAR_HEIGHT > sc->getheight())
+    {
+        pm->curfont = FONT_SYSFIXED;
+        font = font_get(FONT_SYSFIXED);
+        pm->font_h = font->height;
+    }
+
+    /* find max width of keyboard glyphs.
+     * since we're going to be adding spaces,
+     * max width is at least their width */
+    pm->font_w = font_get_width(font, ' ');
+    for (i = 0; i < pm->nchars; i++)
+    {
+        if (pm->kbd_buf[i] != '\n')
+        {
+            w = font_get_width(font, pm->kbd_buf[i]);
+            if (pm->font_w < w)
+                pm->font_w = w;
+        }
+    }
+
+    /* Find max width for text string */
+    pm->text_w = pm->font_w;
+    p = state->text;
+    while (*p)
+    {
+        p = utf8decode(p, &ch);
+        w = font_get_width(font, ch);
+        if (pm->text_w < w)
+            pm->text_w = w;
+    }
+
+    /* calculate how many characters to put in a row. */
+    icon_w = get_icon_width(sc->screen_type);
+    sc_w = sc->getwidth();
+    pm->max_chars = sc_w / pm->font_w;
+    pm->max_chars_text = (sc_w - icon_w * 2 - 2) / pm->text_w;
+    if (pm->max_chars_text < 3 && icon_w > pm->text_w)
+        pm->max_chars_text = sc_w / pm->text_w - 2;
+
+
+    i = 0;
+    /* Pad lines with spaces */
+    while (i < pm->nchars)
+    {
+        if (pm->kbd_buf[i] == '\n')
+        {
+            int k = pm->max_chars - i % ( pm->max_chars ) - 1;
+            int j;
+
+            if (k == pm->max_chars - 1)
+            {
+                pm->nchars--;
+
+                for (j = i; j < pm->nchars; j++)
+                {
+                    pm->kbd_buf[j] = pm->kbd_buf[j + 1];
+                }
+            }
+            else
+            {
+                if (pm->nchars + k - 1 >= KBD_BUF_SIZE)
+                {   /* We don't want to overflow the buffer */
+                    k = KBD_BUF_SIZE - pm->nchars;
+                }
+
+                for (j = pm->nchars + k - 1; j > i + k; j--)
+                {
+                    pm->kbd_buf[j] = pm->kbd_buf[j-k];
+                }
+
+                pm->nchars += k;
+                k++;
+
+                while (k--)
+                {
+                    pm->kbd_buf[i++] = ' ';
+                }
+            }
+        }
+        else
+        {
+            i++;
+        }
+    }
+
+    /* calculate pm->pages and pm->lines */
+    sc_h = sc->getheight();
+    pm->lines = (sc_h - BUTTONBAR_HEIGHT) / pm->font_h - 1;
+
+    if (pm->default_lines && pm->lines > pm->default_lines)
+        pm->lines = pm->default_lines;
+
+    pm->keyboard_margin = sc_h - BUTTONBAR_HEIGHT
+                            - (pm->lines+1)*pm->font_h;
+
+    if (pm->keyboard_margin < 3 && pm->lines > 1)
+    {
+        pm->lines--;
+        pm->keyboard_margin += pm->font_h;
+    }
+
+    if (pm->keyboard_margin > DEFAULT_MARGIN)
+        pm->keyboard_margin = DEFAULT_MARGIN;
+
+    total_lines = (pm->nchars + pm->max_chars - 1) / pm->max_chars;
+    pm->pages = (total_lines + pm->lines - 1) / pm->lines;
+    pm->lines = (total_lines + pm->pages - 1) / pm->pages;
+
+    pm->main_y = pm->font_h*pm->lines + pm->keyboard_margin;
+    pm->keyboard_margin -= pm->keyboard_margin/2;
+
+#ifdef HAVE_MORSE_INPUT
+    pm->old_main_y = sc_h - pm->font_h - BUTTONBAR_HEIGHT;
+    if (state->morse_mode)
+    {
+        int y = pm->main_y;
+        pm->main_y = pm->old_main_y;
+        pm->old_main_y = y;
+    }
+#endif
+}
+
+static void kbd_draw_picker(struct keyboard_parameters *pm,
+                            struct screen *sc, struct edit_state *state)
+{
+    char outline[8];
+#ifdef HAVE_MORSE_INPUT
+    if (state->morse_mode)
+    {
+        const int w = 6, h = 8; /* sysfixed font width, height */
+        int i, j, x, y;
+        int sc_w = sc->getwidth(), sc_h = pm->main_y - pm->keyboard_margin - 1;
+
+        /* Draw morse code screen with sysfont */
+        sc->setfont(FONT_SYSFIXED);
+        x = 0;
+        y = 0;
+        outline[1] = '\0';
+
+        /* Draw morse code table with code descriptions. */
+        for (i = 0; morse_alphabets[i] != '\0'; i++)
+        {
+            int morse_code;
+
+            outline[0] = morse_alphabets[i];
+            sc->putsxy(x, y, outline);
+
+            morse_code = morse_codes[i];
+            for (j = 0; morse_code > 0x01; morse_code >>= 1)
+                j++;
+
+            x += w + 3 + j*4;
+            morse_code = morse_codes[i];
+            for (; morse_code > 0x01; morse_code >>= 1)
+            {
+                x -= 4;
+                if (morse_code & 0x01)
+                    sc->fillrect(x, y + 2, 3, 4);
+                else
+                    sc->fillrect(x, y + 3, 1, 2);
+            }
+
+            x += w*5 - 3;
+            if (x + w*6 >= sc_w)
+            {
+                x = 0;
+                y += h;
+                if (y + h >= sc_h)
+                    break;
+            }
+        }
+    }
+    else
+#else
+    (void) state;
+#endif /* HAVE_MORSE_INPUT */
+    {
+        /* draw page */
+        int i, j, k;
+
+        sc->setfont(pm->curfont);
+
+        k = pm->page*pm->max_chars*pm->lines;
+
+        for (i = j = 0; k < pm->nchars; k++)
+        {
+            int w;
+            unsigned char *utf8;
+            utf8 = utf8encode(pm->kbd_buf[k], outline);
+            *utf8 = 0;
+
+            sc->getstringsize(outline, &w, NULL);
+            sc->putsxy(i*pm->font_w + (pm->font_w-w) / 2,
+                       j*pm->font_h, outline);
+
+            if (++i >= pm->max_chars)
+            {
+                i = 0;
+                if (++j >= pm->lines)
+                    break;
+            }
+        }
+
+#ifdef KBD_MODES
+        if (!pm->line_edit)
+#endif
+        {
+            /* highlight the key that has focus */
+            sc->set_drawmode(DRMODE_COMPLEMENT);
+            sc->fillrect(pm->font_w*pm->x, pm->font_h*pm->y,
+                         pm->font_w, pm->font_h);
+            sc->set_drawmode(DRMODE_SOLID);
+        }
+    }
+}
+
+static void kbd_draw_edit_line(struct keyboard_parameters *pm,
+                               struct screen *sc, struct edit_state *state)
+{
+    char outline[8];
+    unsigned char *utf8;
+    int i = 0, j = 0, icon_w, w;
+    int sc_w = sc->getwidth();
+    int y = pm->main_y - pm->keyboard_margin;
+    int text_margin = (sc_w - pm->text_w * pm->max_chars_text) / 2;
+
+    /* Clear text area one pixel above separator line so any overdraw
+       doesn't collide */
+    screen_clear_area(sc, 0, y - 1, sc_w, pm->font_h + 6);
+
+    sc->hline(0, sc_w - 1, y);
+
+    /* write out the text */
+    sc->setfont(pm->curfont);
+
+    pm->leftpos = MAX(0, MIN(state->len_utf8, state->editpos + 2)
+                            - pm->max_chars_text);
+    pm->curpos = state->editpos - pm->leftpos;
+    utf8 = state->text + utf8seek(state->text, pm->leftpos);
+
+    while (*utf8 && i < pm->max_chars_text)
+    {
+        j = utf8seek(utf8, 1);
+        strlcpy(outline, utf8, j+1);
+        sc->getstringsize(outline, &w, NULL);
+        sc->putsxy(text_margin + i*pm->text_w + (pm->text_w-w)/2,
+                   pm->main_y, outline);
+        utf8 += j;
+        i++;
+    }
+
+    icon_w = get_icon_width(sc->screen_type);
+    if (pm->leftpos > 0)
+    {
+        /* Draw nicer bitmap arrow if room, else settle for "<". */
+        if (text_margin >= icon_w)
+        {
+            screen_put_icon_with_offset(sc, 0, 0,
+                                        (text_margin - icon_w) / 2,
+                                        pm->main_y, Icon_Reverse_Cursor);
+        }
+        else
+        {
+            sc->getstringsize("<", &w, NULL);
+            sc->putsxy(text_margin - w, pm->main_y, "<");
+        }
+    }
+
+    if (state->len_utf8 - pm->leftpos > pm->max_chars_text)
+    {
+        /* Draw nicer bitmap arrow if room, else settle for ">". */
+        if (text_margin >= icon_w)
+        {
+            screen_put_icon_with_offset(sc, 0, 0,
+                                        sc_w - (text_margin + icon_w) / 2,
+                                        pm->main_y, Icon_Cursor);
+        }
+        else
+        {
+            sc->putsxy(sc_w - text_margin, pm->main_y, ">");
+        }
+    }
+
+    /* cursor */
+    i = text_margin + pm->curpos * pm->text_w;
+
+    if (state->cur_blink)
+        sc->vline(i, pm->main_y, pm->main_y + pm->font_h - 1);
+
+    if (state->hangul) /* draw underbar */
+        sc->hline(i - pm->text_w, i, pm->main_y + pm->font_h - 1);
+
+#ifdef KBD_MODES
+    if (pm->line_edit)
+    {
+        sc->set_drawmode(DRMODE_COMPLEMENT);
+        sc->fillrect(0, y + 2, sc_w, pm->font_h + 2);
+        sc->set_drawmode(DRMODE_SOLID);
+    }
+#endif
 }

@@ -44,20 +44,20 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110, USA
 #define FILTER_BITS 32
 #endif
 
-#if CONFIG_CPU == PP5002
+#if !defined(CPU_PP) && !defined(CPU_S5L870X)
+#define FILTER256_IRAM
+#endif
+
+#if CONFIG_CPU == PP5002 || defined(CPU_S5L870X)
 /* Code in IRAM for speed, not enough IRAM for the insane filter buffer. */
 #define ICODE_SECTION_DEMAC_ARM   .icode
 #define ICODE_ATTR_DEMAC          ICODE_ATTR
 #define IBSS_ATTR_DEMAC_INSANEBUF
-#elif CONFIG_CPU == PP5020
-/* Not enough IRAM for the insane filter buffer. */
+#elif defined(CPU_PP502x)
+/* Insane filter buffer not in IRAM due to division table. */
 #define ICODE_SECTION_DEMAC_ARM   .text
 #define ICODE_ATTR_DEMAC
 #define IBSS_ATTR_DEMAC_INSANEBUF
-#elif defined(CPU_S5L870X)
-#define ICODE_SECTION_DEMAC_ARM   .icode
-#define ICODE_ATTR_DEMAC          ICODE_ATTR
-#define IBSS_ATTR_DEMAC_INSANEBUF IBSS_ATTR
 #else
 #define ICODE_SECTION_DEMAC_ARM   .text
 #define ICODE_ATTR_DEMAC
@@ -87,10 +87,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110, USA
 
 /* Defaults */
 
-#ifndef UDIV32
-#define UDIV32(a, b) (a / b)
-#endif
-
 #ifndef FILTER_HISTORY_SIZE
 #define FILTER_HISTORY_SIZE 512
 #endif
@@ -105,6 +101,16 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110, USA
 
 
 #ifndef __ASSEMBLER__
+
+#if defined(CPU_ARM) && (ARM_ARCH < 5 || defined(USE_IRAM))
+/* optimised unsigned integer division for ARMv4, in IRAM */
+unsigned udiv32_arm(unsigned a, unsigned b);
+#define UDIV32(a, b) udiv32_arm(a, b)
+#else
+/* default */
+#define UDIV32(a, b) (a / b)
+#endif
+
 #include <inttypes.h>
 #if FILTER_BITS == 32
 typedef int32_t filter_int;

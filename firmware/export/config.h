@@ -384,6 +384,8 @@ Lyre prototype 1 */
 #include "config/sansaclip.h"
 #elif defined(SANSA_CLIPV2)
 #include "config/sansaclipv2.h"
+#elif defined(SANSA_CLIPPLUS)
+#include "config/sansaclipplus.h"
 #elif defined(SANSA_E200V2)
 #include "config/sansae200v2.h"
 #elif defined(SANSA_M200V4)
@@ -896,6 +898,22 @@ Lyre prototype 1 */
 
 #endif /* HAVE_USBSTACK */
 
+/* Storage alignment: the mask specifies a mask of bits which should be
+ * clear in addresses used for storage_{read,write}_sectors(). This is
+ * only relevant for buffers that will contain one or more whole sectors.
+ */ 
+
+/* PP502x DMA requires an alignment of at least 16 bytes */
+#ifdef HAVE_ATA_DMA
+#ifdef  CPU_PP502x
+#define STORAGE_ALIGN_MASK 15
+#endif
+#endif /* HAVE_ATA_DMA */
+
+/* by default no alignment is required */
+#ifndef STORAGE_ALIGN_MASK
+#define STORAGE_ALIGN_MASK 0
+#endif
 
 
 #endif /* __CONFIG_H__ */

@@ -97,9 +97,26 @@ struct filter_t {
 #define FP_HALF  (1 << (FRACBITS - 1))   /* 0.5 in fixed-point format. */
 #define FP_TO_INT(x) ((x + FP_HALF) >> FRACBITS)  /* round(x) */
 
-#if defined(CPU_ARM) && (ARM_ARCH >= 6)
+#ifdef CPU_ARM
+#if ARM_ARCH >= 6
 #define SATURATE(x) ({int __res; asm("ssat %0, #16, %1" : "=r"(__res) : "r"(x)); __res; })
-#else
+#else /* ARM_ARCH < 6 */
+/* Keeping the asr #31 outside of the asm allows loads to be scheduled between
+   it and the rest of the block on ARM9E, with the load's result latency filled
+   by the other calculations. */
+#define SATURATE(x) ({ \
+    int __res = (x) >> 31; \
+    asm volatile ( \
+        "teq %0, %1, asr #15\n\t" \
+        "moveq %0, %1\n\t" \
+        "eorne %0, %0, #0xff\n\t" \
+        "eorne %0, %0, #0x7f00" \
+        : "+r" (__res) : "r" (x) : "cc" \
+    ); \
+    __res; \
+})
+#endif /* ARM_ARCH */
+#else /* CPU_ARM */
 #define SATURATE(x) (LIKELY((x) == (int16_t)(x)) ? (x) : ((x) >> 31) ^ 0x7FFF)
 #endif
 
@@ -117,6 +134,19 @@ static void ICODE_ATTR_DEMAC do_apply_filter_3980(struct filter_t* f,
 
     while(LIKELY(count--))
     {
+#ifdef FUSED_VECTOR_MATH
+        if (LIKELY(*data != 0)) {
+            if (*data < 0)
+                res = vector_sp_add(f->coeffs, f->delay - ORDER,
+                                    f->adaptcoeffs - ORDER);
+            else
+                res = vector_sp_sub(f->coeffs, f->delay - ORDER,
+                                    f->adaptcoeffs - ORDER);
+        } else {
+            res = scalarproduct(f->coeffs, f->delay - ORDER);
+        }
+        res = FP_TO_INT(res);
+#else
         res = FP_TO_INT(scalarproduct(f->coeffs, f->delay - ORDER));
 
         if (LIKELY(*data != 0)) {
@@ -125,6 +155,7 @@ static void ICODE_ATTR_DEMAC do_apply_filter_3980(struct filter_t* f,
             else
                 vector_sub(f->coeffs, f->adaptcoeffs - ORDER);
         }
+#endif
 
         res += *data;
 
@@ -176,6 +207,19 @@ static void ICODE_ATTR_DEMAC do_apply_filter_3970(struct filter_t* f,
 
     while(LIKELY(count--))
     {
+#ifdef FUSED_VECTOR_MATH
+        if (LIKELY(*data != 0)) {
+            if (*data < 0)
+                res = vector_sp_add(f->coeffs, f->delay - ORDER,
+                                    f->adaptcoeffs - ORDER);
+            else
+                res = vector_sp_sub(f->coeffs, f->delay - ORDER,
+                                    f->adaptcoeffs - ORDER);
+        } else {
+            res = scalarproduct(f->coeffs, f->delay - ORDER);
+        }
+        res = FP_TO_INT(res);
+#else
         res = FP_TO_INT(scalarproduct(f->coeffs, f->delay - ORDER));
 
         if (LIKELY(*data != 0)) {
@@ -184,6 +228,7 @@ static void ICODE_ATTR_DEMAC do_apply_filter_3970(struct filter_t* f,
             else
                 vector_sub(f->coeffs, f->adaptcoeffs - ORDER);
         }
+#endif
 
         /* Convert res from (32-FRACBITS).FRACBITS fixed-point format to an
            integer (rounding to nearest) and add the input value to

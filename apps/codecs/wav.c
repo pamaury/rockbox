@@ -45,6 +45,7 @@ enum
 {
     WAVE_FORMAT_UNKNOWN = 0x0000, /* Microsoft Unknown Wave Format */
     WAVE_FORMAT_PCM = 0x0001,   /* Microsoft PCM Format */
+    WAVE_FORMAT_IEEE_FLOAT = 0x0003, /* IEEE Float */
     WAVE_FORMAT_ALAW = 0x0006,  /* Microsoft ALAW */
     WAVE_FORMAT_MULAW = 0x0007, /* Microsoft MULAW */
     WAVE_FORMAT_DVI_ADPCM = 0x0011, /* Intel's DVI ADPCM */
@@ -56,6 +57,7 @@ enum
 const struct pcm_entry wave_codecs[] = {
     { WAVE_FORMAT_UNKNOWN,            0                            },
     { WAVE_FORMAT_PCM,                get_linear_pcm_codec         },
+    { WAVE_FORMAT_IEEE_FLOAT,         get_ieee_float_codec         },
     { WAVE_FORMAT_ALAW,               get_itut_g711_alaw_codec     },
     { WAVE_FORMAT_MULAW,              get_itut_g711_mulaw_codec    },
     { WAVE_FORMAT_DVI_ADPCM,          get_dvi_adpcm_codec          },
@@ -63,7 +65,7 @@ const struct pcm_entry wave_codecs[] = {
     { IBM_FORMAT_ALAW,                get_itut_g711_alaw_codec     },
 };
 
-#define NUM_FORMATS 7
+#define NUM_FORMATS 8
 
 static const struct pcm_codec *get_wave_codec(uint32_t formattag)
 {
@@ -174,8 +176,8 @@ next_track:
                     /* this is not a fatal error with some formats,
                      * we'll see later if we can't decode it */
                     DEBUGF("CODEC_WARNING: non-PCM WAVE (formattag=0x%x) "
-                           "doesn't have ext. fmt descr (chunksize=%ld<18).\n",
-                           format.formattag, (long)i);
+                           "doesn't have ext. fmt descr (chunksize=%d<18).\n",
+                           (unsigned int)format.formattag, (int)i);
                 }
                 else
                 {
@@ -202,7 +204,8 @@ next_track:
             codec = get_wave_codec(format.formattag);
             if (!codec)
             {
-                DEBUGF("CODEC_ERROR: unsupport wave format %x\n", format.formattag);
+                DEBUGF("CODEC_ERROR: unsupported wave format %x\n", 
+                    (unsigned int) format.formattag);
                 status = CODEC_ERROR;
                 goto done;
             }

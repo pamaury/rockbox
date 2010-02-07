@@ -380,6 +380,7 @@ target/coldfire/i2c-coldfire.c
 
 #elif defined(CPU_PP) || defined(CPU_ARM)
 /* CPU_PP => CPU_ARM, CPU_ARM !=> CPU_PP */
+target/arm/support-arm.S
 target/arm/memcpy-arm.S
 target/arm/memmove-arm.S
 common/strlen.c
@@ -1208,6 +1209,19 @@ target/arm/tcc77x/c100/audio-c100.c
 #endif /* SIMULATOR */
 #endif /* SANSA_C100 */
 
+#ifdef SANSA_CLIPPLUS
+#ifndef SIMULATOR
+target/arm/as3525/sansa-clip/lcd-ssd1303.c      /* FIXME */
+target/arm/as3525/sansa-clip/lcd-as-clip.S
+target/arm/as3525/sansa-clipplus/button-clip.c
+target/arm/as3525/sansa-clipplus/backlight-clip.c
+#ifndef BOOTLOADER
+target/arm/powermgmt-ascodec.c
+target/arm/as3525/sansa-clip/powermgmt-clip.c
+#endif /* !BOOTLOADER */
+#endif /* !SIMULATOR */
+#endif /* SANSA_CLIPV2 */
+
 #ifdef SANSA_CLIPV2
 #ifndef SIMULATOR
 target/arm/as3525/sansa-clip/lcd-ssd1303.c
@@ -1559,6 +1573,7 @@ target/arm/s5l8700/yps3/power-yps3.c
 #endif /* SAMSUNG_YPS3 */
 
 #ifdef PBELL_VIBE500
+#ifndef SIMULATOR
 drivers/synaptics-mep.c
 target/arm/ata-as-arm.S
 target/arm/ata-pp5020.c
@@ -1572,5 +1587,6 @@ target/arm/pbell/vibe500/backlight-vibe500.c
 target/arm/pbell/vibe500/lcd-as-vibe500.S
 target/arm/pbell/vibe500/powermgmt-vibe500.c
 target/arm/usb-fw-pp502x.c
+#endif /* SIMULATOR */
 #endif
 
