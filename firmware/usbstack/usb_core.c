@@ -40,7 +40,7 @@
 #endif
 
 #if defined(USB_ENABLE_MTP)
-#include "usb_mtp.h"
+#include "mtp/usb_mtp.h"
 #endif
 
 #if defined(USB_ENABLE_CHARGING_ONLY)

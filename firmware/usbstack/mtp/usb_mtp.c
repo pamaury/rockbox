@@ -22,7 +22,7 @@
 #include "usb_drv.h"
 #include "usb_mtp.h"
 #include "usb_mtp_internal.h"
-#include "usb_class_driver.h"
+#include "usbstack/usb_class_driver.h"
 #define LOGF_ENABLE
 #include "logf.h"
 

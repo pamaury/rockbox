@@ -502,8 +502,18 @@ void copy_object(int nb_params, uint32_t obj_handle, uint32_t stor_id, uint32_t 
 void move_object(int nb_params, uint32_t obj_handle, uint32_t stor_id, uint32_t obj_parent_handle);
 void get_object_references(uint32_t object_handle);
 void reset_device(void);
+/*
+ * usb_mtp_dev_props.c
+ * - device properties handling
+ *
+ */
 void get_device_prop_desc(uint32_t device_prop);
 void get_device_prop_value(uint32_t device_prop);
+/*
+ * usb_mtp_object_props.c
+ * - object properties handling
+ *
+ */
 void get_object_props_supported(uint32_t object_fmt);
 void get_object_prop_desc(uint32_t obj_prop, uint32_t obj_fmt);
 void get_object_prop_value(uint32_t obj_handle, uint32_t obj_prop);

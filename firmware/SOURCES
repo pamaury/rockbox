@@ -298,10 +298,12 @@ usbstack/usb_storage.c
 usbstack/usb_serial.c
 #endif
 #ifdef USB_ENABLE_MTP
-usbstack/usb_mtp.c
-usbstack/usb_mtp_storage_id.c
-usbstack/usb_mtp_operations.c
-usbstack/usb_mtp_object_handle.c
+usbstack/mtp/usb_mtp.c
+usbstack/mtp/usb_mtp_storage_id.c
+usbstack/mtp/usb_mtp_operations.c
+usbstack/mtp/usb_mtp_object_handle.c
+usbstack/mtp/usb_mtp_object_props.c
+usbstack/mtp/usb_mtp_dev_props.c
 #endif
 #ifdef USB_ENABLE_CHARGING_ONLY
 usbstack/usb_charging_only.c
