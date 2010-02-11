@@ -1,5 +1,5 @@
 /*
- * This config file is for the Philips GoGear HDD16x0/HDD63x0
+ * This config file is for the Philips GoGear HDD16x0/HDD18x0
  */
 
 #define TARGET_TREE /* this target is using the target tree system */
@@ -200,3 +200,8 @@
 
 #define ICODE_ATTR_TREMOR_NOT_MDCT
 
+
+/* DMA is used only for reading on PP502x because although reads are ~8x faster
+ * writes appear to be ~25% slower.
+ */
+#define HAVE_ATA_DMA

@@ -1,6 +1,6 @@
-$publicrelease="3.4";
-$releasedate="September 24, 2009";
-$releasenotes="/wiki/ReleaseNotes34";
+$publicrelease="3.5";
+$releasedate="February 3, 2010";
+$releasenotes="/wiki/ReleaseNotes35";
 
 %builds = (
     'archosav300' => {
@@ -130,7 +130,6 @@ $releasenotes="/wiki/ReleaseNotes34";
     'iriverh10_5gb' => {
         name => 'iriver H10 5GB',
         status => 3,
-        manual => 'iriverh10',
     },
     'iriverh100' => {
         name => 'iriver H100/115',
@@ -247,12 +246,12 @@ $releasenotes="/wiki/ReleaseNotes34";
     },
     'sansae200v2' => {
         name => 'SanDisk Sansa e200 v2',
-        status => 2,
+        status => 3,
         icon => 'sansae200',
     },
     'sansafuze' => {
         name => 'SanDisk Sansa Fuze',
-        status => 2,
+        status => 3,
     },
     'sansam200' => {
         name => 'SanDisk Sansa m200',

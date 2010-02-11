@@ -71,6 +71,7 @@
 #define JZ4732       4732
 #define AS3525       3525
 #define AT91SAM9260  9260
+#define AS3525v2    35252
 
 /* CONFIG_KEYPAD */
 #define PLAYER_PAD          1
@@ -114,6 +115,8 @@
 #define ONDAVX777_PAD      39
 #define SAMSUNG_YPS3_PAD   40
 #define MINI2440_PAD       41
+#define PHILIPS_HDD6330_PAD 42
+#define PBELL_VIBE500_PAD 43
 
 /* CONFIG_REMOTE_KEYPAD */
 #define H100_REMOTE 1
@@ -130,7 +133,7 @@
  * BACKLIGHT_FADING_SW_SETTING means that backlight is turned on by only setting
  * the brightness (i.e. no real difference between backlight_on and
  * backlight_set_brightness)
- * BACKLIGHT_FADING_SW_SETTING means that backlight brightness is restored
+ * BACKLIGHT_FADING_SW_HW_REG means that backlight brightness is restored
  * "in hardware", from a hardware register upon backlight_on
  * Both types need to have minor adjustments in the software fading code */
 #define BACKLIGHT_FADING_SW_SETTING 0x2
@@ -194,6 +197,8 @@
 #define LCD_VIEW      35 /* as used by the Sansa View */
 #define LCD_NANO2G    36 /* as used by the iPod Nano 2nd Generation */
 #define LCD_MINI2440  37 /* as used by the Mini2440 */
+#define LCD_HDD6330   38 /* as used by the Philips HDD6330 */
+#define LCD_VIBE500   39 /* as used by the Packard Bell Vibe 500 */
 
 /* LCD_PIXELFORMAT */
 #define HORIZONTAL_PACKING 1
@@ -350,15 +355,17 @@ Lyre prototype 1 */
 #elif defined(COWON_D2)
 #include "config/cowond2.h"
 #elif defined(CREATIVE_ZVM)
-#include "config/zenvisionm.h"
+#include "config/zenvisionm30gb.h"
 #elif defined(CREATIVE_ZVM60GB)
 #include "config/zenvisionm60gb.h"
 #elif defined(CREATIVE_ZV)
-#include "config/zenvisionm.h"
+#include "config/zenvision.h"
 #elif defined(PHILIPS_SA9200)
 #include "config/gogearsa9200.h"
 #elif defined(PHILIPS_HDD1630)
 #include "config/gogearhdd1630.h"
+#elif defined(PHILIPS_HDD6330)
+#include "config/gogearhdd6330.h"
 #elif defined(SANSA_C100)
 #include "config/sansac100.h"
 #elif defined(MEIZU_M6SL)
@@ -367,12 +374,18 @@ Lyre prototype 1 */
 #include "config/meizum6sp.h"
 #elif defined(MEIZU_M3)
 #include "config/meizum3.h"
-#elif defined(ONDA_VX747) || defined(ONDA_VX747P) || defined(ONDA_VX777)
+#elif defined(ONDA_VX747) || defined(ONDA_VX747P)
 #include "config/ondavx747.h"
+#elif defined(ONDA_VX777)
+#include "config/ondavx777.h"
 #elif defined(ONDA_VX767)
 #include "config/ondavx767.h"
 #elif defined(SANSA_CLIP)
 #include "config/sansaclip.h"
+#elif defined(SANSA_CLIPV2)
+#include "config/sansaclipv2.h"
+#elif defined(SANSA_CLIPPLUS)
+#include "config/sansaclipplus.h"
 #elif defined(SANSA_E200V2)
 #include "config/sansae200v2.h"
 #elif defined(SANSA_M200V4)
@@ -395,6 +408,8 @@ Lyre prototype 1 */
 #include "config/samsungyh925.h"
 #elif defined(SAMSUNG_YPS3)
 #include "config/samsungyps3.h"
+#elif defined(PBELL_VIBE500)
+#include "config/vibe500.h"
 #else
 /* no known platform */
 #endif
@@ -452,15 +467,13 @@ Lyre prototype 1 */
 #if (CONFIG_CPU == IMX31L)
 #define CPU_ARM
 #define ARM_ARCH 6 /* ARMv6 */
-#endif
 
-#if defined(CPU_TCC77X) || defined(CPU_TCC780X) || (CONFIG_CPU == DM320) \
-  || (CONFIG_CPU == AT91SAM9260)
+#elif defined(CPU_TCC77X) || defined(CPU_TCC780X) || (CONFIG_CPU == DM320) \
+  || (CONFIG_CPU == AT91SAM9260) || (CONFIG_CPU == AS3525v2)
 #define CPU_ARM
 #define ARM_ARCH 5 /* ARMv5 */
-#endif
 
-#if defined(CPU_PP) || (CONFIG_CPU == PNX0101) || (CONFIG_CPU == S3C2440) \
+#elif defined(CPU_PP) || (CONFIG_CPU == PNX0101) || (CONFIG_CPU == S3C2440) \
   || (CONFIG_CPU == DSC25) || defined(CPU_S5L870X) || (CONFIG_CPU == AS3525)
 #define CPU_ARM
 #define ARM_ARCH 4 /* ARMv4 */
@@ -558,10 +571,8 @@ Lyre prototype 1 */
 #define CONFIG_TUNER_MULTI
 #endif
 
-/* deactivate fading in bootloader/sim */
-#if defined(BOOTLOADER) || (defined(SIMULATOR) && \
-                     (CONFIG_BACKLIGHT_FADING == BACKLIGHT_FADING_PWM || \
-                     CONFIG_BACKLIGHT_FADING == BACKLIGHT_FADING_TARGET))
+/* deactivate fading in bootloader */
+#if defined(BOOTLOADER)
 #undef CONFIG_BACKLIGHT_FADING
 #define CONFIG_BACKLIGHT_FADING BACKLIGHT_NO_FADING
 #endif
@@ -671,8 +682,8 @@ Lyre prototype 1 */
 #endif /* BOOTLOADER */
 
 #if defined(HAVE_USBSTACK) || (CONFIG_CPU == JZ4732) \
-    || (CONFIG_CPU == AS3525) || (CONFIG_CPU == S3C2440) \
-    || defined(CPU_S5L870X)
+    || (CONFIG_CPU == AS3525) || (CONFIG_CPU == AS3525v2) \
+    || defined(CPU_S5L870X) || (CONFIG_CPU == S3C2440)
 #define HAVE_WAKEUP_OBJECTS
 #endif
 
@@ -882,6 +893,28 @@ Lyre prototype 1 */
 
 #endif /* HAVE_USBSTACK */
 
+/* Storage alignment: the mask specifies a mask of bits which should be
+ * clear in addresses used for storage_{read,write}_sectors(). This is
+ * only relevant for buffers that will contain one or more whole sectors.
+ */ 
 
+/* PP502x DMA requires an alignment of at least 16 bytes */
+#ifdef HAVE_ATA_DMA
+#ifdef  CPU_PP502x
+#define STORAGE_ALIGN_MASK 15
+#endif
+#endif /* HAVE_ATA_DMA */
+
+/* by default no alignment is required */
+#ifndef STORAGE_ALIGN_MASK
+#define STORAGE_ALIGN_MASK 0
+#endif
+
+/* This attribute can be used to enable to detection of plugin file handles leaks.
+ * When enabled, the plugin core will monitor open/close/creat and when the plugin exits
+ * will display an error message if the plugin leaked some file handles */
+#ifndef SIMULATOR
+#define HAVE_PLUGIN_CHECK_OPEN_CLOSE
+#endif
 
 #endif /* __CONFIG_H__ */

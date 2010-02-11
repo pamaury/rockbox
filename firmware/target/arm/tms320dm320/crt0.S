@@ -120,13 +120,13 @@ start_loc:
 
 /* Exception handlers. Will be copied to address 0 after memory remapping */
     .section .vectors,"aw"
-	b	start
-	b	undef_instr_handler
-    b	software_int_handler
-    b	prefetch_abort_handler
-    b	data_abort_handler
-    b	reserved_handler
-    b 	irq_handler
+    b   start
+    b   undef_instr_handler
+    b   software_int_handler
+    b   prefetch_abort_handler
+    b   data_abort_handler
+    b   reserved_handler
+    b   irq_handler
     b   fiq_handler
 
     .text
@@ -137,7 +137,7 @@ start_loc:
    in UIE.
  */
 undef_instr_handler:
-    mov    r0, lr
+    sub    r0, lr, #4
     mov    r1, #0
     b      UIE
 

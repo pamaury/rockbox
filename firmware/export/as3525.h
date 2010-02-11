@@ -219,6 +219,8 @@ CE lines
 
 #define CGU_VIC_CLOCK_ENABLE                 ( 1 << 23 ) /* vic */
 /* --- are disabled after reset --- */
+#define CGU_EXTMEM_CLOCK_ENABLE              ( 1 << 27 ) /* external memory */
+#define CGU_EXTMEMIF_CLOCK_ENABLE            ( 1 << 26 ) /* ext mem AHB IF */
 #define CGU_DMA_CLOCK_ENABLE                 ( 1 << 22 ) /* dma */
 #define CGU_USB_CLOCK_ENABLE                 ( 1 << 21 ) /* usb */
 #define CGU_I2SOUT_APB_CLOCK_ENABLE          ( 1 << 20 ) /* i2sout */
@@ -234,8 +236,7 @@ CE lines
 #define CGU_SSP_CLOCK_ENABLE                 ( 1 << 10 ) /* ssp */
 #define CGU_TIMER1_CLOCK_ENABLE              ( 1 <<  9 ) /* timer 1 */
 #define CGU_TIMER2_CLOCK_ENABLE              ( 1 <<  8 ) /* timer 2 */
-#define CGU_TIMERIF_CLOCK_ENABLE             ( 1 <<  7 ) /* timer
-interface */
+#define CGU_TIMERIF_CLOCK_ENABLE             ( 1 <<  7 ) /* timer interface */
 
 /**  ------------------------------------------------------------------
 * Number of cycles to wait before cgu is safely locked.
@@ -295,7 +296,7 @@ interface */
 #define UART_LNSTATUS_REG   (*(volatile unsigned long*)(UART0_BASE + 0x14)) /* Line status register */
 
 
-#define SD_MCI_POWER		(*(volatile unsigned long*)(SD_MCI_BASE + 0x0))
+#define SD_MCI_POWER        (*(volatile unsigned long*)(SD_MCI_BASE + 0x0))
 
 
 #define TIMER1_LOAD      (*(volatile unsigned long*)(TIMER_BASE + 0x00)) /* 32-bit width */
@@ -496,6 +497,20 @@ interface */
 #define I2SOUT_STATUS       (*(volatile unsigned char*)(I2SOUT_BASE+0x0C))
 #define I2SOUT_CLEAR        (*(volatile unsigned char*)(I2SOUT_BASE+0x10))
 #define I2SOUT_DATA         (volatile unsigned long*)(I2SOUT_BASE+0x14)
+
+
+/* SSP registers (PrimeCell PL022) */
+
+#define SSP_CR0             (*(volatile unsigned short*)(SSP_BASE+0x00))
+#define SSP_CR1             (*(volatile unsigned char*)(SSP_BASE+0x04))
+#define SSP_DATA            (*(volatile unsigned short*)(SSP_BASE+0x08))
+#define SSP_SR              (*(volatile unsigned char*)(SSP_BASE+0x0C))
+#define SSP_CPSR            (*(volatile unsigned char*)(SSP_BASE+0x10))
+#define SSP_IMSC            (*(volatile unsigned char*)(SSP_BASE+0x14))
+#define SSP_IRS             (*(volatile unsigned char*)(SSP_BASE+0x18))
+#define SSP_MIS             (*(volatile unsigned char*)(SSP_BASE+0x1C))
+#define SSP_ICR             (*(volatile unsigned char*)(SSP_BASE+0x20))
+#define SSP_DMACR           (*(volatile unsigned char*)(SSP_BASE+0x24))
 
 /* PCM addresses for obtaining buffers will be what DMA is using (physical) */
 #define HAVE_PCM_DMA_ADDRESS

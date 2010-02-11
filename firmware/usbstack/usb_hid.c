@@ -168,14 +168,14 @@ typedef struct
     bool is_key_released;
 } usb_hid_report_t;
 
-usb_hid_report_t usb_hid_reports[REPORT_ID_COUNT];
+static usb_hid_report_t usb_hid_reports[REPORT_ID_COUNT];
 
 static unsigned char report_descriptor[HID_BUF_SIZE_REPORT]
     USB_DEVBSS_ATTR __attribute__((aligned(32)));
 
 static unsigned char send_buffer[HID_NUM_BUFFERS][HID_BUF_SIZE_MSG]
     USB_DEVBSS_ATTR __attribute__((aligned(32)));
-size_t send_buffer_len[HID_NUM_BUFFERS];
+static size_t send_buffer_len[HID_NUM_BUFFERS];
 static int cur_buf_prepare;
 static int cur_buf_send;
 
@@ -551,7 +551,7 @@ static size_t descriptor_report_get(unsigned char *dest)
     PACK_VAL(report, END_COLLECTION);
 #endif /* HAVE_USB_HID_MOUSE */
 
-    return (size_t)((uint32_t)report - (uint32_t)dest);
+    return (size_t)(report - dest);
 }
 
 static void descriptor_hid_get(unsigned char **dest)

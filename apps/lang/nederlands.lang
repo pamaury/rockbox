@@ -9772,15 +9772,15 @@
   user: core
   <source>
     *: none
-    usb_charging: "Charge During USB Connection"
+    usb_charging_enable: "Charge During USB Connection"
   </source>
   <dest>
     *: none
-    usb_charging: "Opladen bij USB verbinding"
+    usb_charging_enable: "Opladen bij USB verbinding"
   </dest>
   <voice>
     *: none
-    usb_charging: "Opladen bij U S B verbinding"
+    usb_charging_enable: "Opladen bij U S B verbinding"
   </voice>
 </phrase>
 <phrase>
@@ -10532,14 +10532,15 @@
   user: core
   <source>
     *: "PLAY = Yes"
-    cowond2*: "MENU = Yes"
+    cowond2*: "MENU, or top-right = Yes"
     iriverh100,iriverh120,iriverh300: "NAVI = Yes"
     samsungyh*,ipod*,iaudiox5,iaudiom5,gigabeat*,sansae200*,sansac200*,iriverh10,iriverh10_5gb,mrobe100,sansaclip*,sansafuze*: "SELECT = Yes"
+    mrobe500: "PLAY, POWER, or top-right = Yes"
     archosplayer: "(PLAY/STOP)"
   </source>
   <dest>
     *: "PLAY = Ja"
-    cowond2*: "MENU = Ja"
+    cowond2*: "MENU of bovenaan rechts = Ja"
     iriverh100,iriverh120,iriverh300: "NAVI = Ja"
     samsungyh*,ipod*,iaudiox5,iaudiom5,gigabeat*,sansae200*,sansac200*,iriverh10,iriverh10_5gb,mrobe100,sansaclip,sansafuze*: "SELECT = Ja"
     archosplayer: "(PLAY/STOP)"
@@ -12631,19 +12632,16 @@
 </phrase>
 <phrase>
   id: LANG_CUSTOM_STATUSBAR
-  desc: browse for custom statusbar in theme settings
-  user: core
+  desc: deprecated
+  user:
   <source>
-    *:none
-    lcd_bitmap: "Custom Statusbar"
+    *: none
   </source>
   <dest>
-    *:none
-    lcd_bitmap: "Statusbalk op maat"
+    *: none
   </dest>
   <voice>
-    *:none
-    lcd_bitmap: "Statusbalk op maat"
+    *: none
   </voice>
 </phrase>
 <phrase>
@@ -12679,19 +12677,16 @@
 </phrase>
 <phrase>
   id: LANG_REMOTE_CUSTOM_STATUSBAR
-  desc: browse for remote custom statusbar in theme settings
-  user: core
+  desc: deprecated
+  user:
   <source>
-    *:none
-    remote: "Remote Custom Statusbar"
+    *: none
   </source>
   <dest>
-    *:none
-    remote: "Remote Statusbalk op maat"
+    *: none
   </dest>
   <voice>
-    *:none
-    remote: "Remote Statusbalk op maat"
+    *: none
   </voice>
 </phrase>
 <phrase>
@@ -13212,5 +13207,39 @@
   </dest>
   <voice>
     *: "van"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_BASE_SKIN
+  desc: browse for the base skin in theme settings
+  user: core
+  <source>
+    *:none
+    lcd_bitmap: "Base Skin"
+  </source>
+  <dest>
+    *:none
+    lcd_bitmap: "Basis skin"
+  </dest>
+  <voice>
+    *:none
+    lcd_bitmap: "Basis skin"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_REMOTE_BASE_SKIN
+  desc: browse for the base skin in theme settings
+  user: core
+  <source>
+    *:none
+    lcd_bitmap: "Remote Base Skin"
+  </source>
+  <dest>
+    *:none
+    lcd_bitmap: "Afstandsbediening basis skin"
+  </dest>
+  <voice>
+    *:none
+    lcd_bitmap: "Afstandsbediening basis skin"
   </voice>
 </phrase>

@@ -5,7 +5,7 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id: gwps-common.h 20492 2009-03-23 17:19:48Z alle $
+ * $Id$
  *
  * Copyright (C) 2002 Björn Stenberg
  *
@@ -42,5 +42,8 @@ bool is_wps_fading(void);
 /* return length of the current ff or rewin action, IAP needs this */
 int wps_get_ff_rewind_count(void);
 #endif /* IPOD_ACCESSORY_PROTOCOL */
+
+/* in milliseconds */
+#define DEFAULT_SKIP_TRESH          3000l
 
 #endif /* _WPS_H_ */

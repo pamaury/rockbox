@@ -102,7 +102,7 @@ $(DEPFILE) dep:
 	$(call PRINTS,Generating dependencies)
 	@echo foo > /dev/null # there must be a "real" command in the rule
 	$(call mkdepfile,$(DEPFILE),$(SRC))
-	$(call mkdepfile,$(DEPFILE),$(OTHER_SRC))
+	$(call mkdepfile,$(DEPFILE),$(OTHER_SRC:%.lua=))
 	$(call mkdepfile,$(DEPFILE),$(ASMDEFS_SRC))
 	@mv $(DEPFILE)_ $(DEPFILE)
 	$(call bmpdepfile,$(DEPFILE),$(BMP) $(PBMP))
@@ -141,13 +141,14 @@ OBJ += $(LANG_O)
 ifndef SIMVER
 
 ## target build
+CONFIGFILE := $(FIRMDIR)/export/config/$(MODELNAME).h
 RAMLDS := $(FIRMDIR)/target/$(CPU)/$(MANUFACTURER)/app.lds
 LINKRAM := $(BUILDDIR)/ram.link
 ROMLDS := $(FIRMDIR)/rom.lds
 LINKROM := $(BUILDDIR)/rom.link
 
 
-$(LINKRAM): $(RAMLDS)
+$(LINKRAM): $(RAMLDS) $(CONFIGFILE)
 	$(call PRINTS,PP $(@F))
 	$(call preprocess2file,$<,$@,-DLOADADDRESS=$(LOADADDRESS))
 

@@ -18,6 +18,8 @@
 # - Jiri Jurecek
 # - Jakub Matoušek
 # - Martin Crkovský
+# - Pavel Rzehák
+# - Marek Salaba
 <phrase>
   id: LANG_SET_BOOL_YES
   desc: bool true representation
@@ -141,7 +143,7 @@
     *: "Nahrávám..."
   </dest>
   <voice>
-    *: "Loading"
+    *: "Nahrávám"
   </voice>
 </phrase>
 <phrase>
@@ -155,7 +157,7 @@
     *: "Nahrávám... %d%% hotovo (%s)"
   </dest>
   <voice>
-    *: "Nahrávám"
+    *: ""
   </voice>
 </phrase>
 <phrase>
@@ -262,16 +264,18 @@
   user: core
   <source>
     *: "PLAY = Yes"
-    cowond2*: "MENU = Yes"
+    cowond2*: "MENU, or top-right = Yes"
     iriverh100,iriverh120,iriverh300: "NAVI = Yes"
     samsungyh*,ipod*,iaudiox5,iaudiom5,gigabeat*,sansae200*,sansac200*,iriverh10,iriverh10_5gb,mrobe100,sansaclip*,sansafuze*: "SELECT = Yes"
+    mrobe500: "PLAY, POWER, or top-right = Yes"
     archosplayer: "(PLAY/STOP)"
   </source>
   <dest>
-    *: "PLAY = Ano"
-    cowond2*: "MENU = Ano"
+  *: "PLAY = Ano"
+    cowond2*: "MENU, or top-right = Ano"
     iriverh100,iriverh120,iriverh300: "NAVI = Ano"
     samsungyh*,ipod*,iaudiox5,iaudiom5,gigabeat*,sansae200*,sansac200*,iriverh10,iriverh10_5gb,mrobe100,sansaclip*,sansafuze*: "SELECT = Ano"
+    mrobe500: "PLAY, POWER, or top-right = Ano"
     archosplayer: "(PLAY/STOP)"
   </dest>
   <voice>
@@ -306,7 +310,7 @@
     *: "Rockbox"
   </dest>
   <voice>
-    *: "Rockbox"
+    *: "Rokbox"
   </voice>
 </phrase>
 <phrase>
@@ -424,7 +428,7 @@
   </dest>
   <voice>
     *: none
-    radio: "FM Rádio"
+    radio: "EFEM Rádio"
   </voice>
 </phrase>
 <phrase>
@@ -438,7 +442,7 @@
     *: "Playlisty"
   </dest>
   <voice>
-    *: "Playlisty"
+    *: "Plejlisty"
   </voice>
 </phrase>
 <phrase>
@@ -452,7 +456,7 @@
     *: "Pluginy"
   </dest>
   <voice>
-    *: "Pluginy"
+    *: "Plaginy"
   </voice>
 </phrase>
 <phrase>
@@ -778,6 +782,23 @@
   </voice>
 </phrase>
 <phrase>
+  id: LANG_CHANNEL_LEFTRIGHT
+  desc: in sound_settings
+  user: core
+  <source>
+    *: none
+    recording_swcodec: "Mono Left + Right"
+  </source>
+  <dest>
+    *: none
+    recording_swcodec: "Mono Levé + Pravé"
+  </dest>
+  <voice>
+    *: none
+    recording_swcodec: "Mono Levé plus Pravé"
+  </voice>
+</phrase>
+<phrase>
   id: LANG_CHANNEL_KARAOKE
   desc: in sound_settings
   user: core
@@ -921,7 +942,7 @@
   </dest>
   <voice>
     *: none
-    swcodec: "Zapnout ekvalizer"
+    swcodec: "Zapnout ekvalizér"
   </voice>
 </phrase>
 <phrase>
@@ -938,7 +959,7 @@
   </dest>
   <voice>
     *: none
-    swcodec: "Grafický ekvalizer"
+    swcodec: "Grafický ekvalizér"
   </voice>
 </phrase>
 <phrase>
@@ -1308,7 +1329,7 @@
   </source>
   <dest>
     *: none
-    masf: "Doba doznívání"
+    masf: "Doba doznívání AV"
   </dest>
   <voice>
     *: none
@@ -1346,7 +1367,7 @@
   </dest>
   <voice>
     *: none
-    masf: "Zapnout MDB"
+    masf: "Zapnout emdébé"
   </voice>
 </phrase>
 <phrase>
@@ -1363,7 +1384,7 @@
   </dest>
   <voice>
     *: none
-    masf: "Síla MDB"
+    masf: "Síla emdébé"
   </voice>
 </phrase>
 <phrase>
@@ -1380,7 +1401,7 @@
   </dest>
   <voice>
     *: none
-    masf: "Harmonie MDB"
+    masf: "Harmonie emdébé"
   </voice>
 </phrase>
 <phrase>
@@ -1397,7 +1418,7 @@
   </dest>
   <voice>
     *: none
-    masf: "Středová frekvence MDB"
+    masf: "Středová frekvence emdébé"
   </voice>
 </phrase>
 <phrase>
@@ -1414,7 +1435,7 @@
   </dest>
   <voice>
     *: none
-    masf: "Šířka pásma MDB"
+    masf: "Šířka pásma emdébé"
   </voice>
 </phrase>
 <phrase>
@@ -1439,10 +1460,10 @@
     *: "Playback Settings"
   </source>
   <dest>
-    *: "Přehrávání"
+    *: "Nastavení přehrávání"
   </dest>
   <voice>
-    *: "Přehrávání"
+    *: "Nastavení přehrávání"
   </voice>
 </phrase>
 <phrase>
@@ -1512,7 +1533,7 @@
     *: "A-B"
   </dest>
   <voice>
-    *: "A-B"
+    *: "od á do bé"
   </voice>
 </phrase>
 <phrase>
@@ -1596,10 +1617,10 @@
     *: "Fade on Stop/Pause"
   </source>
   <dest>
-    *: "Postupně ztlumit při zastevení/pauze"
+    *: "Postupně ztlumit při zastavení/pauze"
   </dest>
   <voice>
-    *: "Postupně ztlumit při zastevení/pauze"
+    *: "Postupně ztlumit při zastavení a pauze"
   </voice>
 </phrase>
 <phrase>
@@ -1648,23 +1669,6 @@
   <voice>
     *: none
     crossfade: "Prolínání skladeb"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_MANTRACKSKIP
-  desc: in crossfade settings
-  user: core
-  <source>
-    *: none
-    crossfade: "Manual Track Skip Only"
-  </source>
-  <dest>
-    *: none
-    crossfade: "Pouze při přeskočení skladby"
-  </dest>
-  <voice>
-    *: none
-    crossfade: "Pouze při přeskočení skladby"
   </voice>
 </phrase>
 <phrase>
@@ -1911,11 +1915,11 @@
   </source>
   <dest>
     *: none
-    swcodec: "Hlasitost pípnutí"
+    swcodec: "Pípnutí při posunu po stopách"
   </dest>
   <voice>
     *: none
-    swcodec: "Hlasitost pípnutí"
+    swcodec: "Pípnutí při posunu po stopách"
   </voice>
 </phrase>
 <phrase>
@@ -2064,10 +2068,10 @@
     *: "Last.fm Log"
   </source>
   <dest>
-    *: "Last.fm záznam"
+    *: "Poslední FM záznam"
   </dest>
   <voice>
-    *: "Last.fm záznam"
+    *: "Poslední EFEM záznam"
   </voice>
 </phrase>
 <phrase>
@@ -2081,7 +2085,7 @@
     *: "Podpora Cuesheet"
   </dest>
   <voice>
-    *: "Podpora Cuesheet"
+    *: "Podpora kjůšít"
   </voice>
 </phrase>
 <phrase>
@@ -2317,7 +2321,7 @@
     *: "Následování playlistu"
   </dest>
   <voice>
-    *: "Následování playlistu"
+    *: "Následování pleylistu"
   </voice>
 </phrase>
 <phrase>
@@ -2367,7 +2371,7 @@
   desc: splash database building progress
   user: core
   <source>
-    *: "Building database... %d found (OFF to return)"
+*: "Building database... %d found (OFF to return)"
     iriverh100,iriverh120,iriverh300: "Building database... %d found (STOP to return)"
     ipod*: "Building database... %d found (PREV to return)"
     iaudiox5,iaudiom5,gigabeat*,mrobe100: "Building database... %d found (LEFT to return)"
@@ -2375,13 +2379,13 @@
     gogearsa9200: "Building database... %d found (REW to return)"
   </source>
   <dest>
-    *: "Vytvářím databázi... %d found (OFF pro návrat)"
-    iriverh100,iriverh120,iriverh300: "Vytvářím databázi... %d found (STOP pro návrat)"
+    *: "Vytvářím databázi... %d nalezeno (OFF pro návrat)"
+    iriverh100,iriverh120,iriverh300: "Vytvářím databázi... %d nalezeno (STOP pro návrat)"
     ipod*: "Vytvářím databázi... %d found (PREV pro návrat)"
-    iaudiox5,iaudiom5,gigabeat*,mrobe100: "Vytvářím databázi... %d found (LEFT pro návrat)"
-    iriverh10,iriverh10_5gb,sansae200*,sansac200*,sansafuze*: "Vytvářím databázi... %d found (PREV pro návrat)"
-    gogearsa9200: "Vytvářím databázi... %d found (REW pro návrat)"
-  </dest>
+    iaudiox5,iaudiom5,gigabeat*,mrobe100: "Vytvářím databázi... %d nalezeno (LEFT pro návrat)"
+    iriverh10,iriverh10_5gb,sansae200*,sansac200*,sansafuze*: "Vytvářím databázi... %d nalezeno (PREV pro návrat)"
+    gogearsa9200: "Vytvářím databázi.. %d nalezeno (REW pro návrat)"
+</dest>
   <voice>
     *: "záznamy nalezené v databázi"
   </voice>
@@ -2425,10 +2429,10 @@
     *: "Initialize Now"
   </source>
   <dest>
-    *: "Vynutit obnovení mezipaměti popisků"
+    *: "Inicializovat jí nyní"
   </dest>
   <voice>
-    *: "Vynutit obnovení mezipaměti popisků"
+    *: "Inycializovat jí nyní"
   </voice>
 </phrase>
 <phrase>
@@ -2540,7 +2544,7 @@
     *: "<Všechny skladby>"
   </dest>
   <voice>
-    *: "Všechny skladby"
+    *: "Vsechny skladby"
   </voice>
 </phrase>
 <phrase>
@@ -2554,7 +2558,7 @@
     *: "Displej"
   </dest>
   <voice>
-    *: "Displej"
+    *: "Dysplej"
   </voice>
 </phrase>
 <phrase>
@@ -2567,11 +2571,11 @@
   </source>
   <dest>
     *: none
-    lcd_bitmap: "Procházet fonty"
+    lcd_bitmap: "Font"
   </dest>
   <voice>
     *: none
-    lcd_bitmap: "Procházet fonty"
+    lcd_bitmap: "Font"
   </voice>
 </phrase>
 <phrase>
@@ -2582,10 +2586,10 @@
     *: "While Playing Screen"
   </source>
   <dest>
-    *: "Procházet .wps soubory"
+    *: "Přehrávací obrazovka"
   </dest>
   <voice>
-    *: "Procházet wps soubory"
+    *: "Přehrávací obrazovka"
   </voice>
 </phrase>
 <phrase>
@@ -2598,11 +2602,11 @@
   </source>
   <dest>
     *: none
-    remote: "Procházet .rwps soubory"
+    remote: "Vzdálená přehrávací obrazovka"
   </dest>
   <voice>
     *: none
-    remote: "Procházet rwps soubory"
+    remote: "Vzdálená přehrávací obrazovka"
   </voice>
 </phrase>
 <phrase>
@@ -2616,7 +2620,7 @@
     *: "Nastavení LCD"
   </dest>
   <voice>
-    *: "Nastavení LCD"
+    *: "Nastavení elcédé"
   </voice>
 </phrase>
 <phrase>
@@ -2743,7 +2747,7 @@
   </dest>
   <voice>
     *: none
-    lcd_sleep: "Uspat (Po zhasnutí podsvícení)"
+    lcd_sleep: "Uspat, po zhasnutí podsvícení"
   </voice>
 </phrase>
 <phrase>
@@ -2808,7 +2812,7 @@
   </dest>
   <voice>
     *: none
-    lcd_invert,remote_lcd_invert: "Mód displeje"
+    lcd_invert,remote_lcd_invert: "Mód dyspleje"
   </voice>
 </phrase>
 <phrase>
@@ -2906,11 +2910,11 @@
   </source>
   <dest>
     *: none
-    lcd_non-mono: "Odstanit obrázek na pozadí"
+    lcd_non-mono: "Odstranit obrázek na pozadí"
   </dest>
   <voice>
     *: none
-    lcd_non-mono: "Odstanit obrázek na pozadí"
+    lcd_non-mono: "Odstranit obrázek na pozadí"
   </voice>
 </phrase>
 <phrase>
@@ -3029,7 +3033,7 @@
   </dest>
   <voice>
     *: none
-    remote: "Displej na dálk. ovladači"
+    remote: "Dysplej na dálkovém ovladači"
   </voice>
 </phrase>
 <phrase>
@@ -3310,7 +3314,7 @@
   </dest>
   <voice>
     *: none
-    lcd_bitmap: "Stavový panel a Posuvník"
+    lcd_bitmap: "Stavový panel a posuvník"
   </voice>
 </phrase>
 <phrase>
@@ -3441,11 +3445,11 @@
     masd: none
   </source>
   <dest>
-    *: "Peak Meter"
+    *: "Vrcholový diagram"
     masd: none
   </dest>
   <voice>
-    *: "Peak Meter"
+    *: "Vrcholový diagram"
     masd: none
   </voice>
 </phrase>
@@ -3655,7 +3659,7 @@
     *: "Řecká (ISO-8859-7)"
   </dest>
   <voice>
-    *: "Greek"
+    *: "Řecká"
   </voice>
 </phrase>
 <phrase>
@@ -3830,7 +3834,7 @@
     *: "Unicode (UTF-8)"
   </dest>
   <voice>
-    *: "Unicode"
+    *: "Junykód ÚTÉEF 8"
   </voice>
 </phrase>
 <phrase>
@@ -3851,6 +3855,23 @@
     *: none
     button_light: "Časový limit osvětlení tlačítka"
     sansafuze*,sansae200*: "Časový limit osvětlení kolečka"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_BUTTONLIGHT_BRIGHTNESS
+  desc: in settings_menu
+  user: core
+  <source>
+    *: none
+    buttonlight_brightness: "Button Light Brightness"
+  </source>
+  <dest>
+    *: none
+    buttonlight_brightness: "Jas osvětlení tlačítka"
+  </dest>
+  <voice>
+    *: none
+    buttonlight_brightness: "Jas osvětlení tlačítka"
   </voice>
 </phrase>
 <phrase>
@@ -3971,7 +3992,7 @@
   </dest>
   <voice>
     *: none
-    battery_types: "Nickel metal hydride"
+    battery_types: "Niklometal hydridová"
   </voice>
 </phrase>
 <phrase>
@@ -4129,6 +4150,7 @@
   </dest>
   <voice>
     *: none
+    rtc,iriverh100,iriverh120,iriverh300,iriverh10,iriverh10_5gb,iaudiox5,iaudiom5,ipod*,sansae200*,sansac200*,gigabeat*,mrobe100,gogearsa9200: ""
   </voice>
 </phrase>
 <phrase>
@@ -4163,6 +4185,7 @@
   </dest>
   <voice>
     *: none
+    rtc,iriverh100,iriverh120,iriverh300,ipod*,sansae200*,sansac200*,iaudiox5,iaudiom5,iriverh10,iriverh10_5gb,gigabeat*,mrobe100,gogearsa9200: ""
   </voice>
 </phrase>
 <phrase>
@@ -4332,7 +4355,7 @@
   </dest>
   <voice>
     *: none
-    rtc: "March"
+    rtc: "březen"
   </voice>
 </phrase>
 <phrase>
@@ -4400,7 +4423,7 @@
   </dest>
   <voice>
     *: none
-    rtc: "Čevenec"
+    rtc: "Červenec"
   </voice>
 </phrase>
 <phrase>
@@ -4510,10 +4533,10 @@
     *: "Sleep Timer"
   </source>
   <dest>
-    *: "Sleep Timer"
+    *: "Časovač usnutí"
   </dest>
   <voice>
-    *: "Sleep Timer"
+    *: "Časovač usnutí"
   </voice>
 </phrase>
 <phrase>
@@ -4555,7 +4578,7 @@
     *: "Maximální velikost playlistu"
   </dest>
   <voice>
-    *: "Maximální velikost playlistu"
+    *: "Maximální velikost plejlistu"
   </voice>
 </phrase>
 <phrase>
@@ -4697,6 +4720,7 @@
   </dest>
   <voice>
     *: none
+    alarm,ipod*: ""
   </voice>
 </phrase>
 <phrase>
@@ -4892,10 +4916,10 @@
     *: "Use Directory .talk Clips"
   </source>
   <dest>
-    *: "Použít adresář .talk klipů"
+    *: "Použít .talk klipy pro adresáře"
   </dest>
   <voice>
-    *: "Použít adresář .talk klipů"
+    *: "Použít talk klipy pro adresáře"
   </voice>
 </phrase>
 <phrase>
@@ -4920,10 +4944,10 @@
     *: "Use File .talk Clips"
   </source>
   <dest>
-    *: "Použít soubor ozvučení .talk"
+    *: "Použít .talk klipy pro soubory"
   </dest>
   <voice>
-    *: "Použít soubor ozvučení .talk"
+    *: "Použít talk klipy pro soubory"
   </voice>
 </phrase>
 <phrase>
@@ -4959,13 +4983,13 @@
   desc: "talkbox" mode for directories + files
   user: core
   <source>
-    *: ".talk mp3 clip"
+    *: ".talk Clip"
   </source>
   <dest>
-    *: "Přehrávat .talk soubory"
+    *: "Přehrávat .talk klipy"
   </dest>
   <voice>
-    *: "Přehrávat .talk soubory"
+    *: "Přehrávat talk klipy"
   </voice>
 </phrase>
 <phrase>
@@ -5032,10 +5056,10 @@
     *: "Cleared"
   </source>
   <dest>
-    *: "Vynulováno"
+    *: "Vymazáno"
   </dest>
   <voice>
-    *: "Vynulováno"
+    *: "Vymazáno"
   </voice>
 </phrase>
 <phrase>
@@ -5077,7 +5101,7 @@
     *: "Uložit nastavení motivu"
   </dest>
   <voice>
-    *: "Uložit nastavení motivu"
+    *: "Uložit nastavení motyvu"
   </voice>
 </phrase>
 <phrase>
@@ -5088,10 +5112,10 @@
     *: "Browse Theme Files"
   </source>
   <dest>
-    *: "Procházet motivy"
+    *: "Procházet soubory motivů"
   </dest>
   <voice>
-    *: "Procházet motivy"
+    *: "Procházet soubory motivů"
   </voice>
 </phrase>
 <phrase>
@@ -5125,7 +5149,7 @@
   </dest>
   <voice>
     *: none
-    radio: "FM Rádio Menu"
+    radio: "EFEM Rádio Menu"
   </voice>
 </phrase>
 <phrase>
@@ -5618,7 +5642,7 @@
   </dest>
   <voice>
     *: none
-    radio: "USA and Kanada"
+    radio: "USA a Kanada"
   </voice>
 </phrase>
 <phrase>
@@ -5686,7 +5710,7 @@
   </dest>
   <voice>
     *: none
-    recording: "MP3"
+    recording: "EMPÉ3"
   </voice>
 </phrase>
 <phrase>
@@ -5703,7 +5727,7 @@
   </dest>
   <voice>
     *: none
-    recording: "PCM Wave"
+    recording: "PÉCÉEM vejf"
   </voice>
 </phrase>
 <phrase>
@@ -5750,11 +5774,11 @@
   </source>
   <dest>
     *: none
-    recording: "Nasatvení enkodéru"
+    recording: "Nastavení enkodéru"
   </dest>
   <voice>
     *: none
-    recording: "Nasatvení enkodéru"
+    recording: "Nastavení enkodéru"
   </voice>
 </phrase>
 <phrase>
@@ -6586,11 +6610,11 @@
   </source>
   <dest>
     *: none
-    remote: "(Hlasitost : Znovu zapnout)"
+    remote: "(Hlasitost- : Znovu zapnout)"
   </dest>
   <voice>
     *: none
-    remote: "(Hlasitost : Znovu zapnout)"
+    remote: "Hlasitost mínus: Znovu zapnout"
   </voice>
 </phrase>
 <phrase>
@@ -6604,7 +6628,7 @@
     *: "Vytvořit playlist"
   </dest>
   <voice>
-    *: "Vytvořit playlist"
+    *: "Vytvořit plejlist"
   </voice>
 </phrase>
 <phrase>
@@ -6618,7 +6642,7 @@
     *: "Možnosti playlistu"
   </dest>
   <voice>
-    *: "Možnosti playlistu"
+    *: "Možnosti plejlistu"
   </voice>
 </phrase>
 <phrase>
@@ -6632,7 +6656,7 @@
     *: "Zobrazit aktuální playlist"
   </dest>
   <voice>
-    *: "Zobrazit aktuální playlist"
+    *: "Zobrazit aktuální plejlist"
   </voice>
 </phrase>
 <phrase>
@@ -6716,7 +6740,7 @@
     *: "Uložit aktuální playlist"
   </dest>
   <voice>
-    *: "Uložit aktuální playlist"
+    *: "Uložit aktuální plejlist"
   </voice>
 </phrase>
 <phrase>
@@ -6744,7 +6768,7 @@
     *: "Katalog playlistů"
   </dest>
   <voice>
-    *: "Katalog playlistů"
+    *: "Katalog plejlistů"
   </voice>
 </phrase>
 <phrase>
@@ -6786,7 +6810,7 @@
     *: "Varovat při mazání dynamického playlistu"
   </dest>
   <voice>
-    *: "Varovat při mazání dynamického playlistu"
+    *: "Varovat při mazání dynamického plejlistu"
   </voice>
 </phrase>
 <phrase>
@@ -6800,7 +6824,7 @@
     *: "Smazat dymanický playlist?"
   </dest>
   <voice>
-    *: "Smazat dymanický playlist?"
+    *: "Smazat dymanický plejlist?"
   </voice>
 </phrase>
 <phrase>
@@ -6828,10 +6852,10 @@
     *: "Rockbox Info"
   </source>
   <dest>
-    *: "Rockbox Info"
+    *: "Informace"
   </dest>
   <voice>
-    *: "Rockbox Info"
+    *: "Informace"
   </voice>
 </phrase>
 <phrase>
@@ -6876,10 +6900,10 @@
     *: "Disk:"
   </source>
   <dest>
-    *: "Velikost disku:"
+    *: "Dostupné:"
   </dest>
   <voice>
-    *: "velikost disku"
+    *: "Dostupné místo"
   </voice>
 </phrase>
 <phrase>
@@ -6890,7 +6914,7 @@
     *: "Free:"
   </source>
   <dest>
-    *: "Volné místo:"
+    *: "Volné:"
   </dest>
   <voice>
     *: "Volné místo"
@@ -6910,7 +6934,7 @@
   </dest>
   <voice>
     *: none
-    multivolume: "Internal"
+    multivolume: "Interní paměť"
   </voice>
 </phrase>
 <phrase>
@@ -6931,9 +6955,9 @@
   </dest>
   <voice>
     *: none
-    multivolume: "H D 1"
-    sansae200*,sansac200*,sansafuze*: "micro S D"
-    archosondio*: "M M C"
+    multivolume: "há dé 1"
+    sansae200*,sansac200*,sansafuze*: "mikro es dé"
+    archosondio*: "em em cé"
   </voice>
 </phrase>
 <phrase>
@@ -7017,7 +7041,7 @@
     *: "Testovací informace (Ruce pryč!)"
   </dest>
   <voice>
-    *: "Testovací informace Ruce pryč!"
+    *: "Testovací informace, ruce pryč! Neozvučené"
   </voice>
 </phrase>
 <phrase>
@@ -7028,10 +7052,10 @@
     *: "Playlist"
   </source>
   <dest>
-    *: "Playlisy"
+    *: "Playlist"
   </dest>
   <voice>
-    *: "Playlisy"
+    *: "Plejlist"
   </voice>
 </phrase>
 <phrase>
@@ -7213,7 +7237,7 @@
     *: "Hledat v playlistu"
   </dest>
   <voice>
-    *: "Hledat v playlistu"
+    *: "Hledat v plejlistu"
   </voice>
 </phrase>
 <phrase>
@@ -7255,7 +7279,7 @@
     *: "Zobrazit katalog playlistů"
   </dest>
   <voice>
-    *: "Zobrazit katalog playlistů"
+    *: "Zobrazit katalog plejlistů"
   </voice>
 </phrase>
 <phrase>
@@ -7269,7 +7293,7 @@
     *: "Přidat do playlistu"
   </dest>
   <voice>
-    *: "Přidat do playlistu"
+    *: "Přidat do plejlistu"
   </voice>
 </phrase>
 <phrase>
@@ -7283,7 +7307,7 @@
     *: "Přidat do nového playlistu"
   </dest>
   <voice>
-    *: "Přidat do nového playlistu"
+    *: "Přidat do nového plejlistu"
   </voice>
 </phrase>
 <phrase>
@@ -7297,7 +7321,7 @@
     *: "%s neexistuje"
   </dest>
   <voice>
-    *: ""
+    *: "Adresář plejlistů neexistuje"
   </voice>
 </phrase>
 <phrase>
@@ -7311,7 +7335,7 @@
     *: "Žádné playlisty"
   </dest>
   <voice>
-    *: ""
+    *: "Žádné plejlisty"
   </voice>
 </phrase>
 <phrase>
@@ -7395,7 +7419,7 @@
     *: "Procházet Cuesheet"
   </dest>
   <voice>
-    *: "Procházet Cuesheet"
+    *: "Procházet kjůšít"
   </voice>
 </phrase>
 <phrase>
@@ -8035,7 +8059,7 @@
     *: "Mezipaměť playlistu je plná"
   </dest>
   <voice>
-    *: "Mezipaměť playlistu je plná"
+    *: "Mezipaměť plejlistu je plná"
   </voice>
 </phrase>
 <phrase>
@@ -8052,7 +8076,6 @@
   </dest>
   <voice>
     *: "Konec seznamu skladeb"
-    archosplayer: "Konec seznamu"
   </voice>
 </phrase>
 <phrase>
@@ -8077,10 +8100,10 @@
     *: "Nothing to resume"
   </source>
   <dest>
-    *: "Není v čem poračovat"
+    *: "Není v čem pokračovat"
   </dest>
   <voice>
-    *: "Není v čem poračovat"
+    *: "Není v čem pokračovat"
   </voice>
 </phrase>
 <phrase>
@@ -8094,7 +8117,7 @@
     *: "Chyba aktualizace nastavení playlistu"
   </dest>
   <voice>
-    *: "Chyba aktualizace nastavení playlistu"
+    *: "Chyba aktualizace nastavení plejlistu"
   </voice>
 </phrase>
 <phrase>
@@ -8108,7 +8131,7 @@
     *: "Chyba při přístupu k playlistu"
   </dest>
   <voice>
-    *: "Chyba při přístupu k playlistu"
+    *: "Chyba při přístupu k plejlistu"
   </voice>
 </phrase>
 <phrase>
@@ -8122,7 +8145,7 @@
     *: "Chyba přístupu k nastavení playlistu"
   </dest>
   <voice>
-    *: "Chyba přístupu k nastavení playlistu"
+    *: "Chyba přístupu k nastavení plejlistu"
   </voice>
 </phrase>
 <phrase>
@@ -8150,7 +8173,7 @@
     *: "Neplatný soubor nastavení playlistu"
   </dest>
   <voice>
-    *: "Neplatný soubor nastavení playlistu"
+    *: "Neplatný soubor nastavení plejlistu"
   </voice>
 </phrase>
 <phrase>
@@ -8229,15 +8252,15 @@
   user: core
   <source>
     *: none
-    usb_charging: "Charge During USB Connection"
+    usb_charging_enable: "Charge During USB Connection"
   </source>
   <dest>
     *: none
-    usb_charging: "Nabíjet při připojení přes USB"
+    usb_charging_enable: "Nabíjení během USB připojení"
   </dest>
   <voice>
     *: none
-    usb_charging: "Nabíjet při připojení přes USB"
+    usb_charging_enable: "Nabíjení během ú es bé připojení"
   </voice>
 </phrase>
 <phrase>
@@ -8352,11 +8375,11 @@
   </source>
   <dest>
     *: none
-    archosondio*: "Vyjměte prosím paměťovou kartu"
+    archosondio*: "Prosím vyjměte MMC kartu"
   </dest>
   <voice>
     *: none
-    archosondio*: "Vyjměte prosím paměťovou kartu"
+    archosondio*: "Prosím vyjměte em em cé kartu"
   </voice>
 </phrase>
 <phrase>
@@ -8370,7 +8393,7 @@
     *: "Změněn firmware"
   </dest>
   <voice>
-    *: "Změněn firmware"
+    *: "Změněn firmwér"
   </voice>
 </phrase>
 <phrase>
@@ -8401,13 +8424,13 @@
     gigabeatfx: "POWER to abort"
   </source>
   <dest>
-    *: "OFF pro zrušit"
-    archosplayer,iriverh100,iriverh120,iriverh300: "STOP pro zrušit"
-    ipod*: "PLAY/PAUSE pro zrušit"
-    iaudiox5,iaudiom5: "Long PLAY pro zrušit"
-    iriverh10,iriverh10_5gb,sansae200*,sansac200*: "PREV pro zrušit"
-    gigabeats: "BACK pro zrušit"
-    gigabeatfx: "POWER pro zrušit"
+    *: "OFF pro zrušení"
+    archosplayer,iriverh100,iriverh120,iriverh300: "STOP pro zrušení"
+    ipod*: "PLAY/PAUSE pro zrušení"
+    iaudiox5,iaudiom5: "Dlouhé PLAY pro zrušení"
+    iriverh10,iriverh10_5gb,sansae200*,sansac200*: "PREV pro zrušení"
+    gigabeats: "BACK pro zrušení"
+    gigabeatfx: "POWER pro zrušení"
   </dest>
   <voice>
     *: ""
@@ -8578,7 +8601,7 @@
     *: "Přiliš dlouhé jméno pluginu"
   </dest>
   <voice>
-    *: "Přiliš dlouhé jméno pluginu"
+    *: "Přiliš dlouhé jméno plaginu"
   </voice>
 </phrase>
 <phrase>
@@ -8626,7 +8649,7 @@
   </dest>
   <voice>
     *: none
-    charging: "Nabíjení"
+    charging: "Baterie: Nabíjení"
   </voice>
 </phrase>
 <phrase>
@@ -8639,11 +8662,11 @@
   </source>
   <dest>
     *: none
-    archosrecorder: "Baterie: Donabíjení"
+    archosrecorder: "Baterie: uplně vybitá"
   </dest>
   <voice>
     *: none
-    archosrecorder: "Donabíjení"
+    archosrecorder: "Baterie je uplně vybitá"
   </voice>
 </phrase>
 <phrase>
@@ -8660,7 +8683,7 @@
   </dest>
   <voice>
     *: none
-    charging: "Baterie: Přerušov.nab."
+    charging: "Baterie: Přerušované nabíjení"
   </voice>
 </phrase>
 <phrase>
@@ -8716,7 +8739,7 @@
     *: "KB"
   </dest>
   <voice>
-    *: "kilobyte"
+    *: "kilobajt"
   </voice>
 </phrase>
 <phrase>
@@ -8730,7 +8753,7 @@
     *: "MB"
   </dest>
   <voice>
-    *: "megabyte"
+    *: "megabajt"
   </voice>
 </phrase>
 <phrase>
@@ -8744,7 +8767,7 @@
     *: "GB"
   </dest>
   <voice>
-    *: "gigabyte"
+    *: "gigabajt"
   </voice>
 </phrase>
 <phrase>
@@ -8758,7 +8781,7 @@
     *: "."
   </dest>
   <voice>
-    *: "point"
+    *: "tečka"
   </voice>
 </phrase>
 <phrase>
@@ -9934,7 +9957,7 @@
     *: ""
   </dest>
   <voice>
-    *: "plugin"
+    *: "plagin"
   </voice>
 </phrase>
 <phrase>
@@ -9976,7 +9999,7 @@
     *: ""
   </dest>
   <voice>
-    *: "firmware"
+    *: "firmvér"
   </voice>
 </phrase>
 <phrase>
@@ -10021,7 +10044,7 @@
      *: ""
   </dest>
   <voice>
-    *: "cuesheet"
+    *: "kjůšít"
   </voice>
 </phrase>
 <phrase>
@@ -10052,7 +10075,7 @@
   </dest>
   <voice>
     *: none
-    rtc: "Nyní je:"
+    rtc: "Aktualní čas:"
   </voice>
 </phrase>
 <phrase>
@@ -10133,7 +10156,7 @@
   </source>
   <dest>
     *: none
-    swcodec: "Editační mód: %s"
+    swcodec: "Editační mód: %s %s"
   </dest>
   <voice>
     *: none
@@ -10150,11 +10173,11 @@
   </source>
   <dest>
     *: none
-    swcodec: "Frekvence oříznutí"
+    swcodec: "Oříznutí"
   </dest>
   <voice>
     *: none
-    swcodec: "Frekvence oříznutí"
+    swcodec: "Oříznutí frekvence"
   </voice>
 </phrase>
 <phrase>
@@ -10426,7 +10449,7 @@
   </dest>
   <voice>
     *: none
-    recorder_pad: "Možnost"
+    recorder_pad: ""
   </voice>
 </phrase>
 <phrase>
@@ -10592,11 +10615,11 @@
   </source>
   <dest>
     *: none
-    recording: "Line In konektor"
+    recording: "Linkový vstup"
   </dest>
   <voice>
     *: none
-    recording: "Line In konektor"
+    recording: "Linkový vstup"
   </voice>
 </phrase>
 <phrase>
@@ -11310,10 +11333,10 @@
     *: "Theme Settings"
   </source>
   <dest>
-    *: "Nastavení motivu"
+    *: "Nastavení vzhledu"
   </dest>
   <voice>
-    *: "Nastavení motivu"
+    *: "Nastavení vzhledu"
   </voice>
 </phrase>
 <phrase>
@@ -11472,339 +11495,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_SERIAL_BITRATE_19200
-  desc: in system settings menu
-  user: core
-  <source>
-    *: none
-    serial_port: "19200"
-  </source>
-  <dest>
-    *: none
-    serial_port: "19200"
-  </dest>
-  <voice>
-    *: none
-    serial_port: "19200"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_PREVENT_SKIPPING
-  desc: in Settings -> Playback Settings
-  user: core
-  <source>
-    *: "Prevent Track Skipping"
-  </source>
-  <dest>
-    *: "Zabránit přeskakování skladeb"
-  </dest>
-  <voice>
-    *: "Zabránit přeskakování skladeb"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_RECORDING_SIZE
-  desc: Display of recorded file size
-  user: core
-  <source>
-    *: none
-    recording: "Size:"
-  </source>
-  <dest>
-    *: none
-    recording: "Velikost:"
-  </dest>
-  <voice>
-    *: none
-    recording: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_RECORDING_AGC_MAXGAIN
-  desc: AGC maximum gain in recording screen
-  user: core
-  <source>
-    *: none
-    agc: "AGC max. gain"
-  </source>
-  <dest>
-    *: none
-    agc: "AGC max. zisk"
-  </dest>
-  <voice>
-    *: none
-    agc: "AGC maximální zisk"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_ENABLE_SPEAKER
-  desc: in Settings -> Sound Settings
-  user: core
-  <source>
-    *: none
-    speaker: "Enable Speaker"
-  </source>
-  <dest>
-    *: none
-    speaker: "Povolit speaker"
-  </dest>
-  <voice>
-    *: none
-    speaker: "Povolit speaker"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_ENABLE_STUDY_MODE
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_ALBUMART
-  desc: deprecated
-  user:
-  <source>
-    *: none
-  </source>
-  <dest>
-    *: none
-  </dest>
-  <voice>
-    *: none
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_CHANNEL_LEFTRIGHT
-  desc: in sound_settings
-  user: core
-  <source>
-    *: none
-    recording_swcodec: "Mono Left + Right"
-  </source>
-  <dest>
-    *: none
-    recording_swcodec: "Mono levý + pravý"
-  </dest>
-  <voice>
-    *: none
-    recording_swcodec: "Mono levý a pravý"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SORT_INTERPRET_NUMBERS
-  desc: in Settings -> File view
-  user: core
-  <source>
-    *: "Interpret numbers when sorting"
-  </source>
-  <dest>
-    *: "Interpretovat čísla při třídění"
-  </dest>
-  <voice>
-    *: "Interpretovat čísla při třídění"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_TOUCHPAD_SENSITIVITY
-  desc: touchpad sensitivity setting
-  user: core
-  <source>
-    *: none
-    gigabeatfx: "Touchpad Sensitivity"
-  </source>
-  <dest>
-    *: none
-    gigabeatfx: "Citlivost touchpadu"
-  </dest>
-  <voice>
-    *: none
-    gigabeatfx: "Citlivost touchpadu"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SCROLLBAR_POSITION
-  desc: in Settings -> General -> Display -> Status-/Scrollbar
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: "Scroll Bar Position"
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: "Pozice přetáčecí lišty"
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: "Pozice přetáčecí lišty"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_REMOTE_STATUSBAR
-  desc: in Settings -> General -> Display -> statusbar
-  user: core
-  <source>
-    *: none
-    remote: "Remote Statusbar"
-  </source>
-  <dest>
-    *: none
-    remote: "Vzdálený stavový řádek"
-  </dest>
-  <voice>
-    *: none
-    remote: "Vzdálený stavový řádek"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_FAST
-  desc: in settings_menu
-  user: core
-  <source>
-    *: "Fast"
-  </source>
-  <dest>
-    *: "Rychle"
-  </dest>
-  <voice>
-    *: "Rychle"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SERIAL_BITRATE
-  desc: in system settings menu
-  user: core
-  <source>
-    *: none
-    serial_port: "Serial Bitrate"
-  </source>
-  <dest>
-    *: none
-    serial_port: "Serial Bitrate"
-  </dest>
-  <voice>
-    *: none
-    serial_port: "Serial Bitrate"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SERIAL_BITRATE_9600
-  desc: in system settings menu
-  user: core
-  <source>
-    *: none
-    serial_port: "9600"
-  </source>
-  <dest>
-    *: none
-    serial_port: "9600"
-  </dest>
-  <voice>
-    *: none
-    serial_port: "9600"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SKIP_LENGTH
-  desc: playback settings menu
-  user: core
-  <source>
-    *: "Skip Length"
-  </source>
-  <dest>
-    *: "Přeskočit délku"
-  </dest>
-  <voice>
-    *: "Přeskočit délku"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_LEFT_QS_ITEM
-  desc: used for the submenu name for the quickscreen items
-  user: core
-  <source>
-    *: none
-    quickscreen: "Set as Left Quickscreen Item"
-  </source>
-  <dest>
-    *: none
-    quickscreen: "Nastavit jako levý quickscreen bod"
-  </dest>
-  <voice>
-    *: none
-    quickscreen: "Nastavit jako levý quickscreen bod"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_RESET_SETTING
-  desc: used in the settings context menu
-  user: core
-  <source>
-    *: "Reset Setting"
-  </source>
-  <dest>
-    *: "Resetovat nastavení"
-  </dest>
-  <voice>
-    *: "Resetovat nastavení"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_BOTTOM
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: none
-    quickscreen: ""
-  </source>
-  <dest>
-    *: none
-    quickscreen: ""
-  </dest>
-  <voice>
-    *: none
-    quickscreen: ""
-  </voice>
-</phrase>
-<phrase>
-  id: VOICE_CHAR_SLASH
-  desc: spoken only, for spelling
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: "lomítko"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_TOUCHSCREEN_POINT
-  desc: in Settings -> General -> Display -> Touchscreen Settings
-  user: core
-  <source>
-    *: none
-    touchscreen: "Absolute Point"
-  </source>
-  <dest>
-    *: none
-    touchscreen: "Absolutní bod"
-  </dest>
-  <voice>
-    *: none
-    touchscreen: "Absolutní bod"
-  </voice>
-</phrase>
-<phrase>
   id: LANG_TAGNAVI_RANDOM
   desc: "<Random>" entry in tag browser
   user: core
@@ -11812,160 +11502,10 @@
     *: "<Random>"
   </source>
   <dest>
-    *: "<Náhodné>"
+    *: "<Náhodně>"
   </dest>
   <voice>
-    *: "Náhodné"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_BOTTOM_QS_ITEM
-  desc: used for the submenu name for the quickscreen items
-  user: core
-  <source>
-    *: none
-    quickscreen: "Set as Bottom Quickscreen Item"
-  </source>
-  <dest>
-    *: none
-    quickscreen: "Nastavit jako spodní quickscreen bod"
-  </dest>
-  <voice>
-    *: none
-    quickscreen: "Nastavit jako spodní quickscreen bod"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_TOP_QS_ITEM
-  desc: used for the submenu name for the quickscreen items
-  user: core
-  <source>
-    *: none
-    quickscreen: "Set as Top Quickscreen Item"
-  </source>
-  <dest>
-    *: none
-    quickscreen: "Nastavit jako horníní quickscreen bod"
-  </dest>
-  <voice>
-    *: none
-    quickscreen: "Nastavit jako horníní quickscreen bod"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_PLAYBACK_RATE
-  desc: "rate" in pitch screen
-  user: core
-  <source>
-    *: none
-    pitchscreen: "Rate"
-  </source>
-  <dest>
-    *: none
-    pitchscreen: "Rychlost"
-  </dest>
-  <voice>
-    *: none
-    pitchscreen: "Rychlost"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_ACCESSORY_SUPPLY
-  desc: in system settings menu
-  user: core
-  <source>
-    *: none
-    accessory_supply: "Accessory Power Supply"
-  </source>
-  <dest>
-    *: none
-    accessory_supply: "Napájení příslušenství"
-  </dest>
-  <voice>
-    *: none
-    accessory_supply: "Napájení příslušenství"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_RIGHT
-  desc: Generic use of 'right
-  user: core
-  <source>
-    *: "Right"
-  </source>
-  <dest>
-    *: "Pravý"
-  </dest>
-  <voice>
-    *: "Pravý"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_QS_ITEMS
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: none
-    quickscreen: ""
-  </source>
-  <dest>
-    *: none
-    quickscreen: ""
-  </dest>
-  <voice>
-    *: none
-    quickscreen: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SEMITONE
-  desc:
-  user: core
-  <source>
-    *: none
-    pitchscreen: "Semitone"
-  </source>
-  <dest>
-    *: none
-    pitchscreen: "Půltón"
-  </dest>
-  <voice>
-    *: none
-    pitchscreen: "Půltón"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_STOP_RECORDING_AND_SHUTDOWN
-  desc: in record timesplit options
-  user: core
-  <source>
-    *: none
-    recording: "Stop Recording And Shutdown"
-  </source>
-  <dest>
-    *: none
-    recording: "Zastavit nahrávání a vypnout"
-  </dest>
-  <voice>
-    *: none
-    recording: "Zastavit nahrávání a vypnout"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_RECORDING_TIMESPLIT_REC
-  desc: Display of record timer interval setting, on the record screen
-  user: core
-  <source>
-    *: none
-    recording: "Split Time:"
-  </source>
-  <dest>
-    *: none
-    recording: "Čas rozdělení:"
-  </dest>
-  <voice>
-    *: none
-    recording: ""
+    *: "Nahodne"
   </voice>
 </phrase>
 <phrase>
@@ -11980,99 +11520,6 @@
   </dest>
   <voice>
     *: "Uložit nastavení zvuku"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_STRETCH_LIMIT
-  desc: "limit" in pitch screen
-  user: core
-  <source>
-    *: none
-    pitchscreen: "Limit"
-  </source>
-  <dest>
-    *: none
-    pitchscreen: "Limit"
-  </dest>
-  <voice>
-    *: none
-    pitchscreen: "Limit"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_TOUCHSCREEN_CALIBRATE
-  desc: in Settings -> General -> Display -> Touchscreen Settings
-  user: core
-  <source>
-    *: none
-    touchscreen: "Calibrate"
-  </source>
-  <dest>
-    *: none
-    touchscreen: "Kalibrovat"
-  </dest>
-  <voice>
-    *: none
-    touchscreen: "Kalibrovat"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_STUDY_MODE
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_RIGHT_QS_ITEM
-  desc: used for the submenu name for the quickscreen items
-  user: core
-  <source>
-    *: none
-    quickscreen: "Set as Right Quickscreen Item"
-  </source>
-  <dest>
-    *: none
-    quickscreen: "Nastavit jako pravý quickscreen bod"
-  </dest>
-  <voice>
-    *: none
-    quickscreen: "Nastavit jako pravý quickscreen bod"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_STUDY_HOP_STEP
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_VERY_SLOW
-  desc: in settings_menu
-  user: core
-  <source>
-    *: "Very slow"
-  </source>
-  <dest>
-    *: "Velmi pomalu"
-  </dest>
-  <voice>
-    *: "Velmi pomalu"
   </voice>
 </phrase>
 <phrase>
@@ -12093,505 +11540,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_SERIAL_BITRATE_38400
-  desc: in system settings menu
-  user: core
-  <source>
-    *: none
-    serial_port: "38400"
-  </source>
-  <dest>
-    *: none
-    serial_port: "38400"
-  </dest>
-  <voice>
-    *: none
-    serial_port: "38400"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SERIAL_BITRATE_57600
-  desc: in system settings menu
-  user: core
-  <source>
-    *: none
-    serial_port: "57600"
-  </source>
-  <dest>
-    *: none
-    serial_port: "57600"
-  </dest>
-  <voice>
-    *: none
-    serial_port: "57600"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_PM_CLIPCOUNT
-  desc: in recording GUI, for recording peak meter. MAX 5 characters!
-  user: core
-  <source>
-    *: none
-    recording: "CLIP:"
-  </source>
-  <dest>
-    *: none
-    recording: "CLIP:"
-  </dest>
-  <voice>
-    *: none
-    recording: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_GAIN_RIGHT
-  desc: in the recording screen
-  user: core
-  <source>
-    *: none
-    recording: "Gain R"
-  </source>
-  <dest>
-    *: none
-    recording: "Gain R"
-  </dest>
-  <voice>
-    *: none
-    recording: "Gain Right"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_TOUCHSCREEN_RESET_CALIBRATION
-  desc: in Settings -> General -> Display -> Touchscreen Settings
-  user: core
-  <source>
-    *: none
-    touchscreen: "Reset Calibration"
-  </source>
-  <dest>
-    *: none
-    touchscreen: "Resetovat kalibraci"
-  </dest>
-  <voice>
-    *: none
-    touchscreen: "Resetovat kalibraci"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_RECORDING_FILENAME
-  desc: Filename header in recording screen
-  user: core
-  <source>
-    *: none
-    recording: "Filename:"
-  </source>
-  <dest>
-    *: none
-    recording: "Jméno souboru:"
-  </dest>
-  <voice>
-    *: none
-    recording: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SORT_INTERPRET_AS_NUMBERS
-  desc: in Settings -> File view
-  user: core
-  <source>
-    *: "As whole numbers"
-  </source>
-  <dest>
-    *: "Jako celá čísla"
-  </dest>
-  <voice>
-    *: "Jako celá čísla"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SLOW
-  desc: in settings_menu
-  user: core
-  <source>
-    *: "Slow"
-  </source>
-  <dest>
-    *: "Pomalu"
-  </dest>
-  <voice>
-    *: "Pomalu"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_CREDITS
-  desc: in the Main Menu -> System screen
-  user: core
-  <source>
-    *: "Credits"
-  </source>
-  <dest>
-    *: "Credits"
-  </dest>
-  <voice>
-    *: "Credits"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_TOUCHSCREEN_GRID
-  desc: in Settings -> General -> Display -> Touchscreen Settings
-  user: core
-  <source>
-    *: none
-    touchscreen: "3x3 Grid"
-  </source>
-  <dest>
-    *: none
-    touchscreen: "3x3 Grid"
-  </dest>
-  <voice>
-    *: none
-    touchscreen: "3 by 3 grid"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_BUTTONLIGHT_BRIGHTNESS
-  desc: in settings_menu
-  user: core
-  <source>
-    *: none
-    buttonlight_brightness: "Button Light Brightness"
-  </source>
-  <dest>
-    *: none
-    buttonlight_brightness: "Jas podsvícení tlačítka"
-  </dest>
-  <voice>
-    *: none
-    buttonlight_brightness: "Jas podsvícení tlačítka"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_GAIN_LEFT
-  desc: in the recording screen
-  user: core
-  <source>
-    *: none
-    recording: "Gain L"
-  </source>
-  <dest>
-    *: none
-    recording: "Gain L"
-  </dest>
-  <voice>
-    *: none
-    recording: "Gain Left"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SCROLLBAR_WIDTH
-  desc: in Settings -> General -> Display -> Status-/Scrollbar
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: "Scroll Bar Width"
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: "Šířka přetáčecí lišty"
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: "Šířka přetáčecí lišty"
-  </voice>
-</phrase>
-<phrase>
-  id: VOICE_QUICKSCREEN
-  desc: spoken only, Announces entering the "quick screen"
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: "Quick screen"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_TOUCHSCREEN_MODE
-  desc: in Settings -> General -> Display -> Touchscreen Settings
-  user: core
-  <source>
-    *: none
-    touchscreen: "Touchscreen Mode"
-  </source>
-  <dest>
-    *: none
-    touchscreen: "Dotykový mód"
-  </dest>
-  <voice>
-    *: none
-    touchscreen: "Dotykový mód"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_VERY_FAST
-  desc: in settings_menu
-  user: core
-  <source>
-    *: "Very fast"
-  </source>
-  <dest>
-    *: "Velmi rychle"
-  </dest>
-  <voice>
-    *: "Velmi rychle"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SKIN_RAM_USAGE
-  desc: how much RAM the skins are using
-  user: core
-  <source>
-    *: "Skin RAM usage:"
-  </source>
-  <dest>
-    *: "Skin RAM usage:"
-  </dest>
-  <voice>
-    *: "Skin RAM usage"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_STATUSBAR_BOTTOM
-  desc: in Settings -> General -> Display -> statusbar
-  user: core
-  <source>
-    *: "Bottom"
-  </source>
-  <dest>
-    *: "Spodek"
-  </dest>
-  <voice>
-    *: "Spodek"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_TIMESTRETCH
-  desc: timestretch enable
-  user: core
-  <source>
-    *: none
-    swcodec: "Timestretch"
-  </source>
-  <dest>
-    *: none
-    swcodec: "Čas úseku"
-  </dest>
-  <voice>
-    *: none
-    swcodec: "Čas úseku"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SEARCH_RESULTS
-  desc: title for the list of results displayed after searching in a playlist
-  user: core
-  <source>
-    *: "Search Results"
-  </source>
-  <dest>
-    *: "Výsledky hledání"
-  </dest>
-  <voice>
-    *: "Výsledky hledání"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_DISABLE_STUDY_MODE
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_RECORDING_AGC_PRESET
-  desc: automatic gain control in record settings and screen
-  user: core
-  <source>
-    *: none
-    agc: "AGC"
-  </source>
-  <dest>
-    *: none
-    agc: "AGC"
-  </dest>
-  <voice>
-    *: none
-    agc: "Automatic gain control"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SORT_INTERPRET_AS_DIGIT
-  desc: in Settings -> File view
-  user: core
-  <source>
-    *: "As digits"
-  </source>
-  <dest>
-    *: "Jako číslice"
-  </dest>
-  <voice>
-    *: "Jako číslice"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_RECORDING_MONO_MODE
-  desc: in the recording settings
-  user: core
-  <source>
-    *: none
-    recording_swcodec: "Mono mode"
-  </source>
-  <dest>
-    *: none
-    recording_swcodec: "Mono mód"
-  </dest>
-  <voice>
-    *: none
-    recording_swcodec: "Mono mód"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_COMPRESSOR
-  desc: in sound settings
-  user: core
-  <source>
-    *: none
-    swcodec: "Limiter Preamp"
-  </source>
-  <dest>
-    *: none
-    swcodec: "Omezený Preamp"
-  </dest>
-  <voice>
-    *: none
-    swcodec: "Omezený Preamp"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_UNKNOWN
-  desc: generic string for unknown states, such as an unset clock
-  user: core
-  <source>
-    *: "Unknown"
-  </source>
-  <dest>
-    *: "Neznámý"
-  </dest>
-  <voice>
-    *: "Neznámý"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_RECORDING_AGC_CLIPTIME
-  desc: in record settings
-  user: core
-  <source>
-    *: none
-    agc: "AGC clip time"
-  </source>
-  <dest>
-    *: none
-    agc: "AGC čas klipu"
-  </dest>
-  <voice>
-    *: none
-    agc: "AGC čas klipu"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_LEFT
-  desc: Generic use of 'left'
-  user: core
-  <source>
-    *: "Left"
-  </source>
-  <dest>
-    *: "Levý"
-  </dest>
-  <voice>
-    *: "Levý"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SKIP_TRACK
-  desc: skip length setting entry 0
-  user: core
-  <source>
-    *: "Skip Track"
-  </source>
-  <dest>
-    *: "Přeskočit skladbu"
-  </dest>
-  <voice>
-    *: "Přeskočit skladbu"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_TOUCHSCREEN_SETTINGS
-  desc: in Settings -> General -> Display menu
-  user: core
-  <source>
-    *: none
-    touchscreen: "Touchscreen Settings"
-  </source>
-  <dest>
-    *: none
-    touchscreen: "Nastavení dotykové obrazovky"
-  </dest>
-  <voice>
-    *: none
-    touchscreen: "Nastavení dotykové obrazovky"
-  </voice>
-</phrase>
-<phrase>
-  id: VOICE_OK
-  desc: spoken only, On exiting a context, specifically the quick screen
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: "OK"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_STATUSBAR_TOP
-  desc: in Settings -> General -> Display -> statusbar
-  user: core
-  <source>
-    *: "Top"
-  </source>
-  <dest>
-    *: "Vršek"
-  </dest>
-  <voice>
-    *: "Vršek"
-  </voice>
-</phrase>
-<phrase>
   id: LANG_KEYCLICK_REPEATS
   desc: in keyclick settings menu
   user: core
@@ -12609,20 +11557,152 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_SPEED
-  desc: timestretch speed
+  id: LANG_ACCESSORY_SUPPLY
+  desc: in system settings menu
   user: core
   <source>
     *: none
-    swcodec: "Speed"
+    accessory_supply: "Accessory Power Supply"
   </source>
   <dest>
     *: none
-    swcodec: "Rychlost"
+    accessory_supply: "Napájení příslušenství"
   </dest>
   <voice>
     *: none
-    swcodec: "Rychlost"
+    accessory_supply: "Napájení příslušenství"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_UNKNOWN
+  desc: generic string for unknown states, such as an unset clock
+  user: core
+  <source>
+    *: "Unknown"
+  </source>
+  <dest>
+    *: "Neznámý"
+  </dest>
+  <voice>
+    *: "Neznámý"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_STUDY_MODE
+  desc: DEPRECATED
+  user: core
+  <source>
+    *: ""
+  </source>
+  <dest>
+    *: ""
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_STUDY_HOP_STEP
+  desc: DEPRECATED
+  user: core
+  <source>
+    *: ""
+  </source>
+  <dest>
+    *: ""
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_ENABLE_STUDY_MODE
+  desc: DEPRECATED
+  user: core
+  <source>
+    *: ""
+  </source>
+  <dest>
+    *: ""
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_DISABLE_STUDY_MODE
+  desc: DEPRECATED
+  user: core
+  <source>
+    *: ""
+  </source>
+  <dest>
+    *: ""
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: VOICE_QUICKSCREEN
+  desc: spoken only, Announces entering the "quick screen"
+  user: core
+  <source>
+    *: ""
+  </source>
+  <dest>
+    *: ""
+  </dest>
+  <voice>
+    *: "Rychlá nabídka"
+  </voice>
+</phrase>
+<phrase>
+  id: VOICE_OK
+  desc: spoken only, On exiting a context, specifically the quick screen
+  user: core
+  <source>
+    *: ""
+  </source>
+  <dest>
+    *: ""
+  </dest>
+  <voice>
+    *: "OUKEJ"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_STOP_RECORDING_AND_SHUTDOWN
+  desc: in record timesplit options
+  user: core
+  <source>
+    *: none
+    recording: "Stop Recording And Shutdown"
+  </source>
+  <dest>
+    *: none
+    recording: "Zastavit nahrávání a vypnout"
+  </dest>
+  <voice>
+    *: none
+    recording: "Zastavit nahrávání a vypnout"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_TOUCHPAD_SENSITIVITY
+  desc: touchpad sensitivity setting
+  user: core
+  <source>
+    *: none
+    gigabeatfx: "Touchpad Sensitivity"
+  </source>
+  <dest>
+    *: none
+    gigabeatfx: "Citlivost touchpadu"
+  </dest>
+  <voice>
+    *: none
+    gigabeatfx: "Citlivost tačpedu"
   </voice>
 </phrase>
 <phrase>
@@ -12643,6 +11723,23 @@
   </voice>
 </phrase>
 <phrase>
+  id: LANG_SERIAL_BITRATE
+  desc: in system settings menu
+  user: core
+  <source>
+    *: none
+    serial_port: "Serial Bitrate"
+  </source>
+  <dest> 
+    *: none
+    serial_port: "Bitrate seriového portu"
+  </dest>
+  <voice> 
+    *: none
+    serial_port: "Bitrejt seriového portu"
+  </voice>
+</phrase>
+<phrase>
   id: LANG_SERIAL_BITRATE_AUTO
   desc: in system settings menu
   user: core
@@ -12650,12 +11747,1500 @@
     *: none
     serial_port: "Auto"
   </source>
-  <dest>
+  <dest> 
     *: none
     serial_port: "Auto"
   </dest>
-  <voice>
+  <voice> 
     *: none
     serial_port: "Automatický"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_SERIAL_BITRATE_9600
+  desc: in system settings menu
+  user: core
+  <source>
+    *: none
+    serial_port: "9600"
+  </source>
+  <dest> 
+    *: none
+    serial_port: "9600"
+  </dest>
+  <voice> 
+    *: none
+    serial_port: "9600"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_SERIAL_BITRATE_19200
+  desc: in system settings menu
+  user: core
+  <source>
+    *: none
+    serial_port: "19200"
+  </source>
+  <dest> 
+    *: none
+    serial_port: "19200"
+  </dest>
+  <voice> 
+    *: none
+    serial_port: "19200"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_SERIAL_BITRATE_38400
+  desc: in system settings menu
+  user: core
+  <source>
+    *: none
+    serial_port: "38400"
+  </source>
+  <dest> 
+    *: none
+    serial_port: "38400"
+  </dest>
+  <voice> 
+    *: none
+    serial_port: "38400"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_SERIAL_BITRATE_57600
+  desc: in system settings menu
+  user: core
+  <source>
+    *: none
+    serial_port: "57600"
+  </source>
+  <dest> 
+    *: none
+    serial_port: "57600"
+  </dest>
+  <voice> 
+    *: none
+    serial_port: "57600"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_VERY_SLOW
+  desc: in settings_menu
+  user: core
+  <source>
+    *: "Very slow"
+  </source>
+  <dest>
+    *: "Velmi pomalu"
+  </dest>
+  <voice>
+    *: "Velmi pomalu"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_SLOW
+  desc: in settings_menu
+  user: core
+  <source>
+    *: "Slow"
+  </source>
+  <dest>
+    *: "Pomalu"
+  </dest>
+  <voice>
+    *: "Pomalu"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_VERY_FAST
+  desc: in settings_menu
+  user: core
+  <source>
+    *: "Very fast"
+  </source>
+  <dest>
+    *: "Velmi rychle"
+  </dest>
+  <voice>
+    *: "Velmi rychle"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_FAST
+  desc: in settings_menu
+  user: core
+  <source>
+    *: "Fast"
+  </source>
+  <dest>
+    *: "Rychle"
+  </dest>
+  <voice>
+    *: "Rychle"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_SKIP_LENGTH
+  desc: playback settings menu
+  user: core
+  <source>
+    *: "Skip Length"
+  </source>
+  <dest>
+    *: "Přeskočit délku"
+  </dest>
+  <voice>
+    *: "Přeskočit délku"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_SKIP_TRACK
+  desc: skip length setting entry 0
+  user: core
+  <source>
+    *: "Skip Track"
+  </source>
+  <dest>
+    *: "Přeskočit skladbu"
+  </dest>
+  <voice>
+    *: "Přeskočit skladbu"
+  </voice>
+</phrase>
+<phrase>
+  id: VOICE_CHAR_SLASH
+  desc: spoken only, for spelling
+  user: core
+  <source>
+    *: ""
+  </source>
+  <dest>
+    *: ""
+  </dest>
+  <voice>
+    *: "lomeno"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_GAIN_LEFT
+  desc: in the recording screen
+  user: core
+  <source>
+    *: none
+    recording: "Gain L"
+  </source>
+  <dest>
+    *: none
+    recording: "L zisk"
+  </dest>
+  <voice>
+    *: none
+    recording: "Levý zisk"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_GAIN_RIGHT
+  desc: in the recording screen
+  user: core
+  <source>
+    *: none
+    recording: "Gain R"
+  </source>
+  <dest>
+    *: none
+    recording: "P zisk"
+  </dest>
+  <voice>
+    *: none
+    recording: "Pravý zisk"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_RECORDING_AGC_PRESET
+  desc: automatic gain control in record settings and screen
+  user: core
+  <source>
+    *: none
+    agc: "AGC"
+  </source>
+  <dest>
+    *: none
+    agc: "AGC"
+  </dest>
+  <voice>
+    *: none
+    agc: "Automatické řízení zisku"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_RECORDING_AGC_CLIPTIME
+  desc: in record settings
+  user: core
+  <source>
+    *: none
+    agc: "AGC clip time"
+  </source>
+  <dest>
+    *: none
+    agc: "AGC čas klipu"
+  </dest>
+  <voice>
+    *: none
+    agc: "AGC čas klipu"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_RECORDING_AGC_MAXGAIN
+  desc: AGC maximum gain in recording screen
+  user: core
+  <source>
+    *: none
+    agc: "AGC max. gain"
+  </source>
+  <dest>
+    *: none
+    agc: "AGC max. zisk"
+  </dest>
+  <voice>
+    *: none
+    agc: "AGC maximální zisk"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_RECORDING_FILENAME
+  desc: Filename header in recording screen
+  user: core
+  <source>
+    *: none
+    recording: "Filename:"
+  </source>
+  <dest>
+    *: none
+    recording: "Soubor:"
+  </dest>
+  <voice>
+    *: none
+    recording: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_PM_CLIPCOUNT
+  desc: in recording GUI, for recording peak meter. MAX 5 characters!
+  user: core
+  <source>
+    *: none
+    recording: "CLIP:"
+  </source>
+  <dest>
+    *: none
+    recording: "KLIP:"
+  </dest>
+  <voice>
+    *: none
+    recording: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_RECORDING_TIMESPLIT_REC
+  desc: Display of record timer interval setting, on the record screen
+  user: core
+  <source>
+    *: none
+    recording: "Split Time:"
+  </source>
+  <dest>
+    *: none
+    recording: "Čas rozdělení:"
+  </dest>
+  <voice>
+    *: none
+    recording: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_RECORDING_SIZE
+  desc: Display of recorded file size
+  user: core
+  <source>
+    *: none
+    recording: "Size:"
+  </source>
+  <dest>
+    *: none
+    recording: "Velikost:"
+  </dest>
+  <voice>
+    *: none
+    recording: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_ALBUMART
+  desc: deprecated
+  user:
+  <source>
+    *: none
+  </source>
+  <dest>
+    *: none
+  </dest>
+  <voice>
+    *: none
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_RECORDING_MONO_MODE
+  desc: in the recording settings
+  user: core
+  <source>
+    *: none
+    recording_swcodec: "Mono mode"
+  </source>
+  <dest>
+    *: none
+    recording_swcodec: "Mono mod"
+  </dest>
+  <voice>
+    *: none
+    recording_swcodec: "Mono mod"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_SEARCH_RESULTS
+  desc: title for the list of results displayed after searching in a playlist
+  user: core
+  <source>
+    *: "Search Results"
+  </source>
+  <dest>
+    *: "Výsledky hledání"
+  </dest>
+  <voice>
+    *: "Výsledky hledání"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_QS_ITEMS
+  desc: DEPRECATED
+  user: core
+  <source>
+    *: none
+    quickscreen: ""
+  </source>
+  <dest>
+    *: none
+    quickscreen: ""
+  </dest>
+  <voice>
+    *: none
+    quickscreen: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_LEFT
+  desc: Generic use of 'left'
+  user: core
+  <source>
+    *: "Left"
+  </source>
+  <dest>
+    *: "Levý"
+  </dest>
+  <voice>
+    *: "Levý"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_RIGHT
+  desc: Generic use of 'right
+  user: core
+  <source>
+    *: "Right"
+  </source>
+  <dest>
+    *: "Pravý"
+  </dest>
+  <voice>
+    *: "Pravý"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_BOTTOM
+  desc: DEPRECATED
+  user: core
+  <source>
+    *: none
+    quickscreen: ""
+  </source>
+  <dest>
+    *: none
+    quickscreen: ""
+  </dest>
+  <voice>
+    *: none
+    quickscreen: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_RESET_SETTING
+  desc: used in the settings context menu
+  user: core
+  <source>
+    *: "Reset Setting"
+  </source>
+  <dest>
+    *: "Resetovat nastavení"
+  </dest>
+  <voice>
+    *: "Resetovat nastavení"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_LEFT_QS_ITEM
+  desc: used for the submenu name for the quickscreen items
+  user: core
+  <source>
+    *: none
+    quickscreen: "Set as Left Quickscreen Item"
+  </source>
+  <dest>
+    *: none
+    quickscreen: "Nastavit jako levý quickscreen bod"
+  </dest>
+  <voice>
+    *: none
+    quickscreen: "Nastavit jako levý quickscreen bod"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_RIGHT_QS_ITEM
+  desc: used for the submenu name for the quickscreen items
+  user: core
+  <source>
+    *: none
+    quickscreen: "Set as Right Quickscreen Item"
+  </source>
+  <dest>
+    *: none
+    quickscreen: "Nastavit jako pravý quickscreen bod"
+  </dest>
+  <voice>
+    *: none
+    quickscreen: "Nastavit jako pravý quickscreen bod"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_BOTTOM_QS_ITEM
+  desc: used for the submenu name for the quickscreen items
+  user: core
+  <source>
+    *: none
+    quickscreen: "Set as Bottom Quickscreen Item"
+  </source>
+  <dest>
+    *: none
+    quickscreen: "Nastavit jako dolní quickscreen bod"
+  </dest>
+  <voice>
+    *: none
+    quickscreen: "Nastavit jako dolní quickscreen bod"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_CREDITS
+  desc: in the Main Menu -> System screen
+  user: core
+  <source>
+    *: "Credits"
+  </source>
+  <dest>
+    *: "Zásluhy"
+  </dest>
+  <voice>
+    *: "Zásluhy, neozvučené"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_SORT_INTERPRET_NUMBERS
+  desc: in Settings -> File view
+  user: core
+  <source>
+    *: "Interpret numbers when sorting"
+  </source>
+  <dest>
+    *: "Interpretovat čísla při třídění"
+  </dest>
+  <voice>
+    *: "Interpretovat čísla při třídění"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_SORT_INTERPRET_AS_DIGIT
+  desc: in Settings -> File view
+  user: core
+  <source>
+    *: "As digits"
+  </source>
+  <dest>
+    *: "Jako číslice"
+  </dest>
+  <voice>
+    *: "Jako číslice"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_SORT_INTERPRET_AS_NUMBERS
+  desc: in Settings -> File view
+  user: core
+  <source>
+    *: "As whole numbers"
+  </source>
+  <dest>
+    *: "Jako celá čísla"
+  </dest>
+  <voice>
+    *: "Jako celá čísla"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_ENABLE_SPEAKER
+  desc: in Settings -> Sound Settings
+  user: core
+  <source>
+    *: none
+    speaker: "Enable Speaker"
+  </source>
+  <dest>
+    *: none
+    speaker: "Povolit reproduktor"
+  </dest>
+  <voice>
+    *: none
+    speaker: "Povolit reproduktor"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_TOUCHSCREEN_MODE
+  desc: in Settings -> General -> Display -> Touchscreen Settings
+  user: core
+  <source>
+    *: none
+    touchscreen: "Touchscreen Mode"
+  </source>
+  <dest>
+    *: none
+    touchscreen: "Dotykový mód"
+  </dest>
+  <voice>
+    *: none
+    touchscreen: "Dotykový mód"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_TOUCHSCREEN_GRID
+  desc: in Settings -> General -> Display -> Touchscreen Settings
+  user: core
+  <source>
+    *: none
+    touchscreen: "3x3 Grid"
+  </source>
+  <dest>
+    *: none
+    touchscreen: "Mřížka 3x3"
+  </dest>
+  <voice>
+    *: none
+    touchscreen: "Mřížka 3 krát 3"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_TOUCHSCREEN_POINT
+  desc: in Settings -> General -> Display -> Touchscreen Settings
+  user: core
+  <source>
+    *: none
+    touchscreen: "Absolute Point"
+  </source>
+  <dest>
+    *: none
+    touchscreen: "Absolutní bod"
+  </dest>
+  <voice>
+    *: none
+    touchscreen: "Absolutní bod"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_PREVENT_SKIPPING
+  desc: in Settings -> Playback Settings
+  user: core
+  <source>
+    *: "Prevent Track Skipping"
+  </source>
+  <dest>
+    *: "Zabránit přeskakování skladeb"
+  </dest>
+  <voice>
+    *: "Zabránit přeskakování skladeb"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_TIMESTRETCH
+  desc: timestretch enable
+  user: core
+  <source>
+    *: none
+    swcodec: "Timestretch"
+  </source>
+  <dest>
+    *: none
+    swcodec: "Čas úseku"
+  </dest>
+  <voice>
+    *: none
+    swcodec: "Čas úseku"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_SPEED
+  desc: timestretch speed
+  user: core
+  <source>
+    *: none
+    swcodec: "Speed"
+  </source>
+  <dest>
+    *: none
+    swcodec: "Rychlost"
+  </dest>
+  <voice>
+    *: none
+    swcodec: "Rychlost"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_TOUCHSCREEN_SETTINGS
+  desc: in Settings -> General -> Display menu
+  user: core
+  <source>
+    *: none
+    touchscreen: "Touchscreen Settings"
+  </source>
+  <dest>
+    *: none
+    touchscreen: "Nastavení dotykové obrazovky"
+  </dest>
+  <voice>
+    *: none
+    touchscreen: "Nastavení dotykové obrazovky"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_TOUCHSCREEN_CALIBRATE
+  desc: in Settings -> General -> Display -> Touchscreen Settings
+  user: core
+  <source>
+    *: none
+    touchscreen: "Calibrate"
+  </source>
+  <dest>
+    *: none
+    touchscreen: "Kalibrace"
+  </dest>
+  <voice>
+    *: none
+    touchscreen: "Kalibrace"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_TOUCHSCREEN_RESET_CALIBRATION
+  desc: in Settings -> General -> Display -> Touchscreen Settings
+  user: core
+  <source>
+    *: none
+    touchscreen: "Reset Calibration"
+  </source>
+  <dest>
+    *: none
+    touchscreen: "Resetovat kalibraci"
+  </dest>
+  <voice>
+    *: none
+    touchscreen: "Resetovat kalibraci"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_STATUSBAR_TOP
+  desc: in Settings -> General -> Display -> statusbar
+  user: core
+  <source>
+    *: "Top"
+  </source>
+  <dest>
+    *: "Nahoře"
+  </dest>
+  <voice>
+    *: "Nahoře"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_STATUSBAR_BOTTOM
+  desc: in Settings -> General -> Display -> statusbar
+  user: core
+  <source>
+    *: "Bottom"
+  </source>
+  <dest>
+    *: "Dole"
+  </dest>
+  <voice>
+    *: "Dole"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_REMOTE_STATUSBAR
+  desc: in Settings -> General -> Display -> statusbar
+  user: core
+  <source>
+    *: none
+    remote: "Remote Statusbar"
+  </source>
+  <dest>
+    *: none
+    remote: "Vzdálený stavový řádek"
+  </dest>
+  <voice>
+    *: none
+    remote: "Vzdálený stavový řádek"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_SEMITONE
+  desc: 
+  user: core
+  <source>
+    *: none
+    pitchscreen: "Semitone"
+  </source>
+  <dest>
+    *: none
+    pitchscreen: "Půltón"
+  </dest>
+  <voice>
+    *: none
+    pitchscreen: "Půltón"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_STRETCH_LIMIT
+  desc: "limit" in pitch screen
+  user: core
+  <source>
+    *: none
+    pitchscreen: "Limit"
+  </source>
+  <dest>
+    *: none
+    pitchscreen: "Limit"
+  </dest>
+  <voice>
+    *: none
+    pitchscreen: "Limit"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_PLAYBACK_RATE
+  desc: "rate" in pitch screen
+  user: core
+  <source>
+    *: none
+    pitchscreen: "Rate"
+  </source>
+  <dest>
+    *: none
+    pitchscreen: "Rychlost"
+  </dest>
+  <voice>
+    *: none
+    pitchscreen: "Rychlost"
+ </voice>
+</phrase>
+<phrase>
+  id: LANG_USB_KEYPAD_MODE
+  desc: in settings_menu
+  user: core
+  <source>
+    *: none
+    usb_hid: "USB Keypad Mode"
+  </source>
+  <dest>
+    *: none
+    usb_hid: "Režim USB klávesnice"
+  </dest>
+  <voice>
+    *: none
+    usb_hid: "Režim USB klávesnice"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_MULTIMEDIA_MODE
+  desc: in settings_menu
+  user: core
+  <source>
+    *: none
+    usb_hid: "Multimedia Mode"
+  </source>
+  <dest>
+    *: none
+    usb_hid: "Multimediální režim"
+  </dest>
+  <voice>
+    *: none
+    usb_hid: "Multimediální režim"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_PRESENTATION_MODE
+  desc: in settings_menu
+  user: core
+  <source>
+    *: none
+    usb_hid: "Presentation Mode"
+  </source>
+  <dest>
+    *: none
+    usb_hid: "Prezentační režim"
+  </dest>
+  <voice>
+    *: none
+    usb_hid: "Prezentační režim"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_BROWSER_MODE
+  desc: in settings_menu
+  user: core
+  <source>
+    *: none
+    usb_hid: "Browser Mode"
+  </source>
+  <dest>
+    *: none
+    usb_hid: "Prohlížecí režim"
+  </dest>
+  <voice>
+    *: none
+    usb_hid: "Prohlížecí režim"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_MOUSE_MODE
+  desc: in settings_menu
+  user: core
+  <source>
+    *: none
+    usb_hid: "Mouse Mode"
+  </source>
+  <dest>
+    *: none
+    usb_hid: "Režim myši"
+  </dest>
+  <voice>
+    *: none
+    usb_hid: "Režim myši"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_SKIN_RAM_USAGE
+  desc: how much RAM the skins are using
+  user: core
+  <source>
+    *: "Skin RAM usage:"
+  </source>
+  <dest>
+    *: "Využití RAM pro skiny:"
+  </dest>
+  <voice>
+    *: "Využití RAM pro skiny"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_SCROLLBAR_WIDTH
+  desc: in Settings -> General -> Display -> Status-/Scrollbar
+  user: core
+  <source>
+    *: none
+    lcd_bitmap: "Scroll Bar Width"
+  </source>
+  <dest>
+    *: none
+    lcd_bitmap: "Šířka přetáčecí lišty"
+  </dest>
+  <voice>
+    *: none
+    lcd_bitmap: "Šířka přetáčecí lišty"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_SCROLLBAR_POSITION
+  desc: in Settings -> General -> Display -> Status-/Scrollbar
+  user: core
+  <source>
+    *: none
+    lcd_bitmap: "Scroll Bar Position"
+  </source>
+  <dest>
+    *: none
+    lcd_bitmap: "Pozice přetáčecí lišty"
+  </dest>
+  <voice>
+    *: none
+    lcd_bitmap: "Pozice přetáčecí lišty"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_COMPRESSOR
+  desc: in sound settings
+  user: core
+  <source>
+    *: none
+    swcodec: "Compressor"
+  </source>
+  <dest>
+    *: none
+    swcodec: "Kompresor"
+  </dest>
+  <voice>
+    *: none
+    swcodec: "Kompresor"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_TOP_QS_ITEM
+  desc: used for the submenu name for the quickscreen items
+  user: core
+  <source>
+    *: none
+    quickscreen: "Set as Top Quickscreen Item"
+  </source>
+  <dest>
+    *: none
+    quickscreen: "Nastavit jako horníní quickscreen bod"
+  </dest>
+  <voice>
+    *: none
+    quickscreen: "Nastavit jako horníní quickscreen bod"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_FM_ITALY
+  desc: fm region Italy
+  user: core
+  <source>
+    *: none
+    radio: "Italy"
+  </source>
+  <dest>
+    *: none
+    radio: "Itálie"
+  </dest>
+  <voice>
+    *: none
+    radio: "Itálie"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_FM_OTHER
+  desc: Catch-all FM region. Select if none of the others work
+  user: core
+  <source>
+    *: none
+    radio: "Other"
+  </source>
+  <dest>
+    *: none
+    radio: "Jiný"
+  </dest>
+  <voice>
+    *: none
+    radio: "Jiný"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_COMPRESSOR_THRESHOLD
+  desc: in sound settings
+  user: core
+  <source>
+    *: none
+    swcodec: "Threshold"
+  </source>
+  <dest>
+    *: none
+    swcodec: "Prahová hodnota"
+  </dest>
+  <voice>
+    *: none
+    swcodec: "Prahová hodnota"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_COMPRESSOR_RATIO
+  desc: in sound settings
+  user: core
+  <source>
+    *: none
+    swcodec: "Ratio"
+  </source>
+  <dest>
+    *: none
+    swcodec: "Poměr"
+  </dest>
+  <voice>
+    *: none
+    swcodec: "Poměr"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_COMPRESSOR_RATIO_2
+  desc: in sound settings
+  user: core
+  <source>
+    *: none
+    swcodec: "2:1"
+  </source>
+  <dest>
+    *: none
+    swcodec: "2:1"
+  </dest>
+  <voice>
+    *: none
+    swcodec: "dvě ku jedné"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_COMPRESSOR_RATIO_4
+  desc: in sound settings
+  user: core
+  <source>
+    *: none
+    swcodec: "4:1"
+  </source>
+  <dest>
+    *: none
+    swcodec: "4:1"
+  </dest>
+  <voice>
+    *: none
+    swcodec: "čtyři ku jedné"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_COMPRESSOR_RATIO_6
+  desc: in sound settings
+  user: core
+  <source>
+    *: none
+    swcodec: "6:1"
+  </source>
+  <dest>
+    *: none
+    swcodec: "6:1"
+  </dest>
+  <voice>
+    *: none
+    swcodec: "šest ku jedné"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_COMPRESSOR_RATIO_10
+  desc: in sound settings
+  user: core
+  <source>
+    *: none
+    swcodec: "10:1"
+  </source>
+  <dest>
+    *: none
+    swcodec: "10:1"
+  </dest>
+  <voice>
+    *: none
+    swcodec: "deset ku jedné"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_COMPRESSOR_RATIO_LIMIT
+  desc: in sound settings
+  user: core
+  <source>
+    *: none
+    swcodec: "Limit"
+  </source>
+  <dest>
+    *: none
+    swcodec: "Limit"
+  </dest>
+  <voice>
+    *: none
+    swcodec: "Limit"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_COMPRESSOR_GAIN
+  desc: in sound settings
+  user: core
+  <source>
+    *: none
+    swcodec: "Makeup Gain"
+  </source>
+  <dest>
+    *: none
+    swcodec: "Úprava zesílení"
+  </dest>
+  <voice>
+    *: none
+    swcodec: "Úprava zesílení"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_AUTO
+  desc: in sound settings
+  user: core
+  <source>
+    *: none
+    swcodec: "Auto"
+  </source>
+  <dest>
+    *: none
+    swcodec: "Automaticky"
+  </dest>
+  <voice>
+    *: none
+    swcodec: "Automaticky"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_COMPRESSOR_KNEE
+  desc: in sound settings
+  user: core
+  <source>
+    *: none
+    swcodec: "Knee"
+  </source>
+  <dest>
+    *: none
+    swcodec: "Ohnutí"
+  </dest>
+  <voice>
+    *: none
+    swcodec: "Ohnutí"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_COMPRESSOR_HARD_KNEE
+  desc: in sound settings
+  user: core
+  <source>
+    *: none
+    swcodec: "Hard Knee"
+  </source>
+  <dest>
+    *: none
+    swcodec: "Tvrdé ohnutí"
+  </dest>
+  <voice>
+    *: none
+    swcodec: "Tvrdé ohnutí"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_COMPRESSOR_SOFT_KNEE
+  desc: in sound settings
+  user: core
+  <source>
+    *: none
+    swcodec: "Soft Knee"
+  </source>
+  <dest>
+    *: none
+    swcodec: "Měkké ohnutí"
+  </dest>
+  <voice>
+    *: none
+    swcodec: "Měkké ohnutí"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_COMPRESSOR_RELEASE
+  desc: in sound settings
+  user: core
+  <source>
+    *: none
+    swcodec: "Release Time"
+  </source>
+  <dest>
+    *: none
+    swcodec: "Uvolnit čas"
+  </dest>
+  <voice>
+    *: none
+    swcodec: "Uvolnit čas"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_SKIP_OUTRO
+  desc: skipping to the 5 seconds before the end of a track
+  user: core
+  <source>
+    *: "Skip to Outro"
+  </source>
+  <dest>
+    *: "Přeskočit na závěr"
+  </dest>
+  <voice>
+    *: "Přeskočit na závěr"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_STATUSBAR_CUSTOM
+  desc: if this translation is compatible with LANG_CHANNEL_CUSTOM, then please use the same translation. it can be combined later then
+  user: core
+  <source>
+    *: "Custom"
+  </source>
+  <dest>
+    *: "Vlastní"
+  </dest>
+  <voice>
+    *: "Vlastní"
+  </voice>
+</phrase>
+<phrase>
+  id: VOICE_EXT_SBS
+  desc: spoken only, for file extension
+  user: core
+  <source>
+    *: ""
+  </source>
+  <dest>
+    *: ""
+  </dest>
+  <voice>
+    *: "vzhled statusbáru"
+  </voice>
+</phrase>
+<phrase>
+  id: VOICE_EXT_RSBS
+  desc: spoken only, for file extension
+  user: core
+  <source>
+    *: ""
+  </source>
+  <dest>
+    *: ""
+  </dest>
+  <voice>
+    *: "vzhled vzdáleného statusbáru"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_CUSTOM_STATUSBAR
+  desc: deprecated
+  user:
+  <source>
+    *: none
+  </source>
+  <dest>
+    *: none
+  </dest>
+  <voice>
+    *: none
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_REMOTE_CUSTOM_STATUSBAR
+  desc: deprecated
+  user:
+  <source>
+    *: none
+  </source>
+  <dest>
+    *: none
+  </dest>
+  <voice>
+    *: none
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_USB_HID
+  desc: in settings_menu
+  user: core
+  <source>
+    *: none
+    usb_hid: "USB HID"
+  </source>
+  <dest>
+    *: none
+    usb_hid: "USB HID"
+  </dest>
+  <voice>
+    *: none
+    usb_hid: "USB externí zařízení"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_INSERT_LAST_SHUFFLED
+  desc: in onplay menu.  insert a playlist randomly at end of dynamic playlist
+  user: core
+  <source>
+    *: "Insert Last Shuffled"
+  </source>
+  <dest>
+    *: "Vložit náhodně jako poslední"
+  </dest>
+  <voice>
+    *: "Vložit náhodně jako poslední"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_QUEUE_LAST_SHUFFLED
+  desc: in onplay menu.  queue a playlist randomly at end of dynamic playlist
+  user: core
+  <source>
+    *: "Queue Last Shuffled"
+  </source>
+  <dest>
+    *: "Zařadit do fronty náhodně jako poslední"
+  </dest>
+  <voice>
+    *: "Zařadit do fronty náhodně jako poslední"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_MORSE_INPUT
+  desc: in Settings -> System
+  user: core
+  <source>
+    *: none
+    morse_input: "Use Morse Code Input"
+  </source>
+  <dest>
+    *: none
+    morse_input: "Používat vstup morseovkou"
+  </dest>
+  <voice>
+    *: none
+    morse_input: "Používat vstup morseovkou"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_AUTOTRACKSKIP
+  desc: in crossfade settings
+  user: core
+  <source>
+    *: none
+    crossfade: "Automatic Track Change Only"
+  </source>
+  <dest>
+    *: none
+    crossfade: "Automatická změna pouze stopy"
+  </dest>
+  <voice>
+    *: none
+    crossfade: "Automatická změna pouze stopy"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_NEXT_TRACK
+  desc: Shown in WPS
+  user: core
+  <source>
+    *: "Next Track:"
+  </source>
+  <dest>
+    *: "Další stopa:"
+  </dest>
+  <voice>
+    *: "Další stopa:"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_NEXT
+  desc: Shown in WPS (short form of Next Track)
+  user: core
+  <source>
+    *: "Next:"
+  </source>
+  <dest>
+    *: "Další:"
+  </dest>
+  <voice>
+    *: "Další:"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_OF
+  desc: Shown in WPS: X of Y (tracks)
+  user: core
+  <source>
+    *: "of"
+  </source>
+  <dest>
+    *: "z"
+  </dest>
+  <voice>
+    *: "z celkem"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_BASE_SKIN
+  desc: browse for the base skin in theme settings
+  user: core
+  <source>
+    *:none
+    lcd_bitmap: "Base Skin"
+  </source>
+  <dest>
+    *:none
+    lcd_bitmap: "Základní vzhled"
+  </dest>
+  <voice>
+    *:none
+    lcd_bitmap: "Základní vzhled"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_REMOTE_BASE_SKIN
+  desc: browse for the base skin in theme settings
+  user: core
+  <source>
+    *:none
+    lcd_bitmap: "Remote Base Skin"
+  </source>
+  <dest>
+    *:none
+    lcd_bitmap: "Základní vzdálený vzhled"
+  </dest>
+  <voice>
+    *:none
+    lcd_bitmap: "Základní vzdálený vzhled"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_MANTRACKSKIP
+  desc: in crossfade settings
+  user: core
+  <source>
+    *: none
+    crossfade: "Manual Track Skip Only"
+  </source>
+  <dest>
+    *: none
+    crossfade: "Pouze ruční posun po stopách"
+  </dest>
+  <voice>
+    *: none
+    crossfade: "Pouze ruční posun po stopách"
   </voice>
 </phrase>

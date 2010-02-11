@@ -56,7 +56,7 @@ static const struct button_mapping button_context_standard[]  = {
 }; /* button_context_standard */
 
 static const struct button_mapping button_context_wps[]  = {
-	{ ACTION_WPS_PLAY,		BUTTON_RC_PLAY|BUTTON_REL,	BUTTON_RC_PLAY },
+    { ACTION_WPS_PLAY,      BUTTON_RC_PLAY|BUTTON_REL,  BUTTON_RC_PLAY },
     { ACTION_WPS_STOP,      BUTTON_RC_DOWN|BUTTON_REL,  BUTTON_RC_DOWN },
 
     { ACTION_WPS_SKIPNEXT,  BUTTON_RC_FF|BUTTON_REL,    BUTTON_RC_FF },
@@ -238,6 +238,7 @@ const struct button_mapping* target_get_context_mapping(int context)
         case CONTEXT_PITCHSCREEN:
             return button_context_pitchscreen;
         case CONTEXT_KEYBOARD:
+        case CONTEXT_MORSE_INPUT:
             return button_context_keyboard;
     }
     return button_context_standard;

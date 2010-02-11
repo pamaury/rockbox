@@ -292,6 +292,25 @@ remap_end:
 
     /* Switch back to supervisor mode */
     msr     cpsr_c, #0xd3
+
+#ifndef BOOTLOADER
+    /* Enable access to VFP */
+    mrc     p15, 0, r3, c1, c0, 2
+    orr     r3, r3, #0xf00000
+    mcr     p15, 0, r3, c1, c0, 2
+    
+    /* Enable VFP */
+    mrc     p10, 7, r3, c8, c0, 0
+    orr     r3, r3, #1<<30
+    mcr     p10, 7, r3, c8, c0, 0
+
+    /* Disable exceptions, enable default NaN, flush-to-zero, round toward 0 */
+    mrc     p10, 7, r3, c1, c0, 0
+    orr     r3, r3, #15<<22
+    bic     r3, r3, #31<<8
+    mcr     p10, 7, r3, c1, c0, 0
+#endif
+    
     bl      main
 
 #ifdef BOOTLOADER
@@ -322,7 +341,7 @@ remap_end:
  * we're in. Second parameter is exception number, used for a string lookup
  * in UIE. */
 undef_instr_handler:
-    mov    r0, lr
+    sub    r0, lr, #4
     mov    r1, #0
     b      UIE
 

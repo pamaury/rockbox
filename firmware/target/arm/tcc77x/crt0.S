@@ -48,9 +48,9 @@ start:
 
        The following two values are filled in by mktccboot.
      */
-of_entrypoint:	.word  0   /* Saved entrypoint of original firmware*/
-bl_entrypoint:	.word  0   /* Location in RAM of the start of our bootloader */
-	
+of_entrypoint:  .word  0   /* Saved entrypoint of original firmware*/
+bl_entrypoint:  .word  0   /* Location in RAM of the start of our bootloader */
+    
 #else
 //    ldr    pc, =start_loc    /* jump to the main entry point  */
     b       start_loc
@@ -218,7 +218,7 @@ vectors_end:
    in UIE.
  */
 undef_instr_handler:
-    mov    r0, lr
+    sub    r0, lr, #4
     mov    r1, #0
     b      UIE
 

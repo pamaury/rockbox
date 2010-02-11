@@ -161,7 +161,8 @@ void fiq_handler(void)
     );
 }
 
-#ifdef BOOTLOADER
+#if (CONFIG_CPU == AS3525) /* not v2 */
+#if defined(BOOTLOADER)
 static void sdram_delay(void)
 {
     int delay = 1024; /* arbitrary */
@@ -171,7 +172,7 @@ static void sdram_delay(void)
 /* Use the same initialization than OF */
 static void sdram_init(void)
 {
-    CGU_PERI |= (1<<26)|(1<<27); /* extmem & extmem intf clocks */
+    CGU_PERI |= (CGU_EXTMEM_CLOCK_ENABLE|CGU_EXTMEMIF_CLOCK_ENABLE);
 
     MPMC_CONTROL = 0x1; /* enable MPMC */
 
@@ -205,7 +206,8 @@ static void sdram_init(void)
 /* 16 bits external bus, low power SDRAM, 16 Mbits = 2 Mbytes */
 #define MEMORY_MODEL 0x21
 
-#elif defined(SANSA_E200V2) || defined(SANSA_FUZE)
+#elif defined(SANSA_E200V2) || defined(SANSA_FUZE) || defined(SANSA_CLIPV2) \
+    || defined(SANSA_CLIPPLUS)
 /* 16 bits external bus, high performance SDRAM, 64 Mbits = 8 Mbytes */
 #define MEMORY_MODEL 0x5
 
@@ -232,7 +234,7 @@ static void sdram_init(void)
 
     MPMC_DYNAMIC_CONFIG_0 |= (1<<19); /* buffer enable */
 }
-#else
+#else   /* !BOOTLOADER */
 void memory_init(void)
 {
     ttb_init();
@@ -252,10 +254,26 @@ void memory_init(void)
 
     enable_mmu();
 }
-#endif
+#endif /* BOOTLOADER */
+#endif /* CONFIG_CPU == AS3525 (not v2) */
 
 void system_init(void)
 {
+#if CONFIG_CPU == AS3525v2
+    /* Init procedure isn't fully understood yet
+     * CCU_* registers differ from AS3525
+     */
+    unsigned int reset_loops = 640;
+
+    CCU_SRC = 0x57D7BF0;
+    while(reset_loops--)
+        CCU_SRL = CCU_SRL_MAGIC_NUMBER;
+    CCU_SRC = CCU_SRL = 0;
+
+    CGU_PERI &= ~0x7f;      /* pclk 24 MHz */
+    CGU_PERI |= ((CLK_DIV(AS3525_PLLA_FREQ, AS3525_PCLK_FREQ) - 1) << 2)
+                | 1; /* clk_in = PLLA */
+#else
     unsigned int reset_loops = 640;
 
     CCU_SRC = 0x1fffff0
@@ -270,15 +288,22 @@ void system_init(void)
     CGU_PROC = 0;           /* fclk 24 MHz */
     CGU_PERI &= ~0x7f;      /* pclk 24 MHz */
 
+    CGU_PLLASUP = 0;        /* enable PLLA */
     CGU_PLLA = AS3525_PLLA_SETTING;
     while(!(CGU_INTCTRL & (1<<0)));           /* wait until PLLA is locked */
+    
+#if (AS3525_MCLK_SEL == AS3525_CLK_PLLB)
+    CGU_PLLBSUP = 0;        /* enable PLLB */
+    CGU_PLLB = AS3525_PLLB_SETTING;
+    while(!(CGU_INTCTRL & (1<<1)));           /* wait until PLLB is locked */
+#endif
 
     /*  Set FCLK frequency */
     CGU_PROC = ((AS3525_FCLK_POSTDIV << 4) |
                 (AS3525_FCLK_PREDIV  << 2) |
                  AS3525_FCLK_SEL);
     /*  Set PCLK frequency */
-    CGU_PERI = ((CGU_PERI & 0xffffff80)  |    /* reset divider bits 0:6 */
+    CGU_PERI = ((CGU_PERI & ~0x7F)  |       /* reset divider bits 0:6 */
                  (AS3525_PCLK_DIV0 << 2) |
                  (AS3525_PCLK_DIV1 << 6) |
                   AS3525_PCLK_SEL);
@@ -292,6 +317,8 @@ void system_init(void)
 #ifdef BOOTLOADER
     sdram_init();
 #endif  /* BOOTLOADER */
+
+#endif /* CONFIG_CPU == AS3525v2 */
 
 #if 0 /* the GPIO clock is already enabled by the dualboot function */
     CGU_PERI |= CGU_GPIO_CLOCK_ENABLE;
@@ -345,12 +372,14 @@ void set_cpu_frequency(long frequency)
 {
     if(frequency == CPUFREQ_MAX)
     {
+#ifdef HAVE_ADJUSTABLE_CPU_VOLTAGE
         /* Increasing frequency so boost voltage before change */
         ascodec_write(AS3514_CVDD_DCDC3, (AS314_CP_DCDC3_SETTING | CVDD_1_20));
 
         /* Some players run a bit low so use 1.175 volts instead of 1.20  */
         /* Wait for voltage to be at least 1.175v before making fclk > 200 MHz */
         while(adc_read(ADC_CVDD) < 470); /* 470 * .0025 = 1.175V */
+#endif  /*  HAVE_ADJUSTABLE_CPU_VOLTAGE */
 
         asm volatile(
             "mrc p15, 0, r0, c1, c0  \n"
@@ -375,8 +404,10 @@ void set_cpu_frequency(long frequency)
             "mcr p15, 0, r0, c1, c0  \n"
             : : : "r0" );
 
+#ifdef HAVE_ADJUSTABLE_CPU_VOLTAGE
         /* Decreasing frequency so reduce voltage after change */
         ascodec_write(AS3514_CVDD_DCDC3, (AS314_CP_DCDC3_SETTING | CVDD_1_10));
+#endif  /*  HAVE_ADJUSTABLE_CPU_VOLTAGE */
 
         cpu_frequency = CPUFREQ_NORMAL;
     }

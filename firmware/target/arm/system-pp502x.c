@@ -143,7 +143,7 @@ void __attribute__((interrupt("IRQ"))) irq_handler(void)
                 usb_insert_int();
         }
 /* end PHILIPS_SA9200 */
-#elif defined(PHILIPS_HDD1630)
+#elif defined(PHILIPS_HDD1630) || defined(PHILIPS_HDD6330)
         else if (CPU_HI_INT_STAT & GPIO0_MASK) {
             if (GPIOA_INT_STAT & 0x20)
                 button_int();
@@ -152,13 +152,23 @@ void __attribute__((interrupt("IRQ"))) irq_handler(void)
             if (GPIOE_INT_STAT & 0x04)
                 usb_insert_int();
         }
-/* end PHILIPS_HDD1630 */
+/* end PHILIPS_HDD1630 || PHILIPS_HDD6330 */
 #elif defined(SAMSUNG_YH820) || defined(SAMSUNG_YH920) || defined(SAMSUNG_YH925)
         else if (CPU_HI_INT_STAT & GPIO0_MASK) {
             if (GPIOD_INT_STAT & 0x10)
                 usb_insert_int();
         }
 /* end SAMSUNG_YHxxx */
+#elif defined(PBELL_VIBE500)
+        else if (CPU_HI_INT_STAT & GPIO0_MASK) {
+            if (GPIOA_INT_STAT & 0x20)
+                button_int();
+        }
+        else if (CPU_HI_INT_STAT & GPIO2_MASK) {
+            if (GPIOL_INT_STAT & 0x04)
+                usb_insert_int();
+        }
+/* end PBELL_VIBE500 */
 #endif
 #ifdef IPOD_ACCESSORY_PROTOCOL
         else if (CPU_HI_INT_STAT & SER0_MASK) {
@@ -460,6 +470,8 @@ void system_init(void)
 #elif defined (MROBE_100)
         /* to be done */
 #elif defined (TATUNG_TPJ1022)
+        /* to be done */
+#elif defined(PBELL_VIBE500)
         /* to be done */
 #endif
 

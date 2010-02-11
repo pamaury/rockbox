@@ -65,7 +65,7 @@ QMAKE_EXTRA_TARGETS += lrelease
 
 SOURCES += rbutilqt.cpp \
  main.cpp \
- install.cpp \
+ installwindow.cpp \
  base/httpget.cpp \
  configure.cpp \
  zip/zip.cpp \
@@ -97,6 +97,8 @@ SOURCES += rbutilqt.cpp \
  base/voicefile.cpp \
  createvoicewindow.cpp \
  base/rbsettings.cpp \
+ base/serverinfo.cpp \
+ base/systeminfo.cpp \
  base/rbunzip.cpp \
  base/rbzip.cpp \
  base/system.cpp \
@@ -115,7 +117,7 @@ SOURCES += rbutilqt.cpp \
  ../../tools/iriver.c \
 
 HEADERS += rbutilqt.h \
- install.h \
+ installwindow.h \
  base/httpget.h \
  configure.h \
  zip/zip.h \
@@ -158,6 +160,8 @@ HEADERS += rbutilqt.h \
  base/voicefile.h \
  createvoicewindow.h \
  base/rbsettings.h \
+ base/serverinfo.h \
+ base/systeminfo.h \
  base/rbunzip.h \
  base/rbzip.h \
  sysinfo.h \
@@ -226,10 +230,13 @@ TRANSLATIONS += lang/rbutil_cs.ts \
  lang/rbutil_fr.ts \
  lang/rbutil_gr.ts \
  lang/rbutil_he.ts \
+ lang/rbutil_it.ts \
  lang/rbutil_ja.ts \
  lang/rbutil_nl.ts \
+ lang/rbutil_pl.ts \
  lang/rbutil_pt.ts \
  lang/rbutil_pt_BR.ts \
+ lang/rbutil_ru.ts \
  lang/rbutil_tr.ts \
  lang/rbutil_zh_CN.ts \
  lang/rbutil_zh_TW.ts \
@@ -269,7 +276,7 @@ macx {
     QMAKE_LFLAGS_PPC=-mmacosx-version-min=10.4 -arch ppc
     QMAKE_LFLAGS_X86=-mmacosx-version-min=10.4 -arch i386
     CONFIG+=x86 ppc
-    LIBS += -L/usr/local/lib -framework IOKit -lz
+    LIBS += -L/usr/local/lib -framework IOKit -framework CoreFoundation -lz
     INCLUDEPATH += /usr/local/include
     QMAKE_INFO_PLIST = Info.plist
     RC_FILE = icons/rbutilqt.icns

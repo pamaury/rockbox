@@ -7159,15 +7159,15 @@
   user: core
   <source>
     *: none
-    usb_charging: "Charge During USB Connection"
+    usb_charging_enable: "Charge During USB Connection"
   </source>
   <dest>
     *: none
-    usb_charging: "Charge During USB Connection"
+    usb_charging_enable: "Charge During USB Connection"
   </dest>
   <voice>
     *: none
-    usb_charging: "Charge During U S B Connection"
+    usb_charging_enable: "Charge During U S B Connection"
   </voice>
 </phrase>
 <phrase>
@@ -12437,23 +12437,6 @@
   <voice>
     *: none
     remote: "Remote Statusbar"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_COMPRESSOR
-  desc: in sound settings
-  user: core
-  <source>
-    *: none
-    swcodec: "Compressor"
-  </source>
-  <dest>
-    *: none
-    swcodec: "Compressor"
-  </dest>
-  <voice>
-    *: none
-    swcodec: "Compressor"
   </voice>
 </phrase>
 <phrase>

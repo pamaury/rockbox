@@ -291,9 +291,10 @@
   user: core
   <source>
     *: "PLAY = Yes"
-    cowond2*: "MENU = Yes"
+    cowond2*: "MENU, or top-right = Yes"
     iriverh100,iriverh120,iriverh300: "NAVI = Yes"
     samsungyh*,ipod*,iaudiox5,iaudiom5,gigabeat*,sansae200*,sansac200*,iriverh10,iriverh10_5gb,mrobe100,sansaclip*,sansafuze*: "SELECT = Yes"
+    mrobe500: "PLAY, POWER, or top-right = Yes"
     archosplayer: "(PLAY/STOP)"
   </source>
   <dest>
@@ -8295,15 +8296,15 @@
   user: core
   <source>
     *: none
-    usb_charging: "Charge During USB Connection"
+    usb_charging_enable: "Charge During USB Connection"
   </source>
   <dest>
     *: none
-    usb_charging: "Charger quand USB connecté"
+    usb_charging_enable: "Charger quand USB connecté"
   </dest>
   <voice>
     *: none
-    usb_charging: "Charger quand U S B connecté"
+    usb_charging_enable: "Charger quand U S B connecté"
   </voice>
 </phrase>
 <phrase>
@@ -13089,36 +13090,30 @@
 </phrase>
 <phrase>
   id: LANG_CUSTOM_STATUSBAR
-  desc: browse for custom statusbar in theme settings
-  user: core
+  desc: deprecated
+  user:
   <source>
-    *:none
-    lcd_bitmap: "Custom Statusbar"
+    *: none
   </source>
   <dest>
-    *:none
-    lcd_bitmap: "Barre d'état personnalisée"
+    *: none
   </dest>
   <voice>
-    *:none
-    lcd_bitmap: "Barre d'état personnalisée"
+    *: none
   </voice>
 </phrase>
 <phrase>
   id: LANG_REMOTE_CUSTOM_STATUSBAR
-  desc: browse for remote custom statusbar in theme settings
-  user: core
+  desc: deprecated
+  user:
   <source>
-    *:none
-    remote: "Remote Custom Statusbar"
+    *: none
   </source>
   <dest>
-    *:none
-    remote: "Barre d'état personnalisée pour télécommande"
+    *: none
   </dest>
   <voice>
-    *:none
-    remote: "Barre d'état personnalisée pour télécommande"
+    *: none
   </voice>
 </phrase>
 <phrase>
@@ -13197,7 +13192,7 @@
   </dest>
   <voice>
     *: none
-    crossfade: "Seulement quand changement de piste automatique
+    crossfade: "Seulement quand changement de piste automatique"
   </voice>
 </phrase>
 <phrase>
@@ -13240,5 +13235,39 @@
   </dest>
   <voice>
     *: "sur"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_BASE_SKIN
+  desc: browse for the base skin in theme settings
+  user: core
+  <source>
+    *: none
+    lcd_bitmap: "Base Skin"
+  </source>
+  <dest>
+    *: none
+    lcd_bitmap: "Habillage"
+  </dest>
+  <voice>
+    *: none
+    lcd_bitmap: "Habillage"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_REMOTE_BASE_SKIN
+  desc: browse for the base skin in theme settings
+  user: core
+  <source>
+    *: none
+    lcd_bitmap: "Remote Base Skin"
+  </source>
+  <dest>
+    *: none
+    lcd_bitmap: "Habillage télécommande"
+  </dest>
+  <voice>
+    *: none
+    lcd_bitmap: "Habillage télécommande"
   </voice>
 </phrase>

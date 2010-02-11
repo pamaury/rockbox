@@ -29,6 +29,8 @@
 #include "system.h"
 #include "encttscfggui.h"
 #include "rbsettings.h"
+#include "serverinfo.h"
+#include "systeminfo.h"
 #include "utils.h"
 #include <stdio.h>
 #if defined(Q_OS_WIN32)
@@ -80,6 +82,7 @@ Config::Config(QWidget *parent,int index) : QDialog(parent)
     ui.proxyPass->setLayoutDirection(Qt::LeftToRight);
     ui.listLanguages->setLayoutDirection(Qt::LeftToRight);
     ui.cachePath->setLayoutDirection(Qt::LeftToRight);
+    ui.comboTts->setLayoutDirection(Qt::LeftToRight);
 
     this->setModal(true);
 
@@ -96,6 +99,7 @@ Config::Config(QWidget *parent,int index) : QDialog(parent)
     connect(ui.comboTts, SIGNAL(currentIndexChanged(int)), this, SLOT(updateTtsState(int)));
     connect(ui.treeDevices, SIGNAL(itemSelectionChanged()), this, SLOT(updateEncState()));
     connect(ui.testTTS,SIGNAL(clicked()),this,SLOT(testTts()));
+    connect(ui.showDisabled, SIGNAL(toggled(bool)), this, SLOT(showDisabled(bool)));
     setUserSettings();
     setDevices();
 }
@@ -279,20 +283,39 @@ void Config::updateCacheInfo(QString path)
 }
 
 
+void Config::showDisabled(bool show)
+{
+    qDebug() << "[Config] disabled targets shown:" << show;
+    if(show)
+        QMessageBox::warning(this, tr("Showing disabled targets"),
+                tr("You just enabled showing targets that are marked disabled. "
+                   "Disabled targets are not recommended to end users. Please "
+                   "use this option only if you know what you are doing."));
+    setDevices();
+
+}
+
+
 void Config::setDevices()
 {
 
     // setup devices table
     qDebug() << "[Config] setting up devices list";
 
-    QStringList platformList = RbSettings::platforms();
+    QStringList platformList;
+    if(ui.showDisabled->isChecked())
+        platformList = SystemInfo::platforms(SystemInfo::PlatformAllDisabled);
+    else
+        platformList = SystemInfo::platforms(SystemInfo::PlatformAll);
 
     QMap <QString, QString> manuf;
     QMap <QString, QString> devcs;
     for(int it = 0; it < platformList.size(); it++)
     {
-        QString curname = RbSettings::name(platformList.at(it));
-        QString curbrand = RbSettings::brand(platformList.at(it));
+        QString curname = SystemInfo::name(platformList.at(it)) +
+            " (" +ServerInfo::platformValue(platformList.at(it),
+                        ServerInfo::CurStatus).toString() + ")";
+        QString curbrand = SystemInfo::brand(platformList.at(it));
         manuf.insertMulti(curbrand, platformList.at(it));
         devcs.insert(platformList.at(it), curname);
     }
@@ -320,8 +343,9 @@ void Config::setDevices()
         // go through platforms again for sake of order
         for(int it = 0; it < platformList.size(); it++) {
 
-            QString curname = RbSettings::name(platformList.at(it));
-            QString curbrand = RbSettings::brand(platformList.at(it));
+            QString curname = SystemInfo::name(platformList.at(it)) +
+                " (" +ServerInfo::platformValue(platformList.at(it),ServerInfo::CurStatus).toString() +")";
+            QString curbrand = SystemInfo::brand(platformList.at(it));
 
             if(curbrand != brands.at(c)) continue;
             qDebug() << "[Config] add supported device:" << brands.at(c) << curname;
@@ -336,6 +360,14 @@ void Config::setDevices()
             items.append(w2);
         }
     }
+    // remove any old items in list
+    QTreeWidgetItem* widgetitem;
+    do {
+        widgetitem = ui.treeDevices->takeTopLevelItem(0);
+        delete widgetitem;
+    }
+    while(widgetitem);
+    // add new items
     ui.treeDevices->insertTopLevelItems(0, items);
     if(w3 != 0)
         ui.treeDevices->setCurrentItem(w3); // hilight old selection
@@ -381,10 +413,10 @@ void Config::updateEncState()
         return;
 
     QString devname = ui.treeDevices->selectedItems().at(0)->data(0, Qt::UserRole).toString();
-    QString encoder = RbSettings::platformValue(devname,
-                        RbSettings::CurEncoder).toString();
-    ui.encoderName->setText(EncBase::getEncoderName(RbSettings::platformValue(devname,
-                        RbSettings::CurEncoder).toString()));
+    QString encoder = SystemInfo::platformValue(devname,
+                        SystemInfo::CurEncoder).toString();
+    ui.encoderName->setText(EncBase::getEncoderName(SystemInfo::platformValue(devname,
+                        SystemInfo::CurEncoder).toString()));
 
     EncBase* enc = EncBase::getEncoder(this,encoder);
 
@@ -600,8 +632,8 @@ void Config::autodetect()
             QString text;
             text = tr("Detected an unsupported player:\n%1\n"
                       "Sorry, Rockbox doesn't run on your player.")
-                      .arg(RbSettings::platformValue(detector.incompatdev(),
-                                  RbSettings::CurName).toString());
+                      .arg(SystemInfo::platformValue(detector.incompatdev(),
+                                  SystemInfo::CurName).toString());
 
             QMessageBox::critical(this, tr("Fatal: player incompatible"),
                                   text, QMessageBox::Ok);
@@ -722,10 +754,10 @@ void Config::configEnc()
         return;
 
     QString devname = ui.treeDevices->selectedItems().at(0)->data(0, Qt::UserRole).toString();
-    QString encoder = RbSettings::platformValue(devname,
-                    RbSettings::CurEncoder).toString();
-    ui.encoderName->setText(EncBase::getEncoderName(RbSettings::platformValue(devname,
-                    RbSettings::CurEncoder).toString()));
+    QString encoder = SystemInfo::platformValue(devname,
+                    SystemInfo::CurEncoder).toString();
+    ui.encoderName->setText(EncBase::getEncoderName(SystemInfo::platformValue(devname,
+                    SystemInfo::CurEncoder).toString()));
 
 
     EncBase* enc = EncBase::getEncoder(this,encoder);

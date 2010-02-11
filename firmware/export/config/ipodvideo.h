@@ -149,7 +149,7 @@
 #define HAVE_USB_POWER
 
 /* define current usage levels */
-#define CURRENT_NORMAL     35  /* MP3: ~11h out of 400mAh battery (30GB) or ~17h out of 600mAh (60GB) */
+#define CURRENT_NORMAL     24  /* 30MHz clock, LCD off, accessory supply on */
 #define CURRENT_BACKLIGHT  20  /* FIXME: this needs adjusting */
 #if defined(HAVE_RECORDING)
 #define CURRENT_RECORD     35  /* FIXME: this needs adjusting */
@@ -224,3 +224,7 @@
 #define IPOD_ACCESSORY_PROTOCOL
 #define HAVE_SERIAL
 
+/* DMA is used only for reading on PP502x because although reads are ~8x faster
+ * writes appear to be ~25% slower.
+ */
+#define HAVE_ATA_DMA

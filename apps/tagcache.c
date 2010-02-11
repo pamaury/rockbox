@@ -772,9 +772,19 @@ static long check_virtual_tags(int tag, const struct index_entry *idx)
             }
             else
             {
-                data = 100 * idx->tag_seek[tag_playtime]
-                    / idx->tag_seek[tag_length]
-                    / idx->tag_seek[tag_playcount];
+                /* A straight calculus gives:
+                     autoscore = 100 * playtime / length / playcout (1)
+                   Now, consider the euclidian division of playtime by length:
+                     playtime = alpha * length + beta
+                   With:
+                     0 <= beta < length
+                   Now, (1) becomes:
+                     autoscore = 100 * (alpha / playcout + beta / length / playcount)
+                   Both terms should be small enough to avoid any overflow
+                */
+                data = 100 * (idx->tag_seek[tag_playtime] / idx->tag_seek[tag_length])
+                     + (100 * (idx->tag_seek[tag_playtime] % idx->tag_seek[tag_length])) / idx->tag_seek[tag_length];
+                data /=  idx->tag_seek[tag_playcount];
             }
             break;
         
@@ -3075,7 +3085,7 @@ static void command_queue_sync_callback(void *data)
     int masterfd;
         
     mutex_lock(&command_queue_mutex);
-	
+    
     if ( (masterfd = open_master_fd(&myhdr, true)) < 0)
         return;
     
@@ -4542,7 +4552,7 @@ void tagcache_init(void)
     create_thread(tagcache_thread, tagcache_stack,
                   sizeof(tagcache_stack), 0, tagcache_thread_name 
                   IF_PRIO(, PRIORITY_BACKGROUND)
-		          IF_COP(, CPU));
+                  IF_COP(, CPU));
 #else
     tc_stat.initialized = true;
     allocate_tempbuf();

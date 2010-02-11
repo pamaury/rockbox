@@ -135,12 +135,12 @@ void* plugin_get_buffer(size_t *buffer_size);
 #define PLUGIN_MAGIC 0x526F634B /* RocK */
 
 /* increase this every time the api struct changes */
-#define PLUGIN_API_VERSION 178
+#define PLUGIN_API_VERSION 180
 
 /* update this to latest version if a change to the api struct breaks
    backwards compatibility (and please take the opportunity to sort in any
    new function which are "waiting" at the end of the function table) */
-#define PLUGIN_MIN_API_VERSION 176
+#define PLUGIN_MIN_API_VERSION 180
 
 /* plugin return codes */
 enum plugin_status {
@@ -580,6 +580,7 @@ struct plugin_api {
     void (*pcm_play_pause)(bool play);
     size_t (*pcm_get_bytes_waiting)(void);
     void (*pcm_calculate_peaks)(int *left, int *right);
+    const void* (*pcm_get_peak_buffer)(int *count);
     void (*pcm_play_lock)(void);
     void (*pcm_play_unlock)(void);
 #ifdef HAVE_RECORDING
@@ -659,7 +660,7 @@ struct plugin_api {
 
     /* menu */
     int (*do_menu)(const struct menu_item_ex *menu, int *start_selected,
-                   struct viewport parent[NB_SCREENS], bool hide_bars);
+                   struct viewport parent[NB_SCREENS], bool hide_theme);
 
     /* scroll bar */
     struct gui_syncstatusbar *statusbars;
@@ -685,8 +686,8 @@ struct plugin_api {
     bool (*set_bool)(const char* string, const bool* variable );
 
 #ifdef HAVE_LCD_COLOR
-    bool (*set_color)(struct screen *display, char *title, unsigned *color,
-                   unsigned banned_color);
+    bool (*set_color)(struct screen *display, char *title,
+                      unsigned *color, unsigned banned_color);
 #endif
     /* action handling */
     int (*get_custom_action)(int context,int timeout,
@@ -860,6 +861,10 @@ struct plugin_api {
                                          struct viewport *viewport);
     void (*viewportmanager_theme_undo)(enum screen_type screen, bool force_redraw);
 #endif
+#if !defined(SIMULATOR) || defined(__MINGW32__) || defined(__CYGWIN__)
+    int* __errno;
+#endif
+    size_t (*strlcat)(char *dst, const char *src, size_t length);
 };
 
 /* plugin header */

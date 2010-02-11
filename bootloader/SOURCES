@@ -12,9 +12,9 @@ gigabeat-s.c
 #elif defined(IRIVER_H10) || defined(IRIVER_H10_5GB) || \
       defined(SANSA_E200) || defined(SANSA_C200) || \
       defined(MROBE_100)  || defined(PHILIPS_SA9200) || \
-      defined(PHILIPS_HDD1630) || defined(SAMSUNG_YH820) || \
-      defined(SAMSUNG_YH920) || defined(SAMSUNG_YH925) || \
-      defined(SANSA_VIEW)
+      defined(PHILIPS_HDD1630) || defined(PHILIPS_HDD6330) || \
+      defined(SAMSUNG_YH820) || defined(SAMSUNG_YH920) || \
+      defined(SAMSUNG_YH925) || defined(SANSA_VIEW)
 #ifdef E200R_INSTALLER
 main-e200r-installer.c
 #elif defined(C240_ERASE)
@@ -51,7 +51,7 @@ ondavx747.c
 show_logo.c
 #elif defined(CREATIVE_ZVx)
 creativezvm.c
-#elif CONFIG_CPU==AS3525
+#elif CONFIG_CPU==AS3525 || CONFIG_CPU==AS3525v2
 sansa_as3525.c
 show_logo.c
 #elif defined(LYRE_PROTO1)
@@ -59,5 +59,8 @@ lyre_proto1.c
 show_logo.c
 #elif defined(MINI2440)
 mini2440.c
+show_logo.c
+#elif defined(PBELL_VIBE500)
+pb_vibe500.c
 show_logo.c
 #endif

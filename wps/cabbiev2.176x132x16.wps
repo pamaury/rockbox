@@ -10,7 +10,7 @@
 %xl|D|shuffle-176x132x16.bmp|120|117|
 %xl|E|repeat-176x132x16.bmp|139|113|4|
 %xl|F|playmode-176x132x16.bmp|156|115|5|
-%Cl|9|16|s65|s65|
+%ax%Cl|9|16|s65|s65|
 %pb|pb-176x132x16.bmp|8|86|160|8|
 %?mh<%xdAa|%xdAb>
 %?bp<%?bc<%xdBa|%xdBb>|%?bl<|%xdBc|%xdBd|%xdBe|%xdBf|%xdBg|%xdBh|%xdBi|%xdBj>>
@@ -21,7 +21,7 @@
 %?C<%C%Vda|%Vdb>
 
 #NowPlaying
-%Vl|a|81|12|-|74|1|-|-|
+%ax%Vl|a|81|12|-|74|1|-|-|
 %s%al%?it<%it|%fn>
 %s%al%?ia<%ia|%?d2<%d2|(root)>>
 %s%al%?id<%id|%?d1<%d1|(root)>>
@@ -37,5 +37,5 @@
 %ac%Sx|Next Track:|
 %s%ac%?It<%It|%Fn>
 
-%V|0|96|-|12|1|-|-|
-%al   %pc%ac%pc%ac%?Sr<%pe %Sx|of| %pp|%pp %Sx|of| %pe>%ar%pr%ar%pr   
+%V|8|96|160|12|1|-|-|
+%al%pc%ac%pc%ac%?Sr<%pe %Sx|of| %pp|%pp %Sx|of| %pe>%ar%pr%ar%pr

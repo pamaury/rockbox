@@ -51,6 +51,17 @@ int gui_list_get_item_offset(struct gui_synclist * gui_list, int item_width,
                              struct viewport *vp);
 bool list_display_title(struct gui_synclist *list, enum screen_type screen);
 
+void gui_synclist_scroll_stop(struct gui_synclist *lists)
+{
+    int i;
+    FOR_NB_SCREENS(i)
+    {
+        screens[i].scroll_stop(&list_text[i]);
+        screens[i].scroll_stop(&title_text[i]);
+        screens[i].scroll_stop(lists->parent[i]);
+    }
+}
+
 /* Draw the list...
     internal screen layout:
         -----------------
@@ -113,7 +124,7 @@ void list_draw(struct screen *display, struct gui_synclist *list)
     const int screen = display->screen_type;
     const int list_start_item = list->start_item[screen];
     const int icon_width = get_icon_width(screen) + ICON_PADDING;
-    const int scrollbar_in_left = global_settings.scrollbar == SCROLLBAR_LEFT;
+    const bool scrollbar_in_left = (global_settings.scrollbar == SCROLLBAR_LEFT);
     const bool show_cursor = !global_settings.cursor_style &&
                         list->show_selection_marker;
     struct viewport *parent = (list->parent[screen]);
@@ -153,7 +164,8 @@ void list_draw(struct screen *display, struct gui_synclist *list)
         else
             vp.x += list_text_vp->width;
         display->set_viewport(&vp);
-        gui_scrollbar_draw(display, VP_IS_RTL(&vp) ? 1 : 0, 0, SCROLLBAR_WIDTH-1, vp.height,
+        gui_scrollbar_draw(display,
+                (scrollbar_in_left? 0: 1), 0, SCROLLBAR_WIDTH-1, vp.height,
                 list->nb_items, list_start_item, list_start_item + end-start,
                 VERTICAL);
     }

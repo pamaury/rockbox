@@ -24,10 +24,12 @@ dict,apps
 disktidy,apps
 doom,games
 euroconverter,apps
+fft,demos
 fire,demos
 fireworks,demos
 firmware_flash,apps
 flipit,games
+frotz,viewers
 goban,games
 greyscale,demos
 helloworld,demos
@@ -41,7 +43,7 @@ keybox,apps
 lamp,apps
 logo,demos
 lua,viewers
-mandelbrot,demos
+fractals,demos
 matrix,demos
 maze,games
 mazezam,games

@@ -32,7 +32,7 @@ struct nand_device_info_type
     uint16_t blocks;
     uint16_t userblocks;
     uint16_t pagesperblock;
-	uint8_t blocksizeexponent;
+    uint8_t blocksizeexponent;
     uint8_t tunk1;
     uint8_t twp;
     uint8_t tunk2;
@@ -49,6 +49,8 @@ uint32_t nand_block_erase(uint32_t bank, uint32_t page);
 const struct nand_device_info_type* nand_get_device_type(uint32_t bank);
 uint32_t nand_reset(uint32_t bank);
 uint32_t nand_device_init(void);
+void nand_set_active(void);
+long nand_last_activity(void);
 void nand_power_up(void);
 void nand_power_down(void);
 

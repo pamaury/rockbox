@@ -8268,22 +8268,22 @@
   </voice>
 </phrase>
 /* TODO: cleanup LANG_USB_CHARGING unless HAVE_USB_CHARGING_ENABLE defined,
- * the selector should probably be usb_charging_enable as well. */
+ * the selector should probably be usb_charging_enable_enable as well. */
 <phrase>
   id: LANG_USB_CHARGING
   desc: in Battery menu
   user: core
   <source>
     *: none
-    usb_charging: "Charge During USB Connection"
+    usb_charging_enable: "Charge During USB Connection"
   </source>
   <dest>
     *: none
-    usb_charging: "USB הטען סוללה בזמן חיבור"
+    usb_charging_enable: "USB הטען סוללה בזמן חיבור"
   </dest>
   <voice>
     *: none
-    usb_charging: "הטען סוללה בזמן חיבור U S B"
+    usb_charging_enable: "הטען סוללה בזמן חיבור U S B"
   </voice>
 </phrase>
 <phrase>
@@ -12612,7 +12612,7 @@
   user: core
   <source>
     *: none
-    usb_hid: "Multimedia"
+    usb_hid: "Multimedia Mode"
   </source>
   <dest>
     *: none
@@ -12629,7 +12629,7 @@
   user: core
   <source>
     *: none
-    usb_hid: "Presentation"
+    usb_hid: "Presentation Mode"
   </source>
   <dest>
     *: none
@@ -12646,7 +12646,7 @@
   user: core
   <source>
     *: none
-    usb_hid: "Browser"
+    usb_hid: "Browser Mode"
   </source>
   <dest>
     *: none
@@ -12663,7 +12663,7 @@
   user: core
   <source>
     *: none
-    usb_hid: "Mouse"
+    usb_hid: "Mouse Mode"
   </source>
   <dest>
     *: none
@@ -13069,36 +13069,30 @@
 </phrase>
 <phrase>
   id: LANG_CUSTOM_STATUSBAR
-  desc: browse for custom statusbar in theme settings
-  user: core
+  desc: deprecated
+  user:
   <source>
-    *:none
-    lcd_bitmap: "Custom Statusbar"
+    *: none
   </source>
   <dest>
-    *:none
-    lcd_bitmap: "שורת מצב מותאמת אישית"
+    *: none
   </dest>
   <voice>
-    *:none
-    lcd_bitmap: "שורת מצב מותאמת אישית"
+    *: none
   </voice>
 </phrase>
 <phrase>
   id: LANG_REMOTE_CUSTOM_STATUSBAR
-  desc: browse for remote custom statusbar in theme settings
-  user: core
+  desc: deprecated
+  user:
   <source>
-    *:none
-    remote: "Remote Custom Statusbar"
+    *: none
   </source>
   <dest>
-    *:none
-    remote: "שורת מצב בשלט מותאמת אישית"
+    *: none
   </dest>
   <voice>
-    *:none
-    remote: "שורת מצב בשלט מותאמת אישית"
+    *: none
   </voice>
 </phrase>
 <phrase>
@@ -13220,5 +13214,39 @@
   </dest>
   <voice>
     *: "מתוך"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_BASE_SKIN
+  desc: browse for the base skin in theme settings
+  user: core
+  <source>
+    *:none
+    lcd_bitmap: "Base Skin"
+  </source>
+  <dest>
+    *:none
+    lcd_bitmap: "Base Skin"
+  </dest>
+  <voice>
+    *:none
+    lcd_bitmap: "Base Skin"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_REMOTE_BASE_SKIN
+  desc: browse for the base skin in theme settings
+  user: core
+  <source>
+    *:none
+    lcd_bitmap: "Remote Base Skin"
+  </source>
+  <dest>
+    *:none
+    lcd_bitmap: "Remote Base Skin"
+  </dest>
+  <voice>
+    *:none
+    lcd_bitmap: "Remote Base Skin"
   </voice>
 </phrase>

@@ -63,7 +63,6 @@
 #include "settings_list.h"
 #include "filetypes.h"
 #include "option_select.h"
-#include "backdrop.h"
 #if CONFIG_TUNER
 #include "radio.h"
 #endif
@@ -787,6 +786,11 @@ void settings_apply_skins(void)
     }
 #endif
     viewportmanager_theme_changed(THEME_STATUSBAR);
+#if LCD_DEPTH > 1 || defined(HAVE_REMOTE_LCD) && LCD_REMOTE_DEPTH > 1
+    int i;
+    FOR_NB_SCREENS(i)
+        screens[i].backdrop_show(sb_get_backdrop(i));
+#endif
 }
 
 void settings_apply(bool read_disk)
@@ -796,8 +800,6 @@ void settings_apply(bool read_disk)
 #if CONFIG_CODEC == SWCODEC
     int i;
 #endif
-    int screen;
-
     sound_settings_apply();
 
 #ifdef HAVE_DISK_STORAGE
@@ -905,21 +907,6 @@ void settings_apply(bool read_disk)
         else
             load_kbd(NULL);
 #endif
-
-
-#if LCD_DEPTH > 1
-        if ( global_settings.backdrop_file[0] &&
-            global_settings.backdrop_file[0] != 0xff ) {
-            snprintf(buf, sizeof buf, BACKDROP_DIR "/%s.bmp",
-                    global_settings.backdrop_file);
-            backdrop_load(BACKDROP_MAIN, buf);
-        } else {
-            backdrop_unload(BACKDROP_MAIN);
-        }
-#endif
-
-        FOR_NB_SCREENS(screen)
-            screens[screen].backdrop_show(BACKDROP_MAIN);
 
         if ( global_settings.lang_file[0]) {
             snprintf(buf, sizeof buf, LANG_DIR "/%s.lng",

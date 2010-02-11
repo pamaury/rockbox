@@ -160,6 +160,7 @@ extern int gui_synclist_get_nb_items(struct gui_synclist * lists);
 extern int  gui_synclist_get_sel_pos(struct gui_synclist * lists);
 
 extern void gui_synclist_draw(struct gui_synclist * lists);
+extern void gui_synclist_scroll_stop(struct gui_synclist *lists);
 extern void gui_synclist_select_item(struct gui_synclist * lists,
                                      int item_number);
 extern void gui_synclist_add_item(struct gui_synclist * lists);
@@ -206,7 +207,7 @@ extern bool list_do_action(int context, int timeout,
 struct simplelist_info {
     char *title; /* title to show on the list */
     int  count; /* number of items in the list, each item is selection_size high */
-    char selection_size; /* list selection size, usually 1 */
+    int selection_size; /* list selection size, usually 1 */
     bool hide_selection;
     bool scroll_all;
     int  timeout;

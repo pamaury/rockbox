@@ -495,6 +495,12 @@ To turn on and off your Rockbox enabled \dap{} use the following keys:
 
 \label{ref:Safeshutdown}On shutdown, Rockbox automatically saves its settings.
 
+\opt{ipod4g,ipodcolor,ipodvideo,ipodnano,ipodmini}{%
+  A low-battery symbol may appear briefly on the screen during shutdown.  This
+  is a side effect of the shutdown process and does not mean the battery is
+  actually low.
+}%
+
 \opt{IRIVER_H100_PAD,IRIVER_H300_PAD,IAUDIO_X5_PAD,SANSA_E200_PAD%
   ,SANSA_C200_PAD,IRIVER_H10_PAD,IPOD_4G_PAD,GIGABEAT_PAD}{%
   If you have problems with your settings, such as accidentally having
@@ -578,9 +584,11 @@ To turn on and off your Rockbox enabled \dap{} use the following keys:
 
   \opt{sansaAMS}
     {
-    The player will boot into the original firmware if it is powered
-    by a USB connection. This feature may be removed in the future when
-    Rockbox is able to handle USB transfers natively.
+    The player will always boot into the original firmware if it is powered
+    by a USB connection, and additionally will do so if USB is inserted while
+    rockbox is running without holding \ActionStdUsbCharge{}. This feature may
+    be removed in the future when Rockbox is able to handle USB transfers 
+    natively.
     }
 
   \opt{mrobe100}
@@ -597,6 +605,8 @@ To turn on and off your Rockbox enabled \dap{} use the following keys:
     {
     Rockbox has a dual-boot feature. To boot into the original firmware,
     turn the \ButtonHold{} switch on just after turning on the \dap{}.
+    To return to Rockbox, shutdown the \dap{}, then turn the battery switch
+    on the bottom off then on again. Rockbox should now start.
     }
 
   \opt{cowond2}
@@ -702,6 +712,7 @@ all other settings that can be modified using \fname{.cfg} files. This topic
 is discussed in more detail in \reference{ref:manage_settings}.
 The Rockbox distribution comes with some themes that should look nice on
 your \dap{}.
+
 \opt{lcd_bitmap}{
 \note{Some of the themes shipped with Rockbox need additional
 fonts from the fonts package, so make sure you installed them.
@@ -710,9 +721,18 @@ have the needed fonts installed as otherwise the theme may not display
 properly.}
 }
 
-\opt{usb_charging}
-{
-    \section{Charging}
+\nopt{ondio}{
+  \opt{usb_power}{
+    \section{USB Charging}
+
+    The \dap{} can be charged over USB without connecting to your
+    computer by holding \ActionStdUsbCharge{} while plugging in. This
+    allows you to continue using the \dap{} normally.
+  }
+}
+
+\opt{ondio}{
+  \section{USB Power}
 
     The \dap{} can be powered over USB without connecting to your
     computer by holding \ActionStdUsbCharge{} while plugging in. This

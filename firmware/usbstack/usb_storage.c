@@ -71,7 +71,7 @@
 #define USB_BULK_RESET_REQUEST   0xff
 #define USB_BULK_GET_MAX_LUN     0xfe
 
-#define DIRECT_ACCESS_DEVICE	   0x00    /* disks */
+#define DIRECT_ACCESS_DEVICE     0x00    /* disks */
 #define DEVICE_REMOVABLE         0x80
 
 #define CBW_SIGNATURE            0x43425355
@@ -356,7 +356,7 @@ void usb_storage_try_release_storage(void)
     bool canrelease=true;
     int i;
     for(i=0;i<storage_num_drives();i++) {
-        if(ejected[i]==false && locked[i]==true) {
+        if(!ejected[i] && locked[i]) {
             canrelease=false;
             break;
         }
@@ -496,7 +496,7 @@ void usb_storage_transfer_complete(int ep,int dir,int status,int length)
     struct command_block_wrapper* cbw = (void*)cbw_buffer;
     struct tm tm;
 
-    //logf("transfer result %X %d", status, length);
+    logf("transfer result for ep %d/%d %X %d", ep,dir,status, length);
     switch(state) {
         case RECEIVING_BLOCKS:
             if(dir==USB_DIR_IN) {
@@ -580,6 +580,8 @@ void usb_storage_transfer_complete(int ep,int dir,int status,int length)
             }
             //logf("csw sent, now go back to idle");
             state = WAITING_FOR_COMMAND;
+            /* Already start waiting for the next command */
+            usb_drv_recv(ep_out, cbw_buffer, 1024);
 #if 0
             if(cur_cmd.cur_cmd == SCSI_WRITE_10)
             {
@@ -1178,8 +1180,6 @@ static void send_csw(int status)
             sizeof(struct command_status_wrapper));
     state = SENDING_CSW;
     //logf("CSW: %X",status);
-    /* Already start waiting for the next command */
-    usb_drv_recv(ep_out, cbw_buffer, 1024);
 
     if(status == UMS_STATUS_GOOD) {
         cur_sense_data.sense_key=0;

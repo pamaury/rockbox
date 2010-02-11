@@ -450,7 +450,9 @@ whichadvanced () {
         fi
         ;;
     esac
-    if [ ! "$interact" ]; then
+    if [ "$interact" ]; then
+      btype="$btype$option"
+    else
       atype=`echo "$atype" | cut -c 2-`
       [ "$atype" ] || cont=0
     fi
@@ -630,7 +632,7 @@ voiceconfig () {
 
     # Read custom tts options from command line
     if [ "$ARG_TTSOPTS" ]; then
-        TTS_OPTS="$ARG_TTS_OPTS"
+        TTS_OPTS="$ARG_TTSOPTS"
         advopts="$advopts --ttsopts='$TTS_OPTS'"
         echo "$TTS_ENGINE options set to $TTS_OPTS"
     fi
@@ -894,18 +896,18 @@ cat <<EOF
  90) Zen Vision:M 30GB    100) GoGear SA9200     55) Sansa Clip
  91) Zen Vision:M 60GB    101) GoGear HDD1630/   56) Sansa e200v2
  92) Zen Vision                HDD1830           57) Sansa m200v4
-                                                 58) Sansa Fuze
- ==Onda==                 ==Meizu==              59) Sansa c200v2
- 120) VX747               110) M6SL              60) Sansa Clipv2
- 121) VX767               111) M6SP              61) Sansa View
- 122) VX747+              112) M3
- 123) VX777                                      ==Logik==
-                                                 80) DAX 1GB MP3/DAB
- ==Samsung==              ==Tatung==
- 140) YH-820              150) Elio TPJ-1022     ==Lyre project==
- 141) YH-920                                     130) Lyre proto 1
- 142) YH-925                                     131) Mini2440
- 143) YP-S3
+                          102) GoGear HDD6330    58) Sansa Fuze
+ ==Onda==                                        59) Sansa c200v2
+ 120) VX747               ==Meizu==              60) Sansa Clipv2
+ 121) VX767               110) M6SL              61) Sansa View
+ 122) VX747+              111) M6SP              62) Sansa Clip+
+ 123) VX777               112) M3
+                                                 ==Logik==
+ ==Samsung==              ==Tatung==             80) DAX 1GB MP3/DAB
+ 140) YH-820              150) Elio TPJ-1022
+ 141) YH-920                                     ==Lyre project==1
+ 142) YH-925              ==Packard Bell==       130) Lyre proto 1
+ 143) YP-S3               160) Vibe 500          131) Mini2440
 EOF
 
   buildfor=`input`;
@@ -2003,8 +2005,6 @@ fi
     ;;
 
    60|sansaclipv2)
-    echo "Sansa Clipv2 is not yet supported !"
-    exit 1
     target_id=60
     modelname="sansaclipv2"
     target="-DSANSA_CLIPV2"
@@ -2046,6 +2046,26 @@ fi
     t_cpu="arm"
     t_manufacturer="sandisk"
     t_model="sansa-view"
+    ;;
+
+   62|sansaclipplus)
+    target_id=66
+    modelname="sansaclipplus"
+    target="-DSANSA_CLIPPLUS"
+    memory=8
+    arm926ejscc
+    bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
+    bmp2rb_native="$bmp2rb_mono"
+    tool="$rootdir/tools/scramble -add=cli+"
+    output="rockbox.sansa"
+    bootoutput="bootloader-clipplus.sansa"
+    appextra="recorder:gui"
+    plugins="yes"
+    swcodec="yes"
+    toolset=$scramblebitmaptools
+    t_cpu="arm"
+    t_manufacturer="as3525"
+    t_model="sansa-clipplus"
     ;;
 
    150|tatungtpj1022)
@@ -2118,6 +2138,30 @@ fi
     t_cpu="arm"
     t_manufacturer="philips"
     t_model="hdd1630"
+    ;;
+
+   102|gogearhdd6330)
+    target_id=65
+    modelname="gogearhdd6330"
+    target="-DPHILIPS_HDD6330"
+    memory=32 # supposedly
+    arm7tdmicc
+    tool="$rootdir/tools/scramble -mi4v3 -model=6330 -type=RBOS"
+    bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
+    bmp2rb_native="$rootdir/tools/bmp2rb -f 4"
+    output="rockbox.mi4"
+    appextra="recorder:gui"
+    plugins=""
+    swcodec="yes"
+    boottool="$rootdir/tools/scramble -mi4v3 -model=6330 -type=RBBL"
+    bootoutput="FWImage.ebn"
+    # toolset is the tools within the tools directory that we build for
+    # this particular target.
+    toolset=$scramblebitmaptools
+    # architecture, manufacturer and model for the target-tree build
+    t_cpu="arm"
+    t_manufacturer="philips"
+    t_model="hdd6330"
     ;;
 
    110|meizum6sl)
@@ -2412,6 +2456,29 @@ fi
     t_model="yps3"
     ;;
     
+   160|pb_vibe500)
+    target_id=67
+    modelname="vibe500"
+    target="-DPBELL_VIBE500"
+    memory=32 # always
+    arm7tdmicc
+    tool="$rootdir/tools/scramble -mi4v3 -model=v500 -type=RBOS"
+    bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
+    bmp2rb_native="$rootdir/tools/bmp2rb -f 5"
+    output="jukebox.mi4"
+    appextra="recorder:gui"
+    plugins="no"
+    swcodec="yes"
+    boottool="$rootdir/tools/scramble -mi4v3 -model=v500 -type=RBBL"
+    bootoutput="rockbox.mi4"
+    # toolset is the tools within the tools directory that we build for
+    # this particular target.
+    toolset=$scramblebitmaptools
+    # architecture, manufacturer and model for the target-tree build
+    t_cpu="arm"
+    t_manufacturer="pbell"
+    t_model="vibe500"
+    ;;
 
    *)
     echo "Please select a supported target platform!"

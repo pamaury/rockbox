@@ -70,7 +70,7 @@
 #define USB_GPIO_MASK   0x80
 #define USB_GPIO_VAL    0x00
 
-#elif defined(PHILIPS_HDD1630)
+#elif defined(PHILIPS_HDD1630) || defined(PHILIPS_HDD6330)
     /* GPIO E bit 2 is usb detect */
 #define USB_GPIO        GPIOE
 #define USB_GPIO_MASK   0x04
@@ -87,6 +87,12 @@
 #define USB_GPIO        GPIOD
 #define USB_GPIO_MASK   0x10
 #define USB_GPIO_VAL    0x10
+
+#elif defined(PBELL_VIBE500)
+    /* GPIO L bit 3 is usb detect */
+#define USB_GPIO        GPIOL
+#define USB_GPIO_MASK   0x04
+#define USB_GPIO_VAL    0x04
 
 #else
 #error No USB GPIO config specified

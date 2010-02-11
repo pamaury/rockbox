@@ -21,6 +21,9 @@
 #ifndef CLOCK_TARGET_H
 #define CLOCK_TARGET_H
 
+#include "config.h"
+#include "cpu.h"
+
 /* returns clock divider, given maximal target frequency and clock reference */
 #define CLK_DIV(ref, target) ((ref + target - 1) / target)
 
@@ -52,16 +55,29 @@
 /* Clock Sources  */
 #define AS3525_CLK_MAIN           0
 #define AS3525_CLK_PLLA           1
-//#define AS3525_CLK_PLLB           2
+#define AS3525_CLK_PLLB           2
 #define AS3525_CLK_FCLK           3         /* Available as PCLK input only  */
 
 /** ************ Change these to reconfigure clocking scheme *******************/
+#if CONFIG_CPU == AS3525v2
+
+/* PLL* registers differ from AS3525 */
+#define AS3525_PLLA_FREQ        240000000
+
+#else
+
 /* PLL  frequencies and settings*/
 #define AS3525_PLLA_FREQ        248000000   /*124,82.7,62,49.6,41.3,35.4 */
        /* FCLK_PREDIV->  *7/8 = 217MHz      108.5 ,72.3, 54.25, 43.4, 36.17 */
                       /* *6/8 = 186MHz      93, 62, 46.5, 37.2 */
                       /* *5/8 = 155MHz      77.5, 51.67, 38.75 */
 #define AS3525_PLLA_SETTING     0x261F
+
+/* PLLB frequencies and settings (audio and USB) */
+#define AS3525_PLLB_FREQ        384000000   /* allows 44.1kHz with 0.04% error*/
+#define AS3525_PLLB_SETTING     0x2630
+
+#endif  /* CONFIG_CPU == AS3525v2 */
 
 //#define AS3525_PLLA_FREQ        384000000 /*192,128,96,76.8,64,54.9,48,42.7,38.4*/
        /* FCLK_PREDIV->  *7/8 = 336MHz      168, 112, 84, 67.2, 56, 48, 42, 37.3*/
@@ -98,6 +114,16 @@
 #define AS3525_FCLK_SEL          AS3525_CLK_PLLA
 #define AS3525_FCLK_POSTDIV      (CLK_DIV((AS3525_PLLA_FREQ*(8-AS3525_FCLK_PREDIV)/8), AS3525_FCLK_FREQ) - 1) /*div=1/(n+1)*/
 
+/* MCLK */
+#define AS3525_MCLK_SEL          AS3525_CLK_PLLA
+#if (AS3525_MCLK_SEL==AS3525_CLK_PLLA)
+#define AS3525_MCLK_FREQ         AS3525_PLLA_FREQ
+#elif (AS3525_MCLK_SEL==AS3525_CLK_PLLB)
+#define AS3525_MCLK_FREQ         AS3525_PLLB_FREQ
+#else
+#error Choose either PLLA or PLLB for MCLK!
+#endif
+
 /* PCLK */
 #ifdef ASYNCHRONOUS_BUS
 #define AS3525_PCLK_SEL          AS3525_CLK_PLLA    /* PLLA input for asynchronous */
@@ -115,10 +141,18 @@
   #define AS3525_I2C_FREQ        400000
   #define AS3525_SD_IDENT_DIV    ((CLK_DIV(AS3525_PCLK_FREQ, AS3525_SD_IDENT_FREQ) / 2) - 1)
   #define AS3525_SD_IDENT_FREQ   400000      /* must be between 100 & 400 kHz */
+  #define AS3525_SSP_PRESCALER   ((CLK_DIV(AS3525_PCLK_FREQ, AS3525_SSP_FREQ) + 1) & ~1)    /* must be an even number */
+  #define AS3525_SSP_FREQ        12000000
 
 #define AS3525_IDE_SEL           AS3525_CLK_PLLA           /* Input Source   */
 #define AS3525_IDE_DIV           (CLK_DIV(AS3525_PLLA_FREQ, AS3525_IDE_FREQ) - 1)/*div=1/(n+1)*/
+
+#if CONFIG_CPU == AS3525v2
+#define AS3525_MS_FREQ          120000000
+#define AS3525_IDE_FREQ          80000000
+#else
 #define AS3525_IDE_FREQ          50000000    /* The OF uses 66MHz maximal freq */
+#endif /* CONFIG_CPU == AS3525v2 */
 
 
 //#define AS3525_USB_SEL           AS3525_CLK_PLLA            /* Input Source   */
@@ -147,6 +181,11 @@
 #error I2C frequency is too low : clock divider will not fit !
 #endif
 
+/* AS3525_SSP_FREQ */
+#if (((CLK_DIV(AS3525_PCLK_FREQ, AS3525_SSP_FREQ)) + 1 ) & ~1) >= (1<<8) /* 8 bits */
+#error SSP frequency is too low : clock divider will not fit !
+#endif
+
 /* AS3525_SD_IDENT_FREQ */
 #if ((CLK_DIV(AS3525_PCLK_FREQ, AS3525_SD_IDENT_FREQ) / 2) - 1) >= (1<<8) /* 8 bits */
 #error SD IDENTIFICATION frequency is too low : clock divider will not fit !
@@ -154,12 +193,12 @@
 
 /* I2SIN / I2SOUT frequencies */
 /* low samplerate */
-#if ((AS3525_PLLA_FREQ/(128*8000))) > 512   /* 8kHz = lowest frequency */
-#error PLLA frequency is too low for 8kHz samplerate !
+#if ((AS3525_MCLK_FREQ/(128*8000))) > 512   /* 8kHz = lowest frequency */
+#error AS3525_MCLK_FREQ is too high for 8kHz samplerate !
 #endif
 /* high samplerate */
-#if ((AS3525_PLLA_FREQ/(128*96000))) < 1   /* 96kHz = highest frequency */
-#error PLLA frequency is too high for 96kHz samplerate !
+#if ((AS3525_MCLK_FREQ/(128*96000))) < 1   /* 96kHz = highest frequency */
+#error AS3525_MCLK_FREQ is too low for 96kHz samplerate !
 #endif
 
 #endif /* CLOCK_TARGET_H */

@@ -70,9 +70,6 @@
 
 #define RESTORE_WPS_INSTANTLY       0l
 #define RESTORE_WPS_NEXT_SECOND     ((long)(HZ+current_tick))
-/* in milliseconds */
-#define DEFAULT_SKIP_TRESH          3000l
-
 
 #define FF_REWIND_MAX_PERCENT 3 /* cap ff/rewind step size at max % of file */ 
                                 /* 3% of 30min file == 54s step size */
@@ -102,8 +99,6 @@ void wps_data_load(enum screen_type screen, const char *buf, bool isfile)
 {
     bool loaded_ok;
 
-    screens[screen].backdrop_unload(BACKDROP_SKIN_WPS);
-
 #ifndef __PCTOOL__
     /*
      * Hardcode loading WPS_DEFAULTCFG to cause a reset ideally this
@@ -130,6 +125,9 @@ void wps_data_load(enum screen_type screen, const char *buf, bool isfile)
     {
         char *skin_buf[NB_SCREENS] = {
 #ifdef HAVE_LCD_BITMAP
+#if LCD_DEPTH > 1
+            "%Xd\n"
+#endif
             "%s%?it<%?in<%in. |>%it|%fn>\n"
             "%s%?ia<%ia|%?d2<%d2|(root)>>\n"
             "%s%?id<%id|%?d1<%d1|(root)>> %?iy<(%iy)|>\n\n"
@@ -141,6 +139,9 @@ void wps_data_load(enum screen_type screen, const char *buf, bool isfile)
             "%pc%?ps<*|/>%pt\n",
 #endif
 #ifdef HAVE_REMOTE_LCD
+#if LCD_REMOTE_DEPTH > 1
+            "%Xd\n"
+#endif
             "%s%?ia<%ia|%?d2<%d2|(root)>>\n"
             "%s%?it<%?in<%in. |>%it|%fn>\n"
             "%al%pc/%pt%ar[%pp:%pe]\n"
@@ -564,7 +565,9 @@ static void gwps_leave_wps(void)
     FOR_NB_SCREENS(i)
     {
         gui_wps[i].display->stop_scroll();
-        gui_wps[i].display->backdrop_show(BACKDROP_MAIN);
+#if LCD_DEPTH > 1 || defined(HAVE_REMOTE_LCD) && LCD_REMOTE_DEPTH > 1
+        gui_wps[i].display->backdrop_show(sb_get_backdrop(i));
+#endif
         
 #ifdef HAVE_LCD_BITMAP
         bool draw = false;
@@ -601,9 +604,9 @@ static void gwps_enter_wps(void)
         else if (statusbar_position(i) != STATUSBAR_OFF)
             draw = true;
 #endif
+        display->stop_scroll();
         viewportmanager_theme_enable(i, draw, NULL);
 
-        display->stop_scroll();
         /* Update the values in the first (default) viewport - in case the user
            has modified the statusbar or colour settings */
 #if LCD_DEPTH > 1
@@ -614,8 +617,15 @@ static void gwps_enter_wps(void)
             vp->bg_pattern = display->get_background();
         }
 #endif
+        /* make the backdrop actually take effect */
+#if LCD_DEPTH > 1 || defined(HAVE_REMOTE_LCD) && LCD_REMOTE_DEPTH > 1
+        display->backdrop_show(gwps->data->backdrop);
+#endif
+        display->clear_display();
         skin_update(gwps, WPS_REFRESH_ALL);
     }
+    /* force statusbar/skin update since we just cleared the whole screen */
+    send_event(GUI_EVENT_ACTIONUPDATE, (void*)1);
 }
 
 #ifdef HAVE_TOUCHSCREEN
@@ -1183,8 +1193,6 @@ long gui_wps_show(void)
         /* we remove the update delay since it's not very usable in the wps,
          * e.g. during volume changing or ffwd/rewind */
             sb_skin_set_update_delay(0);
-            FOR_NB_SCREENS(i)
-                gui_wps[i].display->backdrop_show(BACKDROP_SKIN_WPS);
             wps_sync_data.do_full_update = update = false;
             gwps_enter_wps();
         }
@@ -1294,7 +1302,6 @@ void gui_sync_wps_init(void)
         /* Currently no seperate wps_state needed/possible
            so use the only available ( "global" ) one */
         gui_wps[i].state = &wps_state;
-        gui_wps[i].display->backdrop_unload(BACKDROP_SKIN_WPS);
         /* must point to the same struct for both screens */
         gui_wps[i].sync_data = &wps_sync_data;
     }

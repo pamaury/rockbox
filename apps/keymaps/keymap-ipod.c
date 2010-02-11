@@ -187,7 +187,7 @@ const struct button_mapping button_context_recscreen[]  = {
     { ACTION_SETTINGS_INC,       BUTTON_RIGHT,                      BUTTON_NONE },
     { ACTION_SETTINGS_INCREPEAT, BUTTON_RIGHT|BUTTON_REPEAT,        BUTTON_NONE },
     { ACTION_SETTINGS_DEC,       BUTTON_LEFT,                       BUTTON_NONE },
-    { ACTION_SETTINGS_DECREPEAT, BUTTON_LEFT|BUTTON_REPEAT,         BUTTON_NONE },	
+    { ACTION_SETTINGS_DECREPEAT, BUTTON_LEFT|BUTTON_REPEAT,         BUTTON_NONE },
 
     LAST_ITEM_IN_LIST
 }; /* button_context_recscreen */
@@ -414,6 +414,7 @@ const struct button_mapping* get_context_mapping(int context)
         case CONTEXT_PITCHSCREEN:
             return button_context_pitchscreen;
         case CONTEXT_KEYBOARD:
+        case CONTEXT_MORSE_INPUT:
             return button_context_keyboard;
 #ifdef HAVE_RECORDING
         case CONTEXT_RECSCREEN:

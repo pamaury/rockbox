@@ -39,12 +39,14 @@ include $(APPSDIR)/codecs/libwma/libwma.make
 include $(APPSDIR)/codecs/libcook/libcook.make
 include $(APPSDIR)/codecs/librm/librm.make
 include $(APPSDIR)/codecs/libatrac/libatrac.make
+include $(APPSDIR)/codecs/libpcm/libpcm.make
 
 # compile flags for codecs
 CODECFLAGS = $(filter-out -fno-strict-aliasing,$(CFLAGS)) -fstrict-aliasing \
 	-I$(APPSDIR)/codecs -I$(APPSDIR)/codecs/lib -DCODEC
 
 ifndef SIMVER
+  CONFIGFILE := $(FIRMDIR)/export/config/$(MODELNAME).h
   CODEC_LDS := $(APPSDIR)/plugins/plugin.lds # codecs and plugins use same file
   CODECLINK_LDS := $(CODECDIR)/codec.link
 endif
@@ -57,9 +59,9 @@ CODECLIBS := $(DEMACLIB) $(A52LIB) $(ALACLIB) $(ASAPLIB) \
 	$(ATRACLIB) \
 	$(CODECLIB)
 
-$(CODECS): $(CODEC_CRT0) $(CODECLINK_LDS) 
+$(CODECS): $(CODEC_CRT0) $(CODECLINK_LDS)
 
-$(CODECLINK_LDS): $(CODEC_LDS)
+$(CODECLINK_LDS): $(CODEC_LDS) $(CONFIGFILE)
 	$(call PRINTS,PP $(@F))
 	$(shell mkdir -p $(dir $@))
 	$(call preprocess2file, $<, $@, -DCODEC)
@@ -76,6 +78,7 @@ $(CODECDIR)/wavpack.codec : $(CODECDIR)/libwavpack.a
 $(CODECDIR)/alac.codec : $(CODECDIR)/libalac.a $(CODECDIR)/libm4a.a 
 $(CODECDIR)/aac.codec : $(CODECDIR)/libfaad.a $(CODECDIR)/libm4a.a
 $(CODECDIR)/shorten.codec : $(CODECDIR)/libffmpegFLAC.a
+$(CODECDIR)/ape-pre.map : $(CODECDIR)/libdemac-pre.a
 $(CODECDIR)/ape.codec : $(CODECDIR)/libdemac.a
 $(CODECDIR)/wma.codec : $(CODECDIR)/libwma.a
 $(CODECDIR)/wavpack_enc.codec: $(CODECDIR)/libwavpack.a
@@ -84,6 +87,8 @@ $(CODECDIR)/cook.codec : $(CODECDIR)/libcook.a $(CODECDIR)/librm.a
 $(CODECDIR)/raac.codec : $(CODECDIR)/libfaad.a $(CODECDIR)/librm.a
 $(CODECDIR)/a52_rm.codec : $(CODECDIR)/liba52.a $(CODECDIR)/librm.a
 $(CODECDIR)/atrac3_rm.codec : $(CODECDIR)/libatrac.a $(CODECDIR)/librm.a
+$(CODECDIR)/aiff.codec : $(CODECDIR)/libpcm.a
+$(CODECDIR)/wav.codec : $(CODECDIR)/libpcm.a
 
 $(CODECS): $(CODECLIB) # this must be last in codec dependency list
 
@@ -108,6 +113,13 @@ else
  CODECLDFLAGS = -T$(CODECLINK_LDS) -Wl,--gc-sections -Wl,-Map,$(CODECDIR)/$*.map
  CODECFLAGS += -UDEBUG -DNDEBUG
 endif
+
+$(CODECDIR)/%-pre.map: $(CODEC_CRT0) $(CODECLINK_LDS) $(CODECDIR)/%.o $(CODECLIB)
+	$(call PRINTS,LD $(@F))$(CC) $(CODECFLAGS) -o $(CODECDIR)/$*-pre.elf \
+		$(filter %.o, $^) \
+		$(filter-out $(CODECLIB),$(filter %.a, $+)) \
+		$(CODECLIB) \
+		-lgcc $(subst .map,-pre.map,$(CODECLDFLAGS))
 
 $(CODECDIR)/%.codec: $(CODECDIR)/%.o
 	$(call PRINTS,LD $(@F))$(CC) $(CODECFLAGS) -o $(CODECDIR)/$*.elf \

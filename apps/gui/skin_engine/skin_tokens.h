@@ -5,7 +5,7 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id: wps_internals.h 22223 2009-08-09 17:30:05Z jdgordon $
+ * $Id$
  *
  * Copyright (C) 2007 Nicolas Pennequin
  *
@@ -38,8 +38,10 @@ enum wps_token_type {
 
     /* Alignment */
     WPS_TOKEN_ALIGN_LEFT,
+    WPS_TOKEN_ALIGN_LEFT_RTL,
     WPS_TOKEN_ALIGN_CENTER,
     WPS_TOKEN_ALIGN_RIGHT,
+    WPS_TOKEN_ALIGN_RIGHT_RTL,
 
     /* Sublines */
     WPS_TOKEN_SUBLINE_TIMEOUT,
@@ -52,6 +54,7 @@ enum wps_token_type {
 
     /* Viewport display */
     WPS_VIEWPORT_ENABLE,
+    WPS_VIEWPORT_CUSTOMLIST,
     
     /* Battery */
   TOKEN_MARKER_BATTERY,
@@ -226,7 +229,7 @@ struct wps_token {
     union {
         char c;
         unsigned short i;
-		void* data;
+        void* data;
     } value;
 };
  
@@ -235,6 +238,7 @@ struct skin_token_list {
     struct skin_token_list *next;
 };
 
+char* get_dir(char* buf, int buf_size, const char* path, int level);
  
 #endif
  

@@ -2095,8 +2095,8 @@ STATICIRAM void to_mono_mm(void)
 
     inline void to_mono(uint16_t **samp)
     {
-        int16_t l = **samp;
-        int16_t r = **(samp+1);
+        int16_t r = **samp;
+        int16_t l = *(*samp+1);
         int32_t m;
 
         switch(cfg.rec_mono_mode)
@@ -2112,7 +2112,7 @@ STATICIRAM void to_mono_mm(void)
             case 0:
             default:
                 /* mono = (L+R)/2 */
-                m  = r + r + err;
+                m  = l + r + err;
                 err = m & 1;
                 m >>= 1;
                 break;

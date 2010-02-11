@@ -109,7 +109,7 @@
 #endif
 
 #if defined(SANSA_E200) || defined(SANSA_C200) || defined(PHILIPS_SA9200) \
-    || defined(SANSA_CLIP) || defined(SANSA_FUZE)
+    || defined(SANSA_CLIP) || defined(SANSA_FUZE) || defined(SANSA_C200V2)
 #include "ascodec.h"
 #include "as3514.h"
 #endif
@@ -977,11 +977,15 @@ static bool dbg_spdif(void)
 
 /* This is temporary until the SA9200 touchpad works */
 #elif (CONFIG_KEYPAD == PHILIPS_SA9200_PAD) || \
-      (CONFIG_KEYPAD == PHILIPS_HDD1630_PAD)
+      (CONFIG_KEYPAD == PHILIPS_HDD1630_PAD) || \
+      (CONFIG_KEYPAD == PHILIPS_HDD6330_PAD)
 #   define DEBUG_CANCEL  BUTTON_POWER
 
 #elif (CONFIG_KEYPAD == SAMSUNG_YH_PAD)
 #   define DEBUG_CANCEL  BUTTON_PLAY
+
+#elif (CONFIG_KEYPAD == PBELL_VIBE500_PAD)
+#   define DEBUG_CANCEL  BUTTON_CANCEL
 
 #endif /* key definitions */
 
@@ -1142,7 +1146,7 @@ extern unsigned char serbuf[];
                                 adc_read(ADC_BATTERY), adc_read(ADC_UNKNOWN_1));
         lcd_putsf(0, line++, "REM:  %03x PAD: %03x",
                                  adc_read(ADC_REMOTE), adc_read(ADC_SCROLLPAD));
-#elif defined(PHILIPS_HDD1630)
+#elif defined(PHILIPS_HDD1630) || defined(PHILIPS_HDD6330)
         line++;
         lcd_putsf(0, line++, "BATT: %03x UNK1: %03x",
                                 adc_read(ADC_BATTERY), adc_read(ADC_UNKNOWN_1));
@@ -1617,7 +1621,8 @@ static bool view_battery(void)
                     lcd_puts(0, line++, "T Battery: ?");
                 }
                     
-#elif defined(SANSA_E200) || defined(SANSA_C200) || defined(SANSA_CLIP) || defined(SANSA_FUZE)
+#elif defined(SANSA_E200) || defined(SANSA_C200) || defined(SANSA_CLIP) || \
+      defined(SANSA_FUZE) || defined (SANSA_C200V2)
                 const int first = CHARGE_STATE_DISABLED;
                 static const char * const chrgstate_strings[] =
                 {
