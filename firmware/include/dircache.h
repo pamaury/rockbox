@@ -98,6 +98,31 @@ int dircache_get_cache_size(void);
 int dircache_get_reserve_used(void);
 int dircache_get_build_ticks(void);
 void dircache_disable(void);
+/**
+ * Function to get a pointer to dircache_entry for a given filename.
+ *   path: Absolute path to a file or directory (see comment)
+ *   go_down: Returns the first entry of the directory given by the path (see comment)
+ *
+ * As a a special case, accept path="" as an alias for "/".
+ * Also if the path omits the first '/', it will be accepted.
+ *
+ * * If get_down=true:
+ *   If path="/", the returned entry is the first of root directory (ie dircache_root)
+ *   Otherwise, if 'entry' is the returned value when get_down=false, 
+ *   the functions returns entry->down (which can be NULL)
+ *
+ * * If get_down=false:
+ *   If path="/chunk_1/chunk_2/.../chunk_n" then this functions returns the entry
+ *   root_entry()->chunk_1->chunk_2->...->chunk_(n-1)
+ *   Which means that
+ *   dircache_get_entry(path)->d_name == chunk_n
+ *
+ *   If path="/", the returned entry is NULL.
+ *   If the entry doesn't exist, return NULL
+ *
+ *  NOTE: this functions silently handles double '/'
+ */
+const struct dircache_entry* dircache_get_entry_ptr_ex(const char *path, bool go_down);
 const struct dircache_entry *dircache_get_entry_ptr(const char *filename);
 const struct dircache_entry *dircache_get_root_entry_ptr(void);
 bool dircache_is_valid_ptr(const struct dircache_entry *entry);

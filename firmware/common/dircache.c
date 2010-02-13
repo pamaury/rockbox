@@ -899,6 +899,14 @@ const struct dircache_entry *dircache_get_entry_ptr(const char *filename)
     return dircache_get_entry(filename, false);
 }
 
+const struct dircache_entry *dircache_get_entry_ptr_ex(const char *filename, bool go_down)
+{
+    if (!dircache_initialized || filename == NULL)
+        return NULL;
+    
+    return dircache_get_entry(filename, go_down);
+}
+
 /**
  * Usermode function to return the root dircache_entry.
  */

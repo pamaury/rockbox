@@ -265,6 +265,12 @@ uint32_t get_type_size(uint16_t type)
     }
 }
 
+void unsafe_copy_mtp_string(struct mtp_string *to, const struct mtp_string *from)
+{
+    to->length = from->length;
+    memcpy(to->data, from->data, sizeof(from->data[0]) * from->length);
+}
+
 void pack_data_block_typed_ptr(const void *ptr, uint16_t type)
 {
     if(type == TYPE_STR)
@@ -609,6 +615,14 @@ void handle_command2(void)
             want_nb_params(1, SEND_DATA_PHASE) /* one parameter */
             want_session(SEND_DATA_PHASE)
             return get_device_prop_value(mtp_cur_cmd.param[0]);
+        case MTP_OP_SET_DEV_PROP_VALUE:
+            want_nb_params(1, RECV_DATA_PHASE) /* one parameter */
+            want_session(RECV_DATA_PHASE)
+            return set_device_prop_value(mtp_cur_cmd.param[0]);
+        case MTP_OP_RESET_DEV_PROP_VALUE:
+            want_nb_params(1, NO_DATA_PHASE) /* one parameter */
+            want_session(NO_DATA_PHASE)
+            return reset_device_prop_value(mtp_cur_cmd.param[0]);
         #if 0
         case MTP_OP_MOVE_OBJECT:
             want_nb_params_range(2, 3, NO_DATA_PHASE) /* two or three parameters */

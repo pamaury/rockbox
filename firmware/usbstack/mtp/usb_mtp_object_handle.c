@@ -101,9 +101,9 @@ uint16_t generic_list_files2(uint32_t stor_id, const struct dircache_entry *dire
         /* check stor_id is valid */
         if(!is_valid_storage_id(stor_id))
             return ERROR_INVALID_STORAGE_ID;
-        logf("try to get dircache entry for '%s'...", get_storage_id_mount_point(stor_id));
-        direntry = dircache_get_entry_ptr(get_storage_id_mount_point(stor_id));
-        logf("result is %lx\n", (uint32_t)direntry);
+        
+        direntry = dircache_get_entry_ptr_ex(get_storage_id_mount_point(stor_id), true);
+        logf("Mount point dircache entry for '%s': 0x%lx", get_storage_id_mount_point(stor_id), (uint32_t)direntry);
         if(!dircache_is_valid_ptr(direntry))
             return ERROR_INVALID_OBJ_HANDLE;
     }
@@ -199,6 +199,7 @@ const char *get_object_filename(uint32_t handle)
     return mtp_handle_to_dircache_entry(handle, false)->d_name;
 }
 
+#if 0
 static const struct dircache_entry* my_dircache_get_entry_ptr(const char *path)
 {
     const struct dircache_entry *cache_entry;
@@ -243,11 +244,12 @@ static const struct dircache_entry* my_dircache_get_entry_ptr(const char *path)
 
     return cache_entry;
 }
+#endif
 
 uint32_t get_object_handle_by_name(const char *ptr)
 {
     /* don't accept root */
-    const struct dircache_entry *entry = my_dircache_get_entry_ptr(ptr);
+    const struct dircache_entry *entry = dircache_get_entry_ptr(ptr);
     return dircache_entry_to_mtp_handle(entry);
 }
 

@@ -27,111 +27,232 @@
 #define dev_logf(...)
 #endif
 
-static const struct mtp_string device_friendly_name =
+static const struct mtp_string
+prop_date_time_default = {0, {}},
+prop_friendly_name_default =
 {
     21,
-    {'R','o','c','k','b','o','x',' ',
-     'm','e','d','i','a',' ',
-     'p','l','a','y','e','r','\0'} /* null-terminated */
+    {'R','o','c','k','b','o','x',' ','m','e','d','i','a',' ','p','l','a','y','e','r','\0'} /* null-terminated */
 };
 
-static void get_battery_level(bool want_desc)
+static mtp_string_fixed(128)
+prop_friendly_name =
 {
-    dev_logf("mtp: get battery level desc/value");
-    
-    start_pack_data_block();
-    if(want_desc)
-    {
-        pack_data_block_uint16_t(DEV_PROP_BATTERY_LEVEL); /* Device Prop Code */
-        pack_data_block_uint16_t(TYPE_UINT8); /* Data Type */
-        pack_data_block_uint8_t(DEV_PROP_GET); /* Get/Set */
-        pack_data_block_uint8_t(battery_level()); /* Factory Default Value */
-    }
-    pack_data_block_uint8_t(battery_level()); /* Current Value */
-    if(want_desc)
-    {
-        pack_data_block_uint8_t(DEV_PROP_FORM_RANGE); /* Form Flag */
-        /* Form */
-        pack_data_block_uint8_t(0); /* Minimum Value */
-        pack_data_block_uint8_t(100); /* Maximum Value */
-        pack_data_block_uint8_t(1); /* Step Size */
-    }
-    finish_pack_data_block();
-    
-    mtp_cur_resp.code = ERROR_OK;
-    mtp_cur_resp.nb_parameters = 0;
-    
-    send_data_block();
-}
+    21,
+    {'R','o','c','k','b','o','x',' ','m','e','d','i','a',' ','p','l','a','y','e','r','\0'} /* null-terminated */
+};
 
-static void get_date_time(bool want_desc)
-{
-    dev_logf("mtp: get date time desc/value");
-    
-    start_pack_data_block();
-    if(want_desc)
-    {
-        pack_data_block_uint16_t(DEV_PROP_BATTERY_LEVEL); /* Device Prop Code */
-        pack_data_block_uint16_t(TYPE_STR); /* Data Type */
-        pack_data_block_uint8_t(DEV_PROP_GET); /* Get/Set */
-        pack_data_block_date_time(get_time()); /* Factory Default Value */
-    }
-    pack_data_block_date_time(get_time()); /* Current Value */
-    if(want_desc)
-        pack_data_block_uint8_t(DEV_PROP_FORM_NONE); /* Form Flag */
-    finish_pack_data_block();
-    
-    mtp_cur_resp.code = ERROR_OK;
-    mtp_cur_resp.nb_parameters = 0;
-    
-    send_data_block();
-}
+static const uint8_t
+prop_battery_level_default = 0;
 
-static void get_friendly_name(bool want_desc)
+static const struct mtp_range_form_uint8_t
+prop_battery_level_range = {0, 100, 1};
+
+static uint16_t prop_battery_level_get(void);
+static uint16_t prop_date_time_get(void);
+static uint16_t prop_friendly_name_get(void);
+static uint16_t prop_friendly_name_set(void);
+static uint16_t prop_friendly_name_reset(void);
+
+static const struct mtp_dev_prop mtp_dev_prop_desc[] =
 {
-    dev_logf("mtp: get friendly name desc");
-    
-    start_pack_data_block();
-    if(want_desc)
-    {
-        pack_data_block_uint16_t(DEV_PROP_BATTERY_LEVEL); /* Device Prop Code */
-        pack_data_block_uint16_t(TYPE_STR); /* Data Type */
-        pack_data_block_uint8_t(DEV_PROP_GET_SET); /* Get/Set */
-        pack_data_block_string(&device_friendly_name); /* Factory Default Value */
-    }
-    pack_data_block_string(&device_friendly_name); /* Current Value */
-    if(want_desc)
-        pack_data_block_uint8_t(DEV_PROP_FORM_NONE); /* Form Flag */
-    finish_pack_data_block();
-    
-    mtp_cur_resp.code = ERROR_OK;
-    mtp_cur_resp.nb_parameters = 0;
-    
-    send_data_block();
-}
+    /* Battery Level */
+    {DEV_PROP_BATTERY_LEVEL, TYPE_UINT8, DEV_PROP_GET, &prop_battery_level_default,
+     DEV_PROP_FORM_RANGE, &prop_battery_level_range,
+     &prop_battery_level_get, NULL, NULL},
+    /* DateTime */
+    {DEV_PROP_DATE_TIME, TYPE_STR, DEV_PROP_GET, &prop_date_time_default,
+     DEV_PROP_FORM_DATE, NULL,
+     &prop_date_time_get, NULL, NULL},
+    /* Device Friendly Name */
+    {DEV_PROP_FRIENDLY_NAME, TYPE_STR, DEV_PROP_GET_SET, &prop_friendly_name_default,
+     DEV_PROP_FORM_NONE, NULL,
+     &prop_friendly_name_get, &prop_friendly_name_set, &prop_friendly_name_reset}
+};
 
 void get_device_prop_desc(uint32_t device_prop)
 {
-    switch(device_prop)
+    uint32_t i;
+    uint16_t err_code;
+    
+    for(i = 0; i < sizeof(mtp_dev_prop_desc)/sizeof(mtp_dev_prop_desc[0]); i++)
+        if(mtp_dev_prop_desc[i].dev_prop_code == device_prop)
+            goto Lok;
+    
+    return fail_op_with(ERROR_DEV_PROP_UNSUPPORTED, SEND_DATA_PHASE);
+    
+    Lok:
+    start_pack_data_block();
+    pack_data_block_uint16_t(mtp_dev_prop_desc[i].dev_prop_code);
+    pack_data_block_uint16_t(mtp_dev_prop_desc[i].data_type);
+    pack_data_block_uint8_t(mtp_dev_prop_desc[i].get_set); /* Get/Set */
+    pack_data_block_typed_ptr(mtp_dev_prop_desc[i].default_value,
+        mtp_dev_prop_desc[i].data_type); /* Factory Default Value */
+    /* Current Value */
+    err_code = mtp_dev_prop_desc[i].get();
+    pack_data_block_uint8_t(mtp_dev_prop_desc[i].form); /* Form */
+    switch(mtp_dev_prop_desc[i].form)
     {
-        case DEV_PROP_BATTERY_LEVEL: return get_battery_level(true);
-        case DEV_PROP_DATE_TIME: return get_date_time(true);
-        case DEV_PROP_FRIENDLY_NAME: return get_friendly_name(true);
-        default: 
-            logf("mtp: unsupported device property %lx", device_prop);
-            return fail_op_with(ERROR_DEV_PROP_NOT_SUPPORTED, SEND_DATA_PHASE);
+        case DEV_PROP_FORM_NONE:
+        case DEV_PROP_FORM_DATE:
+            break;
+        case DEV_PROP_FORM_ENUM:
+        {
+            /* NOTE element have a fixed size so it's safe to use get_type_size */
+            uint16_t nb_elems = *(uint16_t *)mtp_dev_prop_desc[i].form_value;
+            pack_data_block_ptr(mtp_dev_prop_desc[i].form_value, 
+                sizeof(uint16_t) + nb_elems * get_type_size(mtp_dev_prop_desc[i].data_type));
+            break;
+        }
+        case DEV_PROP_FORM_RANGE:
+            pack_data_block_ptr(mtp_dev_prop_desc[i].form_value,
+                3 * get_type_size(mtp_dev_prop_desc[i].data_type));
+            break;
+        default:
+            logf("mtp: unsupported device prop form flag");
+            break;
     }
+    finish_pack_data_block();
+    
+    mtp_cur_resp.code = err_code;
+    mtp_cur_resp.nb_parameters = 0;
+    
+    if(err_code == ERROR_OK)
+        send_data_block();
+    else
+        fail_op_with(err_code, SEND_DATA_PHASE);
 }
 
 void get_device_prop_value(uint32_t device_prop)
 {
-    switch(device_prop)
-    {
-        case DEV_PROP_BATTERY_LEVEL: return get_battery_level(false);
-        case DEV_PROP_DATE_TIME: return get_date_time(false);
-        case DEV_PROP_FRIENDLY_NAME: return get_friendly_name(false);
-        default: 
-            logf("mtp: unsupported device property %lx", device_prop);
-            return fail_op_with(ERROR_DEV_PROP_NOT_SUPPORTED, SEND_DATA_PHASE);
-    }
+    uint32_t i;
+    uint16_t err_code;
+    
+    for(i = 0; i < sizeof(mtp_dev_prop_desc)/sizeof(mtp_dev_prop_desc[0]); i++)
+        if(mtp_dev_prop_desc[i].dev_prop_code == device_prop)
+            goto Lok;
+    
+    return fail_op_with(ERROR_DEV_PROP_UNSUPPORTED, SEND_DATA_PHASE);
+    
+    Lok:
+    start_pack_data_block();
+    err_code = mtp_dev_prop_desc[i].get();
+    finish_pack_data_block();
+    
+    mtp_cur_resp.code = err_code;
+    mtp_cur_resp.nb_parameters = 0;
+    
+    if(err_code == ERROR_OK)
+        send_data_block();
+    else
+        fail_op_with(err_code, SEND_DATA_PHASE);
 }
+
+struct set_dev_prop_value_st
+{
+    uint32_t dev_prop_idx;
+};
+
+static void set_dev_prop_value_split_routine(unsigned char *data, int length, uint32_t rem_bytes, void *user)
+{
+    struct set_dev_prop_value_st *st = user;
+    uint16_t err_code;
+    /* If the transfer spans several packets, abort */
+    if(rem_bytes != 0)
+        return fail_op_with(ERROR_INVALID_DATASET, RECV_DATA_PHASE); /* continue reception and throw data */
+    
+    start_unpack_data_block(data, length);
+    
+    err_code = mtp_dev_prop_desc[st->dev_prop_idx].set();
+    if(err_code != ERROR_OK)
+        return fail_op_with(err_code, NO_DATA_PHASE); /* no more receive data phase */
+    
+    if(!finish_unpack_data_block())
+        return fail_op_with(ERROR_INVALID_DEV_PROP_FMT, NO_DATA_PHASE);
+}
+
+static void set_dev_prop_value_finish_routine(bool error, void *user)
+{
+    generic_finish_split_routine(error, user);
+}
+
+void set_device_prop_value(uint32_t device_prop)
+{
+    uint32_t i;
+    static struct set_dev_prop_value_st st;
+    
+    for(i = 0; i < sizeof(mtp_dev_prop_desc)/sizeof(mtp_dev_prop_desc[0]); i++)
+        if(mtp_dev_prop_desc[i].dev_prop_code == device_prop)
+            goto Lok;
+    
+    return fail_op_with(ERROR_DEV_PROP_UNSUPPORTED, SEND_DATA_PHASE);
+    
+    Lok:
+    if(mtp_dev_prop_desc[i].set == NULL)
+        return fail_op_with(ERROR_ACCESS_DENIED, RECV_DATA_PHASE);
+    
+    st.dev_prop_idx = i;
+    
+    receive_split_data(&set_dev_prop_value_split_routine, &set_dev_prop_value_finish_routine, &st);
+}
+
+void reset_device_prop_value(uint32_t device_prop)
+{
+    uint32_t i;
+    
+    for(i = 0; i < sizeof(mtp_dev_prop_desc)/sizeof(mtp_dev_prop_desc[0]); i++)
+        if(mtp_dev_prop_desc[i].dev_prop_code == device_prop)
+            goto Lok;
+    
+    return fail_op_with(ERROR_DEV_PROP_UNSUPPORTED, NO_DATA_PHASE);
+    
+    Lok:
+    mtp_cur_resp.code = mtp_dev_prop_desc[i].reset();
+    mtp_cur_resp.nb_parameters = 0;
+    
+    send_response();
+}
+
+static uint16_t prop_battery_level_get(void)
+{
+    dev_logf("mtp: get battery level");
+    
+    pack_data_block_uint8_t(battery_level());
+    
+    return ERROR_OK;
+}
+
+static uint16_t prop_date_time_get(void)
+{
+    dev_logf("mtp: get date time");
+    
+    pack_data_block_date_time(get_time());
+    
+    return ERROR_OK;
+}
+
+static uint16_t prop_friendly_name_get(void)
+{
+    dev_logf("mtp: get friendly name");
+    
+    pack_data_block_string((struct mtp_string *)&prop_friendly_name);
+    
+    return ERROR_OK;
+}
+
+static uint16_t prop_friendly_name_set(void)
+{
+    dev_logf("mtp: set friendly name");
+    
+    return ERROR_ACCESS_DENIED;
+}
+
+static uint16_t prop_friendly_name_reset(void)
+{
+    dev_logf("mtp: reset friendly name");
+    
+    unsafe_copy_mtp_string((struct mtp_string *)&prop_friendly_name, &prop_friendly_name_default);
+    
+    return ERROR_OK;
+}
+

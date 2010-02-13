@@ -35,7 +35,7 @@ static const struct mtp_string mtp_ext =
 
 static const struct mtp_array_uint16_t mtp_op_supported =
 {
-    21,
+    23,
     {MTP_OP_GET_DEV_INFO,
      MTP_OP_OPEN_SESSION,
      MTP_OP_CLOSE_SESSION,
@@ -50,6 +50,8 @@ static const struct mtp_array_uint16_t mtp_op_supported =
      MTP_OP_SEND_OBJECT,
      MTP_OP_GET_DEV_PROP_DESC,
      MTP_OP_GET_DEV_PROP_VALUE,
+     MTP_OP_SET_DEV_PROP_VALUE,
+     MTP_OP_RESET_DEV_PROP_VALUE,
      MTP_OP_MOVE_OBJECT,
      MTP_OP_COPY_OBJECT,
      MTP_OP_GET_PARTIAL_OBJECT,
@@ -82,9 +84,10 @@ static const struct mtp_array_uint16_t mtp_capture_fmt =
 
 static const struct mtp_array_uint16_t mtp_playback_fmt =
 {
-    2,
+    2 + NB_MTP_AUDIO_FORMATS,
     {OBJ_FMT_UNDEFINED,
-     OBJ_FMT_ASSOCIATION}
+     OBJ_FMT_ASSOCIATION,
+     ALL_MTP_AUDIO_FORMATS}
 };
 
 static const struct mtp_string mtp_manufacturer =
