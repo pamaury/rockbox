@@ -209,7 +209,7 @@ void get_object_props_supported(uint32_t object_fmt)
     start_pack_data_block_array();
     for(i = 0; i < sizeof(mtp_obj_prop_desc)/sizeof(mtp_obj_prop_desc[0]); i++)
         for(j = 0; j < mtp_obj_prop_desc[i].obj_fmt->length; j++)
-            if(mtp_obj_prop_desc[i].obj_fmt->data[j] == object_fmt)
+            if(mtp_obj_prop_desc[i].obj_fmt->data[j] == object_fmt && i < 14)
                 pack_data_block_array_elem_uint16_t(mtp_obj_prop_desc[i].obj_prop_code);
     finish_pack_data_block_array();
     finish_pack_data_block();
@@ -271,7 +271,7 @@ void get_object_prop_desc(uint32_t obj_prop, uint32_t obj_fmt)
     send_data_block();
 }
 
-static uint16_t get_object_format(uint32_t handle)
+uint16_t get_object_format(uint32_t handle)
 {
     if(is_directory_object(handle))
         return OBJ_FMT_ASSOCIATION;
@@ -466,16 +466,25 @@ static uint16_t prop_artist_get(uint32_t handle)
     #ifdef HAVE_TC_RAMCACHE
     /* Try RAM tagcacache */
     if(tagcache_fill_tags(&mtp_id3, mtp_path))
+    {
+        logf("mtp: get artist(1): %s/0x%lx", mtp_id3.artist, (uint32_t)mtp_id3.artist);
         pack_data_block_string_charz(mtp_id3.artist);
+    }
     else
     #endif
     /* Try tagcache */
     if(tagcache_copy_tag(mtp_path, tag_artist, false))
+    {
+        logf("mtp: get artist(2): %s", mtp_tag_str);
         pack_data_block_string_charz(mtp_tag_str);
+    }
     /* Try metadata */
     /* NOTE: mtp3info returns false on success oO */
     else if(!mp3info(&mtp_id3, mtp_path))
+    {
         pack_data_block_string_charz(mtp_id3.artist);
+        logf("mtp: get artist(3): %s/0x%lx", mtp_id3.artist, (uint32_t)mtp_id3.artist);
+    }
     /* Failure */
     else
         return ERROR_OP_NOT_SUPPORTED;

@@ -163,12 +163,10 @@ static void set_dev_prop_value_split_routine(unsigned char *data, int length, ui
     
     start_unpack_data_block(data, length);
     
+    /* set function is supposed to call finish_unpack_data_block() to check exact length */
     err_code = mtp_dev_prop_desc[st->dev_prop_idx].set();
     if(err_code != ERROR_OK)
         return fail_op_with(err_code, NO_DATA_PHASE); /* no more receive data phase */
-    
-    if(!finish_unpack_data_block())
-        return fail_op_with(ERROR_INVALID_DEV_PROP_FMT, NO_DATA_PHASE);
 }
 
 static void set_dev_prop_value_finish_routine(bool error, void *user)
@@ -244,7 +242,13 @@ static uint16_t prop_friendly_name_set(void)
 {
     dev_logf("mtp: set friendly name");
     
-    return ERROR_ACCESS_DENIED;
+    if(!unpack_data_block_string((struct mtp_string *)&prop_friendly_name,
+            sizeof(prop_friendly_name.data)/sizeof(uint16_t)))
+        return ERROR_INVALID_DEV_PROP_FMT;
+    if(!finish_unpack_data_block())
+        return ERROR_INVALID_DEV_PROP_FMT;
+    
+    return ERROR_OK;
 }
 
 static uint16_t prop_friendly_name_reset(void)

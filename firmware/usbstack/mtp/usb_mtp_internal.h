@@ -496,6 +496,7 @@ void pack_data_block_string(const struct mtp_string *str);
 void pack_data_block_string_charz(const char *str);
 uint32_t get_type_size(uint16_t type);
 void pack_data_block_typed_ptr(const void *ptr, uint16_t type);
+bool unpack_data_block_string(struct mtp_string *str, uint32_t max_len); /* max_len inclused terminating null */
 bool unpack_data_block_string_charz(unsigned char *dest, uint32_t dest_len);
 void pack_data_block_date_time(struct tm *time);
 
@@ -569,6 +570,8 @@ persistent_unique_id_t get_object_persistent_unique_id(uint32_t handle);
 uint32_t get_parent_object(uint32_t handle);
 void copy_object_date_created(uint32_t handle, struct tm *filetm);
 void copy_object_date_modified(uint32_t handle, struct tm *filetm);
+/* implemented in usb_mtp_object_props.c */
+uint16_t get_object_format(uint32_t handle);
 
 /* accept stor_id=0xffffffff whichs means all storages */
 /* accept stor_id=0x00000000 if obj_handle!=0xffffffff */

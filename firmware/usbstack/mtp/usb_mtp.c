@@ -279,6 +279,17 @@ void pack_data_block_typed_ptr(const void *ptr, uint16_t type)
         pack_data_block_ptr(ptr, get_type_size(type));
 }
 
+bool unpack_data_block_string(struct mtp_string *str, uint32_t max_len)
+{
+    if(!unpack_data_block_uint8_t(&str->length))
+        return false;
+    
+    if(str->length > max_len)
+        return false;
+    
+    return unpack_data_block_ptr(str->data, sizeof(uint16_t) * str->length);
+}
+
 bool unpack_data_block_string_charz(unsigned char *dest, uint32_t dest_len)
 {
     uint8_t len;

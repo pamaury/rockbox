@@ -327,7 +327,7 @@ void get_object_info(uint32_t handle)
     
     struct object_info oi;
     oi.storage_id = get_object_storage_id(handle);
-    oi.object_format = is_directory_object(handle) ? OBJ_FMT_ASSOCIATION : OBJ_FMT_UNDEFINED;
+    oi.object_format = get_object_format(handle);
     oi.protection = 0x0000;
     oi.compressed_size = get_object_size(handle);
     oi.thumb_fmt = 0;
