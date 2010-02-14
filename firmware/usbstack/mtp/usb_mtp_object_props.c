@@ -35,7 +35,9 @@ prop_obj_size_default = 0x00000000,
 prop_parent_obj_default = 0x00000000,
 prop_duration_default = 0x00000000,
 prop_use_count_default = 0x00000000,
+#if 0
 prop_sample_rate_default = 0x00000000,
+#endif
 prop_bitrate_default = 0x00000000;
 
 static const uint16_t
@@ -45,21 +47,29 @@ prop_hidden_default = 0x0000,
 prop_system_default = 0x0000,
 prop_rating_default = 0x0000,
 prop_track_default = 0x0000,
-prop_effective_rating_default = 0x0000,
-prop_nb_channels_default = 0x0000;
+prop_effective_rating_default = 0x0000
+#if 0
+,prop_nb_channels_default = 0x0000
+#endif
+;
 
 static const struct mtp_enum_form_uint16_t
 prop_assoc_type_enum = {1, {ASSOC_TYPE_FOLDER}},
 prop_hidden_enum = {2, {0x0000, 0x0001}},
-prop_system_enum = {2, {0x0000, 0x0001}},
-prop_nb_channels_enum = {2, {AUDIO_CHANNELS_MONO, AUDIO_CHANNELS_STEREO}};
+prop_system_enum = {2, {0x0000, 0x0001}}
+#if 0
+,prop_nb_channels_enum = {2, {AUDIO_CHANNELS_MONO, AUDIO_CHANNELS_STEREO}}
+#endif
+;
 
 static const struct mtp_range_form_uint16_t
 prop_rating_range = {0, 100, 1},
 prop_effective_rating_range = {0, 100, 1};
 
 static const struct mtp_range_form_uint32_t
+#if 0
 prop_sample_rate_range = {8000, 96000, 1},
+#endif
 prop_bitrate_range = {8000, 1500000, 1};
 
 static const struct mtp_string
@@ -69,7 +79,6 @@ prop_c_date_default = {0, {}},
 prop_m_date_default = {0, {}},
 prop_artist_default = {0, {}},
 prop_genre_default = {0, {}},
-prop_last_accessed_default = {0, {}},
 prop_composer_default = {0, {}},
 prop_release_date_default = {0, {}},
 prop_album_name_default = {0, {}},
@@ -98,14 +107,11 @@ static uint16_t prop_rating_get(uint32_t handle);
 static uint16_t prop_track_get(uint32_t handle);
 static uint16_t prop_genre_get(uint32_t handle);
 static uint16_t prop_use_count_get(uint32_t handle);
-static uint16_t prop_last_accessed_get(uint32_t handle);
 static uint16_t prop_composer_get(uint32_t handle);
 static uint16_t prop_effective_rating_get(uint32_t handle);
 static uint16_t prop_release_date_get(uint32_t handle);
 static uint16_t prop_album_name_get(uint32_t handle);
 static uint16_t prop_album_artist_get(uint32_t handle);
-static uint16_t prop_sample_rate_get(uint32_t handle);
-static uint16_t prop_nb_channels_get(uint32_t handle);
 static uint16_t prop_bitrate_get(uint32_t handle);
 
 /* translate rockbox music type to MTP object format */
@@ -170,9 +176,6 @@ static const struct mtp_obj_prop mtp_obj_prop_desc[] =
     /* Use Count */
     {&prop_fmt_all_audio, OBJ_PROP_USE_COUNT, TYPE_UINT32, OBJ_PROP_GET,
      &prop_use_count_default, OBJ_PROP_FORM_NONE, NULL, &prop_use_count_get},
-    /* Last Accessed */
-    {&prop_fmt_all_audio, OBJ_PROP_LAST_ACCESSED, TYPE_STR, OBJ_PROP_GET,
-     &prop_last_accessed_default, OBJ_PROP_FORM_DATE, NULL, &prop_last_accessed_get},
     /* Composer */
     {&prop_fmt_all_audio, OBJ_PROP_COMPOSER, TYPE_STR, OBJ_PROP_GET,
      &prop_composer_default, OBJ_PROP_FORM_NONE, NULL, &prop_composer_get},
@@ -188,12 +191,14 @@ static const struct mtp_obj_prop mtp_obj_prop_desc[] =
     /* Album Artist */
     {&prop_fmt_all_audio, OBJ_PROP_ALBUM_ARTIST, TYPE_STR, OBJ_PROP_GET,
      &prop_album_artist_default, OBJ_PROP_FORM_NONE, NULL, &prop_album_artist_get},
+    #if 0
     /* Sample Rate */
     {&prop_fmt_all_audio, OBJ_PROP_SAMPLE_RATE, TYPE_UINT32, OBJ_PROP_GET,
      &prop_sample_rate_default, OBJ_PROP_FORM_RANGE, &prop_sample_rate_range, &prop_sample_rate_get},
     /* Number Of Channels */
     {&prop_fmt_all_audio, OBJ_PROP_NB_CHANNELS, TYPE_UINT16, OBJ_PROP_GET,
      &prop_nb_channels_default, OBJ_PROP_FORM_ENUM, &prop_nb_channels_enum, &prop_nb_channels_get},
+    #endif
     /* Audio Bit Rate */
     {&prop_fmt_all_audio, OBJ_PROP_AUDIO_BITRATE, TYPE_UINT32, OBJ_PROP_GET,
      &prop_bitrate_default, OBJ_PROP_FORM_RANGE, &prop_bitrate_range, &prop_bitrate_get},
@@ -209,7 +214,7 @@ void get_object_props_supported(uint32_t object_fmt)
     start_pack_data_block_array();
     for(i = 0; i < sizeof(mtp_obj_prop_desc)/sizeof(mtp_obj_prop_desc[0]); i++)
         for(j = 0; j < mtp_obj_prop_desc[i].obj_fmt->length; j++)
-            if(mtp_obj_prop_desc[i].obj_fmt->data[j] == object_fmt && i < 14)
+            if(mtp_obj_prop_desc[i].obj_fmt->data[j] == object_fmt)
                 pack_data_block_array_elem_uint16_t(mtp_obj_prop_desc[i].obj_prop_code);
     finish_pack_data_block_array();
     finish_pack_data_block();
@@ -460,120 +465,151 @@ static bool tagcache_copy_tag(char *filename, int tag, bool numeric)
     }
 }
 
+#ifdef HAVE_TC_RAMCACHE
+#define prop_getter_tcram_part(id3name) \
+    /* Try RAM tagcacache */ \
+    if(tagcache_fill_tags(&mtp_id3, mtp_path)) \
+        result = mtp_id3.id3name; \
+    else
+#else
+#define prop_getter_tcram_part(id3name)
+#endif
+
+#define prop_getter_string(tagname, id3name, humanname) \
+    const char *result; \
+    \
+    copy_object_path(handle, mtp_path, sizeof mtp_path); \
+    prop_getter_tcram_part(id3name) \
+    /* Try tagcache */ \
+    if(tagcache_copy_tag(mtp_path, tagname, false)) \
+        result = mtp_tag_str; \
+    /* Try metadata */ \
+    /* NOTE: mtp3info returns false on success oO */ \
+    else if(!mp3info(&mtp_id3, mtp_path)) \
+        result = mtp_id3.id3name; \
+    /* Failure */ \
+    else \
+        return ERROR_OP_NOT_SUPPORTED; \
+    \
+    if(result == NULL) \
+    { \
+        pack_data_block_string_charz(""); \
+        logf("mtp: no " humanname); \
+    } \
+    else \
+    { \
+        pack_data_block_string_charz(result); \
+        logf("mtp: " humanname ": %s", result); \
+    } \
+    \
+    return ERROR_OK;
+
+#define prop_getter_numeric_db(tagname, id3name, humanname, type) \
+    type result; \
+    \
+    copy_object_path(handle, mtp_path, sizeof mtp_path); \
+    prop_getter_tcram_part(id3name) \
+    /* Try tagcache */ \
+    if(tagcache_copy_tag(mtp_path, tagname, false)) \
+        result = mtp_tag_num; \
+    else \
+        return ERROR_OP_NOT_SUPPORTED; \
+    \
+    pack_data_block_##type(result); \
+    logf("mtp: " humanname ": %lu", (uint32_t)result); \
+    \
+    return ERROR_OK;
+
+#define prop_getter_numeric_result(tagname, id3name, humanname, type) \
+    type result; \
+    \
+    copy_object_path(handle, mtp_path, sizeof mtp_path); \
+    prop_getter_tcram_part(id3name) \
+    /* Try tagcache */ \
+    if(tagcache_copy_tag(mtp_path, tagname, false)) \
+        result = mtp_tag_num; \
+    /* Try metadata */ \
+    /* NOTE: mtp3info returns false on success oO */ \
+    else if(!mp3info(&mtp_id3, mtp_path)) \
+        result = mtp_id3.id3name; \
+    /* Failure */ \
+    else \
+        return ERROR_OP_NOT_SUPPORTED; \
+    \
+    logf("mtp: " humanname ": %lu", (uint32_t)result); \
+
+#define prop_getter_numeric(tagname, id3name, humanname, type) \
+    prop_getter_numeric_result(tagname, id3name, humanname, type) \
+    pack_data_block_##type(result); \
+    \
+    return ERROR_OK;
+
 static uint16_t prop_artist_get(uint32_t handle)
 {
-    copy_object_path(handle, mtp_path, sizeof mtp_path);
-    #ifdef HAVE_TC_RAMCACHE
-    /* Try RAM tagcacache */
-    if(tagcache_fill_tags(&mtp_id3, mtp_path))
-    {
-        logf("mtp: get artist(1): %s/0x%lx", mtp_id3.artist, (uint32_t)mtp_id3.artist);
-        pack_data_block_string_charz(mtp_id3.artist);
-    }
-    else
-    #endif
-    /* Try tagcache */
-    if(tagcache_copy_tag(mtp_path, tag_artist, false))
-    {
-        logf("mtp: get artist(2): %s", mtp_tag_str);
-        pack_data_block_string_charz(mtp_tag_str);
-    }
-    /* Try metadata */
-    /* NOTE: mtp3info returns false on success oO */
-    else if(!mp3info(&mtp_id3, mtp_path))
-    {
-        pack_data_block_string_charz(mtp_id3.artist);
-        logf("mtp: get artist(3): %s/0x%lx", mtp_id3.artist, (uint32_t)mtp_id3.artist);
-    }
-    /* Failure */
-    else
-        return ERROR_OP_NOT_SUPPORTED;
-    
-    return ERROR_OK;
+    prop_getter_string(tag_artist, artist, "artist")
 }
 
 static uint16_t prop_duration_get(uint32_t handle)
 {
-    (void) handle;
-    return ERROR_OP_NOT_SUPPORTED;
+    prop_getter_numeric(tag_length, length, "duration", uint32_t)
 }
 
 static uint16_t prop_rating_get(uint32_t handle)
 {
-    (void) handle;
-    return ERROR_OP_NOT_SUPPORTED;
+    prop_getter_numeric_db(tag_length, rating, "rating", uint8_t)
 }
 
 static uint16_t prop_track_get(uint32_t handle)
 {
-    (void) handle;
-    return ERROR_OP_NOT_SUPPORTED;
+    prop_getter_numeric(tag_tracknumber, tracknum, "track", uint16_t)
 }
 
 static uint16_t prop_genre_get(uint32_t handle)
 {
-    (void) handle;
-    return ERROR_OP_NOT_SUPPORTED;
+    prop_getter_string(tag_genre, genre_string, "genre")
 }
 
 static uint16_t prop_use_count_get(uint32_t handle)
 {
-    (void) handle;
-    return ERROR_OP_NOT_SUPPORTED;
-}
-
-static uint16_t prop_last_accessed_get(uint32_t handle)
-{
-    (void) handle;
-    return ERROR_OP_NOT_SUPPORTED;
+    prop_getter_numeric_db(tag_playcount, playcount, "play count", uint32_t)
 }
 
 static uint16_t prop_composer_get(uint32_t handle)
 {
-    (void) handle;
-    return ERROR_OP_NOT_SUPPORTED;
+    prop_getter_string(tag_composer, composer, "composer")
 }
 
 static uint16_t prop_effective_rating_get(uint32_t handle)
 {
-    (void) handle;
-    return ERROR_OP_NOT_SUPPORTED;
+    prop_getter_numeric_db(tag_virt_autoscore, score, "effective rating", uint8_t)
 }
 
 static uint16_t prop_release_date_get(uint32_t handle)
 {
-    (void) handle;
-    return ERROR_OP_NOT_SUPPORTED;
+    prop_getter_numeric_result(tag_year, year, "year", int)
+    
+    struct tm tm;
+    memset(&tm, 0, sizeof(struct tm));
+    tm.tm_year = result - 1900; // years after 1900
+    
+    pack_data_block_date_time(&tm);
+    
+    return ERROR_OK;
 }
 
 static uint16_t prop_album_name_get(uint32_t handle)
 {
-    (void) handle;
-    return ERROR_OP_NOT_SUPPORTED;
+    prop_getter_string(tag_album, album, "album name")
 }
 
 static uint16_t prop_album_artist_get(uint32_t handle)
 {
-    (void) handle;
-    return ERROR_OP_NOT_SUPPORTED;
-}
-
-static uint16_t prop_sample_rate_get(uint32_t handle)
-{
-    (void) handle;
-    return ERROR_OP_NOT_SUPPORTED;
-}
-
-static uint16_t prop_nb_channels_get(uint32_t handle)
-{
-    (void) handle;
-    return ERROR_OP_NOT_SUPPORTED;
+    prop_getter_string(tag_albumartist, albumartist, "album artist")
 }
 
 static uint16_t prop_bitrate_get(uint32_t handle)
 {
-    (void) handle;
-    return ERROR_OP_NOT_SUPPORTED;
+    prop_getter_numeric(tag_bitrate, bitrate, "bitrate", uint32_t)
 }
 
 
