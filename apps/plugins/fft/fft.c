@@ -178,8 +178,38 @@ GREY_INFO_STRUCT
 #   define FFT_SCALE         BUTTON_FFWD
 #   define FFT_QUIT       BUTTON_PLAY
 
+#elif (CONFIG_KEYPAD == MROBE500_PAD)
+#   define FFT_QUIT             BUTTON_POWER
+
+#elif (CONFIG_KEYPAD == ONDAVX747_PAD)
+#   define FFT_QUIT             BUTTON_POWER
+
+#elif (CONFIG_KEYPAD == ONDAVX777_PAD)
+#   define FFT_QUIT             BUTTON_POWER
+
 #else
 #error No keymap defined!
+#endif
+
+#ifdef HAVE_TOUCHSCREEN
+#ifndef FFT_PREV_GRAPH
+#   define FFT_PREV_GRAPH     BUTTON_MIDLEFT
+#endif
+#ifndef FFT_NEXT_GRAPH
+#   define FFT_NEXT_GRAPH    BUTTON_MIDRIGHT
+#endif
+#ifndef FFT_ORIENTATION
+#   define FFT_ORIENTATION  BUTTON_CENTER
+#endif
+#ifndef FFT_WINDOW
+#   define FFT_WINDOW        BUTTON_TOPLEFT
+#endif
+#ifndef FFT_SCALE
+#   define FFT_SCALE       BUTTON_TOPRIGHT
+#endif
+#ifndef FFT_QUIT
+#   define FFT_QUIT     BUTTON_BOTTOMLEFT
+#endif
 #endif
 
 #ifdef HAVE_LCD_COLOR
@@ -190,7 +220,20 @@ GREY_INFO_STRUCT
 #include "_kiss_fft_guts.h" /* sizeof(struct kiss_fft_state) */
 #include "const.h"
 
-#define FFT_SIZE 2048
+#if (LCD_WIDTH < LCD_HEIGHT)
+#define LCD_SIZE LCD_HEIGHT
+#else
+#define LCD_SIZE LCD_WIDTH
+#endif
+
+#if (LCD_SIZE < 512)
+#define FFT_SIZE 2048 /* 512*4 */
+#elif (LCD_SIZE < 1024)
+#define FFT_SIZE 4096 /* 1024*4 */
+#else
+#define FFT_SIZE 8192 /* 2048*4 */
+#endif
+
 #define ARRAYSIZE_IN (FFT_SIZE)
 #define ARRAYSIZE_OUT (FFT_SIZE/2)
 #define ARRAYSIZE_PLOT (FFT_SIZE/4)

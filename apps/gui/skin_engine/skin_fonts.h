@@ -5,9 +5,9 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
+ * $Id: skin_tokens.c 24526 2010-02-05 23:58:53Z jdgordon $
  *
- *   Copyright (C) 2007 by Dominik Riebeling
- *   $Id$
+ * Copyright (C) 2010 Jonathan Gordon
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -19,12 +19,28 @@
  *
  ****************************************************************************/
 
-// PUREVERSION is needed to be able to just compare versions. It does not
-// contain a build timestamp because it needs to be the same in different
-// files
-// VERSION is the plain version number, used for http User-Agent string.
-#define VERSION "1.2.5"
-#define PUREVERSION "SVN $Revision$"
+#include "config.h"
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 
-#define FULLVERSION VERSION" ("PUREVERSION"), built "__DATE__" "__TIME__
+#include "file.h"
+#include "settings.h"
+#include "font.h"
+#include "skin_buffer.h"
 
+#ifndef _SKINFONTS_H_
+#define _SKINFONTS_H_
+
+#define MAXUSERFONTS (MAXFONTS - SYSTEMFONTCOUNT)
+
+void skin_font_init(void);
+
+/* load a font into the skin buffer. return the font id. */
+int skin_font_load(char* font_name);
+
+/* unload a skin font. If a font has been loaded more than once it wont actually
+ * be unloaded untill all references have been unloaded */
+void skin_font_unload(int font_id);
+    
+#endif
