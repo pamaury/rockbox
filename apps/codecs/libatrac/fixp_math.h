@@ -1,3 +1,23 @@
+/***************************************************************************
+ *             __________               __   ___.
+ *   Open      \______   \ ____   ____ |  | _\_ |__   _______  ___
+ *   Source     |       _//  _ \_/ ___\|  |/ /| __ \ /  _ \  \/  /
+ *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
+ *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
+ *                     \/            \/     \/    \/            \/
+ * $Id$
+ *
+ * Copyright (C) 2009 Mohamed Tarek
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
+ * KIND, either express or implied.
+ *
+ ****************************************************************************/
 #include <stdlib.h>
 #include <inttypes.h>
 
@@ -91,46 +111,3 @@
         return (int32_t)temp;
     }
 #endif
-
-static inline int32_t fixdiv16(int32_t x, int32_t y)
-{
-    int64_t temp;
-    temp = x << 16;
-    temp /= y;
-
-    return (int32_t)temp;
-}
-
-/*
- * Fast integer square root adapted from algorithm, 
- * Martin Guy @ UKC, June 1985.
- * Originally from a book on programming abaci by Mr C. Woo.
- * This is taken from :
- * http://wiki.forum.nokia.com/index.php/How_to_use_fixed_point_maths#How_to_get_square_root_for_integers
- * with a added shift up of the result by 8 bits to return result in 16.16 fixed-point representation.
- */
-static inline int32_t fastSqrt(int32_t n)
-{
-   /*
-    * Logically, these are unsigned. 
-    * We need the sign bit to test
-    * whether (op - res - one) underflowed.
-    */
-    int32_t op, res, one;
-    op = n;
-    res = 0;
-    /* "one" starts at the highest power of four <= than the argument. */
-    one = 1 << 30; /* second-to-top bit set */
-    while (one > op) one >>= 2;
-    while (one != 0) 
-    {
-        if (op >= res + one) 
-        {
-            op = op - (res + one);
-            res = res +  (one<<1);
-        }
-        res >>= 1;
-        one >>= 2;
-    }
-    return(res << 8);
-}

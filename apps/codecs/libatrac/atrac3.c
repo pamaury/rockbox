@@ -40,7 +40,6 @@
 #include "atrac3data.h"
 #include "atrac3data_fixed.h"
 #include "fixp_math.h"
-#include "../lib/mdct2.h"
 
 #define JOINT_STEREO    0x12
 #define STEREO          0x2
@@ -55,9 +54,13 @@
 #define FFMIN(a,b) ((a) > (b) ? (b) : (a))
 #define FFSWAP(type,a,b) do{type SWAP_tmp= b; b= a; a= SWAP_tmp;}while(0)
 
-static int32_t          qmf_window[48] IBSS_ATTR;
-static VLC              spectral_coeff_tab[7];
-static channel_unit     channel_units[2] IBSS_ATTR_LARGE_IRAM;
+static VLC          spectral_coeff_tab[7];
+static int32_t      qmf_window[48] IBSS_ATTR;
+static int32_t      atrac3_spectrum [2][1024] IBSS_ATTR __attribute__((aligned(16)));
+static int32_t      atrac3_IMDCT_buf[2][ 512] IBSS_ATTR __attribute__((aligned(16)));
+static int32_t      atrac3_prevFrame[2][1024] IBSS_ATTR;
+static channel_unit channel_units[2] IBSS_ATTR_LARGE_IRAM;
+
 
 /**
  * Matrixing within quadrature mirror synthesis filter.
@@ -91,6 +94,7 @@ static channel_unit     channel_units[2] IBSS_ATTR_LARGE_IRAM;
     }
 #endif
 
+
 /**
  * Matrixing within quadrature mirror synthesis filter.
  *
@@ -98,6 +102,20 @@ static channel_unit     channel_units[2] IBSS_ATTR_LARGE_IRAM;
  * @param in        input buffer
  * @param win       windowing coefficients
  * @param nIn       size of spectrum buffer
+ * Reference implementation:
+ *
+ * for (j = nIn; j != 0; j--) {
+ *          s1 = fixmul32(in[0], win[0]);
+ *          s2 = fixmul32(in[1], win[1]);
+ *          for (i = 2; i < 48; i += 2) {
+ *              s1 += fixmul31(in[i  ], win[i  ]);
+ *              s2 += fixmul31(in[i+1], win[i+1]);
+ *          }
+ *          out[0] = s2;
+ *          out[1] = s1;
+ *          in += 2;
+ *          out += 2;
+ *      }
  */
  
 #if defined(CPU_ARM)
@@ -116,16 +134,62 @@ static channel_unit     channel_units[2] IBSS_ATTR_LARGE_IRAM;
         int32_t i, j, s1, s2;
         
         for (j = nIn; j != 0; j--) {
-            /* i=0 */
-            s1 = fixmul31(win[0], in[0]);
-            s2 = fixmul31(win[1], in[1]);
-    
-            /* i=2..46 */
-            for (i = 2; i < 48; i += 2) {
-                s1 += fixmul31(win[i  ], in[i  ]);
-                s2 += fixmul31(win[i+1], in[i+1]);
-            }
-    
+            i = 0;
+            /*  0.. 7 */
+            s1  = fixmul31(win[i], in[i]); i++;
+            s2  = fixmul31(win[i], in[i]); i++;
+            s1 += fixmul31(win[i], in[i]); i++;
+            s2 += fixmul31(win[i], in[i]); i++;
+            s1 += fixmul31(win[i], in[i]); i++;
+            s2 += fixmul31(win[i], in[i]); i++;
+            s1 += fixmul31(win[i], in[i]); i++;
+            s2 += fixmul31(win[i], in[i]); i++;
+            /*  8..15 */
+            s1 += fixmul31(win[i], in[i]); i++;
+            s2 += fixmul31(win[i], in[i]); i++;
+            s1 += fixmul31(win[i], in[i]); i++;
+            s2 += fixmul31(win[i], in[i]); i++;
+            s1 += fixmul31(win[i], in[i]); i++;
+            s2 += fixmul31(win[i], in[i]); i++;
+            s1 += fixmul31(win[i], in[i]); i++;
+            s2 += fixmul31(win[i], in[i]); i++;
+            /* 16..23 */
+            s1 += fixmul31(win[i], in[i]); i++;
+            s2 += fixmul31(win[i], in[i]); i++;
+            s1 += fixmul31(win[i], in[i]); i++;
+            s2 += fixmul31(win[i], in[i]); i++;
+            s1 += fixmul31(win[i], in[i]); i++;
+            s2 += fixmul31(win[i], in[i]); i++;
+            s1 += fixmul31(win[i], in[i]); i++;
+            s2 += fixmul31(win[i], in[i]); i++;
+            /* 24..31 */
+            s1 += fixmul31(win[i], in[i]); i++;
+            s2 += fixmul31(win[i], in[i]); i++;
+            s1 += fixmul31(win[i], in[i]); i++;
+            s2 += fixmul31(win[i], in[i]); i++;
+            s1 += fixmul31(win[i], in[i]); i++;
+            s2 += fixmul31(win[i], in[i]); i++;
+            s1 += fixmul31(win[i], in[i]); i++;
+            s2 += fixmul31(win[i], in[i]); i++;
+            /* 32..39 */
+            s1 += fixmul31(win[i], in[i]); i++;
+            s2 += fixmul31(win[i], in[i]); i++;
+            s1 += fixmul31(win[i], in[i]); i++;
+            s2 += fixmul31(win[i], in[i]); i++;
+            s1 += fixmul31(win[i], in[i]); i++;
+            s2 += fixmul31(win[i], in[i]); i++;
+            s1 += fixmul31(win[i], in[i]); i++;
+            s2 += fixmul31(win[i], in[i]); i++;
+            /* 40..47 */
+            s1 += fixmul31(win[i], in[i]); i++;
+            s2 += fixmul31(win[i], in[i]); i++;
+            s1 += fixmul31(win[i], in[i]); i++;
+            s2 += fixmul31(win[i], in[i]); i++;
+            s1 += fixmul31(win[i], in[i]); i++;
+            s2 += fixmul31(win[i], in[i]); i++;
+            s1 += fixmul31(win[i], in[i]); i++;
+            s2 += fixmul31(win[i], in[i]);
+
             out[0] = s2;
             out[1] = s1;
     
@@ -134,6 +198,7 @@ static channel_unit     channel_units[2] IBSS_ATTR_LARGE_IRAM;
         }
     }
 #endif
+
 
 /**
  * IMDCT windowing.
@@ -153,6 +218,7 @@ atrac3_imdct_windowing(int32_t *buffer,
         buffer[511-i] = fixmul31(win[i], buffer[511-i]);
     }
 }
+
 
 /**
  * Quadrature mirror synthesis filter.
@@ -180,19 +246,20 @@ static void iqmf (int32_t *inlo, int32_t *inhi, unsigned int nIn, int32_t *pOut,
     memcpy(delayBuf, temp + (nIn << 1), 46*sizeof(int32_t));
 }
 
+
 /**
  * Regular 512 points IMDCT without overlapping, with the exception of the swapping of odd bands
  * caused by the reverse spectra of the QMF.
  *
- * @param pInput    float input
- * @param pOutput   float output
+ * @param pInput    input
+ * @param pOutput   output
  * @param odd_band  1 if the band is an odd band
  */
 
 static void IMLT(int32_t *pInput, int32_t *pOutput)
 {
     /* Apply the imdct. */
-    mdct_backward(512, pInput, pOutput);
+    ff_imdct_calc(9, pOutput, pInput);
 
     /* Windowing. */
     atrac3_imdct_windowing(pOutput, window_lookup);
@@ -214,7 +281,7 @@ static int decode_bytes(const uint8_t* inbuffer, uint8_t* out, int bytes){
     uint32_t* obuf = (uint32_t*) out;
 
 #if ((defined(TEST) || defined(SIMULATOR)) && !defined(CPU_ARM))
-    off = 0; //no check for memory alignment of inbuffer
+    off = 0; /* no check for memory alignment of inbuffer */
 #else
     off = (intptr_t)inbuffer & 3;
 #endif /* TEST */
@@ -229,7 +296,8 @@ static int decode_bytes(const uint8_t* inbuffer, uint8_t* out, int bytes){
 }
 
 
-static void init_atrac3_transforms(void) {
+static void init_atrac3_transforms(void)
+{
     int32_t s;
     int i;
 
@@ -245,6 +313,7 @@ static void init_atrac3_transforms(void) {
         qmf_window[47 - i] = s;
     }
 }
+
 
 /**
  * Mantissa decoding
@@ -278,7 +347,7 @@ static void readQuantSpectralCoeffs (GetBitContext *gb, int selector, int coding
         } else {
             for (cnt = 0; cnt < numCodes; cnt++) {
                 if (numBits)
-                    code = get_bits(gb, numBits); //numBits is always 4 in this case
+                    code = get_bits(gb, numBits); /* numBits is always 4 in this case */
                 else
                     code = 0;
                 mantissas[cnt*2] = seTab_0[code >> 2];
@@ -306,23 +375,69 @@ static void readQuantSpectralCoeffs (GetBitContext *gb, int selector, int coding
     }
 }
 
+
+/**
+ * Requantize the spectrum.
+ *
+ * @param *mantissas    pointer to mantissas for each spectral line
+ * @param pOut          requantized band spectrum
+ * @param first         first spectral line in subband
+ * @param last          last spectral line in subband
+ * @param SF            scalefactor for all spectral lines of this band
+ */
+ 
+static void inverseQuantizeSpectrum(int *mantissas, int32_t *pOut,
+                                    int32_t first, int32_t last, int32_t SF)
+{
+    int *pIn = mantissas;
+    
+    /* Inverse quantize the coefficients. */
+    if((first/256) &1) {
+        /* Odd band - Reverse coefficients */
+        do {
+            pOut[last--] = fixmul16(*pIn++, SF);
+            pOut[last--] = fixmul16(*pIn++, SF);
+            pOut[last--] = fixmul16(*pIn++, SF);
+            pOut[last--] = fixmul16(*pIn++, SF);
+            pOut[last--] = fixmul16(*pIn++, SF);
+            pOut[last--] = fixmul16(*pIn++, SF);
+            pOut[last--] = fixmul16(*pIn++, SF);
+            pOut[last--] = fixmul16(*pIn++, SF);
+        } while (last>first);
+    } else {
+         /* Even band - Do not reverse coefficients */
+         do {
+            pOut[first++] = fixmul16(*pIn++, SF);
+            pOut[first++] = fixmul16(*pIn++, SF);
+            pOut[first++] = fixmul16(*pIn++, SF);
+            pOut[first++] = fixmul16(*pIn++, SF);
+            pOut[first++] = fixmul16(*pIn++, SF);
+            pOut[first++] = fixmul16(*pIn++, SF);
+            pOut[first++] = fixmul16(*pIn++, SF);
+            pOut[first++] = fixmul16(*pIn++, SF);
+        } while (first<last);
+    }
+}
+
+
 /**
  * Restore the quantized band spectrum coefficients
  *
  * @param gb            the GetBit context
  * @param pOut          decoded band spectrum
- * @return outSubbands   subband counter, fix for broken specification/files
+ * @return outSubbands  subband counter, fix for broken specification/files
  */
 
-static int decodeSpectrum (GetBitContext *gb, int32_t *pOut)
+int decodeSpectrum (GetBitContext *gb, int32_t *pOut) ICODE_ATTR_LARGE_IRAM;
+int decodeSpectrum (GetBitContext *gb, int32_t *pOut)
 {
-    int   numSubbands, codingMode, cnt, first, last, subbWidth, *pIn;
+    int   numSubbands, codingMode, cnt, first, last, subbWidth;
     int   subband_vlc_index[32], SF_idxs[32];
     int   mantissas[128];
     int32_t SF;
 
-    numSubbands = get_bits(gb, 5); // number of coded subbands
-    codingMode = get_bits1(gb); // coding Mode: 0 - VLC/ 1-CLC
+    numSubbands = get_bits(gb, 5); /* number of coded subbands */
+    codingMode = get_bits1(gb); /* coding Mode: 0 - VLC/ 1-CLC */
 
     /* Get the VLC selector table for the subbands, 0 means not coded. */
     for (cnt = 0; cnt <= numSubbands; cnt++)
@@ -348,16 +463,14 @@ static int decodeSpectrum (GetBitContext *gb, int32_t *pOut)
 
             /* Decode the scale factor for this subband. */
             SF = fixmul31(SFTable_fixed[SF_idxs[cnt]], iMaxQuant_fix[subband_vlc_index[cnt]]);
+            /* Remark: Hardcoded hack to add 2 bits (empty) fract part to internal sample
+             * representation. Needed for higher accuracy in internal calculations as
+             * well as for DSP configuration. See also: ../atrac3_rm.c, DSP_SET_SAMPLE_DEPTH 
+             */
+            SF <<= 2;
 
             /* Inverse quantize the coefficients. */
-            if((first/256) &1) {
-                /* Odd band - Reverse coefficients */
-                for (pIn=mantissas ; last>first; last--, pIn++)
-                    pOut[last] = fixmul16(*pIn, SF);
-            } else {
-                 for (pIn=mantissas ; first<last; first++, pIn++)
-                    pOut[first] = fixmul16(*pIn, SF);
-            }
+            inverseQuantizeSpectrum(mantissas, pOut, first, last, SF);
 
         } else {
             /* This subband was not coded, so zero the entire subband. */
@@ -370,6 +483,7 @@ static int decodeSpectrum (GetBitContext *gb, int32_t *pOut)
     memset(pOut+first, 0, (1024 - first) * sizeof(int32_t));
     return numSubbands;
 }
+
 
 /**
  * Restore the quantized tonal components
@@ -428,6 +542,11 @@ static int decodeTonalComponents (GetBitContext *gb, tonal_component *pComponent
                 coded_values = FFMIN(max_coded_values,coded_values);
 
                 scalefactor = fixmul31(SFTable_fixed[sfIndx], iMaxQuant_fix[quant_step_index]);
+                /* Remark: Hardcoded hack to add 2 bits (empty) fract part to internal sample
+                 * representation. Needed for higher accuracy in internal calculations as
+                 * well as for DSP configuration. See also: ../atrac3_rm.c, DSP_SET_SAMPLE_DEPTH 
+                 */
+                scalefactor <<= 2;
 
                 readQuantSpectralCoeffs(gb, quant_step_index, coding_mode, mantissa, coded_values);
 
@@ -445,6 +564,7 @@ static int decodeTonalComponents (GetBitContext *gb, tonal_component *pComponent
 
     return component_count;
 }
+
 
 /**
  * Decode gain parameters for the coded bands
@@ -483,21 +603,125 @@ static int decodeGainControl (GetBitContext *gb, gain_block *pGb, int numBands)
     return 0;
 }
 
+
+/**
+ * Apply fix (constant) gain and overlap for sample[start...255].
+ *
+ * @param pIn           input buffer
+ * @param pPrev         previous buffer to perform overlap against
+ * @param pOut          output buffer
+ * @param start         index to start with (always a multiple of 8)
+ * @param gain          gain to apply
+ */
+ 
+static void applyFixGain (int32_t *pIn, int32_t *pPrev, int32_t *pOut, 
+                          int32_t start, int32_t gain)
+{
+    int32_t i = start;
+    
+    /* start is always a multiple of 8 and therefore allows us to unroll the 
+     * loop to 8 calculation per loop 
+     */
+    if (ONE_16 == gain) {
+        /* gain1 = 1.0 -> no multiplication needed, just adding */
+        /* Remark: This path is called >90%. */
+        do {
+            pOut[i] = pIn[i] + pPrev[i]; i++;
+            pOut[i] = pIn[i] + pPrev[i]; i++;
+            pOut[i] = pIn[i] + pPrev[i]; i++;
+            pOut[i] = pIn[i] + pPrev[i]; i++;
+            pOut[i] = pIn[i] + pPrev[i]; i++;
+            pOut[i] = pIn[i] + pPrev[i]; i++;
+            pOut[i] = pIn[i] + pPrev[i]; i++;
+            pOut[i] = pIn[i] + pPrev[i]; i++;
+        } while (i<256);
+    } else {
+        /* gain1 != 1.0 -> we need to do a multiplication */
+        /* Remark: This path is called seldom. */
+        do {
+            pOut[i] = fixmul16(pIn[i], gain) + pPrev[i]; i++;
+            pOut[i] = fixmul16(pIn[i], gain) + pPrev[i]; i++;
+            pOut[i] = fixmul16(pIn[i], gain) + pPrev[i]; i++;
+            pOut[i] = fixmul16(pIn[i], gain) + pPrev[i]; i++;
+            pOut[i] = fixmul16(pIn[i], gain) + pPrev[i]; i++;
+            pOut[i] = fixmul16(pIn[i], gain) + pPrev[i]; i++;
+            pOut[i] = fixmul16(pIn[i], gain) + pPrev[i]; i++;
+            pOut[i] = fixmul16(pIn[i], gain) + pPrev[i]; i++;
+        } while (i<256);
+    }
+}
+
+
+/**
+ * Apply variable gain and overlap. Returns sample index after applying gain,
+ * resulting sample index is always a multiple of 8.
+ *
+ * @param pIn           input buffer
+ * @param pPrev         previous buffer to perform overlap against
+ * @param pOut          output buffer
+ * @param start         index to start with (always a multiple of 8)
+ * @param end           end index for first loop (always a multiple of 8)
+ * @param gain1         current bands gain to apply
+ * @param gain2         next bands gain to apply
+ * @param gain_inc      stepwise adaption from gain1 to gain2
+ */
+ 
+static int applyVariableGain (int32_t *pIn, int32_t *pPrev, int32_t *pOut, 
+                              int32_t start, int32_t end, 
+                              int32_t gain1, int32_t gain2, int32_t gain_inc)
+{
+    int32_t i = start;
+    
+    /* Apply fix gains until end index is reached */
+    do {
+        pOut[i] = fixmul16((fixmul16(pIn[i], gain1) + pPrev[i]), gain2); i++;
+        pOut[i] = fixmul16((fixmul16(pIn[i], gain1) + pPrev[i]), gain2); i++;
+        pOut[i] = fixmul16((fixmul16(pIn[i], gain1) + pPrev[i]), gain2); i++;
+        pOut[i] = fixmul16((fixmul16(pIn[i], gain1) + pPrev[i]), gain2); i++;
+        pOut[i] = fixmul16((fixmul16(pIn[i], gain1) + pPrev[i]), gain2); i++;
+        pOut[i] = fixmul16((fixmul16(pIn[i], gain1) + pPrev[i]), gain2); i++;
+        pOut[i] = fixmul16((fixmul16(pIn[i], gain1) + pPrev[i]), gain2); i++;
+        pOut[i] = fixmul16((fixmul16(pIn[i], gain1) + pPrev[i]), gain2); i++;
+    } while (i < end);
+
+    /* Interpolation is done over next eight samples */
+    pOut[i] = fixmul16((fixmul16(pIn[i], gain1) + pPrev[i]), gain2); i++;
+    gain2 = fixmul16(gain2, gain_inc);
+    pOut[i] = fixmul16((fixmul16(pIn[i], gain1) + pPrev[i]), gain2); i++;
+    gain2 = fixmul16(gain2, gain_inc);
+    pOut[i] = fixmul16((fixmul16(pIn[i], gain1) + pPrev[i]), gain2); i++;
+    gain2 = fixmul16(gain2, gain_inc);
+    pOut[i] = fixmul16((fixmul16(pIn[i], gain1) + pPrev[i]), gain2); i++;
+    gain2 = fixmul16(gain2, gain_inc);
+    pOut[i] = fixmul16((fixmul16(pIn[i], gain1) + pPrev[i]), gain2); i++;
+    gain2 = fixmul16(gain2, gain_inc);
+    pOut[i] = fixmul16((fixmul16(pIn[i], gain1) + pPrev[i]), gain2); i++;
+    gain2 = fixmul16(gain2, gain_inc);
+    pOut[i] = fixmul16((fixmul16(pIn[i], gain1) + pPrev[i]), gain2); i++;
+    gain2 = fixmul16(gain2, gain_inc);
+    pOut[i] = fixmul16((fixmul16(pIn[i], gain1) + pPrev[i]), gain2); i++;
+    gain2 = fixmul16(gain2, gain_inc);
+    
+    return i;
+}
+
+
 /**
  * Apply gain parameters and perform the MDCT overlapping part
  *
- * @param pIn           input float buffer
- * @param pPrev         previous float buffer to perform overlap against
- * @param pOut          output float buffer
+ * @param pIn           input buffer
+ * @param pPrev         previous buffer to perform overlap against
+ * @param pOut          output buffer
  * @param pGain1        current band gain info
  * @param pGain2        next band gain info
  */
 
-static void gainCompensateAndOverlap (int32_t *pIn, int32_t *pPrev, int32_t *pOut, gain_info *pGain1, gain_info *pGain2)
+static void gainCompensateAndOverlap (int32_t *pIn, int32_t *pPrev, int32_t *pOut, 
+                                      gain_info *pGain1, gain_info *pGain2)
 {
     /* gain compensation function */
     int32_t  gain1, gain2, gain_inc;
-    int   cnt, numdata, nsample, startLoc, endLoc;
+    int   cnt, numdata, nsample, startLoc;
 
     if (pGain2->num_gain_data == 0)
         gain1 = ONE_16;
@@ -505,40 +729,34 @@ static void gainCompensateAndOverlap (int32_t *pIn, int32_t *pPrev, int32_t *pOu
         gain1 = gain_tab1[pGain2->levcode[0]];
 
     if (pGain1->num_gain_data == 0) {
-        for (cnt = 0; cnt < 256; cnt++)
-            pOut[cnt] = fixmul16(pIn[cnt], gain1) + pPrev[cnt];
+        /* Remark: This path is called >90%. */
+        /* Apply gain for all samples from 0...255 */
+        applyFixGain(pIn, pPrev, pOut, 0, gain1);
     } else {
+        /* Remark: This path is called seldom. */
         numdata = pGain1->num_gain_data;
         pGain1->loccode[numdata] = 32;
         pGain1->levcode[numdata] = 4;
-
-        nsample = 0; // current sample = 0
+        
+        nsample = 0; /* starting loop with =0 */
 
         for (cnt = 0; cnt < numdata; cnt++) {
             startLoc = pGain1->loccode[cnt] * 8;
-            endLoc = startLoc + 8;
 
-            gain2 = gain_tab1[pGain1->levcode[cnt]];
+            gain2    = gain_tab1[pGain1->levcode[cnt]];
             gain_inc = gain_tab2[(pGain1->levcode[cnt+1] - pGain1->levcode[cnt])+15];
 
-            /* interpolate */
-            for (; nsample < startLoc; nsample++)
-                pOut[nsample] = fixmul16((fixmul16(pIn[nsample], gain1) + pPrev[nsample]), gain2);
-
-            /* interpolation is done over eight samples */
-            for (; nsample < endLoc; nsample++) {
-                pOut[nsample] = fixmul16((fixmul16(pIn[nsample], gain1) + pPrev[nsample]),gain2);
-                gain2 = fixmul16(gain2, gain_inc);
-            }
+            /* Apply variable gain (gain1 -> gain2) to samples */
+            nsample  = applyVariableGain(pIn, pPrev, pOut, nsample, startLoc, gain1, gain2, gain_inc);
         }
-
-        for (; nsample < 256; nsample++)
-            pOut[nsample] = fixmul16(pIn[nsample], gain1) + pPrev[nsample];
+        /* Apply gain for the residual samples from nsample...255 */
+        applyFixGain(pIn, pPrev, pOut, nsample, gain1);
     }
 
     /* Delay for the overlapping part. */
     memcpy(pPrev, &pIn[256], 256*sizeof(int32_t));
 }
+
 
 /**
  * Combine the tonal band spectrum and regular band spectrum
@@ -569,7 +787,21 @@ static int addTonalComponents (int32_t *pSpectrum, int numComponents, tonal_comp
 }
 
 
-#define INTERPOLATE(old,new,nsample)  ((old*ONE_16) + fixmul16(((nsample*ONE_16)>>3), (((new) - (old))*ONE_16)))
+/**
+ * Linear equidistant interpolation between two points x and y. 7 interpolation
+ * points can be calculated. Result is scaled by <<16.
+ * Result for s=0 is x*ONE_16
+ * Result for s=8 is y*ONE_16
+ *
+ * @param x     first input point
+ * @param y     second input point
+ * @param s     index of interpolation point (0..7)
+ */
+ 
+/*
+#define INTERPOLATE(x, y, s)    ((x*ONE_16) + fixmul16(((s*ONE_16)>>3), (((x) - (y))*ONE_16)))
+*/
+#define INTERPOLATE(x, y, s)    ((((x)<<3) + s*((y)-(x)))<<13)
 
 static void reverseMatrixing(int32_t *su1, int32_t *su2, int *pPrevCode, int *pCurrCode)
 {
@@ -628,21 +860,21 @@ static void reverseMatrixing(int32_t *su1, int32_t *su2, int *pPrevCode, int *pC
                 }
                 break;
             default:
-                //assert(0);
+                /* assert(0) */;
                 break;
         }
     }
 }
 
 static void getChannelWeights (int indx, int flag, int32_t ch[2]){
-    if (indx == 7) {
-        ch[0] = ONE_16;
-        ch[1] = ONE_16;
+    /* Read channel weights from table */
+    if (flag) {
+        /* Swap channel weights */
+        ch[1] = channelWeights0[indx&7];
+        ch[0] = channelWeights1[indx&7];
     } else {
-        ch[0] = fixdiv16(((indx & 7)*ONE_16), 7*ONE_16);
-        ch[1] = fastSqrt((ONE_16 << 1) - fixmul16(ch[0], ch[0]));
-        if(flag)
-            FFSWAP(int32_t, ch[0], ch[1]);
+        ch[0] = channelWeights0[indx&7];
+        ch[1] = channelWeights1[indx&7];
     }
 }
 
@@ -671,17 +903,15 @@ static void channelWeighting (int32_t *su1, int32_t *su2, int *p3)
     }
 }
 
-
 /**
  * Decode a Sound Unit
  *
  * @param gb            the GetBit context
  * @param pSnd          the channel unit to be used
- * @param pOut          the decoded samples before IQMF in float representation
+ * @param pOut          the decoded samples before IQMF
  * @param channelNum    channel number
  * @param codingMode    the coding mode (JOINT_STEREO or regular stereo/mono)
  */
-
 
 static int decodeChannelSoundUnit (GetBitContext *gb, channel_unit *pSnd, int32_t *pOut, int channelNum, int codingMode)
 {
@@ -717,24 +947,15 @@ static int decodeChannelSoundUnit (GetBitContext *gb, channel_unit *pSnd, int32_
     numBands = (subbandTab[numSubbands] - 1) >> 8;
     if (lastTonal >= 0)
         numBands = FFMAX((lastTonal + 256) >> 8, numBands);
-        
-    /* Remark: Hardcoded hack to add 2 bits (empty) fract part to internal sample
-     * representation. Needed for higher accuracy in internal calculations as
-     * well as for DSP configuration. See also: ../atrac3_rm.c, DSP_SET_SAMPLE_DEPTH 
-     * Todo: Check spectral requantisation for using and outputting samples with 
-     * fract part. */
-    int32_t i;
-    for (i=0; i<1024; ++i) {
-        pSnd->spectrum[i] <<= 2;
-    }
 
     /* Reconstruct time domain samples. */
     for (band=0; band<4; band++) {
         /* Perform the IMDCT step without overlapping. */
         if (band <= numBands) {
             IMLT(&(pSnd->spectrum[band*256]), pSnd->IMDCT_buf);
-        } else
+        } else {
             memset(pSnd->IMDCT_buf, 0, 512 * sizeof(int32_t));
+        }
 
         /* gain compensation and overlapping */
         gainCompensateAndOverlap (pSnd->IMDCT_buf, &(pSnd->prevFrame[band*256]), &(pOut[band*256]),
@@ -853,17 +1074,17 @@ static int decodeFrame(ATRAC3Context *q, const uint8_t* databuf, int off)
  * @param rmctx     pointer to the AVCodecContext
  */
 
-int atrac3_decode_frame(RMContext *rmctx, ATRAC3Context *q,
+int atrac3_decode_frame(unsigned long block_align, ATRAC3Context *q,
             int *data_size, const uint8_t *buf, int buf_size) {
     int result = 0, off = 0;
     const uint8_t* databuf;
 
-    if (buf_size < rmctx->block_align)
+    if ((unsigned)buf_size < block_align)
         return buf_size;
 
     /* Check if we need to descramble and what buffer to pass on. */
     if (q->scrambled_stream) {
-        off = decode_bytes(buf, q->decoded_bytes_buffer, rmctx->block_align);
+        off = decode_bytes(buf, q->decoded_bytes_buffer, block_align);
         databuf = q->decoded_bytes_buffer;
     } else {
         databuf = buf;
@@ -881,7 +1102,7 @@ int atrac3_decode_frame(RMContext *rmctx, ATRAC3Context *q,
     else
         *data_size = 2048 * sizeof(int32_t);
 
-    return rmctx->block_align;
+    return block_align;
 }
 
 
@@ -890,30 +1111,30 @@ int atrac3_decode_frame(RMContext *rmctx, ATRAC3Context *q,
  *
  * @param rmctx     pointer to the RMContext
  */
-
-int atrac3_decode_init(ATRAC3Context *q, RMContext *rmctx)
+int atrac3_decode_init(ATRAC3Context *q, struct mp3entry *id3)
 {
     int i;
-    uint8_t *edata_ptr = rmctx->codec_extradata;
+    uint8_t *edata_ptr = (uint8_t*)&id3->id3v2buf;
     static VLC_TYPE atrac3_vlc_table[4096][2];
     static int vlcs_initialized = 0;
 
-    /* Take data from the AVCodecContext (RM container). */
-    q->sample_rate = rmctx->sample_rate;
-    q->channels = rmctx->nb_channels;
-    q->bit_rate = rmctx->bit_rate;
-    q->bits_per_frame = rmctx->block_align * 8;
-    q->bytes_per_frame = rmctx->block_align;
+    /* Take data from the RM container. */
+    q->sample_rate = id3->frequency;
+    q->channels = id3->channels;
+    q->bit_rate = id3->bitrate * 1000;
+    q->bits_per_frame = id3->bytesperframe * 8;
+    q->bytes_per_frame = id3->bytesperframe;
 
     /* Take care of the codec-specific extradata. */
-    if (rmctx->extradata_size == 14) {
+    
+    if (id3->extradata_size == 14) {
         /* Parse the extradata, WAV format */
-        DEBUGF("[0-1] %d\n",rm_get_uint16le(&edata_ptr[0]));  //Unknown value always 1
+        DEBUGF("[0-1] %d\n",rm_get_uint16le(&edata_ptr[0]));    /* Unknown value always 1 */
         q->samples_per_channel = rm_get_uint32le(&edata_ptr[2]);
         q->codingMode = rm_get_uint16le(&edata_ptr[6]);
-        DEBUGF("[8-9] %d\n",rm_get_uint16le(&edata_ptr[8]));  //Dupe of coding mode
-        q->frame_factor = rm_get_uint16le(&edata_ptr[10]);  //Unknown always 1
-        DEBUGF("[12-13] %d\n",rm_get_uint16le(&edata_ptr[12]));  //Unknown always 0
+        DEBUGF("[8-9] %d\n",rm_get_uint16le(&edata_ptr[8]));    /* Dupe of coding mode */
+        q->frame_factor = rm_get_uint16le(&edata_ptr[10]);      /* Unknown always 1 */
+        DEBUGF("[12-13] %d\n",rm_get_uint16le(&edata_ptr[12])); /* Unknown always 0 */
 
         /* setup */
         q->samples_per_frame = 1024 * q->channels;
@@ -931,7 +1152,7 @@ int atrac3_decode_init(ATRAC3Context *q, RMContext *rmctx)
             return -1;
         }
 
-    } else if (rmctx->extradata_size == 10) {
+    } else if (id3->extradata_size == 10) {
         /* Parse the extradata, RM format. */
         q->atrac3version = rm_get_uint32be(&edata_ptr[0]);
         q->samples_per_frame = rm_get_uint16be(&edata_ptr[4]);
@@ -942,7 +1163,7 @@ int atrac3_decode_init(ATRAC3Context *q, RMContext *rmctx)
         q->scrambled_stream = 1;
 
     } else {
-        DEBUGF("Unknown extradata size %d.\n",rmctx->extradata_size);
+        DEBUGF("Unknown extradata size %d.\n",id3->extradata_size);
     }
     /* Check the extradata. */
 
@@ -970,13 +1191,13 @@ int atrac3_decode_init(ATRAC3Context *q, RMContext *rmctx)
         return -1;
     }
 
-    if (rmctx->nb_channels <= 0 || rmctx->nb_channels > 2 /*|| ((rmctx->channels * 1024) != q->samples_per_frame)*/) {
+    if (id3->channels <= 0 || id3->channels > 2 ) {
         DEBUGF("Channel configuration error!\n");
         return -1;
     }
 
 
-    if(rmctx->block_align >= UINT16_MAX/2)
+    if(id3->bytesperframe >= UINT16_MAX/2)
         return -1;
 
 
@@ -1010,7 +1231,14 @@ int atrac3_decode_init(ATRAC3Context *q, RMContext *rmctx)
         q->matrix_coeff_index_next[i] = 3;
     }
    
+    /* Link the iram'ed arrays to the decoder's data structure */
     q->pUnits = channel_units;
+    q->pUnits[0].spectrum  = &atrac3_spectrum [0][0];
+    q->pUnits[1].spectrum  = &atrac3_spectrum [1][0];
+    q->pUnits[0].IMDCT_buf = &atrac3_IMDCT_buf[0][0];
+    q->pUnits[1].IMDCT_buf = &atrac3_IMDCT_buf[1][0];
+    q->pUnits[0].prevFrame = &atrac3_prevFrame[0][0];
+    q->pUnits[1].prevFrame = &atrac3_prevFrame[1][0];
     
     return 0;
 }

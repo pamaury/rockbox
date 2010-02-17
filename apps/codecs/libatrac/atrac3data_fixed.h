@@ -1,4 +1,24 @@
-
+/***************************************************************************
+ *             __________               __   ___.
+ *   Open      \______   \ ____   ____ |  | _\_ |__   _______  ___
+ *   Source     |       _//  _ \_/ ___\|  |/ /| __ \ /  _ \  \/  /
+ *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
+ *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
+ *                     \/            \/     \/    \/            \/
+ * $Id$
+ *
+ * Copyright (C) 2009 Michael Giacomelli
+ * Copyright (C) 2009 Mohamed Tarek
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
+ * KIND, either express or implied.
+ *
+ ****************************************************************************/
 /* tables for the scalefactor decoding */
 /* scaled by 2^31*/
 static const int32_t iMaxQuant_fix[8] ICONST_ATTR = {
@@ -78,5 +98,17 @@ static const int32_t gain_tab2[31] ICONST_ATTR = {
 static const int32_t matrixCoeffs_fix[8] ICONST_ATTR = {
     0x00000000, 0x00020000, 0x00020000, 0x00020000, 
     0x00000000, 0x00000000, 0x00010000, 0x00010000, 
+};
+
+/* channelWeights0[i] = ONE_16 * ((i & 7)/7) */
+static const int32_t channelWeights0[8] ICONST_ATTR = {
+    0x00000000, 0x00002492, 0x00004925, 0x00006DB7,
+    0x00009249, 0x0000B6DB, 0x0000DB6D, 0x00010000,
+};
+
+/* channelWeights1[i] = ONE_16 * sqrt(2-channelWeights0^2) */
+static const int32_t channelWeights1[8] ICONST_ATTR = {
+    0x00016A0A, 0x00016830, 0x00016293, 0x00015904,
+    0x00014B2B, 0x00013877, 0x00011FF7, 0x00010000,
 };
 

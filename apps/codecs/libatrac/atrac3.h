@@ -1,12 +1,36 @@
+/***************************************************************************
+ *             __________               __   ___.
+ *   Open      \______   \ ____   ____ |  | _\_ |__   _______  ___
+ *   Source     |       _//  _ \_/ ___\|  |/ /| __ \ /  _ \  \/  /
+ *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
+ *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
+ *                     \/            \/     \/    \/            \/
+ * $Id$
+ *
+ * Copyright (C) 2009 Mohamed Tarek
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
+ * KIND, either express or implied.
+ *
+ ****************************************************************************/
+
 #include "ffmpeg_bitstream.h"
 #include "../librm/rm.h"
+#include "codeclib.h"
 
 #if (CONFIG_CPU == PP5022) || (CONFIG_CPU == PP5024) || (CONFIG_CPU == MCF5250)
 /* PP5022/24 and MCF5250 have larger IRAM */
-#define IBSS_ATTR_LARGE_IRAM IBSS_ATTR
+#define IBSS_ATTR_LARGE_IRAM  IBSS_ATTR
+#define ICODE_ATTR_LARGE_IRAM ICODE_ATTR
 #else
 /* other CPUs IRAM is not large enough */
 #define IBSS_ATTR_LARGE_IRAM
+#define ICODE_ATTR_LARGE_IRAM
 #endif
 
 /* These structures are needed to store the parsed gain control data. */
@@ -30,12 +54,12 @@ typedef struct {
     int               bandsCoded;
     int               numComponents;
     tonal_component   components[64];
-    int32_t           prevFrame[1024];
+    int32_t           *prevFrame;
     int               gcBlkSwitch;
     gain_block        gainBlock[2];
 
-    int32_t           spectrum[1024] __attribute__((aligned(16)));
-    int32_t           IMDCT_buf[1024] __attribute__((aligned(16)));
+    int32_t           *spectrum;
+    int32_t           *IMDCT_buf;
 
     int32_t           delayBuf1[46]; ///<qmf delay buffers
     int32_t           delayBuf2[46];
@@ -80,8 +104,8 @@ typedef struct {
     //@}
 } ATRAC3Context;
 
-int atrac3_decode_init(ATRAC3Context *q, RMContext *rmctx);
+int atrac3_decode_init(ATRAC3Context *q, struct mp3entry *id3);
 
-int atrac3_decode_frame(RMContext *rmctx, ATRAC3Context *q,
+int atrac3_decode_frame(unsigned long block_align, ATRAC3Context *q,
                         int *data_size, const uint8_t *buf, int buf_size);
 
