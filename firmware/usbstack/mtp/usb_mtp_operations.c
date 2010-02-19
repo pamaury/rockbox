@@ -248,7 +248,8 @@ static unsigned list_and_pack_files_lff(uint32_t stor_id, uint32_t obj_handle, v
 {
     bool *recursive = arg;
     (void) stor_id;
-    
+
+    logf("mtp:   * 0x%lx (%s)", obj_handle, get_object_filename(obj_handle));
     pack_data_block_array_elem_uint32_t(obj_handle);
     
     if(*recursive)
@@ -265,7 +266,7 @@ static void list_and_pack_files(uint32_t stor_id, uint32_t obj_handle, bool recu
     start_pack_data_block_array();
     
     err = generic_list_files(stor_id, obj_handle, &list_and_pack_files_lff, &recursive);
-    logf("mtp: lapf h=0x%lx c=%lu",obj_handle,finish_pack_data_block_array());
+    logf("mtp: lapf h=0x%lx nb_entries=%lu", obj_handle, finish_pack_data_block_array());
     finish_pack_data_block();
     
     /* if an error occured, restart packing to have a zero size overhead */
@@ -323,7 +324,8 @@ void get_object_info(uint32_t handle)
         return fail_op_with(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE);
     
     struct tm filetm;
-    logf("mtp: get object info: %s", get_object_filename(handle));
+    logf("mtp: get object info: 0x%lx(%s) --> 0x%x", handle, get_object_filename(handle),
+        get_object_format(handle));
     
     struct object_info oi;
     oi.storage_id = get_object_storage_id(handle);
