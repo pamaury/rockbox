@@ -440,6 +440,8 @@ static struct tagcache_search_clause clause;
 
 static bool tagcache_copy_tag(char *filename, int tag, bool numeric)
 {
+    return false;
+    
     if(!tagcache_search(&tcs, tag))
         return false;
     clause.tag = tag_filename;
