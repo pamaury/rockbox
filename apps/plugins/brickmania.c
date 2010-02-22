@@ -34,8 +34,8 @@ PLUGIN_HEADER
 /* If there are three fractional bits, the smallest screen size that will scale
  * properly is 28x22.  If you have a smaller screen increase the fractional
  * precision.  If you have a precision of 4 the smallest screen size would be
- * 14x11.  Note though that this will decrease the maximum resolution due to 
- * the line intersection tests.  These defines are used for all of the fixed 
+ * 14x11.  Note though that this will decrease the maximum resolution due to
+ * the line intersection tests.  These defines are used for all of the fixed
  * point calculations/conversions.
  */
 #define FIXED3(x)           ((x)<<3)
@@ -308,11 +308,12 @@ CONFIG_KEYPAD == SANSA_M200_PAD
 #include "pluginbitmaps/brickmania_break.h"
 #endif
 
-/* The time (in ms) for one iteration through the game loop - decrease this
- *  to speed up the game - note that current_tick is (currently) only accurate
- *  to 10ms.
+/* The time ms for one iteration through the game loop - decrease this to speed
+ * up the game - note that current_tick is (currently) only accurate to 10ms.
  */
-#define CYCLETIME           30
+#define CYCLETIME           30 /* ms */
+
+#define FLIP_SIDES_DELAY    10 /* seconds */
 
 #define TOPMARGIN           MAX(BRICK_HEIGHT, FIXED3(8))
 
@@ -328,12 +329,12 @@ CONFIG_KEYPAD == SANSA_M200_PAD
 #define SPEED_SCALE_W(x)    FIXED3_DIV(GAMESCREEN_WIDTH, FIXED3(220)/(x) )
 
 /* These are all used as ball speeds depending on where the ball hit the
- *  paddle.  
+ *  paddle.
  *
  * Note that all of these speeds (including pad, power, and fire)
- *  could be made variable and could be raised to be much higher to add 
- *  additional difficulty to the game.  The line intersection tests allow this 
- *  to be drastically increased without the collision detection failing 
+ *  could be made variable and could be raised to be much higher to add
+ *  additional difficulty to the game.  The line intersection tests allow this
+ *  to be drastically increased without the collision detection failing
  *  (ideally).
  */
 #define SPEED_1Q_X  SPEED_SCALE_W( 6)
@@ -362,10 +363,26 @@ CONFIG_KEYPAD == SANSA_M200_PAD
 #define PAD_POS_Y   (GAMESCREEN_HEIGHT - PAD_HEIGHT - 1)
 
 /* change to however many levels there are, i.e. how many arrays there are total */
-int levels_num = 40;
+#define NUM_LEVELS 40
 
-/* change the first number in [ ] to however many levels there are (levels_num) */
-static unsigned char levels[40][8][10] =
+#define SCORE_BALL_HIT_BRICK          2
+#define SCORE_BALL_DEMOLISHED_BRICK   8
+#define SCORE_FIRE_HIT_BRICK         13
+#define SCORE_LEVEL_COMPLETED       100
+#define SCORE_POWER_EXTRA_LIFE       50
+#define SCORE_POWER_STICKY           34
+#define SCORE_POWER_SHOOTER          47
+#define SCORE_POWER_NORMAL           23
+#define SCORE_POWER_FLIP             23
+#define SCORE_POWER_EXTRA_BALL       23
+#define SCORE_POWER_LONG_PADDLE      23
+
+#define NUM_BRICKS_ROWS 8
+#define NUM_BRICKS_COLS 10
+#define BRICK_IDX(row, col) (NUM_BRICKS_COLS * (row) + (col))
+
+/* change the first number in [ ] to however many levels there are */
+static unsigned char levels[NUM_LEVELS][NUM_BRICKS_ROWS][NUM_BRICKS_COLS] =
 /* You can set up new levels with the level editor
    ( http://plugbox.rockbox-lounge.com/brickmania.htm ).
    With 0x1, it refers to the first brick in the bitmap, 0x2 would refer to the
@@ -778,6 +795,7 @@ static unsigned char levels[40][8][10] =
 };
 
 #define MAX_BALLS 10
+#define MAX_FIRES 30
 
 enum difficulty_options {
     EASY, NORMAL
@@ -798,13 +816,14 @@ bool flip_sides=false;
 int level=0;
 int brick_on_board=0;
 int used_balls=1;
+int used_fires=0;
 int difficulty = NORMAL;
 int pad_width;
-int num_count;
+int flip_sides_delay;
 bool resume = false;
 bool resume_file = false;
 
-typedef struct cube 
+typedef struct cube
 {
     int powertop;   /* Stores the powerup Y top pos, it is a fixed point num */
     int power;      /* What powerup is in the brick? */
@@ -814,9 +833,9 @@ typedef struct cube
     int hits;       /* How many hits can this brick take? */
     int hiteffect;
 } cube;
-cube brick[80];
+cube brick[NUM_BRICKS_ROWS * NUM_BRICKS_COLS];
 
-typedef struct balls 
+typedef struct balls
 {
     /* pos_x and y store the current center position of the ball */
     int pos_x;
@@ -838,54 +857,54 @@ typedef struct sfire {
     int top;    /* This stores the fire y position, it is a fixed point num */
     int x_pos;  /* This stores the fire x position, it is a whole number */
 } sfire;
-sfire fire[30];
+sfire fire[MAX_FIRES];
 
 #define CONFIG_FILE_NAME "brickmania.cfg"
 #define SAVE_FILE  PLUGIN_GAMES_DIR "/brickmania.save"
-#define HIGH_SCORE PLUGIN_GAMES_DIR "/brickmania.score"
-#define NUM_SCORES 5
+#define HIGH_SCORE_FILE PLUGIN_GAMES_DIR "/brickmania.score"
+#define NUM_HIGH_SCORES 5
 
 static struct configdata config[] = {
     {TYPE_INT, 0, 1, { .int_p = &difficulty }, "difficulty", NULL},
 };
 
-struct highscore highest[NUM_SCORES];
+struct highscore highest[NUM_HIGH_SCORES];
 
-typedef struct point 
+typedef struct point
 {
     int x;
     int y;
 } point;
 
-typedef struct line 
+typedef struct line
 {
     point p1;
     point p2;
 } line;
 
-/* 
+/*
  * check_lines:
  * This is based off an explanation and expanded math presented by Paul Bourke:
  * http://local.wasp.uwa.edu.au/~pbourke/geometry/lineline2d/
  *
  * It takes two lines as inputs and returns 1 if they intersect, 0 if they do
- * not.  hitp returns the point where the two lines intersected.  
+ * not.  hitp returns the point where the two lines intersected.
  *
- * This function expects fixed point inputs with a precision of 3.  When a 
+ * This function expects fixed point inputs with a precision of 3.  When a
  * collision occurs hitp is updated with a fixed point location (precision 3)
- * where the collision happened.  The internal calculations are fixed 
+ * where the collision happened.  The internal calculations are fixed
  * point with a 7 bit fractional precision.
  *
- * If you choose 10 bits of precision a screen size of about 640x480 is the 
- * largest this can go.  7 bits allows for an accurate intersection calculation 
- * with a line length of about 64 and a rougher line lenght of 128 which is 
- * larger than any target currently needs (the pad is the longest line and it 
- * only needs an accuracy of 2^4 at most to figure out which section of the pad 
- * the ball hit).  A precision of 7 gives breathing room for larger screens.  
- * Longer line sizes that need accurate intersection points will need more 
+ * If you choose 10 bits of precision a screen size of about 640x480 is the
+ * largest this can go.  7 bits allows for an accurate intersection calculation
+ * with a line length of about 64 and a rougher line lenght of 128 which is
+ * larger than any target currently needs (the pad is the longest line and it
+ * only needs an accuracy of 2^4 at most to figure out which section of the pad
+ * the ball hit).  A precision of 7 gives breathing room for larger screens.
+ * Longer line sizes that need accurate intersection points will need more
  * precision, but will decrease the maximum screen resolution.
  */
- 
+
 #define LINE_PREC 7
 int check_lines(line *line1, line *line2, point *hitp)
 {
@@ -901,13 +920,13 @@ int check_lines(line *line1, line *line2, point *hitp)
      *  triangle formed by each line to find a point on the line.
      *
      * The two equations can be expanded to their x/y components:
-     *  Pa.x = p1.x + ua(p2.x - p1.x) 
-     *  Pa.y = p1.y + ua(p2.y - p1.y) 
+     *  Pa.x = p1.x + ua(p2.x - p1.x)
+     *  Pa.y = p1.y + ua(p2.y - p1.y)
      *
      *  Pb.x = p3.x + ub(p4.x - p3.x)
      *  Pb.y = p3.y + ub(p4.y - p3.y)
      *
-     * When Pa.x == Pb.x and Pa.y == Pb.y the lines intersect so you can come 
+     * When Pa.x == Pb.x and Pa.y == Pb.y the lines intersect so you can come
      *  up with two equations (one for x and one for y):
      *
      * p1.x + ua(p2.x - p1.x) = p3.x + ub(p4.x - p3.x)
@@ -920,30 +939,30 @@ int check_lines(line *line1, line *line2, point *hitp)
     /* Denominator for ua and ub are the same so store this calculation */
     int d   = FIXED3_MUL((line2->p2.y - line2->p1.y),(line1->p2.x-line1->p1.x))
              -FIXED3_MUL((line2->p2.x - line2->p1.x),(line1->p2.y-line1->p1.y));
-                
+
     /* n_a and n_b are calculated as seperate values for readability */
-    int n_a = FIXED3_MUL((line2->p2.x - line2->p1.x),(line1->p1.y-line2->p1.y)) 
+    int n_a = FIXED3_MUL((line2->p2.x - line2->p1.x),(line1->p1.y-line2->p1.y))
              -FIXED3_MUL((line2->p2.y - line2->p1.y),(line1->p1.x-line2->p1.x));
-                
+
     int n_b = FIXED3_MUL((line1->p2.x - line1->p1.x),(line1->p1.y-line2->p1.y))
              -FIXED3_MUL((line1->p2.y - line1->p1.y),(line1->p1.x-line2->p1.x));
-              
+
     /* Make sure there is not a division by zero - this also indicates that
-     * the lines are parallel.  
+     * the lines are parallel.
      *
-     * If n_a and n_b were both equal to zero the lines would be on top of each 
-     * other (coincidental).  This check is not done because it is not 
+     * If n_a and n_b were both equal to zero the lines would be on top of each
+     * other (coincidental).  This check is not done because it is not
      * necessary for this implementation (the parallel check accounts for this).
      */
     if(d == 0)
         return 0;
-        
+
     /* Calculate the intermediate fractional point that the lines potentially
      *  intersect.
      */
     int ua = (n_a << LINE_PREC)/d;
     int ub = (n_b << LINE_PREC)/d;
-    
+
     /* The fractional point will be between 0 and 1 inclusive if the lines
      * intersect.  If the fractional calculation is larger than 1 or smaller
      * than 0 the lines would need to be longer to intersect.
@@ -963,7 +982,7 @@ static void brickmania_init_game(bool new_game)
 
     pad_pos_x   =   GAMESCREEN_WIDTH/2 - PAD_WIDTH/2;
 
-    for(i=0;i<MAX_BALLS;i++) 
+    for(i=0;i<MAX_BALLS;i++)
     {
         ball[i].speedx  =   0;
         ball[i].speedy  =   0;
@@ -975,29 +994,25 @@ static void brickmania_init_game(bool new_game)
     }
 
     used_balls  =   1;
+    used_fires  =   0;
     game_state  =   ST_READY;
     pad_type    =   PLAIN;
     pad_width   =   PAD_WIDTH;
     flip_sides  =   false;
-    num_count   =   10;
+    flip_sides_delay   =   FLIP_SIDES_DELAY;
 
     if (new_game) {
         brick_on_board=0;
         /* add one life per achieved level */
         if (difficulty==EASY && life<2) {
-            score-=100;
+            score+=SCORE_LEVEL_COMPLETED;
             life++;
         }
     }
-    
-    for(i=0;i<30;i++) {
-        /* No fire should be active */
-        fire[i].top=-1;
-    }
-    
-    for(i=0;i<=7;i++) {
-        for(j=0;j<=9;j++) {
-            int bnum = i*10+j;
+
+    for(i=0;i<NUM_BRICKS_ROWS;i++) {
+        for(j=0;j<NUM_BRICKS_COLS;j++) {
+            int bnum = BRICK_IDX(i, j);
             brick[bnum].poweruse = false;
             if (new_game) {
                 brick[bnum].power=rb->rand()%25;
@@ -1029,24 +1044,28 @@ static void brickmania_loadgame(void)
     if(fd < 0) return;
 
     /* read in saved game */
-    while(true) {
-        if(rb->read(fd, &pad_pos_x, sizeof(pad_pos_x)) <= 0) break;
-        if(rb->read(fd, &life, sizeof(life)) <= 0) break;
-        if(rb->read(fd, &game_state, sizeof(game_state)) <= 0) break;
-        if(rb->read(fd, &pad_type, sizeof(pad_type)) <= 0) break;
-        if(rb->read(fd, &score, sizeof(score)) <= 0) break;
-        if(rb->read(fd, &flip_sides, sizeof(flip_sides)) <= 0) break;
-        if(rb->read(fd, &level, sizeof(level)) <= 0) break;
-        if(rb->read(fd, &brick_on_board, sizeof(brick_on_board)) <= 0) break;
-        if(rb->read(fd, &used_balls, sizeof(used_balls)) <= 0) break;
-        if(rb->read(fd, &pad_width, sizeof(pad_width)) <= 0) break;
-        if(rb->read(fd, &num_count, sizeof(num_count)) <= 0) break;
-        if(rb->read(fd, &brick, sizeof(brick)) <= 0) break;
-        if(rb->read(fd, &ball, sizeof(ball)) <= 0) break;
-        if(rb->read(fd, &fire, sizeof(fire)) <= 0) break;
+    if((rb->read(fd, &pad_pos_x, sizeof(pad_pos_x)) <= 0) ||
+        (rb->read(fd, &life, sizeof(life)) <= 0) ||
+        (rb->read(fd, &game_state, sizeof(game_state)) <= 0) ||
+        (rb->read(fd, &pad_type, sizeof(pad_type)) <= 0) ||
+        (rb->read(fd, &score, sizeof(score)) <= 0) ||
+        (rb->read(fd, &flip_sides, sizeof(flip_sides)) <= 0) ||
+        (rb->read(fd, &level, sizeof(level)) <= 0) ||
+        (rb->read(fd, &brick_on_board, sizeof(brick_on_board)) <= 0) ||
+        (rb->read(fd, &used_balls, sizeof(used_balls)) <= 0) ||
+        (rb->read(fd, &used_fires, sizeof(used_fires)) <= 0) ||
+        (rb->read(fd, &pad_width, sizeof(pad_width)) <= 0) ||
+        (rb->read(fd, &flip_sides_delay, sizeof(flip_sides_delay)) <= 0) ||
+        (rb->read(fd, &brick, sizeof(brick)) <= 0) ||
+        (rb->read(fd, &ball, sizeof(ball)) <= 0) ||
+        (rb->read(fd, &fire, sizeof(fire)) <= 0))
+    {
+        rb->splash(HZ/2, "Failed to load game");
+    }
+    else
+    {
         vscore = score;
         resume = true;
-        break;
     }
 
     rb->close(fd);
@@ -1062,20 +1081,28 @@ static void brickmania_savegame(void)
     fd = rb->open(SAVE_FILE, O_WRONLY|O_CREAT);
     if(fd < 0) return;
 
-    rb->write(fd, &pad_pos_x, sizeof(pad_pos_x));
-    rb->write(fd, &life, sizeof(life));
-    rb->write(fd, &game_state, sizeof(game_state));
-    rb->write(fd, &pad_type, sizeof(pad_type));
-    rb->write(fd, &score, sizeof(score));
-    rb->write(fd, &flip_sides, sizeof(flip_sides));
-    rb->write(fd, &level, sizeof(level));
-    rb->write(fd, &brick_on_board, sizeof(brick_on_board));
-    rb->write(fd, &used_balls, sizeof(used_balls));
-    rb->write(fd, &pad_width, sizeof(pad_width));
-    rb->write(fd, &num_count, sizeof(num_count));
-    rb->write(fd, &brick, sizeof(brick));
-    rb->write(fd, &ball, sizeof(ball));
-    rb->write(fd, &fire, sizeof(fire));
+    if ((rb->write(fd, &pad_pos_x, sizeof(pad_pos_x)) <= 0) ||
+            (rb->write(fd, &life, sizeof(life)) <= 0) ||
+            (rb->write(fd, &game_state, sizeof(game_state)) <= 0) ||
+            (rb->write(fd, &pad_type, sizeof(pad_type)) <= 0) ||
+            (rb->write(fd, &score, sizeof(score)) <= 0) ||
+            (rb->write(fd, &flip_sides, sizeof(flip_sides)) <= 0) ||
+            (rb->write(fd, &level, sizeof(level)) <= 0) ||
+            (rb->write(fd, &brick_on_board, sizeof(brick_on_board)) <= 0) ||
+            (rb->write(fd, &used_balls, sizeof(used_balls)) <= 0) ||
+            (rb->write(fd, &used_fires, sizeof(used_fires)) <= 0) ||
+            (rb->write(fd, &pad_width, sizeof(pad_width)) <= 0) ||
+            (rb->write(fd, &flip_sides_delay, sizeof(flip_sides_delay)) <= 0) ||
+            (rb->write(fd, &brick, sizeof(brick)) <= 0) ||
+            (rb->write(fd, &ball, sizeof(ball)) <= 0) ||
+            (rb->write(fd, &fire, sizeof(fire)) <= 0))
+    {
+        rb->close(fd);
+        rb->remove(SAVE_FILE);
+        rb->splash(HZ/2, "Failed to save game");
+        return;
+    }
+
     rb->close(fd);
 }
 
@@ -1087,7 +1114,7 @@ static void brickmania_sleep(int secs)
     int count=0;
     int sw, w;
 
-    while (!done) 
+    while (!done)
     {
         if (count == 0)
             count = *rb->current_tick + HZ*secs;
@@ -1247,7 +1274,7 @@ static int brickmania_menu(void)
                 brickmania_init_game(true);
                 return 0;
             case 2:
-                rb->set_option("Difficulty", &difficulty, INT, 
+                rb->set_option("Difficulty", &difficulty, INT,
                                     options, 2, NULL);
                 break;
             case 3:
@@ -1255,7 +1282,7 @@ static int brickmania_menu(void)
                     return 1;
                 break;
             case 4:
-                highscore_show(NUM_SCORES, highest, NUM_SCORES, true);
+                highscore_show(NUM_HIGH_SCORES, highest, NUM_HIGH_SCORES, true);
                 break;
             case 5:
                 if (playback_control(NULL))
@@ -1280,17 +1307,6 @@ static int brickmania_menu(void)
 #endif
 }
 
-/* Find an unused fire position */
-static int brickmania_find_empty_fire(void)
-{
-    int t;
-    for(t=0;t<30;t++)
-        if (fire[t].top < 0)
-            return t;
-
-    return 0;
-}
-
 void brick_hit(int brick_number)
 {
     if(!brick[brick_number].used)
@@ -1302,7 +1318,7 @@ void brick_hit(int brick_number)
     if (brick[brick_number].hits > 0) {
         brick[brick_number].hits--;
         brick[brick_number].hiteffect++;
-        score+=2;
+        score+=SCORE_BALL_HIT_BRICK;
     }
     else {
         brick[brick_number].used=false;
@@ -1312,7 +1328,7 @@ void brick_hit(int brick_number)
             brick[brick_number].poweruse = true;
         }
         brick_on_board--;
-        score+=8;
+        score+=SCORE_BALL_DEMOLISHED_BRICK;
     }
 }
 
@@ -1323,12 +1339,12 @@ static int brickmania_game_loop(void)
     char s[30];
     int sec_count=0;
     int end;
-    
+
     /* pad_line used for powerup/ball checks */
     line pad_line;
     /* This is used for various lines that are checked (ball and powerup) */
     line misc_line;
-    
+
     /* This stores the point that the two lines intersected in a test */
     point pt_hit;
 
@@ -1337,7 +1353,7 @@ static int brickmania_game_loop(void)
     }
     resume = false;
     resume_file = false;
-    
+
 #ifdef HAVE_LCD_COLOR
     rb->lcd_set_background(LCD_BLACK);
     rb->lcd_set_foreground(LCD_WHITE);
@@ -1352,17 +1368,17 @@ static int brickmania_game_loop(void)
         if (life >= 0) {
             rb->lcd_clear_display();
 
-            if (flip_sides) 
+            if (flip_sides)
             {
                 if (TIME_AFTER(*rb->current_tick, sec_count))
                 {
                     sec_count=*rb->current_tick+HZ;
-                    if (num_count!=0)
-                        num_count--;
+                    if (flip_sides_delay!=0)
+                        flip_sides_delay--;
                     else
                         flip_sides=false;
                 }
-                rb->snprintf(s, sizeof(s), "%d", num_count);
+                rb->snprintf(s, sizeof(s), "%d", flip_sides_delay);
                 rb->lcd_getstringsize(s, &sw, NULL);
                 rb->lcd_putsxy(LCD_WIDTH/2-2, INT3(STRINGPOS_FLIP), s);
             }
@@ -1390,7 +1406,7 @@ static int brickmania_game_loop(void)
             rb->lcd_putsxy(LCD_WIDTH/2-sw/2, 0, s);
 
             /* continue game */
-            if (game_state == ST_PAUSE) 
+            if (game_state == ST_PAUSE)
             {
                 rb->snprintf(s, sizeof(s), CONTINUE_TEXT);
                 rb->lcd_getstringsize(s, &sw, NULL);
@@ -1401,43 +1417,74 @@ static int brickmania_game_loop(void)
 
             /* draw the ball */
             for(i=0;i<used_balls;i++)
-                rb->lcd_bitmap(brickmania_ball, 
-                    INT3(ball[i].pos_x - HALFBALL), 
-                    INT3(ball[i].pos_y - HALFBALL), 
+                rb->lcd_bitmap(brickmania_ball,
+                    INT3(ball[i].pos_x - HALFBALL),
+                    INT3(ball[i].pos_y - HALFBALL),
                     INT3(BALL), INT3(BALL));
 
             if (brick_on_board==0)
                 brick_on_board--;
 
-            /* if the pad is fire */
-            for(i=0; i<30; i++) 
+            /* move the fires */
+            if (game_state!=ST_PAUSE)
             {
-                /* If the projectile is active (>0 inactive) */
-                if (fire[i].top >= 0) 
+                for(k=0;k<used_fires;k++)
                 {
-                    if (game_state!=ST_PAUSE)
-                        fire[i].top -= SPEED_FIRE;
-                    /* Draw the projectile */
-                    rb->lcd_vline(  INT3(fire[i].x_pos), INT3(fire[i].top), 
-                                    INT3(fire[i].top + FIRE_LENGTH));
+                    fire[k].top -= SPEED_FIRE;
+                    if (fire[k].top < 0)
+                    {
+                        used_fires--;
+                        fire[k].top = fire[used_fires].top;
+                        fire[k].x_pos = fire[used_fires].x_pos;
+                        k--;
+                    }
+                    else if (fire[k].x_pos >= LEFTMARGIN &&
+                        fire[k].x_pos < LEFTMARGIN + NUM_BRICKS_COLS * BRICK_WIDTH)
+                    {
+                        j = (fire[k].x_pos - LEFTMARGIN) / BRICK_WIDTH;
+                        for (i=NUM_BRICKS_ROWS-1;i>=0;i--)
+                        {
+                            int bnum = BRICK_IDX(i, j);
+
+                            if (brick[bnum].used)
+                            {
+                                score += SCORE_FIRE_HIT_BRICK;
+                                brick_hit(bnum);
+                                used_fires--;
+                                fire[k].top = fire[used_fires].top;
+                                fire[k].x_pos = fire[used_fires].x_pos;
+                                k--;
+                                break;
+                            }
+                            if (brick[bnum].powertop<=fire[k].top)
+                                break;
+                        }
+                    }
                 }
             }
-            
+
+            /* draw the fires */
+            for(k=0;k<used_fires;k++)
+            {
+                rb->lcd_vline(INT3(fire[k].x_pos), INT3(fire[k].top), 
+                        INT3(fire[k].top + FIRE_LENGTH));
+            }
+
             /* Setup the pad line-later used in intersection test */
             pad_line.p1.x = pad_pos_x;
             pad_line.p1.y = PAD_POS_Y;
-            
+
             pad_line.p2.x = pad_pos_x + pad_width;
             pad_line.p2.y = PAD_POS_Y;
 
             /* handle all of the bricks/powerups */
-            for (i=0; i<=7; i++) 
+            for (i=0; i<NUM_BRICKS_ROWS; i++)
             {
-                for (j=0; j<=9 ;j++) 
+                for (j=0; j<NUM_BRICKS_COLS ;j++)
                 {
                     int brickx;
-                    int bnum = i*10+j;
-                    
+                    int bnum = BRICK_IDX(i, j);
+
                     /* This brick is not really a brick, it is a powerup if
                      *  poweruse is set.  Perform appropriate powerup checks.
                      */
@@ -1445,7 +1492,7 @@ static int brickmania_game_loop(void)
                     {
                         brickx = LEFTMARGIN + j*BRICK_WIDTH +
                                         (BRICK_WIDTH - POWERUP_WIDTH) / 2;
-                    
+
                         /* Update powertop if the game is not paused */
                         if (game_state!=ST_PAUSE)
                             brick[bnum].powertop+=SPEED_POWER;
@@ -1453,52 +1500,52 @@ static int brickmania_game_loop(void)
                         /* Draw the powerup */
                         rb->lcd_bitmap_part(brickmania_powerups,0,
                             INT3(POWERUP_HEIGHT)*brick[bnum].power,
-                            STRIDE( SCREEN_MAIN, 
+                            STRIDE( SCREEN_MAIN,
                                     BMPWIDTH_brickmania_powerups,
                                     BMPHEIGHT_brickmania_powerups),
                             INT3(brickx),
                             INT3(brick[bnum].powertop),
                             INT3(POWERUP_WIDTH),
                             INT3(POWERUP_HEIGHT) );
-                        
+
                         /* Use misc_line to check if the center of the powerup
                          *  hit the paddle.
                          */
                         misc_line.p1.x = brickx + (POWERUP_WIDTH >> 1);
                         misc_line.p1.y = brick[bnum].powertop + POWERUP_HEIGHT;
-                        
+
                         misc_line.p2.x = brickx + (POWERUP_WIDTH >> 1);
-                        misc_line.p2.y = SPEED_POWER + brick[bnum].powertop + 
+                        misc_line.p2.y = SPEED_POWER + brick[bnum].powertop +
                                         POWERUP_HEIGHT;
 
                         /* Check if the powerup will hit the paddle */
-                        if ( check_lines(&misc_line, &pad_line, &pt_hit) ) 
+                        if ( check_lines(&misc_line, &pad_line, &pt_hit) )
                         {
                             switch(brick[bnum].power) {
                                 case 0: /* Extra Life */
                                     life++;
-                                    score += 50;
+                                    score += SCORE_POWER_EXTRA_LIFE;
                                     break;
                                 case 1: /* Loose a life */
                                     life--;
-                                    if (life>=0) 
+                                    if (life>=0)
                                     {
                                         brickmania_init_game(false);
                                         brickmania_sleep(2);
                                     }
                                     break;
                                 case 2: /* Make the paddle sticky */
-                                    score += 34;
+                                    score += SCORE_POWER_STICKY;
                                     pad_type = STICKY;
                                     break;
                                 case 3: /* Give the paddle shooter */
-                                    score += 47;
+                                    score += SCORE_POWER_SHOOTER;
                                     pad_type = SHOOTER;
                                     for(k=0;k<used_balls;k++)
                                         ball[k].glue=false;
                                     break;
                                 case 4: /* Normal brick */
-                                    score += 23;
+                                    score += SCORE_POWER_NORMAL;
                                     pad_type = PLAIN;
                                     for(k=0;k<used_balls;k++)
                                         ball[k].glue=false;
@@ -1508,57 +1555,57 @@ static int brickmania_game_loop(void)
                                     pad_width = PAD_WIDTH;
                                     break;
                                 case 5: /* Flip the paddle */
-                                    score += 23;
+                                    score += SCORE_POWER_FLIP;
                                     sec_count = *rb->current_tick+HZ;
-                                    num_count = 10;
+                                    flip_sides_delay = FLIP_SIDES_DELAY;
                                     flip_sides = true;
                                     break;
                                 case 6: /* Extra Ball */
-                                    score += 23;
-                                    if(used_balls<MAX_BALLS) 
+                                    score += SCORE_POWER_EXTRA_BALL;
+                                    if(used_balls<MAX_BALLS)
                                     {
                                         /* Set the speed */
                                         if(rb->rand()%2 == 0)
                                             ball[used_balls].speedx=-SPEED_4Q_X;
                                         else
                                             ball[used_balls].speedx= SPEED_4Q_X;
-                                        
+
                                         ball[used_balls].speedy= SPEED_4Q_Y;
-                                        
+
                                         /* Ball is not glued */
                                         ball[used_balls].glue= false;
                                         used_balls++;
                                     }
                                     break;
                                 case 7: /* Long paddle */
-                                    score+=23;
-                                    if (pad_width==PAD_WIDTH) 
+                                    score+=SCORE_POWER_LONG_PADDLE;
+                                    if (pad_width==PAD_WIDTH)
                                     {
                                         pad_width = LONG_PAD_WIDTH;
                                         pad_pos_x -= (LONG_PAD_WIDTH -
                                                         PAD_WIDTH)/2;
                                     }
-                                    else if (pad_width==SHORT_PAD_WIDTH) 
+                                    else if (pad_width==SHORT_PAD_WIDTH)
                                     {
                                         pad_width = PAD_WIDTH;
                                         pad_pos_x-=(PAD_WIDTH-
                                                         SHORT_PAD_WIDTH)/2;
                                     }
-                                    
+
                                     if (pad_pos_x < 0)
                                         pad_pos_x = 0;
-                                    else if(pad_pos_x + pad_width > 
+                                    else if(pad_pos_x + pad_width >
                                                             GAMESCREEN_WIDTH)
                                         pad_pos_x = GAMESCREEN_WIDTH-pad_width;
                                     break;
                                 case 8: /* Short Paddle */
-                                    if (pad_width==PAD_WIDTH) 
+                                    if (pad_width==PAD_WIDTH)
                                     {
                                         pad_width=SHORT_PAD_WIDTH;
                                         pad_pos_x+=(PAD_WIDTH-
                                                         SHORT_PAD_WIDTH)/2;
                                     }
-                                    else if (pad_width==LONG_PAD_WIDTH) 
+                                    else if (pad_width==LONG_PAD_WIDTH)
                                     {
                                         pad_width=PAD_WIDTH;
                                         pad_pos_x+=(LONG_PAD_WIDTH-PAD_WIDTH)/2;
@@ -1569,7 +1616,7 @@ static int brickmania_game_loop(void)
                             brick[bnum].poweruse = false;
                         }
 
-                        if (brick[bnum].powertop>PAD_POS_Y) 
+                        if (brick[bnum].powertop>PAD_POS_Y)
                         {
                             /* Disable the powerup (it was missed) */
                             brick[bnum].poweruse = false;
@@ -1581,76 +1628,52 @@ static int brickmania_game_loop(void)
                         /* these lines are used to describe the brick */
                         line bot_brick, top_brick, left_brick, rght_brick;
                         brickx = LEFTMARGIN + j*BRICK_WIDTH;
-                        
+
                         /* Describe the brick for later collision checks */
                         /* Setup the bottom of the brick */
                         bot_brick.p1.x = brickx;
                         bot_brick.p1.y = brick[bnum].powertop + BRICK_HEIGHT;
-                    
+
                         bot_brick.p2.x = brickx + BRICK_WIDTH;
                         bot_brick.p2.y = brick[bnum].powertop + BRICK_HEIGHT;
-                        
+
                         /* Setup the top of the brick */
                         top_brick.p1.x = brickx;
                         top_brick.p1.y = brick[bnum].powertop;
-                    
+
                         top_brick.p2.x = brickx + BRICK_WIDTH;
                         top_brick.p2.y = brick[bnum].powertop;
-                        
+
                         /* Setup the left of the brick */
                         left_brick.p1.x = brickx;
                         left_brick.p1.y = brick[bnum].powertop;
-                    
+
                         left_brick.p2.x = brickx;
                         left_brick.p2.y = brick[bnum].powertop + BRICK_HEIGHT;
-                        
+
                         /* Setup the right of the brick */
                         rght_brick.p1.x = brickx + BRICK_WIDTH;
                         rght_brick.p1.y = brick[bnum].powertop;
-                    
+
                         rght_brick.p2.x = brickx + BRICK_WIDTH;
                         rght_brick.p2.y = brick[bnum].powertop + BRICK_HEIGHT;
-                    
-                        /* Check if any of the active fires hit a brick */
-                        for (k=0;k<30;k++) 
-                        {
-                            if(fire[k].top > 0)
-                            {
-                                /* Use misc_line to check if fire hit brick */
-                                misc_line.p1.x = fire[k].x_pos;
-                                misc_line.p1.y = fire[k].top;
-                                
-                                misc_line.p2.x = fire[k].x_pos;
-                                misc_line.p2.y = fire[k].top + SPEED_FIRE;
-                            
-                                /* If the fire hit the brick take care of it */
-                                if (check_lines(&misc_line, &bot_brick, 
-                                                &pt_hit)) 
-                                {
-                                    score+=13;
-                                    /* De-activate the fire */
-                                    fire[k].top=-1;
-                                    brick_hit(bnum);
-                                }
-                            }
-                        }
-                            
+
                         /* Draw the brick */
                         rb->lcd_bitmap_part(brickmania_bricks,0,
                             INT3(BRICK_HEIGHT)*brick[bnum].color,
-                            STRIDE( SCREEN_MAIN, 
+                            STRIDE( SCREEN_MAIN,
                                     BMPWIDTH_brickmania_bricks,
                                     BMPHEIGHT_brickmania_bricks),
                             INT3(brickx),
                             INT3(brick[bnum].powertop),
                             INT3(BRICK_WIDTH), INT3(BRICK_HEIGHT) );
-                            
+
 #ifdef HAVE_LCD_COLOR  /* No transparent effect for greyscale lcds for now */
                         if (brick[bnum].hiteffect > 0)
                             rb->lcd_bitmap_transparent_part(brickmania_break,0,
                                 INT3(BRICK_HEIGHT)*brick[bnum].hiteffect,
-                                STRIDE( SCREEN_MAIN, 
-                                        BMPWIDTH_brickmania_break, 
+                                STRIDE( SCREEN_MAIN,
+                                        BMPWIDTH_brickmania_break,
                                         BMPHEIGHT_brickmania_break),
                                 INT3(brickx),
                                 INT3(brick[bnum].powertop),
@@ -1658,28 +1681,28 @@ static int brickmania_game_loop(void)
 #endif
 
                         /* Check if any balls collided with the brick */
-                        for(k=0; k<used_balls; k++) 
+                        for(k=0; k<used_balls; k++)
                         {
                             /* Setup the ball path to describe the current ball
                              * position and the line it makes to its next
-                             * position. 
+                             * position.
                              */
                             misc_line.p1.x = ball[k].pos_x;
                             misc_line.p1.y = ball[k].pos_y;
-                            
+
                             misc_line.p2.x = ball[k].pos_x + ball[k].speedx;
                             misc_line.p2.y = ball[k].pos_y + ball[k].speedy;
-                        
+
                             /* Check to see if the ball and the bottom hit. If
                              *  the ball is moving down we don't want to
                              *  include the bottom line intersection.
                              *
                              * The order that the sides are checked matters.
-                             * 
+                             *
                              * Note that tempx/tempy store the next position
                              *  that the ball should be drawn.
                              */
-                            if(ball[k].speedy <= 0 && 
+                            if(ball[k].speedy <= 0 &&
                                 check_lines(&misc_line, &bot_brick, &pt_hit))
                             {
                                 ball[k].speedy = -ball[k].speedy;
@@ -1690,7 +1713,7 @@ static int brickmania_game_loop(void)
                             /* Check the top, if the ball is moving up dont
                              *  count it as a hit.
                              */
-                            else if(ball[k].speedy > 0 && 
+                            else if(ball[k].speedy > 0 &&
                                 check_lines(&misc_line, &top_brick, &pt_hit))
                             {
                                 ball[k].speedy = -ball[k].speedy;
@@ -1718,7 +1741,7 @@ static int brickmania_game_loop(void)
                             }
                         } /* for k */
                     } /* if(used) */
-                    
+
                 } /* for j */
             } /* for i */
 
@@ -1728,9 +1751,9 @@ static int brickmania_game_loop(void)
                 rb->lcd_bitmap_part(
                     brickmania_pads,
                     0, pad_type*INT3(PAD_HEIGHT),
-                    STRIDE( SCREEN_MAIN, BMPWIDTH_brickmania_pads, 
+                    STRIDE( SCREEN_MAIN, BMPWIDTH_brickmania_pads,
                             BMPHEIGHT_brickmania_pads),
-                    INT3(pad_pos_x), INT3(PAD_POS_Y), 
+                    INT3(pad_pos_x), INT3(PAD_POS_Y),
                     INT3(pad_width), INT3(PAD_HEIGHT) );
             }
             else if( pad_width == LONG_PAD_WIDTH ) /* Long Pad */
@@ -1738,9 +1761,9 @@ static int brickmania_game_loop(void)
                 rb->lcd_bitmap_part(
                     brickmania_long_pads,
                     0,pad_type*INT3(PAD_HEIGHT),
-                    STRIDE( SCREEN_MAIN, BMPWIDTH_brickmania_long_pads, 
+                    STRIDE( SCREEN_MAIN, BMPWIDTH_brickmania_long_pads,
                             BMPHEIGHT_brickmania_long_pads),
-                    INT3(pad_pos_x), INT3(PAD_POS_Y), 
+                    INT3(pad_pos_x), INT3(PAD_POS_Y),
                     INT3(pad_width), INT3(PAD_HEIGHT) );
             }
             else /* Short pad */
@@ -1748,9 +1771,9 @@ static int brickmania_game_loop(void)
                 rb->lcd_bitmap_part(
                     brickmania_short_pads,
                     0,pad_type*INT3(PAD_HEIGHT),
-                    STRIDE( SCREEN_MAIN, BMPWIDTH_brickmania_short_pads, 
+                    STRIDE( SCREEN_MAIN, BMPWIDTH_brickmania_short_pads,
                             BMPHEIGHT_brickmania_short_pads),
-                    INT3(pad_pos_x), INT3(PAD_POS_Y), 
+                    INT3(pad_pos_x), INT3(PAD_POS_Y),
                     INT3(pad_width), INT3(PAD_HEIGHT) );
             }
 
@@ -1758,22 +1781,22 @@ static int brickmania_game_loop(void)
             if (game_state!=ST_PAUSE)
             {
                 /* Loop through all of the balls in play */
-                for(k=0;k<used_balls;k++) 
+                for(k=0;k<used_balls;k++)
                 {
                     line screen_edge;
 
                     /* Describe the ball movement for the edge collision detection */
                     misc_line.p1.x = ball[k].pos_x;
                     misc_line.p1.y = ball[k].pos_y;
-                    
+
                     misc_line.p2.x = ball[k].pos_x + ball[k].speedx;
                     misc_line.p2.y = ball[k].pos_y + ball[k].speedy;
 
                     /* Did the Ball hit the top of the screen? */
                     screen_edge.p1.x = 0;
                     screen_edge.p1.y = 0;
-                            
-                    screen_edge.p2.x = FIXED3(LCD_WIDTH);
+
+                    screen_edge.p2.x = GAMESCREEN_WIDTH;
                     screen_edge.p2.y = 0;
                     /* the test for pos_y prevents the ball from bouncing back
                      * from _over_ the top to infinity on some rare cases */
@@ -1787,10 +1810,10 @@ static int brickmania_game_loop(void)
                     }
 
                     /* Player missed the ball and hit bottom of screen */
-                    if (ball[k].pos_y >= GAMESCREEN_HEIGHT) 
+                    if (ball[k].pos_y >= GAMESCREEN_HEIGHT)
                     {
                         /* Player had balls to spare, so handle the removal */
-                        if (used_balls>1) 
+                        if (used_balls>1)
                         {
                             /* decrease number of balls in play */
                             used_balls--;
@@ -1814,11 +1837,11 @@ static int brickmania_game_loop(void)
                             k--;
                             continue;
                         }
-                        else 
+                        else
                         {
                             /* Player lost a life */
                             life--;
-                            if (life>=0) 
+                            if (life>=0)
                             {
                                 /* No lives left reset game */
                                 brickmania_init_game(false);
@@ -1828,127 +1851,127 @@ static int brickmania_game_loop(void)
                         }
                     }
 
-                    /* Check if the ball hit the left side */
-                    screen_edge.p1.x = 0;
-                    screen_edge.p1.y = 0;
-                            
-                    screen_edge.p2.x = 0;
-                    screen_edge.p2.y = FIXED3(LCD_HEIGHT);
-                    if ( !ball[k].glue &&
-                            check_lines(&misc_line, &screen_edge, &pt_hit))
+                    if (game_state != ST_READY && !ball[k].glue)
                     {
-                        /* Reverse direction */
-                        ball[k].speedx = -ball[k].speedx;
+                        /* Check if the ball hit the left side */
+                        screen_edge.p1.x = 0;
+                        screen_edge.p1.y = 0;
 
-                        /* Re-position ball in gameboard */
-                        ball[k].tempy = pt_hit.y;
-                        ball[k].tempx = 0;
-                    }
-
-                    /* Check if the ball hit the right side */
-                    screen_edge.p1.x = FIXED3(LCD_WIDTH);
-                    screen_edge.p1.y = 0;
-                            
-                    screen_edge.p2.x = FIXED3(LCD_WIDTH);
-                    screen_edge.p2.y = FIXED3(LCD_HEIGHT);
-                    if ( !ball[k].glue &&
-                            check_lines(&misc_line, &screen_edge, &pt_hit))
-                    {
-                        /* Reverse direction */
-                        ball[k].speedx = -ball[k].speedx;
-
-                        /* Re-position ball in gameboard */
-                        ball[k].tempy = pt_hit.y;
-                        ball[k].tempx = FIXED3(LCD_WIDTH - 1);
-                    }
-
-                    /* Did the ball hit the paddle? Depending on where the ball
-                     *  Hit set the x/y speed appropriately.
-                     */
-                    if( game_state!=ST_READY && !ball[k].glue &&
-                        check_lines(&misc_line, &pad_line, &pt_hit) ) 
-                    {
-                        /* Re-position ball based on collision */
-                        ball[k].tempy = ON_PAD_POS_Y;
-                        ball[k].tempx = pt_hit.x;
-
-                        /* Calculate the ball position relative to the paddle width */
-                        int ball_repos = pt_hit.x - pad_pos_x;
-                        /* If the ball hits the right half of paddle, x speed
-                         *  should be positive, if it hits the left half it
-                         *  should be negative.
-                         */
-                        int x_direction = -1;
-                        
-                        /* Comparisons are done with respect to 1/2 pad_width */
-                        if(ball_repos > pad_width/2)
+                        screen_edge.p2.x = 0;
+                        screen_edge.p2.y = GAMESCREEN_HEIGHT;
+                        if (check_lines(&misc_line, &screen_edge, &pt_hit))
                         {
-                            /* flip the relative position */
-                            ball_repos -= ((ball_repos - pad_width/2) << 1);
-                            /* Ball hit the right half so X speed calculations
-                             *  should be positive.
-                             */
-                             x_direction = 1;
-                        }
-                        
-                        /* Figure out where the ball hit relative to 1/2 pad 
-                         *  and in divisions of 4.
-                         */
-                        ball_repos = ball_repos / (pad_width/2/4);
-                        
-                        switch(ball_repos)
-                        {
-                        /* Ball hit the outer edge of the paddle */
-                        case 0:
-                            ball[k].speedy = SPEED_1Q_Y;
-                            ball[k].speedx = SPEED_1Q_X * x_direction;
-                            break;
-                        /* Ball hit the next fourth of the paddle */
-                        case 1:
-                            ball[k].speedy = SPEED_2Q_Y;
-                            ball[k].speedx = SPEED_2Q_X * x_direction;
-                            break;
-                        /* Ball hit the third fourth of the paddle */
-                        case 2:
-                            ball[k].speedy = SPEED_3Q_Y;
-                            ball[k].speedx = SPEED_3Q_X * x_direction;
-                            break;
-                        /* Ball hit the fourth fourth of the paddle or dead
-                         *  center.
-                         */
-                        case 3:
-                        case 4:
-                            ball[k].speedy = SPEED_4Q_Y;
-                            /* Since this is the middle we don't want to
-                             *  force the ball in a different direction.
-                             *  Just keep it going in the same direction
-                             *  with a specific speed.
-                             */
-                            if(ball[k].speedx > 0)
-                            {
-                                ball[k].speedx = SPEED_4Q_X;
-                            }
-                            else
-                            {
-                                ball[k].speedx = -SPEED_4Q_X;
-                            }
-                            break;
+                            /* Reverse direction */
+                            ball[k].speedx = -ball[k].speedx;
 
-                        default:
-                            ball[k].speedy = SPEED_4Q_Y;
-                            break;
-                        }
-                        
-                        if(pad_type == STICKY) 
-                        {
-                            ball[k].speedy = -ball[k].speedy;
-                            ball[k].glue=true;
-
-                            /* X location should not be forced since that is moved with the paddle.  The Y
-                             *  position should be forced to keep the ball at the paddle.
-                             */
+                            /* Re-position ball in gameboard */
+                            ball[k].tempy = pt_hit.y;
                             ball[k].tempx = 0;
+                        }
+
+                        /* Check if the ball hit the right side */
+                        screen_edge.p1.x = GAMESCREEN_WIDTH;
+                        screen_edge.p1.y = 0;
+
+                        screen_edge.p2.x = GAMESCREEN_WIDTH;
+                        screen_edge.p2.y = GAMESCREEN_HEIGHT;
+                        if (check_lines(&misc_line, &screen_edge, &pt_hit))
+                        {
+                            /* Reverse direction */
+                            ball[k].speedx = -ball[k].speedx;
+
+                            /* Re-position ball in gameboard */
+                            ball[k].tempy = pt_hit.y;
+                            ball[k].tempx = GAMESCREEN_WIDTH - FIXED3(1);
+                        }
+
+                        /* Did the ball hit the paddle? Depending on where the ball
+                         *  Hit set the x/y speed appropriately.
+                         */
+                        if(check_lines(&misc_line, &pad_line, &pt_hit) )
+                        {
+                            /* Re-position ball based on collision */
                             ball[k].tempy = ON_PAD_POS_Y;
+                            ball[k].tempx = pt_hit.x;
+
+                            /* Calculate the ball position relative to the paddle width */
+                            int ball_repos = pt_hit.x - pad_pos_x;
+                            /* If the ball hits the right half of paddle, x speed
+                             *  should be positive, if it hits the left half it
+                             *  should be negative.
+                             */
+                            int x_direction = -1;
+
+                            /* Comparisons are done with respect to 1/2 pad_width */
+                            if(ball_repos > pad_width/2)
+                            {
+                                /* flip the relative position */
+                                ball_repos -= ((ball_repos - pad_width/2) << 1);
+                                /* Ball hit the right half so X speed calculations
+                                 *  should be positive.
+                                 */
+                                x_direction = 1;
+                            }
+
+                            /* Figure out where the ball hit relative to 1/2 pad
+                             *  and in divisions of 4.
+                             */
+                            ball_repos = ball_repos / (pad_width/2/4);
+
+                            switch(ball_repos)
+                            {
+                                /* Ball hit the outer edge of the paddle */
+                                case 0:
+                                    ball[k].speedy = SPEED_1Q_Y;
+                                    ball[k].speedx = SPEED_1Q_X * x_direction;
+                                    break;
+                                    /* Ball hit the next fourth of the paddle */
+                                case 1:
+                                    ball[k].speedy = SPEED_2Q_Y;
+                                    ball[k].speedx = SPEED_2Q_X * x_direction;
+                                    break;
+                                    /* Ball hit the third fourth of the paddle */
+                                case 2:
+                                    ball[k].speedy = SPEED_3Q_Y;
+                                    ball[k].speedx = SPEED_3Q_X * x_direction;
+                                    break;
+                                    /* Ball hit the fourth fourth of the paddle or dead
+                                     *  center.
+                                     */
+                                case 3:
+                                case 4:
+                                    ball[k].speedy = SPEED_4Q_Y;
+                                    /* Since this is the middle we don't want to
+                                     *  force the ball in a different direction.
+                                     *  Just keep it going in the same direction
+                                     *  with a specific speed.
+                                     */
+                                    if(ball[k].speedx > 0)
+                                    {
+                                        ball[k].speedx = SPEED_4Q_X;
+                                    }
+                                    else
+                                    {
+                                        ball[k].speedx = -SPEED_4Q_X;
+                                    }
+                                    break;
+
+                                default:
+                                    ball[k].speedy = SPEED_4Q_Y;
+                                    break;
+                            }
+
+                            if(pad_type == STICKY)
+                            {
+                                ball[k].speedy = -ball[k].speedy;
+                                ball[k].glue=true;
+
+                                /* X location should not be forced since that is moved with the paddle.  The Y
+                                 *  position should be forced to keep the ball at the paddle.
+                                 */
+                                ball[k].tempx = 0;
+                                ball[k].tempy = ON_PAD_POS_Y;
+                            }
                         }
                     }
 
@@ -1959,7 +1982,7 @@ static int brickmania_game_loop(void)
                             ball[k].pos_x = ball[k].tempx;
                         else
                             ball[k].pos_x += ball[k].speedx;
-                            
+
                         if(ball[k].tempy)
                             ball[k].pos_y = ball[k].tempy;
                         else
@@ -1973,18 +1996,18 @@ static int brickmania_game_loop(void)
 
             rb->lcd_update();
 
-            if (brick_on_board < 0) 
+            if (brick_on_board < 0)
             {
-                if (level+1<levels_num) 
+                if (level+1<NUM_LEVELS)
                 {
                     level++;
                     if (difficulty==NORMAL)
-                        score+=100;
+                        score+=SCORE_LEVEL_COMPLETED;
                     brickmania_init_game(true);
                     brickmania_sleep(2);
                     rb->button_clear_queue();
                 }
-                else 
+                else
                 {
                     rb->lcd_getstringsize("Congratulations!", &sw, NULL);
                     rb->lcd_putsxy(LCD_WIDTH/2-sw/2, INT3(STRINGPOS_CONGRATS),
@@ -2023,7 +2046,7 @@ static int brickmania_game_loop(void)
                 rb->button_status_wdata(&data);
                 touch_x = FIXED3(data >> 16);
                 touch_y = FIXED3(data & 0xffff);
-                
+
                 if(flip_sides)
                 {
                     pad_pos_x = GAMESCREEN_WIDTH - (touch_x + pad_width/2);
@@ -2055,9 +2078,9 @@ static int brickmania_game_loop(void)
                 if ((game_state==ST_PAUSE) && (button_right || button_left))
                     continue;
                 if ((button_right && !flip_sides) ||
-                    (button_left && flip_sides)) 
+                    (button_left && flip_sides))
                 {
-                    if (pad_pos_x+SPEED_PAD+pad_width > GAMESCREEN_WIDTH) 
+                    if (pad_pos_x+SPEED_PAD+pad_width > GAMESCREEN_WIDTH)
                     {
                         for(k=0;k<used_balls;k++)
                             if (game_state==ST_READY || ball[k].glue)
@@ -2073,16 +2096,16 @@ static int brickmania_game_loop(void)
                     }
                 }
                 else if ((button_left && !flip_sides) ||
-                         (button_right && flip_sides)) 
+                         (button_right && flip_sides))
                 {
-                    if (pad_pos_x-SPEED_PAD < 0) 
+                    if (pad_pos_x-SPEED_PAD < 0)
                     {
                         for(k=0;k<used_balls;k++)
                             if (game_state==ST_READY || ball[k].glue)
                                 ball[k].pos_x-=pad_pos_x;
                         pad_pos_x -= pad_pos_x;
                     }
-                    else 
+                    else
                     {
                         for(k=0;k<used_balls;k++)
                             if (game_state==ST_READY || ball[k].glue)
@@ -2091,8 +2114,8 @@ static int brickmania_game_loop(void)
                     }
                 }
             }
-            
-            switch(button) 
+
+            switch(button)
             {
 #if defined(HAVE_TOUCHSCREEN)
                 case (BUTTON_REL | BUTTON_TOUCHSCREEN):
@@ -2102,16 +2125,16 @@ static int brickmania_game_loop(void)
 #ifdef ALTSELECT
                 case ALTSELECT:
 #endif
-                    if (game_state==ST_READY) 
+                    if (game_state==ST_READY)
                     {
                         /* Initialize used balls starting speed */
-                        for(k=0 ; k < used_balls ; k++) 
+                        for(k=0 ; k < used_balls ; k++)
                         {
                             ball[k].speedy = SPEED_4Q_Y;
                             if(pad_pos_x + (pad_width/2) >= GAMESCREEN_WIDTH/2)
                             {
                                 ball[k].speedx = SPEED_4Q_X;
-                            } 
+                            }
                             else
                             {
                                 ball[k].speedx = -SPEED_4Q_X;
@@ -2119,13 +2142,13 @@ static int brickmania_game_loop(void)
                         }
                         game_state=ST_START;
                     }
-                    else if (game_state==ST_PAUSE) 
+                    else if (game_state==ST_PAUSE)
                     {
                         game_state=ST_START;
                     }
-                    else if (pad_type == STICKY) 
+                    else if (pad_type == STICKY)
                     {
-                        for(k=0;k<used_balls;k++) 
+                        for(k=0;k<used_balls;k++)
                         {
                             if (ball[k].glue)
                             {
@@ -2134,15 +2157,20 @@ static int brickmania_game_loop(void)
                             }
                         }
                     }
-                    else if (pad_type == SHOOTER) 
+                    else if (pad_type == SHOOTER)
                     {
-                        k=brickmania_find_empty_fire();
-                        fire[k].top=PAD_POS_Y - FIRE_LENGTH;
-                        fire[k].x_pos = pad_pos_x + 1; /* Add 1 for edge */
-                        
-                        k=brickmania_find_empty_fire();
-                        fire[k].top=PAD_POS_Y - FIRE_LENGTH;
-                        fire[k].x_pos = pad_pos_x + pad_width -1; /* Sub1 edge*/
+                        if (used_fires < MAX_FIRES)
+                        {
+                            fire[used_fires].top = PAD_POS_Y - FIRE_LENGTH;
+                            fire[used_fires].x_pos = pad_pos_x + 1; /* Add 1 for edge */
+                            used_fires++;
+                        }
+                        if (used_fires < MAX_FIRES)
+                        {
+                            fire[used_fires].top = PAD_POS_Y - FIRE_LENGTH;
+                            fire[used_fires].x_pos = pad_pos_x + pad_width - 1; /* Sub1 edge*/
+                            used_fires++;
+                        }
                     }
                     break;
 #ifdef RC_QUIT
@@ -2159,7 +2187,7 @@ static int brickmania_game_loop(void)
                     break;
             }
         }
-        else 
+        else
         {
 #ifdef HAVE_LCD_COLOR
             rb->lcd_bitmap_transparent(brickmania_gameover,
@@ -2176,10 +2204,10 @@ static int brickmania_game_loop(void)
             brickmania_sleep(2);
             return 0;
         }
-        
+
         /* Game always needs to yield for other threads */
         rb->yield();
-        
+
         /* Sleep for a bit if there is time to spare */
         if (TIME_BEFORE(*rb->current_tick, end))
             rb->sleep(end-*rb->current_tick);
@@ -2193,10 +2221,10 @@ enum plugin_status plugin_start(const void* parameter)
     (void)parameter;
     int last_difficulty;
 
-    highscore_load(HIGH_SCORE,highest,NUM_SCORES);
+    highscore_load(HIGH_SCORE_FILE,highest,NUM_HIGH_SCORES);
     configfile_load(CONFIG_FILE_NAME,config,1,0);
     last_difficulty = difficulty;
-    
+
 #ifdef HAVE_TOUCHSCREEN
     rb->touchscreen_set_mode(TOUCHSCREEN_POINT);
 #endif
@@ -2216,25 +2244,25 @@ enum plugin_status plugin_start(const void* parameter)
     {
         if(!resume)
         {
-            int position = highscore_update(score, level+1, "", highest, 
-                NUM_SCORES);
-            if (position == 0) 
+            int position = highscore_update(score, level+1, "", highest,
+                NUM_HIGH_SCORES);
+            if (position == 0)
             {
                 rb->splash(HZ*2, "New High Score");
             }
-            
-            if (position != -1) 
+
+            if (position != -1)
             {
-                highscore_show(position, highest, NUM_SCORES, true);
-            } 
-            else 
+                highscore_show(position, highest, NUM_HIGH_SCORES, true);
+            }
+            else
             {
                 brickmania_sleep(3);
             }
         }
     }
 
-    highscore_save(HIGH_SCORE,highest,NUM_SCORES);
+    highscore_save(HIGH_SCORE_FILE,highest,NUM_HIGH_SCORES);
     if(last_difficulty != difficulty)
         configfile_save(CONFIG_FILE_NAME,config,1,0);
     /* Restore user's original backlight setting */

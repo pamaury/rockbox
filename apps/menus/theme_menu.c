@@ -47,7 +47,8 @@
  */
 static int clear_main_backdrop(void)
 {
-    global_settings.backdrop_file[0]=0;
+    global_settings.backdrop_file[0] = '-';
+    global_settings.backdrop_file[1] = '\0';
     sb_set_backdrop(SCREEN_MAIN, NULL);
     viewportmanager_theme_enable(SCREEN_MAIN, false, NULL);
     viewportmanager_theme_undo(SCREEN_MAIN, true);
@@ -161,7 +162,9 @@ static int statusbar_callback_ex(int action,const struct menu_item_ex *this_item
             old_bar[screen] = statusbar_position(screen);
             break;
         case ACTION_EXIT_MENUITEM:
-            settings_apply_skins();
+            if (statusbar_position(screen) == STATUSBAR_CUSTOM
+                    && old_bar[screen] != statusbar_position(screen))
+                settings_apply_skins();
             break;
     }
     return ACTION_REDRAW;

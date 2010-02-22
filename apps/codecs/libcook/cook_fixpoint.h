@@ -36,7 +36,7 @@
  */
 
 #ifdef ROCKBOX
-/* get definitions of MULT31, MULT31_SHIFT15, CLIP_TO_15, vect_add, from codelib */
+/* get definitions of MULT31, MULT31_SHIFT15, vect_add, from codelib */
 #include "asm_arm.h"
 #include "asm_mcf5249.h"
 #include "codeclib_misc.h"
@@ -58,14 +58,9 @@ static const FIXPU* cplscales[5] = {
 static inline FIXP fixp_pow2(FIXP x, int i)
 {
   if (i < 0)
-    return (x >> -i) + ((x >> (-i-1)) & 1);
+    return (x >> -i);
   else
     return x << i;              /* no check for overflow */
-}
-
-static inline FIXP fixp_pow2_neg(FIXP x, int i)
-{
-  return (x >> i) + ((x >> (i-1)) & 1);
 }
 
 /**
@@ -79,28 +74,28 @@ static inline FIXP fixp_pow2_neg(FIXP x, int i)
 #else
 static inline FIXP fixp_mult_su(FIXP a, FIXPU b)
 {
-    int32_t hb = (a >> 16) * b; 	 
-    uint32_t lb = (a & 0xffff) * b; 	 
+    int32_t hb = (a >> 16) * b;      
+    uint32_t lb = (a & 0xffff) * b;      
 
-    return hb + (lb >> 16) + ((lb & 0x8000) >> 15); 	 
+    return hb + (lb >> 16) + ((lb & 0x8000) >> 15);      
 }
 #endif
 
 /* Faster version of the above using 32x32=64 bit multiply */
 #ifdef ROCKBOX
 #define fixmul31(x,y) (MULT31(x,y))
-#else 	 
-static inline int32_t fixmul31(int32_t x, int32_t y) 	 
-{ 	 
-    int64_t temp; 	 
+#else    
+static inline int32_t fixmul31(int32_t x, int32_t y)     
+{    
+    int64_t temp;    
 
-    temp = x; 	 
-    temp *= y; 	 
+    temp = x;    
+    temp *= y;   
 
-    temp >>= 31;        //16+31-16 = 31 bits 	 
+    temp >>= 31;        //16+31-16 = 31 bits     
     
-    return (int32_t)temp; 	 
-} 	 
+    return (int32_t)temp;    
+}    
 #endif
 
 /**
@@ -143,13 +138,13 @@ static void scalar_dequant_math(COOKContext *q, int index,
     else 
     {
         for(i=0 ; i<SUBBAND_SIZE ; i++) {
-            f = table[subband_coef_index[i]];
+            f = (table[subband_coef_index[i]])>>s;
             /* noise coding if subband_coef_index[i] == 0 */
             if (((subband_coef_index[i] == 0) && cook_random(q)) ||
                 ((subband_coef_index[i] != 0) && subband_coef_sign[i]))
                 f = -f;
 
-            *mlt_p++ = fixp_pow2_neg(f, s);
+            *mlt_p++ = f;
         }
     }
 }
@@ -166,33 +161,31 @@ static void scalar_dequant_math(COOKContext *q, int index,
  */
 #include "../lib/mdct_lookup.h"
 
-static inline void imlt_math(COOKContext *q, FIXP *in)
+void imlt_math(COOKContext *q, FIXP *in) ICODE_ATTR;
+void imlt_math(COOKContext *q, FIXP *in)
 {
     const int n = q->samples_per_channel;
     const int step = 2 << (10 - av_log2(n));
+    REAL_T *mdct_out = q->mono_mdct_output;
+    REAL_T tmp;
     int i = 0, j = 0;
 
     ff_imdct_calc(q->mdct_nbits, q->mono_mdct_output, in);
 
     do {
-        FIXP tmp = q->mono_mdct_output[i];
-        
-        q->mono_mdct_output[i] =
-          fixmul31(-q->mono_mdct_output[n + i], (sincos_lookup0[j]));
-          
-        q->mono_mdct_output[n + i] = fixmul31(tmp, (sincos_lookup0[j+1]) );
+        tmp = mdct_out[i];
+        mdct_out[i  ] = fixmul31(-mdct_out[n+i], (sincos_lookup0[j  ]));
+        mdct_out[n+i] = fixmul31(tmp           , (sincos_lookup0[j+1]));
             
-        j += step;
-        
+        j += step;   
     } while (++i < n/2);
 
     do {
-        FIXP tmp = q->mono_mdct_output[i];
-        
         j -= step;
-        q->mono_mdct_output[i] =
-          fixmul31(-q->mono_mdct_output[n + i], (sincos_lookup0[j+1]) );
-        q->mono_mdct_output[n + i] = fixmul31(tmp, (sincos_lookup0[j]) );
+        
+        tmp = mdct_out[i];
+        mdct_out[i  ] = fixmul31(-mdct_out[n+i], (sincos_lookup0[j+1]));
+        mdct_out[n+i] = fixmul31(tmp           , (sincos_lookup0[j  ]));
     } while (++i < n);
 }
 
@@ -203,7 +196,8 @@ static inline void imlt_math(COOKContext *q, FIXP *in)
  * @param gain              gain correction to apply first to output buffer
  * @param buffer            data to overlap
  */
-static inline void overlap_math(COOKContext *q, int gain, FIXP buffer[])
+void overlap_math(COOKContext *q, int gain, FIXP buffer[]) ICODE_ATTR;
+void overlap_math(COOKContext *q, int gain, FIXP buffer[])
 {
     int i;
 #ifdef ROCKBOX
@@ -217,8 +211,7 @@ static inline void overlap_math(COOKContext *q, int gain, FIXP buffer[])
         
     } else {
         for(i=0 ; i<q->samples_per_channel ; i++) {
-            q->mono_mdct_output[i] =
-              (q->mono_mdct_output[i] >> -gain) + ((q->mono_mdct_output[i] >> (-gain-1)) & 1)+ buffer[i];
+            q->mono_mdct_output[i] = (q->mono_mdct_output[i]>>-gain) + buffer[i];
         }
     }
 #else
@@ -279,34 +272,4 @@ interpolate_math(COOKContext *q, register FIXP* buffer,
 static inline FIXP cplscale_math(FIXP x, int table, int i)
 {
   return fixp_mult_su(x, cplscales[table-2][i]);
-}
-
-
-/**
- * Final converion from floating point values to
- * signed, 16 bit sound samples. Round and clip.
- *
- * @param q                 pointer to the COOKContext
- * @param out               pointer to the output buffer
- * @param chan              0: left or single channel, 1: right channel
- */
-static inline void output_math(COOKContext *q, register int16_t *out, int chan)
-{
-#ifdef ROCKBOX
-    register REAL_T * mono_output_ptr = q->mono_mdct_output;
-    register REAL_T * mono_output_end = mono_output_ptr + q->samples_per_channel;
-    out += chan;
-    const int STEP = q->nb_channels;
-    while( mono_output_ptr < mono_output_end )
-    {
-      *out = CLIP_TO_15(fixp_pow2_neg(*mono_output_ptr++, 11));
-      out += STEP;
-    }
-#else
-    int j;
-    for (j = 0; j < q->samples_per_channel; j++) {
-        out[chan + q->nb_channels * j] =
-        av_clip(fixp_pow2(q->mono_mdct_output[j], -11), -32768, 32767);
-    }
-#endif
 }

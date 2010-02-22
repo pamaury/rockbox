@@ -33,9 +33,11 @@ QString BootloaderInstallAms::ofHint()
     return tr("Bootloader installation requires you to provide "
               "a firmware file of the original firmware (bin file). "
               "You need to download this file yourself due to legal "
-              "reasons. Please refer to the "
-              "<a href='http://www.rockbox.org/manual.shtml'>manual</a> and the "
-              "<a href='http://www.rockbox.org/wiki/SansaAMS'>SansaAMS</a> "
+              "reasons. Please browse the "
+              "<a href='http://forums.sandisk.com/sansa/'>Sansa Forums'</a> "
+              "or refer to the "
+              "<a href='http://www.rockbox.org/manual.shtml'>manual</a> and "
+              "the <a href='http://www.rockbox.org/wiki/SansaAMS'>SansaAMS</a> "
               "wiki page on how to obtain this file.<br/>"
               "Press Ok to continue and browse your computer for the firmware "
               "file.");
@@ -72,6 +74,7 @@ void BootloaderInstallAms::installStage2(void)
     int n;
     int firmware_size;
     int bootloader_size;
+    int patchable;
     int totalsize;
     char errstr[200];
       
@@ -109,10 +112,13 @@ void BootloaderInstallAms::installStage2(void)
     }
     
     /* check total size */
-    totalsize = total_size(sum.model,rb_packedsize,of_packedsize);
-    if (totalsize > firmware_size) 
+    patchable = check_sizes(sum.model, rb_packedsize, bootloader_size,
+            of_packedsize, firmware_size, &totalsize, errstr, sizeof(errstr));
+
+    if (!patchable)
     {
         qDebug() << "[BootloaderInstallAms] No room to insert bootloader";
+        emit logItem(errstr, LOGERROR);
         emit logItem(tr("No room to insert bootloader, try another firmware version"),
                      LOGERROR);
         free(buf);
