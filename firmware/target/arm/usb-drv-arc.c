@@ -368,7 +368,7 @@ static void prepare_td(struct transfer_descriptor* td,
         struct transfer_descriptor* previous_td, void *ptr, int len,int pipe);
 static void bus_reset(void);
 static void init_control_queue_heads(void);
-static void init_bulk_queue_heads(void);
+static void init_queue_heads(void);
 static void init_endpoints(void);
 /*-------------------------------------------------------------------------*/
 static void usb_drv_stop(void)
@@ -645,7 +645,7 @@ bool usb_drv_powered(void)
 void usb_drv_set_address(int address)
 {
     REG_DEVICEADDR = address << USBDEVICEADDRESS_BIT_POS;
-    init_bulk_queue_heads();
+    init_queue_heads();
     init_endpoints();
 }
 
@@ -979,18 +979,30 @@ static void init_control_queue_heads(void)
     qh_array[EP_CONTROL+1].dtd.next_td_ptr = QH_NEXT_TERMINATE;
 }
 /* manual: 32.14.4.1 Queue Head Initialization */
-static void init_bulk_queue_heads(void)
+static void init_queue_heads(void)
 {
     int packetsize = (usb_drv_port_speed() ? 512 : 64);
     int i;
 
     /* TODO: this should take ep_allocation into account */
     for (i=1;i<USB_NUM_ENDPOINTS;i++) {
-        qh_array[i*2].max_pkt_length = packetsize << QH_MAX_PKT_LEN_POS |
-            QH_ZLT_SEL;
+        
+        /* OUT */
+        if(endpoints[i].type[DIR_OUT] == USB_ENDPOINT_XFER_ISOC)
+            /* 3 packets per frame */
+            qh_array[i*2].max_pkt_length = packetsize << QH_MAX_PKT_LEN_POS | QH_ZLT_SEL | 3 << QH_MULT_POS;
+        else
+            qh_array[i*2].max_pkt_length = packetsize << QH_MAX_PKT_LEN_POS | QH_ZLT_SEL;
+        
         qh_array[i*2].dtd.next_td_ptr = QH_NEXT_TERMINATE;
-        qh_array[i*2+1].max_pkt_length = packetsize << QH_MAX_PKT_LEN_POS |
-            QH_ZLT_SEL;
+        
+        /* IN */
+        if(endpoints[i].type[DIR_IN] == USB_ENDPOINT_XFER_ISOC)
+            /* 3 packets per frame */
+            qh_array[i*2+1].max_pkt_length = packetsize << QH_MAX_PKT_LEN_POS | QH_ZLT_SEL | 3 << QH_MULT_POS;
+        else
+            qh_array[i*2+1].max_pkt_length = packetsize << QH_MAX_PKT_LEN_POS | QH_ZLT_SEL;
+        
         qh_array[i*2+1].dtd.next_td_ptr = QH_NEXT_TERMINATE;
     }
 }
