@@ -229,11 +229,11 @@ static void viewportmanager_redraw(void* data)
     FOR_NB_SCREENS(i)
     {
 #ifdef HAVE_LCD_BITMAP
-        if (statusbar_position(i) == STATUSBAR_CUSTOM)
-            sb_skin_update(i, NULL != data);
-        else if (statusbar_position(i) != STATUSBAR_OFF)
+        sb_skin_update(i, NULL != data);
+#else
+        (void)data;
+        gui_statusbar_draw(&statusbars.statusbars[i], NULL, NULL);
 #endif
-            gui_statusbar_draw(&statusbars.statusbars[i], NULL != data);
     }
 }
 

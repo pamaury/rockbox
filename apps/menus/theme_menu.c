@@ -96,7 +96,7 @@ static int set_color_func(void* color)
     res = (int)set_color(&screens[SCREEN_MAIN],str(colors[c].lang_id),
                          colors[c].setting, banned_color);
     settings_save();
-    settings_apply();
+    settings_apply(false);
     return res;
 }
 
@@ -109,7 +109,7 @@ static int reset_color(void)
     global_settings.lst_color = LCD_DEFAULT_FG;
     
     settings_save();
-    settings_apply();
+    settings_apply(false);
     return 0;
 }
 MENUITEM_FUNCTION(set_bg_col, MENU_FUNC_USEPARAM, ID2P(LANG_BACKGROUND_COLOR),
@@ -162,8 +162,7 @@ static int statusbar_callback_ex(int action,const struct menu_item_ex *this_item
             old_bar[screen] = statusbar_position(screen);
             break;
         case ACTION_EXIT_MENUITEM:
-            if (statusbar_position(screen) == STATUSBAR_CUSTOM
-                    && old_bar[screen] != statusbar_position(screen))
+            if (old_bar[screen] != statusbar_position(screen))
                 settings_apply_skins();
             break;
     }

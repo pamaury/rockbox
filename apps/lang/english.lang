@@ -13349,3 +13349,21 @@
     remote: "Remote Screen"
   </voice>
 </phrase>
+<phrase>
+  id: LANG_RECORDING_HISTOGRAM_INTERVAL
+  desc: in record settings menu
+  user: core
+  <source>
+    *: none
+    recording_histogram: "Histogram interval"
+  </source>
+  <dest>
+    *: none
+    recording_histogram: "Histogram interval"
+  </dest>
+  <voice>
+    *: none
+    recording_histogram: "Histogram interval"
+  </voice>
+</phrase>
+

@@ -56,7 +56,7 @@ struct debug_token_table tokens[] = {
     { X(TOKEN_MARKER_DATABASE) },
     { X(TOKEN_MARKER_FILE) },
     { X(TOKEN_MARKER_IMAGES) },
-    { X(TOKEN_MARKER_METADATA) },   
+    { X(TOKEN_MARKER_METADATA) },
     { X(TOKEN_MARKER_PLAYBACK_INFO) },
     { X(TOKEN_MARKER_PLAYLIST) },
     { X(TOKEN_MARKER_MISC) },
@@ -142,6 +142,12 @@ static char *get_token_desc(struct wps_token *token, char *buf,
             break;
 
 #ifdef HAVE_LCD_BITMAP
+        case WPS_TOKEN_LIST_TITLE_TEXT:
+            snprintf(buf, bufsize, "list title text");
+            break;
+        case WPS_TOKEN_LIST_TITLE_ICON:
+            snprintf(buf, bufsize, "list title icon");
+            break;
         case WPS_TOKEN_IMAGE_PRELOAD:
             snprintf(buf, bufsize, "preload image");
             break;
@@ -152,7 +158,13 @@ static char *get_token_desc(struct wps_token *token, char *buf,
             char label = token->value.i&0xFF;
             struct gui_img *img = find_image(label, data);
             if (img && img->num_subimages > 1)
-                subimage = 'a' + (token->value.i>>8);
+            {
+                int item = token->value.i>>8;
+                if (item >= 26)
+                    subimage = 'A' + item-26;
+                else
+                    subimage = 'a' + item;
+            }
             snprintf(buf, bufsize, "display preloaded image '%c%c'",
                     label, subimage);
         }
@@ -182,7 +194,7 @@ static char *get_token_desc(struct wps_token *token, char *buf,
         case WPS_TOKEN_PLAYBACK_STATUS:
             snprintf(buf, bufsize, "mode playback");
             break;
-            
+
         case WPS_TOKEN_RTC_PRESENT:
             snprintf(buf, bufsize, "rtc: present?");
             break;
@@ -488,7 +500,7 @@ static char *get_token_desc(struct wps_token *token, char *buf,
             break;
         case WPS_TOKEN_SETTING:
             snprintf(buf, bufsize, "Setting value: '%s'",
-                 settings[token->value.i].cfg_name);
+                     settings[token->value.i].cfg_name);
             break;
         case WPS_TOKEN_LANG_IS_RTL:
             snprintf(buf, bufsize, "lang: is_rtl?");
@@ -502,7 +514,7 @@ static char *get_token_desc(struct wps_token *token, char *buf,
                              token->type - tokens[i-1].start_marker);
                     break;
                 }
-            } 
+            }
             break;
     }
 
@@ -585,11 +597,6 @@ void print_debug_info(struct wps_data *data, enum wps_parse_error fail, int line
     }
 #endif /* SIMULATOR */
 
-    if (data->num_tokens >= WPS_MAX_TOKENS - 1) {
-        DEBUGF("Warning: Max number of tokens was reached (%d)\n",
-               WPS_MAX_TOKENS - 1);
-    }
-
     if (fail != PARSE_OK)
     {
         char buf[64];
@@ -641,6 +648,5 @@ void debug_skin_usage(void)
         DEBUGF("Skin buffer usage: %lu/%lu\n", (unsigned long)skin_buffer_usage(),
                                 (unsigned long)(skin_buffer_usage() + skin_buffer_freespace()));
 }
-
 
 #endif /* DEBUG || SIMULATOR */

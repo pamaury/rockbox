@@ -747,6 +747,22 @@ Lyre prototype 1 */
 #define IBSS_ATTR
 #define STATICIRAM static
 #endif
+#if (defined(CPU_PP) || (CONFIG_CPU == AS3525)) && !defined(SIMULATOR) && !defined(BOOTLOADER)
+/* Functions that have INIT_ATTR attached are NOT guaranteed to survive after
+ * root_menu() has been called. Their code may be overwritten by other data or
+ * code in order to save RAM, and references to them might point into
+ * zombie area.
+ *
+ * It is critical that you make sure these functions are only called before
+ * the final call to root_menu() (see apps/main.c) is called (i.e. basically
+ * only while main() runs), otherwise things may go wild,
+ * from crashes to freezes to exploding daps.
+ */
+#define INIT_ATTR       __attribute__ ((section(".init")))
+#define HAVE_INIT_ATTR
+#else
+#define INIT_ATTR
+#endif
 
 #if defined(SIMULATOR) && defined(__APPLE__)
 #define DATA_ATTR       __attribute__ ((section("__DATA, .data")))
@@ -863,7 +879,7 @@ Lyre prototype 1 */
 #define USB_HAS_BULK
 #elif CONFIG_USBOTG == USBOTG_S3C6400X
 #define USB_HAS_BULK
-#define USB_HAS_INTERRUPT
+//#define USB_HAS_INTERRUPT -- seems to be broken
 #endif /* CONFIG_USBOTG */
 
 /* define the class drivers to enable */

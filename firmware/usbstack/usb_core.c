@@ -807,42 +807,8 @@ static void request_handler_interface(struct usb_ctrlrequest* req)
     }
 }
 
-static void request_handler_endpoint(struct usb_ctrlrequest* req)
+static void request_handler_endoint_drivers(struct usb_ctrlrequest* req)
 {
-    if((req->bRequestType & USB_TYPE_MASK) == USB_TYPE_STANDARD)
-    {
-        switch (req->bRequest) {
-            case USB_REQ_CLEAR_FEATURE:
-                logf("usb_core: CLEAR_FEATURE");
-                if (req->wValue==USB_ENDPOINT_HALT) {
-                    usb_drv_stall(EP_NUM(req->wIndex), false, EP_DIR(req->wIndex));
-                }
-                usb_drv_send(EP_CONTROL,NULL,0);
-                return;
-            case USB_REQ_SET_FEATURE:
-                logf("usb_core: SET_FEATURE");
-                if (req->wValue==USB_ENDPOINT_HALT) {
-                   usb_drv_stall(EP_NUM(req->wIndex), true, EP_DIR(req->wIndex));
-                }
-                usb_drv_send(EP_CONTROL,NULL,0);
-                return;
-            case USB_REQ_GET_STATUS:
-                response_data[0]=0;
-                response_data[1]=0;
-                logf("usb_core: GET_STATUS");
-                if(req->wIndex>0) {
-                    response_data[0]=usb_drv_stalled(EP_NUM(req->wIndex),
-                            EP_DIR(req->wIndex));
-                }
-                usb_drv_recv(EP_CONTROL,NULL,0);
-                usb_drv_send(EP_CONTROL,response_data,2);
-                return;
-            default:
-                break;
-        }
-    }
-
-    /* when not handled */
     bool handled = false;
     control_handler_t control_handler = NULL;
 
@@ -857,6 +823,53 @@ static void request_handler_endpoint(struct usb_ctrlrequest* req)
         logf("usb bad req %d",req->bRequest);
         usb_drv_stall(EP_CONTROL,true,true);
         usb_core_ack_control(req);
+    }
+}
+
+static void request_handler_endpoint_standard(struct usb_ctrlrequest* req)
+{
+    switch (req->bRequest) {
+        case USB_REQ_CLEAR_FEATURE:
+            if (req->wValue==USB_ENDPOINT_HALT) {
+                usb_drv_stall(EP_NUM(req->wIndex), false, EP_DIR(req->wIndex));
+            }
+            usb_drv_send(EP_CONTROL,NULL,0);
+            break;
+        case USB_REQ_SET_FEATURE:
+            if (req->wValue==USB_ENDPOINT_HALT) {
+               usb_drv_stall(EP_NUM(req->wIndex), true, EP_DIR(req->wIndex));
+            }
+            usb_drv_send(EP_CONTROL,NULL,0);
+            break;
+        case USB_REQ_GET_STATUS:
+            response_data[0]=0;
+            response_data[1]=0;
+            logf("usb_core: GET_STATUS");
+            if(req->wIndex>0) {
+                response_data[0]=usb_drv_stalled(EP_NUM(req->wIndex),
+                        EP_DIR(req->wIndex));
+            }
+            usb_drv_recv(EP_CONTROL,NULL,0);
+            usb_drv_send(EP_CONTROL,response_data,2);
+            break;
+        default:
+            request_handler_endoint_drivers(req);
+            break;
+    }
+}
+
+static void request_handler_endpoint(struct usb_ctrlrequest* req)
+{
+    switch(req->bRequestType & USB_TYPE_MASK) {
+        case USB_TYPE_STANDARD:
+            request_handler_endpoint_standard(req);
+            break;
+        case USB_TYPE_CLASS:
+            request_handler_endoint_drivers(req);
+            break;
+        case USB_TYPE_VENDOR:
+        default:
+            break;
     }
 }
 

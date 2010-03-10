@@ -624,14 +624,14 @@ const struct settings_list settings[] = {
                     ID2P(LANG_INVERT_CURSOR_BAR)),
  #endif
     CHOICE_SETTING(F_THEMESETTING|F_TEMPVAR, statusbar,
-                  LANG_STATUS_BAR, STATUSBAR_TOP, "statusbar","off,top,bottom,custom",
-                  NULL, 4, ID2P(LANG_OFF), ID2P(LANG_STATUSBAR_TOP),
-                  ID2P(LANG_STATUSBAR_BOTTOM), ID2P(LANG_STATUSBAR_CUSTOM)),
+                  LANG_STATUS_BAR, STATUSBAR_TOP, "statusbar","off,top,bottom",
+                  NULL, 3, ID2P(LANG_OFF), ID2P(LANG_STATUSBAR_TOP),
+                  ID2P(LANG_STATUSBAR_BOTTOM)),
 #ifdef HAVE_REMOTE_LCD
     CHOICE_SETTING(F_THEMESETTING|F_TEMPVAR, remote_statusbar,
-                  LANG_REMOTE_STATUSBAR, STATUSBAR_TOP, "remote statusbar","off,top,bottom,custom",
-                  NULL, 4, ID2P(LANG_OFF), ID2P(LANG_STATUSBAR_TOP),
-                  ID2P(LANG_STATUSBAR_BOTTOM), ID2P(LANG_STATUSBAR_CUSTOM)),
+                  LANG_REMOTE_STATUSBAR, STATUSBAR_TOP, "remote statusbar","off,top,bottom",
+                  NULL, 3, ID2P(LANG_OFF), ID2P(LANG_STATUSBAR_TOP),
+                  ID2P(LANG_STATUSBAR_BOTTOM)),
 #endif
     CHOICE_SETTING(F_THEMESETTING|F_TEMPVAR, scrollbar,
                   LANG_SCROLL_BAR, SCROLLBAR_LEFT, "scrollbar","off,left,right",
@@ -1135,6 +1135,13 @@ const struct settings_list settings[] = {
     CHOICE_SETTING(F_RECSETTING, rec_trigger_type, LANG_RECORD_TRIGGER_TYPE, TRIG_TYPE_STOP,
         "trigger type","stop,pause,nf stp", NULL ,3,
        ID2P(LANG_RECORD_TRIGGER_STOP), ID2P(LANG_PAUSE), ID2P(LANG_RECORD_TRIGGER_NEWFILESTP)),
+#ifdef HAVE_RECORDING_HISTOGRAM
+     /* TO DO: additional restictions of following REP items? */
+    TABLE_SETTING(F_RECSETTING, rec_histogram_interval, LANG_RECORDING_HISTOGRAM_INTERVAL, 0,
+        "histogram interval","0s,1s,2s,4s",
+        UNIT_SEC, NULL, NULL, NULL, 4, 0,1,2,4),
+#endif /* HAVE_RECORDING_HISTOGRAM */
+
 #endif /* HAVE_RECORDING */
 
 #ifdef HAVE_SPDIF_POWER

@@ -213,6 +213,19 @@ cpu_init:
     strhi  r5, [r3], #4
     bhi    1b
 
+#ifdef HAVE_INIT_ATTR
+    /* copy init code to codec buffer */
+    ldr    r2, =_initstart
+    ldr    r3, =_initend
+    ldr    r4, =_initcopy
+
+1:
+    cmp     r3, r2
+    ldrhi   r5, [r4], #4
+    strhi   r5, [r2], #4
+    bhi 1b
+#endif
+
     /* Zero out IBSS */
     ldr    r2, =_iedata
     ldr    r3, =_iend
@@ -276,7 +289,7 @@ cpu_init:
     str    r3, [r4]
 #endif
 
-    bl     main
+    ldr    pc, =main
     /* main() should never return */
 
 cop_init:
@@ -315,7 +328,7 @@ cop_init:
     msr    cpsr_c, #0xd3
     
     /* Run cop_main() in apps/main.c */
-    bl     cop_main
+    ldr    pc, =cop_main
 
 /* Exception handlers. Will be copied to address 0 after memory remapping */
     .section .vectors,"aw"

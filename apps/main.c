@@ -127,7 +127,11 @@ static void init(void);
 #ifdef SIMULATOR
 void app_main(void)
 #else
-int main(void) __attribute__((noreturn));
+/* main(), and various functions called by main() and init() may be
+ * be INIT_ATTR. These functions must not be called after the final call
+ * to root_menu() at the end of main()
+ * see definition of INIT_ATTR in config.h */
+int main(void)  INIT_ATTR __attribute__((noreturn));
 int main(void)
 #endif
 {
@@ -161,9 +165,12 @@ int main(void)
 #endif /* #ifdef AUTOROCK */
 
     global_status.last_volume_change = 0;
+    /* no calls INIT_ATTR functions after this point anymore!
+     * see definition of INIT_ATTR in config.h */
     root_menu();
 }
 
+static int init_dircache(bool preinit) INIT_ATTR;
 static int init_dircache(bool preinit)
 {
 #ifdef HAVE_DIRCACHE
@@ -239,6 +246,7 @@ static int init_dircache(bool preinit)
 }
 
 #ifdef HAVE_TAGCACHE
+static void init_tagcache(void) INIT_ATTR;
 static void init_tagcache(void)
 {
     bool clear = false;
@@ -322,13 +330,14 @@ static void init(void)
     /* Keep the order of this 3 (viewportmanager handles statusbars)
      * Must be done before any code uses the multi-screen API */
     gui_syncstatusbar_init(&statusbars);
+    gui_sync_wps_init();
     sb_skin_init();
     viewportmanager_init();
 
     storage_init();
     settings_reset();
     settings_load(SETTINGS_ALL);
-    settings_apply();
+    settings_apply(true);
     init_dircache(true);
     init_dircache(false);
 #ifdef HAVE_TAGCACHE
@@ -372,6 +381,7 @@ static void init(void)
 
 #else
 
+static void init(void) INIT_ATTR;
 static void init(void)
 {
     int rc;
@@ -452,6 +462,7 @@ static void init(void)
      * Must be done before any code uses the multi-screen API */
     gui_syncstatusbar_init(&statusbars);
     sb_skin_init();
+    gui_sync_wps_init();
     viewportmanager_init();
 
 #if CONFIG_CHARGING && (CONFIG_CPU == SH7034)
@@ -559,7 +570,7 @@ static void init(void)
 #endif
     }
 
-    settings_apply();
+    settings_apply(true);        
     init_dircache(false);
 #ifdef HAVE_TAGCACHE
     init_tagcache();

@@ -219,7 +219,6 @@ static char path_buffer[MAX_PATH];
  * overflow every 13 years 8-)
  */
 static long peak_time = 0;
-static long hist_time = 0;
 
 static short peak_valid_mem[4];
 #define BAL_MEM_SIZE 24
@@ -269,6 +268,39 @@ static short agc_baltime = 0;
 /* AGC maximum gain */
 static short agc_maxgain;
 #endif /* HAVE_AGC */
+#if defined(HAVE_AGC) || defined(HAVE_RECORDING_HISTOGRAM)
+static long hist_time = 0;
+#endif /* HAVE_AGC or HAVE_RECORDING_HISTOGRAM */
+/* Histogram data */
+/* TO DO: move some of this stuff inside the recording function? */
+#ifdef HAVE_RECORDING_HISTOGRAM
+static int hist_l = 0;
+static int hist_r = 0;
+#define HIST_BUF_SIZE (LCD_WIDTH)
+#define HIST_Y (hist_pos_y+hist_size_h-1)
+#define HIST_W (LCD_WIDTH / 2 - 4)
+#if LCD_DEPTH > 1
+#ifdef HAVE_LCD_COLOR
+#define LCD_BAL_L LCD_RGBPACK(0, 0, 255)
+#define LCD_BAL_R LCD_RGBPACK(204, 0, 0)
+#define LCD_HIST_OVER LCD_RGBPACK(204, 0, 0)
+#define LCD_HIST_HI LCD_RGBPACK(255, 204, 0)
+#define LCD_HIST_OK LCD_RGBPACK(51, 153, 0)
+#else /* HAVE_LCD_COLOR */
+#define LCD_BATT_OK LCD_BLACK
+#define LCD_BATT_LO LCD_DARKGRAY
+#define LCD_DISK_OK LCD_BLACK
+#define LCD_DISK_LO LCD_DARKGRAY
+#define LCD_HIST_OVER LCD_BLACK
+#define LCD_HIST_OK LCD_DARKGRAY
+#define LCD_BAL LCD_DARKGRAY
+#endif /* HAVE_LCD_COLOR */
+#else /* LCD_DEPTH > 1 */
+#define LCD_HIST_OVER LCD_DEFAULT_FG
+#define LCD_HIST_OK LCD_DEFAULT_FG
+#define LCD_BAL LCD_DEFAULT_FG
+#endif /* LCD_DEPTH > 1 */
+#endif /* HAVE_RECORDING_HISTOGRAM */
 
 static void set_gain(void)
 {
@@ -316,6 +348,13 @@ static bool read_peak_levels(int *peak_l, int *peak_r, int *balance)
     for (i = 0; i < BAL_MEM_SIZE; i++)
         *balance += balance_mem[i];
     *balance = *balance / BAL_MEM_SIZE;
+
+#ifdef HAVE_RECORDING_HISTOGRAM
+    if (*peak_l > hist_l)
+        hist_l = *peak_l;
+    if (*peak_r > hist_r)
+        hist_r = *peak_r;
+#endif
 
     return true;
 }
@@ -1015,7 +1054,6 @@ bool recording_screen(bool no_source)
 #endif
 #ifdef HAVE_AGC
     bool peak_read = false;
-    bool peak_valid = false;
     int peak_l, peak_r;
     int balance = 0;
 #endif
@@ -1025,9 +1063,23 @@ bool recording_screen(bool no_source)
     int pm_h[NB_SCREENS];           /* peakmeter height */
     int trig_ypos[NB_SCREENS];      /* trigger bar y pos */
     int trig_width[NB_SCREENS];     /* trigger bar width */
-    bool compact_view[NB_SCREENS];  /* tweak layout tiny screens / big fonts */
-
+    int top_height_req[NB_SCREENS]; /* required height for top half */
+                                     /* tweak layout tiny screens / big fonts */                                    
+    bool compact_view[NB_SCREENS] = { false };
     struct gui_synclist lists;      /* the list in the bottom vp */
+#if defined(HAVE_AGC) || defined(HAVE_RECORDING_HISTOGRAM)
+    bool peak_valid = false;
+#endif
+#if defined(HAVE_RECORDING_HISTOGRAM)
+    int j;
+    unsigned short hist_pos_y = 0;
+    unsigned short hist_size_h = 0;
+    int history_pos = 0;
+    short hist_time_interval = 1; /* 1, 2, 4, 8 */
+    unsigned char history_l[HIST_BUF_SIZE];
+    unsigned char history_r[HIST_BUF_SIZE];
+    const char hist_level_marks[6] = { 29, 26, 23, 17, 9, 2};
+#endif
 #ifdef HAVE_FMRADIO_REC
     int prev_rec_source = global_settings.rec_source; /* detect source change */
 #endif
@@ -1084,49 +1136,6 @@ bool recording_screen(bool no_source)
     rec_init_filename();
 #endif
 
-    /* viewport init and calculations that only needs to be done once */
-    FOR_NB_SCREENS(i)
-    {
-        struct viewport *v;
-        /* top vp, 4 lines, force sys font if total screen < 6 lines
-           NOTE: one could limit the list to 1 line and get away with 5 lines */
-        v = &vp_top[i];
-        viewport_set_defaults(v, i);
-        if (viewport_get_nb_lines(v) < 4)
-        {
-            /* compact needs 4 lines total */
-            v->font = FONT_SYSFIXED;
-            compact_view[i] = false;
-        }
-        else
-        {
-            if (viewport_get_nb_lines(v) < (4+2)) /*top=4,list=2*/
-                compact_view[i] = true;
-            else
-                compact_view[i] = false;
-        }
-        vp_list[i] = *v; /* get a copy now so it can be sized more easily */
-        v->height = (font_get(v->font)->height)*(compact_view[i] ? 3 : 4);
-
-        /* list section, rest of the screen */
-        vp_list[i].y += vp_top[i].height;
-        vp_list[i].height -= vp_top[i].height;
-        screens[i].set_viewport(&vp_top[i]); /* req for next calls */
-
-        screens[i].getstringsize("W", &w, &h);
-        pm_y[i] = font_get(vp_top[i].font)->height * 2;
-        trig_ypos[i] = font_get(vp_top[i].font)->height * 3;
-        if(compact_view[i])
-           trig_ypos[i] -= (font_get(vp_top[i].font)->height)/2;
-    }
-
-    /* init the bottom list */
-    gui_synclist_init(&lists, reclist_get_name, NULL, false, 1, vp_list);
-    gui_synclist_set_title(&lists, NULL, Icon_NOICON);
-    
-    
-    send_event(GUI_EVENT_ACTIONUPDATE, (void*)1); /* force a redraw */
-
     /* start of the loop: we stay in this loop until user quits recscreen */
     while(done <= 0)
     {
@@ -1141,6 +1150,65 @@ bool recording_screen(bool no_source)
                 && prev_rec_source == AUDIO_SRC_FMRADIO)
                 radio_status = FMRADIO_OFF;
             prev_rec_source = global_settings.rec_source;
+#endif
+
+            /* viewport init and calculations that only needs to be done once */
+            FOR_NB_SCREENS(i)
+            {
+                struct viewport *v;
+                /* top vp, 4 lines, force sys font if total screen < 6 lines
+                NOTE: one could limit the list to 1 line and get away with 5 lines */
+                top_height_req[i] = 4;
+#if defined(HAVE_RECORDING_HISTOGRAM)
+                if((global_settings.rec_histogram_interval) && (!i))
+                    top_height_req[i] += 1; /* use one line for histogram */
+                hist_time_interval = 1 << global_settings.rec_histogram_interval;
+#endif
+                v = &vp_top[i];
+                viewport_set_defaults(v, i);
+                if (viewport_get_nb_lines(v) < top_height_req[i])
+                {
+                    /* compact needs 4 lines total */
+                    v->font = FONT_SYSFIXED;
+                    compact_view[i] = false;
+                }
+                else
+                {
+                    /*top=4,list=2*/
+                    if (viewport_get_nb_lines(v) < (top_height_req[i]+2))
+                        compact_view[i] = true;
+                    else
+                        compact_view[i] = false;
+                }
+                vp_list[i] = *v; /* get a copy now so it can be sized more easily */
+                v->height = (font_get(v->font)->height)*(compact_view[i] ? 3 :
+                                                                    top_height_req[i]);
+
+                /* list section, rest of the screen */
+                vp_list[i].y += vp_top[i].height;
+                vp_list[i].height -= vp_top[i].height;
+                screens[i].set_viewport(&vp_top[i]); /* req for next calls */
+
+                screens[i].getstringsize("W", &w, &h);
+                pm_y[i] = font_get(vp_top[i].font)->height * 2;
+                trig_ypos[i] = font_get(vp_top[i].font)->height * 3;
+                if(compact_view[i])
+                trig_ypos[i] -= (font_get(vp_top[i].font)->height)/2;
+            }
+
+            /* init the bottom list */
+            gui_synclist_init(&lists, reclist_get_name, NULL, false, 1, vp_list);
+            gui_synclist_set_title(&lists, NULL, Icon_NOICON);
+
+            send_event(GUI_EVENT_ACTIONUPDATE, (void*)1); /* force a redraw */
+
+#if defined(HAVE_RECORDING_HISTOGRAM)
+            history_pos = 0;
+            hist_pos_y = (compact_view[0] ? 3 : 4) * (font_get(vp_top[0].font)->height)
+                                                                                    + 1;
+            hist_size_h = font_get(vp_top[0].font)->height - 2;
+            memset(history_l, 0, sizeof(unsigned char)*HIST_BUF_SIZE);
+            memset(history_r, 0, sizeof(unsigned char)*HIST_BUF_SIZE);
 #endif
 
             FOR_NB_SCREENS(i)
@@ -1673,12 +1741,11 @@ bool recording_screen(bool no_source)
             unsigned int dseconds, dhours, dminutes;
             unsigned long num_recorded_bytes, dsize, dmb;
 
-            
             FOR_NB_SCREENS(i)
             {
                 screens[i].set_viewport(&vp_top[i]);
                 screens[i].clear_viewport();
-            }    
+            }
             update_countdown = 5;
             last_seconds = seconds;
 
@@ -1795,6 +1862,71 @@ bool recording_screen(bool no_source)
                         screens[i].putsf(0, 2, "%4d", clipcount);
                 }
             }
+
+#ifdef HAVE_RECORDING_HISTOGRAM
+        if(global_settings.rec_histogram_interval)
+        {
+            if (peak_valid && !(hist_time % hist_time_interval) && hist_l)
+            {
+                /* fill history buffer */
+                history_l[history_pos] = hist_l * hist_size_h / 32767;
+                history_r[history_pos] = hist_r * hist_size_h / 32767;
+                history_pos = (history_pos + 1) % HIST_BUF_SIZE;
+                history_l[history_pos] = history_r[history_pos] = 0;
+                history_l[(history_pos + 1) % HIST_BUF_SIZE] = 0;
+                history_r[(history_pos + 1) % HIST_BUF_SIZE] = 0;
+                hist_l = 0;
+                hist_r = 0;
+            }
+            lcd_set_drawmode(DRMODE_SOLID);
+            lcd_drawrect(0, hist_pos_y - 1,
+                            HIST_W + 2, hist_size_h + 1);
+            lcd_drawrect(HIST_W + 6, hist_pos_y - 1,
+                            HIST_W + 2, hist_size_h + 1);
+            lcd_set_drawmode(DRMODE_FG);
+
+            j = history_pos;
+            for (i = HIST_W-1; i >= 0; i--)
+            {
+                j--;
+                if(j<0)
+                    j = HIST_BUF_SIZE-1;
+                if (history_l[j])
+                {
+                    if (history_l[j] == hist_size_h)
+                        lcd_set_foreground(LCD_HIST_OVER);
+#ifdef HAVE_LCD_COLOR
+                    else if (history_l[j] > hist_level_marks[1])
+                        lcd_set_foreground(LCD_HIST_HI);
+#endif
+                    else
+                        lcd_set_foreground(LCD_HIST_OK);
+                    lcd_vline(1 + i, HIST_Y-1, HIST_Y - history_l[j]);
+                }
+                if (history_r[j])
+                {
+                    if (history_r[j] == hist_size_h)
+                        lcd_set_foreground(LCD_HIST_OVER);
+#ifdef HAVE_LCD_COLOR
+                    else if (history_r[j] > hist_level_marks[1])
+                        lcd_set_foreground(LCD_HIST_HI);
+#endif
+                    else
+                        lcd_set_foreground(LCD_HIST_OK);
+                    lcd_vline(HIST_W+7 + i, HIST_Y-1, HIST_Y - history_r[j]);
+                }
+            }
+            lcd_set_foreground(
+#ifdef HAVE_LCD_COLOR
+            global_settings.fg_color);
+#else
+            LCD_DEFAULT_FG);
+#endif
+            for (i = 0; i < 6; i++)
+                lcd_hline(HIST_W + 3, HIST_W + 4,
+                            HIST_Y - hist_level_marks[i]);
+        }
+#endif /* HAVE_RECORDING_HISTOGRAM */
 
 #ifdef HAVE_AGC
             hist_time++;
@@ -1922,7 +2054,6 @@ rec_abort:
 
     FOR_NB_SCREENS(i)
         screens[i].setfont(FONT_UI);
-        
 
     /* if the directory was created or recording happened, make sure the
        browser is updated */
@@ -1961,6 +2092,7 @@ static bool f2_rec_screen(void)
 
     FOR_NB_SCREENS(i)
     {
+        screens[i].set_viewport(NULL);
         screens[i].setfont(FONT_SYSFIXED);
         screens[i].getstringsize("A",&w,&h);
     }
@@ -2096,6 +2228,7 @@ static bool f3_rec_screen(void)
 
     FOR_NB_SCREENS(i)
     {
+        screens[i].set_viewport(NULL);
         screens[i].setfont(FONT_SYSFIXED);
         screens[i].getstringsize("A",&w,&h);
     }
