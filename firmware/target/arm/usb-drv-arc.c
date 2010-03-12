@@ -862,6 +862,7 @@ static void prepare_td(struct transfer_descriptor* td,
                        void *ptr, int len,int pipe)
 {
     //logf("adding a td : %d",len);
+    /* FIXME td allow iso packets per frame override but we don't use it here */
     memset(td, 0, sizeof(struct transfer_descriptor));
     td->next_td_ptr = DTD_NEXT_TERMINATE;
     td->size_ioc_sts = (len<< DTD_LENGTH_BIT_POS) |
@@ -981,6 +982,9 @@ static void init_control_queue_heads(void)
 /* manual: 32.14.4.1 Queue Head Initialization */
 static void init_queue_heads(void)
 {
+    /* FIXME the packetsize for isochronous transfers is 1023 : 1024 but
+     * the current code only support one type of packet size so we restrict
+     * isochronous packet size for now also */
     int packetsize = (usb_drv_port_speed() ? 512 : 64);
     int i;
 
@@ -989,7 +993,7 @@ static void init_queue_heads(void)
         
         /* OUT */
         if(endpoints[i].type[DIR_OUT] == USB_ENDPOINT_XFER_ISOC)
-            /* 3 packets per frame */
+            /* FIXME: we can adjust the number of packets per frame, currently use one */
             qh_array[i*2].max_pkt_length = packetsize << QH_MAX_PKT_LEN_POS | QH_ZLT_SEL | 1 << QH_MULT_POS;
         else
             qh_array[i*2].max_pkt_length = packetsize << QH_MAX_PKT_LEN_POS | QH_ZLT_SEL;
@@ -998,7 +1002,7 @@ static void init_queue_heads(void)
         
         /* IN */
         if(endpoints[i].type[DIR_IN] == USB_ENDPOINT_XFER_ISOC)
-            /* 3 packets per frame */
+            /* FIXME: we can adjust the number of packets per frame, currently use one */
             qh_array[i*2+1].max_pkt_length = packetsize << QH_MAX_PKT_LEN_POS | QH_ZLT_SEL | 1 << QH_MULT_POS;
         else
             qh_array[i*2+1].max_pkt_length = packetsize << QH_MAX_PKT_LEN_POS | QH_ZLT_SEL;
