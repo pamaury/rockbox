@@ -900,13 +900,16 @@ Lyre prototype 1 */
 #define USB_ENABLE_STORAGE
 
 #ifdef USB_HAS_INTERRUPT
-#define USB_ENABLE_HID
+/*#define USB_ENABLE_HID*/
 #else
 #define USB_ENABLE_CHARGING_ONLY
 #endif
 #endif
 
-#define USB_ENABLE_AUDIO
+/* FIXME: check for isochronous support */
+/*#define USB_ENABLE_AUDIO*/
+
+#define USB_ENABLE_TEST
 
 #endif /* BOOTLOADER */
 

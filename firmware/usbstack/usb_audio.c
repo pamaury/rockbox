@@ -29,6 +29,8 @@
 #define LOGF_ENABLE
 #include "logf.h"
 
+/*#define USB_AUDIO_USE_FEEDBACK_EP*/
+
 /* Strings */
 enum
 {
@@ -214,7 +216,11 @@ static struct usb_interface_descriptor
     .bDescriptorType    = USB_DT_INTERFACE,
     .bInterfaceNumber   = 0,
     .bAlternateSetting  = 1,
+#ifdef USB_AUDIO_USE_FEEDBACK_EP
     .bNumEndpoints      = 2,
+#else
+    .bNumEndpoints      = 1,
+#endif
     .bInterfaceClass    = USB_CLASS_AUDIO,
     .bInterfaceSubClass = USB_SUBCLASS_AUDIO_STREAMING,
     .bInterfaceProtocol = 0,
@@ -273,6 +279,7 @@ static struct usb_as_iso_endpoint
     .wLockDelay         = 1 /* the minimum ! */
 };
 
+#ifdef USB_AUDIO_USE_FEEDBACK_EP
 static struct usb_iso_audio_endpoint_descriptor
     out_iso_sync_ep =
 {
@@ -285,6 +292,7 @@ static struct usb_iso_audio_endpoint_descriptor
     .bRefresh         = 1, /* minimum: 2ms */
     .bSynchAddress    = 0
 };
+#endif
 
 static const struct usb_descriptor_header* const ac_cs_descriptors_list[] =
 {
@@ -311,7 +319,9 @@ static const struct usb_descriptor_header* const usb_descriptors_list[] =
     (struct usb_descriptor_header *) &as_format_type_i,
     (struct usb_descriptor_header *) &out_iso_ep,
     (struct usb_descriptor_header *) &as_out_iso_ep,
+#ifdef USB_AUDIO_USE_FEEDBACK_EP
     (struct usb_descriptor_header *) &out_iso_sync_ep,
+#endif
 };
 
 #define USB_DESCRIPTORS_LIST_SIZE (sizeof(usb_descriptors_list)/sizeof(usb_descriptors_list[0]))
@@ -326,6 +336,8 @@ static int out_iso_ep_adr; /* output isochronous endpoint */
 static int in_iso_ep_adr; /* input isochronous endpoint */
 
 static unsigned char usb_buffer[128] USB_DEVBSS_ATTR;
+
+static unsigned char usb_audio_buffer[1024 * 3] USB_DEVBSS_ATTR;
 
 static void encode3(uint8_t arr[3], unsigned long freq)
 {
@@ -360,6 +372,11 @@ static unsigned long get_sampling_frequency(void)
     return hw_freq_sampr[as_freq_idx];
 }
 
+static void enqueue_iso_xfer(void)
+{
+    usb_drv_recv(out_iso_ep_adr, usb_audio_buffer, 3);
+}
+
 void usb_audio_init(void)
 {
     unsigned int i;
@@ -389,8 +406,10 @@ int usb_audio_request_endpoints(struct usb_class_driver *drv)
 
     out_iso_ep.bEndpointAddress = out_iso_ep_adr;
     out_iso_ep.bSynchAddress = in_iso_ep_adr;
-    
+
+#ifdef USB_AUDIO_USE_FEEDBACK_EP
     out_iso_sync_ep.bEndpointAddress = in_iso_ep_adr;
+#endif
     
     return 0;
 }
@@ -450,7 +469,9 @@ int usb_audio_get_config_descriptor(unsigned char *dest, int max_packet_size)
 
     /* endpoints */
     out_iso_ep.wMaxPacketSize = max_packet_size;
+#ifdef USB_AUDIO_USE_FEEDBACK_EP
     out_iso_sync_ep.wMaxPacketSize = max_packet_size;
+#endif
 
     /** Packing */
 
@@ -722,10 +743,13 @@ void usb_audio_init_connection(void)
     
     usb_as_intf_alt = 0;
     set_sampling_frequency(HW_SAMPR_DEFAULT);
+
+    cpu_boost(true);
 }
 
 void usb_audio_disconnect(void)
 {
+    cpu_boost(false);
 }
 
 void usb_audio_transfer_complete(int ep, int dir, int status, int length)
@@ -735,5 +759,6 @@ void usb_audio_transfer_complete(int ep, int dir, int status, int length)
     (void) status;
     (void) length;
 
-    logf("usbaudio: xfer complete");
+    logf("usbaudio: xfer %s", status < 0 ? "failure" : "completed");
+    logf("usbaudio: %d bytes transfered", length);
 }

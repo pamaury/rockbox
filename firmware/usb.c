@@ -295,6 +295,9 @@ static void usb_thread(void)
 #ifdef USB_ENABLE_AUDIO
                     usb_core_enable_driver(USB_DRIVER_AUDIO, true);
 #endif
+#ifdef USB_ENABLE_TEST
+                    usb_core_enable_driver(USB_DRIVER_TEST, true);
+#endif
 
 #ifdef USB_ENABLE_CHARGING_ONLY
                     usb_core_enable_driver(USB_DRIVER_CHARGING_ONLY, true);
@@ -322,6 +325,9 @@ static void usb_thread(void)
 #endif
 #ifdef USB_ENABLE_AUDIO
                     usb_core_enable_driver(USB_DRIVER_AUDIO, false);
+#endif
+#ifdef USB_ENABLE_TEST
+                    usb_core_enable_driver(USB_DRIVER_TEST, false);
 #endif
 
                 /* Check any drivers enabled at this point for exclusive storage

@@ -30,7 +30,7 @@
 #include "panic.h"
 #include "usb_drv.h"
 
-/*#define LOGF_ENABLE*/
+#define LOGF_ENABLE
 #include "logf.h"
 
 /* USB device mode registers (Little Endian) */
@@ -620,7 +620,7 @@ int usb_drv_send(int endpoint, void* ptr, int length)
 
 int usb_drv_recv(int endpoint, void* ptr, int length)
 {
-    //logf("usbrecv(%x, %d)", ptr, length);
+    logf("usbrecv(%x, %d)", ptr, length);
     return prime_transfer(EP_NUM(endpoint), ptr, length, false, false);
 }
 
@@ -990,7 +990,7 @@ static void init_queue_heads(void)
         /* OUT */
         if(endpoints[i].type[DIR_OUT] == USB_ENDPOINT_XFER_ISOC)
             /* 3 packets per frame */
-            qh_array[i*2].max_pkt_length = packetsize << QH_MAX_PKT_LEN_POS | QH_ZLT_SEL | 3 << QH_MULT_POS;
+            qh_array[i*2].max_pkt_length = packetsize << QH_MAX_PKT_LEN_POS | QH_ZLT_SEL | 1 << QH_MULT_POS;
         else
             qh_array[i*2].max_pkt_length = packetsize << QH_MAX_PKT_LEN_POS | QH_ZLT_SEL;
         
@@ -999,7 +999,7 @@ static void init_queue_heads(void)
         /* IN */
         if(endpoints[i].type[DIR_IN] == USB_ENDPOINT_XFER_ISOC)
             /* 3 packets per frame */
-            qh_array[i*2+1].max_pkt_length = packetsize << QH_MAX_PKT_LEN_POS | QH_ZLT_SEL | 3 << QH_MULT_POS;
+            qh_array[i*2+1].max_pkt_length = packetsize << QH_MAX_PKT_LEN_POS | QH_ZLT_SEL | 1 << QH_MULT_POS;
         else
             qh_array[i*2+1].max_pkt_length = packetsize << QH_MAX_PKT_LEN_POS | QH_ZLT_SEL;
         
