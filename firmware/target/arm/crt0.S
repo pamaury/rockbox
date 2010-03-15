@@ -59,6 +59,7 @@ newstart:
 
 #if (CONFIG_CPU==AS3525 || CONFIG_CPU==AS3525v2) && !defined(BOOTLOADER)
     /* Setup MMU : has to be done before accessing IRAM ! */
+    ldr     sp, =stackend
     bl      memory_init
 
     /* Zero out IBSS */

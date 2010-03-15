@@ -38,6 +38,18 @@ static bool set_format(struct pcm_format *format)
 {
     fmt = format;
 
+    if (fmt->channels == 0)
+    {
+        DEBUGF("CODEC_ERROR: channels is 0\n");
+        return false;
+    }
+
+    if (fmt->bitspersample == 0)
+    {
+        DEBUGF("CODEC_ERROR: bitspersample is 0\n");
+        return false;
+    }
+
     if (fmt->bitspersample > 32)
     {
         DEBUGF("CODEC_ERROR: pcm with more than 32 bitspersample "
@@ -47,8 +59,8 @@ static bool set_format(struct pcm_format *format)
 
     fmt->bytespersample = fmt->bitspersample >> 3;
 
-    if (fmt->totalsamples == 0)
-        fmt->totalsamples = fmt->numbytes/fmt->bytespersample;
+    if (fmt->blockalign == 0)
+        fmt->blockalign = fmt->bytespersample * fmt->channels;
 
     fmt->samplesperblock = fmt->blockalign / (fmt->bytespersample * fmt->channels);
 
@@ -95,7 +107,7 @@ static inline void decode_s16le(const uint8_t *inbuf, size_t inbufsize, int32_t 
     size_t i = 0;
 
     for ( ; i < inbufsize; i += 2)
-        outbuf[i/2] = (inbuf[i] << INC_DEPTH_16)|(SE(inbuf[i+1]) << INC_DEPTH_16);
+        outbuf[i/2] = (inbuf[i] << INC_DEPTH_16)|(SE(inbuf[i+1]) << INC_DEPTH_8);
 }
 
 static inline void decode_u16le(const uint8_t *inbuf, size_t inbufsize, int32_t *outbuf)
@@ -155,7 +167,7 @@ static inline void decode_u24be(const uint8_t *inbuf, size_t inbufsize, int32_t 
     size_t i = 0;
 
     for ( ; i < inbufsize; i += 3)
-        outbuf[i/3] = (inbuf[i+2] << INC_DEPTH_24)|(inbuf[i+1] << INC_DEPTH_8)|
+        outbuf[i/3] = (inbuf[i+2] << INC_DEPTH_24)|(inbuf[i+1] << INC_DEPTH_16)|
                       (SFT(inbuf[i]) << INC_DEPTH_8);
 }
 

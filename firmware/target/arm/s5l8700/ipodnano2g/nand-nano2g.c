@@ -89,6 +89,8 @@ uint8_t nand_tunk2[4];
 uint8_t nand_tunk3[4];
 uint32_t nand_type[4];
 int nand_powered = 0;
+int nand_interleaved = 0;
+int nand_cached = 0;
 long nand_last_activity_value = -1;
 static long nand_stack[32];
 
@@ -99,7 +101,7 @@ static struct wakeup ecc_wakeup;
 
 static uint8_t nand_data[0x800] __attribute__((aligned(16)));
 static uint8_t nand_ctrl[0x200] __attribute__((aligned(16)));
-static uint8_t nand_spare[4][0x40] __attribute__((aligned(16)));
+static uint8_t nand_spare[0x40] __attribute__((aligned(16)));
 static uint8_t nand_ecc[0x30] __attribute__((aligned(16)));
 
 
@@ -383,7 +385,7 @@ uint32_t nand_read_page(uint32_t bank, uint32_t page, void* databuffer,
                         uint32_t checkempty)
 {
     uint8_t* data = nand_data;
-    uint8_t* spare = nand_spare[0];
+    uint8_t* spare = nand_spare;
     if (databuffer && !((uint32_t)databuffer & 0xf))
         data = (uint8_t*)databuffer;
     if (sparebuffer && !((uint32_t)sparebuffer & 0xf))
@@ -444,7 +446,7 @@ uint32_t nand_write_page_int(uint32_t bank, uint32_t page, void* databuffer,
                              void* sparebuffer, uint32_t doecc, uint32_t wait)
 {
     uint8_t* data = nand_data;
-    uint8_t* spare = nand_spare[0];
+    uint8_t* spare = nand_spare;
     if (databuffer && !((uint32_t)databuffer & 0xf))
         data = (uint8_t*)databuffer;
     if (sparebuffer && !((uint32_t)sparebuffer & 0xf))
@@ -528,28 +530,23 @@ uint32_t nand_read_page_fast(uint32_t page, void* databuffer,
     nand_last_activity_value = current_tick;
     led(true);
     if (!nand_powered) nand_power_up();
-    for (i = 0; i < 4; i++)
-    {
-        if (nand_type[i] == 0xFFFFFFFF) continue;
-        nand_set_fmctrl0(i, FMCTRL0_ENABLEDMA);
-        if (nand_send_cmd(NAND_CMD_READ))
-        {
-            rc |= 1 << (i << 2);
-            continue;
-        }
-        if (nand_send_address(page, databuffer ? 0 : 0x800))
-        {
-            rc |= 1 << (i << 2);
-            continue;
-        }
-        if (nand_send_cmd(NAND_CMD_READ2))
-        {
-            rc |= 1 << (i << 2);
-            continue;
-        }
-    }
     uint8_t status[4];
     for (i = 0; i < 4; i++) status[i] = (nand_type[i] == 0xFFFFFFFF);
+    for (i = 0; i < 4; i++)
+    {
+        if (!status[i])
+        {
+            nand_set_fmctrl0(i, FMCTRL0_ENABLEDMA);
+            if (nand_send_cmd(NAND_CMD_READ))
+                status[i] = 1;
+        }
+        if (!status[i])
+            if (nand_send_address(page, 0))
+                status[i] = 1;
+        if (!status[i])
+            if (nand_send_cmd(NAND_CMD_READ2))
+                status[i] = 1;
+    }
     if (!status[0])
         if (nand_wait_status_ready(0))
             status[0] = 1;
@@ -643,8 +640,8 @@ uint32_t nand_write_page_start(uint32_t bank, uint32_t page, void* databuffer,
                                void* sparebuffer, uint32_t doecc)
 {
     if (((uint32_t)databuffer & 0xf) || ((uint32_t)sparebuffer & 0xf)
-     || !databuffer || !sparebuffer || !doecc)
-        return nand_write_page_int(bank, page, databuffer, sparebuffer, doecc, 0);
+     || !databuffer || !sparebuffer || !doecc || !nand_interleaved)
+        return nand_write_page_int(bank, page, databuffer, sparebuffer, doecc, !nand_interleaved);
 
     mutex_lock(&nand_mtx);
     nand_last_activity_value = current_tick;
@@ -769,6 +766,8 @@ uint32_t nand_device_init(void)
         nand_tunk3[i] = nand_deviceinfotable[nand_type[i]].tunk3;
     }
     if (nand_type[0] == 0xFFFFFFFF) return 1;
+    nand_interleaved = ((nand_type[0] >> 22) & 1);
+    nand_cached = ((nand_type[0] >> 23) & 1);
 
     nand_last_activity_value = current_tick;
     create_thread(nand_thread, nand_stack,

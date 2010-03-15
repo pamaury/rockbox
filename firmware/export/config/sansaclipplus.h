@@ -9,6 +9,14 @@
 #define FIRMWARE_OFFSET_FILE_DATA 8
 #define FIRMWARE_OFFSET_FILE_CRC 0
 
+#if 0   /* TODO */
+#ifndef BOOTLOADER
+#define HAVE_MULTIDRIVE
+#define NUM_DRIVES 2
+#define HAVE_HOTSWAP
+#endif
+#endif
+
 #if 0 /* disabled since there is no driver (yet) */
 
 #define HW_SAMPR_CAPS       (SAMPR_CAP_44)
@@ -24,7 +32,7 @@
 
 /* Define bitmask of input sources - recordable bitmask can be defined
    explicitly if different */
-#define INPUT_SRC_CAPS (SRC_CAP_MIC /*| SRC_CAP_FMRADIO*/)
+#define INPUT_SRC_CAPS (SRC_CAP_MIC | SRC_CAP_FMRADIO)
 
 /* define this if you have a bitmap LCD display */
 #define HAVE_LCD_BITMAP
@@ -119,7 +127,7 @@
 #define AB_REPEAT_ENABLE 1
 
 /* FM Tuner */
-//#define CONFIG_TUNER SI4700 /* in fact SI4702 */
+#define CONFIG_TUNER SI4700 /* in fact SI4702 */
 //#define HAVE_TUNER_PWR_CTRL
 
 /* Define this for LCD backlight available */
