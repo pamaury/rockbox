@@ -305,8 +305,8 @@ static struct usb_class_driver drivers[USB_NUM_DRIVERS] =
 #ifdef HAVE_HOTSWAP
         .notify_hotswap = NULL,
 #endif
-        .set_interface = NULL,
-        .get_interface = NULL,
+        .set_interface = usb_test_set_interface,
+        .get_interface = usb_test_get_interface,
         .set_first_string_index = usb_test_set_first_string_index,
         .get_string_descriptor = usb_test_get_string_descriptor,
     },

@@ -7,7 +7,7 @@
  *                     \/            \/     \/    \/            \/
  * $Id:  $
  *
- * Copyright (C) 2008 by Frank Gevaerts
+ * Copyright (C) 20010 by Amaury Pouly
  *
  * All files in this archive are subject to the GNU General Public License.
  * See the file COPYING in the source tree root for full license agreement.
@@ -25,11 +25,14 @@
 #include "usb_class_driver.h"
 #include "usb_audio_def.h"
 #include "pcm_sampr.h"
+#include "audio.h"
+#include "pcm.h"
+#include "file.h"
 
 #define LOGF_ENABLE
 #include "logf.h"
 
-/*#define USB_AUDIO_USE_FEEDBACK_EP*/
+//#define USB_AUDIO_USE_FEEDBACK_EP
 
 /* Strings */
 enum
@@ -263,7 +266,7 @@ static struct usb_iso_audio_endpoint_descriptor
     .bEndpointAddress = USB_DIR_OUT, /* filled later */
     .bmAttributes     = USB_ENDPOINT_XFER_ISOC | USB_ENDPOINT_SYNC_ASYNC,
     .wMaxPacketSize   = 0, /* filled later */
-    .bInterval        = 1,
+    .bInterval        = 1, /* the spec says it must be 1 */
     .bRefresh         = 0,
     .bSynchAddress    = 0 /* filled later */
 };
@@ -335,9 +338,23 @@ static int as_freq_idx; /* audio streaming frequency index (in hw_freq_sampr) */
 static int out_iso_ep_adr; /* output isochronous endpoint */
 static int in_iso_ep_adr; /* input isochronous endpoint */
 
+static int raw_fd;
+
 static unsigned char usb_buffer[128] USB_DEVBSS_ATTR;
 
-static unsigned char usb_audio_buffer[1024 * 3] USB_DEVBSS_ATTR;
+#define USB_AUDIO_BUFFER_SIZE   1024*1000
+struct mutex usb_audio_buffer_mutex;
+static unsigned char usb_audio_buffer[USB_AUDIO_BUFFER_SIZE];
+static int usb_audio_buffer_start;
+static int usb_audio_buffer_end;
+static bool usb_audio_underflow;
+
+#define USB_AUDIO_XFER_BUFFER_SIZE  512
+static unsigned char *usb_audio_xfer_buffer;
+
+#ifdef USB_AUDIO_USE_FEEDBACK_EP
+static unsigned char usb_audio_feedback_buffer[4] USB_DEVBSS_ATTR;
+#endif
 
 static void encode3(uint8_t arr[3], unsigned long freq)
 {
@@ -374,8 +391,20 @@ static unsigned long get_sampling_frequency(void)
 
 static void enqueue_iso_xfer(void)
 {
-    usb_drv_recv(out_iso_ep_adr, usb_audio_buffer, 3);
+    memset(usb_audio_xfer_buffer, 0, USB_AUDIO_XFER_BUFFER_SIZE);
+    usb_drv_recv(out_iso_ep_adr, usb_audio_xfer_buffer, USB_AUDIO_XFER_BUFFER_SIZE);
 }
+
+#ifdef USB_AUDIO_USE_FEEDBACK_EP
+static void enqueue_feedback(void)
+{
+    uint32_t *ptr = (uint32_t *)usb_audio_feedback_buffer;
+    *ptr = ((hw_freq_sampr[as_freq_idx] << 13) + 62) / 125;
+
+    logf("usbaudio: feedback !");
+    usb_drv_send_nonblocking(in_iso_ep_adr, usb_audio_feedback_buffer, sizeof(usb_audio_feedback_buffer));
+}
+#endif
 
 void usb_audio_init(void)
 {
@@ -383,6 +412,17 @@ void usb_audio_init(void)
     /* initialized tSamFreq array */
     for(i = 0; i < HW_NUM_FREQ; i++)
         encode3(as_format_type_i.tSamFreq[i], hw_freq_sampr[i]);
+
+    unsigned char * audio_buffer;
+    size_t bufsize;
+    
+    audio_buffer = audio_get_buffer(false, &bufsize);
+#ifdef UNCACHED_ADDR
+    usb_audio_xfer_buffer = (void *)UNCACHED_ADDR((unsigned int)(audio_buffer+31) & 0xffffffe0);
+#else
+    usb_audio_xfer_buffer = (void *)((unsigned int)(audio_buffer+31) & 0xffffffe0);
+#endif
+    cpucache_invalidate();
 }
 
 int usb_audio_request_endpoints(struct usb_class_driver *drv)
@@ -484,12 +524,82 @@ int usb_audio_get_config_descriptor(unsigned char *dest, int max_packet_size)
     return dest - orig_dest;
 }
 
+static void usb_audio_pcm_get_more(unsigned char **start, size_t *size)
+{
+    *start = NULL;
+    *size = 0;
+    #if 0
+    size_t i;
+    
+    mutex_lock(&usb_audio_buffer_mutex);
+    
+    logf("usbaudio: get more !");
+    logf("usbaudio: start=%d end=%d", usb_audio_buffer_start, usb_audio_buffer_end);
+
+    if(usb_audio_buffer_start == usb_audio_buffer_end)
+    {
+        /* when audio underflow, the callback is not called anymore
+         * so it needs to be restarted */
+        usb_audio_underflow = true;
+        logf("UNDERFLOW UNDERFLOW");
+    }
+    
+    if(usb_audio_buffer_start <= usb_audio_buffer_end)
+    {
+        *start = usb_audio_buffer + usb_audio_buffer_start;
+        *size = usb_audio_buffer_end - usb_audio_buffer_start;
+        usb_audio_buffer_start = usb_audio_buffer_end;
+    }
+    else
+    {
+        *start = usb_audio_buffer + usb_audio_buffer_start;
+        *size = USB_AUDIO_BUFFER_SIZE - usb_audio_buffer_start;
+        usb_audio_buffer_start = 0;
+    }
+
+    /* zero out right channel */
+    /*
+    for(i = 0; i < (*size / 4); i++)
+    {
+        (*start)[4 * i + 0] = 0;
+        (*start)[4 * i + 1] = 0;
+    }
+    */
+
+    logf("=> start=%d end=%d", usb_audio_buffer_start, usb_audio_buffer_end);
+    mutex_unlock(&usb_audio_buffer_mutex);
+    #endif
+}
+
+static void usb_audio_start(void)
+{
+    usb_audio_buffer_start = 0;
+    usb_audio_buffer_end = 0;
+    mutex_init(&usb_audio_buffer_mutex);
+    
+    audio_set_input_source(AUDIO_SRC_PLAYBACK, SRCF_PLAYBACK);
+    audio_set_output_source(AUDIO_SRC_PLAYBACK);
+    pcm_set_frequency(hw_freq_sampr[as_freq_idx]);
+    pcm_play_data(&usb_audio_pcm_get_more, NULL, 0);
+    pcm_play_stop();
+}
+
+static void usb_audio_stop(void)
+{
+    pcm_play_stop();
+}
+
 int usb_audio_set_interface(int intf, int alt)
 {
     logf("usbaudio: use AS interface alternate %d", alt);
     if(intf != (usb_interface + 1) || alt < 0 || alt > 1)
         return -1;
     usb_as_intf_alt = alt;
+
+    if(usb_as_intf_alt == 1)
+        usb_audio_start();
+    else
+        usb_audio_stop();
 
     return 0;
 }
@@ -745,10 +855,23 @@ void usb_audio_init_connection(void)
     set_sampling_frequency(HW_SAMPR_DEFAULT);
 
     cpu_boost(true);
+
+    enqueue_iso_xfer();
+    #ifdef USB_AUDIO_USE_FEEDBACK_EP
+    enqueue_feedback();
+    #endif
+
+    raw_fd = open("/usb_audio.raw", O_RDWR | O_CREAT | O_TRUNC);
+    if(raw_fd < 0)
+        logf("usbaudio: cannot open file for recording");
 }
 
 void usb_audio_disconnect(void)
 {
+    logf("usbaudio: disconnect");
+    if(raw_fd >= 0)
+        close(raw_fd);
+
     cpu_boost(false);
 }
 
@@ -756,9 +879,62 @@ void usb_audio_transfer_complete(int ep, int dir, int status, int length)
 {
     (void) ep;
     (void) dir;
-    (void) status;
-    (void) length;
+    int actual_length;
 
-    logf("usbaudio: xfer %s", status < 0 ? "failure" : "completed");
-    logf("usbaudio: %d bytes transfered", length);
+    //logf("usbaudio: xfer %s", status < 0 ? "failure" : "completed");
+    //logf("usbaudio: %d bytes transfered", length);
+
+    if(ep == out_iso_ep_adr)
+    {
+        if(status == 0)
+        {
+            if(raw_fd >= 0)
+            {
+                if(write(raw_fd, usb_audio_xfer_buffer, length) < 0)
+                    logf("usbaudio: write failed");
+                else
+                    logf("usbaudio: write %d bytes", length);
+            }
+
+            #if 0
+            mutex_lock(&usb_audio_buffer_mutex);
+            //logf("usbaudio: start=%d end=%d length=%d", usb_audio_buffer_start, usb_audio_buffer_end, length);
+            while(length > 0)
+            {
+                actual_length = MIN(length, USB_AUDIO_BUFFER_SIZE - usb_audio_buffer_end);
+                memcpy(usb_audio_buffer + usb_audio_buffer_end, usb_audio_xfer_buffer, actual_length);
+
+                usb_audio_buffer_end += actual_length;
+                if(usb_audio_buffer_end >= USB_AUDIO_BUFFER_SIZE)
+                    usb_audio_buffer_end = 0;
+                length -= actual_length;
+            }
+            //logf("=> start=%d end=%d", usb_audio_buffer_start, usb_audio_buffer_end);
+            mutex_unlock(&usb_audio_buffer_mutex);
+
+            /* only start playback if there is sufficient data (to avoid repeated underflow) */
+            if(usb_audio_underflow)
+            {
+                if(usb_audio_buffer_start <= usb_audio_buffer_end)
+                    actual_length = usb_audio_buffer_end - usb_audio_buffer_start;
+                else
+                    actual_length = usb_audio_buffer_end + USB_AUDIO_BUFFER_SIZE - usb_audio_buffer_start;
+
+                if(actual_length >= 200*1024)
+                {
+                    pcm_play_data(&usb_audio_pcm_get_more, NULL, 0);
+                    usb_audio_underflow = false;
+                }
+            }
+            #endif
+        }
+
+        enqueue_iso_xfer();
+    }
+    #ifdef USB_AUDIO_USE_FEEDBACK_EP
+    else if(ep == in_iso_ep_adr)
+    {
+        enqueue_feedback();
+    }
+    #endif
 }

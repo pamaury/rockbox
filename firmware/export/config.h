@@ -910,10 +910,10 @@ Lyre prototype 1 */
 #endif
 #endif
 
-/* FIXME: check for isochronous support */
-/*#define USB_ENABLE_AUDIO*/
-
-#define USB_ENABLE_TEST
+#ifdef USB_HAS_ISOCHRONOUS
+#define USB_ENABLE_AUDIO
+//#define USB_ENABLE_TEST
+#endif
 
 #endif /* BOOTLOADER */
 

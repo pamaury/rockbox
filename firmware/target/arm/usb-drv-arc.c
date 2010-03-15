@@ -30,7 +30,7 @@
 #include "panic.h"
 #include "usb_drv.h"
 
-#define LOGF_ENABLE
+/*#define LOGF_ENABLE*/
 #include "logf.h"
 
 /* USB device mode registers (Little Endian) */
@@ -620,7 +620,7 @@ int usb_drv_send(int endpoint, void* ptr, int length)
 
 int usb_drv_recv(int endpoint, void* ptr, int length)
 {
-    logf("usbrecv(%x, %d)", ptr, length);
+    //logf("usbrecv(%x, %d)", ptr, length);
     return prime_transfer(EP_NUM(endpoint), ptr, length, false, false);
 }
 
