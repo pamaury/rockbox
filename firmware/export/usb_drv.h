@@ -33,10 +33,6 @@ void usb_drv_attach(void);
 void usb_drv_int(void); /* Call from target INT handler */
 void usb_drv_stall(int endpoint, bool stall,bool in);
 bool usb_drv_stalled(int endpoint,bool in);
-int usb_drv_send(int endpoint, void* ptr, int length);
-int usb_drv_send_nonblocking(int endpoint, void* ptr, int length);
-int usb_drv_recv(int endpoint, void* ptr, int length);
-void usb_drv_ack(struct usb_ctrlrequest* req);
 void usb_drv_set_address(int address);
 void usb_drv_reset_endpoint(int endpoint, bool send);
 bool usb_drv_powered(void);
@@ -46,5 +42,38 @@ void usb_drv_set_test_mode(int mode);
 bool usb_drv_connected(void);
 int usb_drv_request_endpoint(int type, int dir);
 void usb_drv_release_endpoint(int ep);
+
+/* old api */
+int usb_drv_send(int endpoint, void* ptr, int length);
+int usb_drv_send_nonblocking(int endpoint, void* ptr, int length);
+int usb_drv_recv(int endpoint, void* ptr, int length);
+void usb_drv_ack(struct usb_ctrlrequest* req);
+
+/* new api */
+
+/* Returns the maximum packet size of the endpoint [ep]. */
+int usb_drv_max_endpoint_packet_size(int ep);
+/* Allocate slots to be used for transfers on endpoint [ep]. The buffer must have USB_DRV_SLOT_ATTR
+ * attribute and be of size at least [nb_slots]*USB_DRV_SLOT_SIZE.
+ * The USB driver will use slots until there are explicitely released or the endpoint is released.
+ * Returns 0 on success and <0 on error. */
+int usb_drv_allocate_slots(int ep, int nb_slots, void *buffer);
+/* Release the slots previously allocated.
+ * Returns 0 on success and <0 on error. */
+int usb_drv_release_slots(int ep);
+/* Fill the slot [slot] of endpoint [ep] with important parameters.
+ * Returns 0 on success and <0 on error. */
+int usb_drv_fill_slot(int ep, int slot, void *ptr, int length);
+
+/* Void mode (default mode):
+ * The endpoint is not activated: you cannot send data / received data is ignored */
+#define USB_DRV_ENDPOINT_MODE_VOID      0
+/* One Shot mode (aka legacy mode, mandatory for control endpoints):
+ * Only the first slot of the endpoint is used. To send or receive, one must call usb_drv_
+#define USB_DRV_ENDPOINT_MODE_ONE_SHOT  0
+
+/* Select endpoint mode.
+ * Returns 0 on success and <0 on error. */
+int usb_drv_select_endpoint_mode(int ep, int mode);
 
 #endif /* _USB_DRV_H */
