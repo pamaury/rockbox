@@ -61,19 +61,40 @@ int usb_drv_allocate_slots(int ep, int nb_slots, void *buffer);
 /* Release the slots previously allocated.
  * Returns 0 on success and <0 on error. */
 int usb_drv_release_slots(int ep);
-/* Fill the slot [slot] of endpoint [ep] with important parameters.
- * Returns 0 on success and <0 on error. */
-int usb_drv_fill_slot(int ep, int slot, void *ptr, int length);
 
 /* Void mode (default mode):
  * The endpoint is not activated: you cannot send data / received data is ignored */
 #define USB_DRV_ENDPOINT_MODE_VOID      0
-/* One Shot mode (aka legacy mode, mandatory for control endpoints):
- * Only the first slot of the endpoint is used. To send or receive, one must call usb_drv_
-#define USB_DRV_ENDPOINT_MODE_ONE_SHOT  0
+/* Queue mode:
+ * The endpoint is activated and the slots are used to queue transfers up to the maximum number of slots.
+ * Use usb_drv_queue_{send,send_nonblocking,recv} to add transfers to the queu. */
+#define USB_DRV_ENDPOINT_MODE_QUEUE     1
+/* Repeat mode:
+ * The endpoint is activated and the slots are as a circular transfer queue. Contrary to the queueing mode,
+ * when a transfer completes on a slot, the transfer is immediately re-setuped. As a consequence, in repeat
+ * mode, one starts by filling each slot with parameters using usb_drv_fill_repeat_slot. Then, the transfers
+ * are started using usb_drv_start_repeat and are stopped using usb_drv_stop_repeat. In this mode, no attention
+ * is paid to data corruption: if the completion handlers are not fast enough, a buffer can be reused and the 
+ * data overwritten. */
+#define USB_DRV_ENDPOINT_MODE_REPEAT    2
 
 /* Select endpoint mode.
  * Returns 0 on success and <0 on error. */
 int usb_drv_select_endpoint_mode(int ep, int mode);
+
+/* Queue a transfer on an endpoint.
+ * Returns >=0 on success and <0 on error. */
+/* To ack a control transfer, pass a NULL pointer and 0 as length */
+int usb_drv_queue_send(int endpoint, void *ptr, int length);
+int usb_drv_queue_send_nonblocking(int endpoint, void *ptr, int length);
+int usb_drv_queue_recv(int endpoint, void *ptr, int length);
+
+/* Fill slot parameters
+ * Returns 0 on success and <0 on error. */
+int usb_drv_fill_repeat_slot(int ep, int slot, void *ptr, int length);
+/* Start/stop repeat mode
+ * Returns 0 on success and <0 on error */
+int usb_drv_start_repeat(int ep);
+int usb_drv_stop_repeat(int ep);
 
 #endif /* _USB_DRV_H */
