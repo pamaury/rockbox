@@ -22,7 +22,7 @@
 #include "thread.h"
 #include "kernel.h"
 #include "string.h"
-/*#define LOGF_ENABLE*/
+#define LOGF_ENABLE
 #include "logf.h"
 
 #include "usb.h"
@@ -218,6 +218,7 @@ static struct usb_class_driver drivers[USB_NUM_DRIVERS] =
     },
 #endif
 #ifdef USB_ENABLE_CHARGING_ONLY
+#error e
     [USB_DRIVER_CHARGING_ONLY] = {
         .enabled = false,
         .needs_exclusive_storage = false,
@@ -260,6 +261,8 @@ static struct usb_class_driver drivers[USB_NUM_DRIVERS] =
 static void usb_core_control_request_handler(struct usb_ctrlrequest* req);
 
 static unsigned char response_data[256] USB_DEVBSS_ATTR;
+
+static unsigned char ep0_slots[2][USB_DRV_SLOT_SIZE] USB_DRV_SLOT_ATTR;
 
 static short hex[16] = {'0','1','2','3','4','5','6','7',
                         '8','9','A','B','C','D','E','F'};
@@ -348,6 +351,11 @@ void usb_core_init(void)
         return;
 
     usb_drv_init();
+    
+    usb_drv_select_endpoint_mode(EP_CONTROL | USB_DIR_OUT, USB_DRV_ENDPOINT_MODE_QUEUE);
+    usb_drv_allocate_slots(EP_CONTROL | USB_DIR_OUT, 1, ep0_slots[0]);
+    usb_drv_select_endpoint_mode(EP_CONTROL | USB_DIR_IN, USB_DRV_ENDPOINT_MODE_QUEUE);
+    usb_drv_allocate_slots(EP_CONTROL | USB_DIR_IN, 1, ep0_slots[1]);
 
     /* class driver init functions should be safe to call even if the driver
      * won't be used. This simplifies other logic (i.e. we don't need to know

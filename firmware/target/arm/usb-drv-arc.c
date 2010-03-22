@@ -30,7 +30,7 @@
 #include "panic.h"
 #include "usb_drv.h"
 
-/*#define LOGF_ENABLE*/
+#define LOGF_ENABLE
 #include "logf.h"
 
 /* USB device mode registers (Little Endian) */
@@ -336,8 +336,8 @@ struct queue_head {
     unsigned int setup_buffer[2];   /* Setup data 8 bytes */
     /* for software use */
     /* -queue mode: */
-    int head_td : 16; /* index of the first td of the queue (-1 if empty queue) */
-    int tail_td : 16; /* index of the last td of queue */
+    int head_td; /* index of the first td of the queue (-1 if empty queue) */
+    int tail_td; /* index of the last td of queue */
     int wait; /* only valid when there is one transfer in the queue */
     int status; /* only valid when there is one transfer in the queue and waiting */
 } __attribute__((packed)) __attribute__((aligned(64)));
@@ -735,6 +735,8 @@ static int usb_drv_queue_transfer(int ep_num, bool send, bool wait, void *ptr, i
     int status;
     struct transfer_descriptor *td;
     
+    logf("usb: queue xfer ep=%d send=%d wait=%d ptr=0x%x len=%d", ep_num, send, wait, (unsigned int)ptr, length);
+    
     if(endpoints[ep_num].mode[send] != USB_DRV_ENDPOINT_MODE_QUEUE)
     {
         logf("usb: queue transfer on non-queue ep");
@@ -743,7 +745,11 @@ static int usb_drv_queue_transfer(int ep_num, bool send, bool wait, void *ptr, i
     
     queue_size = endpoints[ep_num].nb_tds[send];
     /* first determine the number of tds needed */
-    nb_tds = (length + DTD_MAX_TRANSFER_LENGTH - 1) / DTD_MAX_TRANSFER_LENGTH;
+    /* special case for ack packet (length=0) */
+    if(length == 0)
+        nb_tds = 1;
+    else
+        nb_tds = (length + DTD_MAX_TRANSFER_LENGTH - 1) / DTD_MAX_TRANSFER_LENGTH;
     /* check that the current has enough free tds */
     if(qh_array[pipe].head_td == -1)
         free_tds = queue_size;
@@ -752,7 +758,8 @@ static int usb_drv_queue_transfer(int ep_num, bool send, bool wait, void *ptr, i
     else
         free_tds = qh_array[pipe].head_td - qh_array[pipe].tail_td - 1;
     
-    logf("usb: nb_tds=%d free_tds=%d", nb_tds, free_tds);
+    logf("usb: nb_tds=%d head=%d tail=%d queue=%d free_tds=%d", nb_tds, 
+        qh_array[pipe].head_td, qh_array[pipe].tail_td, queue_size, free_tds);
     if(free_tds < nb_tds)
     {
         logf("usb: not enough free tds");
@@ -945,6 +952,9 @@ void usb_drv_cancel_all_transfers(void)
 
     /* BUG to implement */
     for(i = 0; i < USB_NUM_ENDPOINTS * 2; i++) {
+        if(endpoints[i / 2].mode[i % 2] == USB_DRV_ENDPOINT_MODE_QUEUE)
+            qh_array[i].head_td = -1;
+        
         if(qh_array[i].wait) {
             qh_array[i].wait = 0;
             qh_array[i].status = DTD_STATUS_HALTED;
@@ -981,7 +991,6 @@ int usb_drv_request_endpoint(int type, int dir)
 
         endpoint->allocated[ep_dir] = 1;
         endpoint->type[ep_dir] = ep_type;
-        endpoint->mode[ep_dir] = USB_DRV_ENDPOINT_MODE_VOID;
 
         log_ep(ep_num, ep_dir, "add");
         return (ep_num | (dir & USB_ENDPOINT_DIR_MASK));
@@ -1061,6 +1070,9 @@ static void transfer_completed(void)
                 
                 if(endpoints[ep].mode[dir] == USB_DRV_ENDPOINT_MODE_QUEUE)
                 {
+                    logf("usb: xfer complete head=%d tail=%d",
+                        qh->head_td, qh->tail_td);
+                    
                     if(td->next_td_ptr & DTD_NEXT_TERMINATE)
                     {
                         /* list is now empty */
@@ -1073,6 +1085,9 @@ static void transfer_completed(void)
                         qh->head_td = (td->next_td_ptr - (unsigned int)endpoints[ep].tds[dir]) / 
                             sizeof(struct transfer_descriptor);
                     }
+                    
+                    logf("usb: xfer complete head=%d tail=%d",
+                        qh->head_td, qh->tail_td);
                 }
                 
                 usb_core_transfer_complete(ep, dir ? USB_DIR_IN : USB_DIR_OUT, 0, length);
