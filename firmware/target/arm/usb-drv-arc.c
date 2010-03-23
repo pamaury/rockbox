@@ -30,7 +30,7 @@
 #include "panic.h"
 #include "usb_drv.h"
 
-#define LOGF_ENABLE
+/*#define LOGF_ENABLE*/
 #include "logf.h"
 
 /* USB device mode registers (Little Endian) */
@@ -925,7 +925,6 @@ static void transfer_completed(void)
             int pipe = ep * 2 + dir;
             if (mask & pipe2mask[pipe]) {
                 struct queue_head* qh = &qh_array[pipe];
-                logf("xfer complete on EP%d", ep);
                 if(qh->wait) {
                     qh->wait=0;
                     wakeup_signal(&transfer_completion_signal[pipe]);
