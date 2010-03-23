@@ -30,7 +30,7 @@
 #include "panic.h"
 #include "usb_drv.h"
 
-/*#define LOGF_ENABLE*/
+#define LOGF_ENABLE
 #include "logf.h"
 
 /* USB device mode registers (Little Endian) */
@@ -533,6 +533,7 @@ void usb_drv_int(void)
     if (status & USBSTS_RESET) logf("int: reset");
 #endif
 
+    logf("usb: int");
     /* usb transaction interrupt */
     if (status & USBSTS_INT) {
         REG_USBSTS = USBSTS_INT;
@@ -613,12 +614,17 @@ int usb_drv_send_nonblocking(int endpoint, void* ptr, int length)
     return prime_transfer(EP_NUM(endpoint), ptr, length, true, false);
 }
 
-int usb_drv_send(int endpoint, void* ptr, int length)
+int usb_drv_send_blocking(int endpoint, void* ptr, int length)
 {
     return prime_transfer(EP_NUM(endpoint), ptr, length, true, true);
 }
 
-int usb_drv_recv(int endpoint, void* ptr, int length)
+int usb_drv_recv_blocking(int endpoint, void* ptr, int length)
+{
+    return prime_transfer(EP_NUM(endpoint), ptr, length, false, true);
+}
+
+int usb_drv_recv_nonblocking(int endpoint, void* ptr, int length)
 {
     //logf("usbrecv(%x, %d)", ptr, length);
     return prime_transfer(EP_NUM(endpoint), ptr, length, false, false);
@@ -719,7 +725,8 @@ static int prime_transfer(int ep_num, void* ptr, int len, bool send, bool wait)
         len-=tdlen;
     }
     while(len>0);
-    //logf("starting ep %d %s",ep_num,send?"send":"receive");
+    logf("ioc=%d", (new_td->size_ioc_sts & DTD_IOC) == DTD_IOC) ;
+    logf("starting ep %d %s",ep_num,send?"send":"receive");
 
     qh->dtd.next_td_ptr = (unsigned int)new_td;
     qh->dtd.size_ioc_sts &= ~(QH_STATUS_HALT | QH_STATUS_ACTIVE);
@@ -769,6 +776,7 @@ static int prime_transfer(int ep_num, void* ptr, int len, bool send, bool wait)
     restore_irq(oldlevel);
 
     if (wait) {
+        logf("xfer: wait, send=%d", send);
         /* wait for transfer to finish */
         wakeup_wait(&transfer_completion_signal[pipe], TIMEOUT_BLOCK);
         if(qh->status!=0) {
@@ -917,6 +925,7 @@ static void transfer_completed(void)
             int pipe = ep * 2 + dir;
             if (mask & pipe2mask[pipe]) {
                 struct queue_head* qh = &qh_array[pipe];
+                logf("xfer complete on EP%d", ep);
                 if(qh->wait) {
                     qh->wait=0;
                     wakeup_signal(&transfer_completion_signal[pipe]);

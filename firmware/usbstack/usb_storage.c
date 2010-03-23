@@ -475,7 +475,7 @@ void usb_storage_init_connection(void)
     ramdisk_buffer = tb.transfer_buffer + ALLOCATE_BUFFER_SIZE;
 #endif
 #endif
-    usb_drv_recv(ep_out, cbw_buffer, 1024);
+    usb_drv_recv_nonblocking(ep_out, cbw_buffer, 1024);
 
     int i;
     for(i=0;i<storage_num_drives();i++) {
@@ -589,7 +589,7 @@ void usb_storage_transfer_complete(int ep,int dir,int status,int length)
             //logf("csw sent, now go back to idle");
             state = WAITING_FOR_COMMAND;
             /* Already start waiting for the next command */
-            usb_drv_recv(ep_out, cbw_buffer, 1024);
+            usb_drv_recv_nonblocking(ep_out, cbw_buffer, 1024);
 #if 0
             if(cur_cmd.cur_cmd == SCSI_WRITE_10)
             {
@@ -675,8 +675,8 @@ bool usb_storage_control_request(struct usb_ctrlrequest* req, unsigned char* des
             *tb.max_lun --;
 #endif
             logf("ums: getmaxlun");
-            usb_drv_recv(EP_CONTROL, NULL, 0); /* ack */
-            usb_drv_send(EP_CONTROL, tb.max_lun, 1);
+            usb_drv_send_blocking(EP_CONTROL, tb.max_lun, 1);
+            usb_drv_recv_blocking(EP_CONTROL, NULL, 0); /* ack */
             handled = true;
             break;
         }
@@ -691,7 +691,7 @@ bool usb_storage_control_request(struct usb_ctrlrequest* req, unsigned char* des
             usb_drv_reset_endpoint(ep_in, false);
             usb_drv_reset_endpoint(ep_out, true);
 #endif
-            usb_drv_send(EP_CONTROL, NULL, 0);  /* ack */
+            usb_drv_send_blocking(EP_CONTROL, NULL, 0);  /* ack */
             handled = true;
             break;
     }
@@ -1168,12 +1168,12 @@ static void send_command_failed_result(void)
 
 static void receive_time(void)
 {
-    usb_drv_recv(ep_out, tb.transfer_buffer, 12);
+    usb_drv_recv_nonblocking(ep_out, tb.transfer_buffer, 12);
     state = RECEIVING_TIME;
 }
 static void receive_block_data(void *data,int size)
 {
-    usb_drv_recv(ep_out, data, size);
+    usb_drv_recv_nonblocking(ep_out, data, size);
     state = RECEIVING_BLOCKS;
 }
 
