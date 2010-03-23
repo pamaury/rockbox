@@ -420,11 +420,13 @@ static bool send_cmd(const int drive, const int cmd, const int arg, const int fl
 
         if(flags & MCI_LONG_RESP)
         {
-            response[3] = MCI_RESP3;
-            response[2] = MCI_RESP2;
-            response[1] = MCI_RESP1;
+            response[0] = MCI_RESP3;
+            response[1] = MCI_RESP2;
+            response[2] = MCI_RESP1;
+            response[3] = MCI_RESP0;
         }
-        response[0] = MCI_RESP0;
+        else
+            response[0] = MCI_RESP0;
     }
     return true;
 }
@@ -639,18 +641,20 @@ static void init_controller(void)
 int sd_init(void)
 {
     int ret;
+
     CGU_PERI |= CGU_MCI_CLOCK_ENABLE;
 
-    CGU_IDE =   (1<<7)  /* AHB interface enable */  |
-                (1<<6)  /* interface enable */      |
-                ((CLK_DIV(AS3525_PLLA_FREQ, AS3525_IDE_FREQ) - 1) << 2) |
-                1;       /* clock source = PLLA */
+    CGU_IDE =   (1<<7)          /* AHB interface enable */
+            |   (AS3525_IDE_DIV << 2)
+            |   1;              /* clock source = PLLA */
 
-    CGU_MEMSTICK = (1<<8) | (1<<7) |
-        ((CLK_DIV(AS3525_PLLA_FREQ, AS3525_MS_FREQ) -1) << 2) | 1;
+    CGU_MEMSTICK =  (1<<7)      /* interface enable */
+                 |  (AS3525_MS_DIV << 2)
+                 |  1;          /* clock source = PLLA */
 
-    *(volatile int*)(CGU_BASE+0x3C) = (1<<7) |
-        (CLK_DIV(AS3525_PLLA_FREQ, 24000000) -1)<<2 | 1;
+    CGU_SDSLOT = (1<<7)         /* interface enable */
+               | (AS3525_SDSLOT_DIV << 2)
+               | 1;             /* clock source = PLLA */
 
     wakeup_init(&transfer_completion_signal);
 

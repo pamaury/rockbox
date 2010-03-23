@@ -7,7 +7,7 @@
  *                     \/            \/     \/    \/            \/
  * $Id$
  *
- * Copyright © 2008 Rafaël Carré
+ * Copyright (C) 2006 by Barry Wardelll
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -18,63 +18,14 @@
  * KIND, either express or implied.
  *
  ****************************************************************************/
+#ifndef USB_TARGET_H
+#define USB_TARGET_H
 
-#include <stdbool.h>
-#include "config.h"
-#include "usb.h"
-#ifdef HAVE_USBSTACK
-#include "usb_core.h"
-#endif
-#include "usb-target.h"
-#include "power.h"
-#include "as3525.h"
-
+void usb_init_device(void);
+int usb_detect(void);
 #if CONFIG_CPU == AS3525
-static int usb_status = USB_EXTRACTED;
-#endif
+void usb_insert_int(void);
+void usb_remove_int(void);
+#endif /* CONFIG_CPU == AS3525 */
 
-void usb_enable(bool on)
-{
-#ifdef HAVE_USBSTACK
-    if (on)
-        usb_core_init();
-    else
-        usb_core_exit();
-#else
-    (void)on;
-#endif
-}
-
-void usb_init_device(void)
-{
-#ifdef USB_DETECT_PIN
-    GPIOA_DIR &= ~(1 << USB_DETECT_PIN); /* set as input */
-#endif
-}
-
-#if CONFIG_CPU == AS3525
-void usb_insert_int(void)
-{
-    usb_status = USB_INSERTED;
-}
-
-void usb_remove_int(void)
-{
-    usb_status = USB_EXTRACTED;
-}
-
-int usb_detect(void)
-{
-    return usb_status;
-}
-#else
-int usb_detect(void)
-{
-#ifdef USB_DETECT_PIN
-    if (GPIOA_PIN( USB_DETECT_PIN ))
-        return USB_INSERTED;
-    else
-#endif
-        return USB_EXTRACTED;
-}
-#endif
+#endif /* USB_TARGET_H */
