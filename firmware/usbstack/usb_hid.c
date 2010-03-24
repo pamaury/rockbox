@@ -25,7 +25,7 @@
 #include "kernel.h"
 #include "usb_hid.h"
 #include "usb_class_driver.h"
-/*#define LOGF_ENABLE*/
+#define LOGF_ENABLE
 #include "logf.h"
 
 /* Documents avaiable here: http://www.usb.org/developers/devclass_docs/ */
@@ -182,6 +182,7 @@ static int cur_buf_send;
 static bool active = false;
 static int ep_in;
 static int usb_interface;
+static bool xfer_active = false;
 
 static void usb_hid_try_send_drv(void);
 
@@ -595,6 +596,7 @@ void usb_hid_init_connection(void)
     logf("hid: init connection");
 
     active = true;
+    xfer_active = false;
 }
 
 /* called by usb_core_init() */
@@ -633,6 +635,8 @@ void usb_hid_transfer_complete(int ep, int dir, int status, int length)
             break;
         case USB_DIR_IN:
         {
+            xfer_active = false;
+            logf("xfer completed");
             if (status)
                 break;
 
@@ -783,10 +787,17 @@ static void usb_hid_try_send_drv(void)
 {
     int rc;
     int length = send_buffer_len[cur_buf_send];
-
+    
     if (!length)
         return;
 
+    if(xfer_active)
+    {
+        logf("err, no, please wait");
+        return;
+    }
+    xfer_active = true;
+    logf("yes, send it");
     rc = usb_drv_send_nonblocking(ep_in, send_buffer[cur_buf_send], length);
     if (rc)
     {
@@ -855,6 +866,6 @@ void usb_hid_send(usage_page_t usage_page, int id)
         buf_dump(buf, length, "key release");
         usb_hid_queue(buf, length);
     }
-
+    
     usb_hid_try_send_drv();
 }
