@@ -526,7 +526,7 @@ void usb_drv_int(void)
     unsigned int usbintr = REG_USBINTR; /* Only watch enabled ints */
     unsigned int status = REG_USBSTS & usbintr;
 
-#if 0
+#if 1
     if (status & USBSTS_INT) logf("int: usb ioc");
     if (status & USBSTS_ERR) logf("int: usb err");
     if (status & USBSTS_PORT_CHANGE) logf("int: portchange");
@@ -933,12 +933,22 @@ static void transfer_completed(void)
                 struct transfer_descriptor* td=&td_array[pipe*NUM_TDS_PER_EP];
                 while(td!=(struct transfer_descriptor*)DTD_NEXT_TERMINATE && td!=0)
                 {
+                    if(td->size_ioc_sts & DTD_STATUS_ACTIVE) logf("xfr:sts: active");
+                    if(td->size_ioc_sts & DTD_STATUS_DATA_BUFF_ERR) logf("xfer:sts:data buf err");
+                    if(td->size_ioc_sts & DTD_STATUS_HALTED) logf("xfer:sts:halted");
+                    if(td->size_ioc_sts & DTD_STATUS_TRANSACTION_ERR) logf("xfer:sts:trans err");
+                    
+                    if(td->size_ioc_sts & DTD_STATUS_ACTIVE)
+                        goto Lskip;
+                    
                     length += ((td->reserved & DTD_RESERVED_LENGTH_MASK) -
                         ((td->size_ioc_sts & DTD_PACKET_SIZE) >> DTD_LENGTH_BIT_POS));
                     td=(struct transfer_descriptor*) td->next_td_ptr;
                 }
                 usb_core_transfer_complete(ep, dir?USB_DIR_IN:USB_DIR_OUT,
                         qh->status, length);
+                Lskip:
+                continue;
             }
         }
     }
