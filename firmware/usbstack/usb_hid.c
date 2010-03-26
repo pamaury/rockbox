@@ -180,6 +180,7 @@ static int cur_buf_prepare;
 static int cur_buf_send;
 
 static bool active = false;
+static bool currently_sending = false;
 static int ep_in;
 static int usb_interface;
 static bool xfer_active = false;
@@ -596,7 +597,7 @@ void usb_hid_init_connection(void)
     logf("hid: init connection");
 
     active = true;
-    xfer_active = false;
+    currently_sending = false;
 }
 
 /* called by usb_core_init() */
@@ -613,12 +614,14 @@ void usb_hid_init(void)
     cur_buf_send = 0;
 
     active = true;
+    currently_sending = false;
 }
 
 void usb_hid_disconnect(void)
 {
     logf("hid: disconnect");
     active = false;
+    currently_sending = false;
 }
 
 /* called by usb_core_transfer_complete() */
@@ -629,6 +632,7 @@ void usb_hid_transfer_complete(int ep, int dir, int status, int length)
     (void)status;
     (void)length;
 
+    logf("HID: transfer complete: %d %d %d %d",ep,dir,status,length);
     switch (dir)
     {
         case USB_DIR_OUT:
@@ -642,6 +646,7 @@ void usb_hid_transfer_complete(int ep, int dir, int status, int length)
 
             send_buffer_len[cur_buf_send] = 0;
             HID_BUF_INC(cur_buf_send);
+            currently_sending = false;
             usb_hid_try_send_drv();
             break;
         }
@@ -791,14 +796,15 @@ static void usb_hid_try_send_drv(void)
     if (!length)
         return;
 
-    if(xfer_active)
+    if (currently_sending)
     {
-        logf("err, no, please wait");
+        logf("HID: Already sending");
         return;
     }
-    xfer_active = true;
-    logf("yes, send it");
+
+    logf("HID: Sending %d bytes",length);
     rc = usb_drv_send_nonblocking(ep_in, send_buffer[cur_buf_send], length);
+    currently_sending = true;
     if (rc)
     {
         send_buffer_len[cur_buf_send] = 0;
