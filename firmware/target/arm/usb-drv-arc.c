@@ -526,14 +526,13 @@ void usb_drv_int(void)
     unsigned int usbintr = REG_USBINTR; /* Only watch enabled ints */
     unsigned int status = REG_USBSTS & usbintr;
 
-#if 1
+#if 0
     if (status & USBSTS_INT) logf("int: usb ioc");
     if (status & USBSTS_ERR) logf("int: usb err");
     if (status & USBSTS_PORT_CHANGE) logf("int: portchange");
     if (status & USBSTS_RESET) logf("int: reset");
 #endif
 
-    logf("usb: int");
     /* usb transaction interrupt */
     if (status & USBSTS_INT) {
         REG_USBSTS = USBSTS_INT;
@@ -725,7 +724,6 @@ static int prime_transfer(int ep_num, void* ptr, int len, bool send, bool wait)
         len-=tdlen;
     }
     while(len>0);
-    logf("ioc=%d", (new_td->size_ioc_sts & DTD_IOC) == DTD_IOC) ;
     logf("starting ep %d %s",ep_num,send?"send":"receive");
 
     qh->dtd.next_td_ptr = (unsigned int)new_td;
@@ -776,7 +774,6 @@ static int prime_transfer(int ep_num, void* ptr, int len, bool send, bool wait)
     restore_irq(oldlevel);
 
     if (wait) {
-        logf("xfer: wait, send=%d", send);
         /* wait for transfer to finish */
         wakeup_wait(&transfer_completion_signal[pipe], TIMEOUT_BLOCK);
         if(qh->status!=0) {

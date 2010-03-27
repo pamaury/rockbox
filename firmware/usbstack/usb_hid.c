@@ -183,7 +183,6 @@ static bool active = false;
 static bool currently_sending = false;
 static int ep_in;
 static int usb_interface;
-static bool xfer_active = false;
 
 static void usb_hid_try_send_drv(void);
 
@@ -639,8 +638,6 @@ void usb_hid_transfer_complete(int ep, int dir, int status, int length)
             break;
         case USB_DIR_IN:
         {
-            xfer_active = false;
-            logf("xfer completed");
             if (status)
                 break;
 
