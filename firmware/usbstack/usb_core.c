@@ -218,7 +218,6 @@ static struct usb_class_driver drivers[USB_NUM_DRIVERS] =
     },
 #endif
 #ifdef USB_ENABLE_CHARGING_ONLY
-#error e
     [USB_DRIVER_CHARGING_ONLY] = {
         .enabled = false,
         .needs_exclusive_storage = false,

@@ -1105,6 +1105,11 @@ static void transfer_completed(void)
                         qh->head_td, qh->tail_td);
                 }
                 
+                if(qh->wait)
+                {
+                    qh->wait=0;
+                    wakeup_signal(&transfer_completion_signal[pipe]);
+                }
                 usb_core_transfer_complete(ep, dir ? USB_DIR_IN : USB_DIR_OUT, 0, length);
                 Lskip:
                 continue;

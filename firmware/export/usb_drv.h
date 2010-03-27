@@ -44,10 +44,10 @@ int usb_drv_request_endpoint(int type, int dir);
 void usb_drv_release_endpoint(int ep);
 
 /* old api */
-int usb_drv_send(int endpoint, void* ptr, int length);
+int usb_drv_send_blocking(int endpoint, void* ptr, int length);
 int usb_drv_send_nonblocking(int endpoint, void* ptr, int length);
-int usb_drv_recv(int endpoint, void* ptr, int length);
-void usb_drv_ack(struct usb_ctrlrequest* req);
+int usb_drv_recv_blocking(int endpoint, void* ptr, int length);
+int usb_drv_recv_nonblocking(int endpoint, void* ptr, int length);
 
 /* new api */
 
