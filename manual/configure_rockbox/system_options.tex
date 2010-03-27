@@ -119,7 +119,7 @@ This sub menu relates to limits in the Rockbox operating system.
 
 % TODO: this needs to be rewritten in another style, it lets you mix sound from another source into the music
 \opt{player}{
-  \subsection{Line In} This option activates the line in port on \dap, which is
+  \subsection{Line In} This option activates the line-in port on \dap, which is
     off by default. This is useful for such applications as:
     \begin{itemize}
     \item Game boy $\rightarrow$ \dap $\rightarrow$ human
@@ -159,6 +159,14 @@ thus there is a reasonable chance that your favourite accessory will work.
 The accessory may require power from the \dap{} to function, and if so you should turn
 this option \setting{On}. If it is not required, then turning this setting
 \setting{Off} will save battery and therefore result in better runtime.
+}
+
+\opt{lineout_poweroff}{
+\subsection{Line Out}
+This option turns the \dap{}'s line-out \setting{On} and \setting{Off}. On some 
+devices an enabled line-out will consume some power even if not used. If it is 
+not required, then turning this setting \setting{Off} will save battery and 
+therefore result in better runtime.
 } 
 
 \opt{HAVE_BUTTON_LIGHTS}{

@@ -85,9 +85,10 @@ int usb_drv_select_endpoint_mode(int ep, int mode);
 /* Queue a transfer on an endpoint.
  * Returns >=0 on success and <0 on error. */
 /* To ack a control transfer, pass a NULL pointer and 0 as length */
-int usb_drv_queue_send(int endpoint, void *ptr, int length);
+int usb_drv_queue_send_blocking(int endpoint, void *ptr, int length);
 int usb_drv_queue_send_nonblocking(int endpoint, void *ptr, int length);
-int usb_drv_queue_recv(int endpoint, void *ptr, int length);
+int usb_drv_queue_recv_blocking(int endpoint, void *ptr, int length);
+int usb_drv_queue_recv_nonblocking(int endpoint, void *ptr, int length);
 
 /* Fill slot parameters
  * Returns 0 on success and <0 on error. */

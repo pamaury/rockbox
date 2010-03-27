@@ -129,7 +129,7 @@ bool usb_serial_control_request(struct usb_ctrlrequest* req, unsigned char* dest
 void usb_serial_init_connection(void)
 {
     /* prime rx endpoint */
-    usb_drv_recv(ep_out, receive_buffer, sizeof receive_buffer);
+    usb_drv_recv_nonblocking(ep_out, receive_buffer, sizeof receive_buffer);
 
     /* we come here too after a bus reset, so reset some data */
     buffer_transitlength = 0;
@@ -222,7 +222,7 @@ void usb_serial_transfer_complete(int ep,int dir, int status, int length)
             /* Data received. TODO : Do something with it ? */
 
             /* Get the next bit */
-            usb_drv_recv(ep_out, receive_buffer, sizeof receive_buffer);
+            usb_drv_recv_nonblocking(ep_out, receive_buffer, sizeof receive_buffer);
             break;
 
         case USB_DIR_IN:

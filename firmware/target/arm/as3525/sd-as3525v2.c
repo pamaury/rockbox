@@ -23,6 +23,7 @@
 #include "config.h" /* for HAVE_MULTIVOLUME */
 #include "fat.h"
 #include "thread.h"
+#include "led.h"
 #include "hotswap.h"
 #include "system.h"
 #include "kernel.h"
@@ -140,6 +141,7 @@
 #define CMD_WAIT_PRV_DAT_BIT    (1<<13)
 #define CMD_ABRT_CMD_BIT        (1<<14)
 #define CMD_SEND_INIT_BIT       (1<<15)
+#define CMD_CARD_NO(x)          ((x)<<16)         /* 5 bits wide  */
 #define CMD_SEND_CLK_ONLY       (1<<21)
 #define CMD_READ_CEATA          (1<<22)
 #define CMD_CCS_EXPECTED        (1<<23)
@@ -155,23 +157,23 @@
 #define MCI_RAW_STATUS  SD_REG(0x44)    /* raw interrupt status, also used as
                                          * status clear */
 
-/* interrupt bits */
-#define MCI_INT_CRDDET  (1<<0)      /* card detect */
-#define MCI_INT_RE      (1<<1)      /* response error */
-#define MCI_INT_CD      (1<<2)      /* command done */
-#define MCI_INT_DTO     (1<<3)      /* data transfer over */
-#define MCI_INT_TXDR    (1<<4)      /* tx fifo data request */
-#define MCI_INT_RXDR    (1<<5)      /* rx fifo data request */
-#define MCI_INT_RCRC    (1<<6)      /* response crc error */
-#define MCI_INT_DCRC    (1<<7)      /* data crc error */
-#define MCI_INT_RTO     (1<<8)      /* response timeout */
-#define MCI_INT_DRTO    (1<<9)      /* data read timeout */
-#define MCI_INT_HTO     (1<<10)     /* data starv timeout */
-#define MCI_INT_FRUN    (1<<11)     /* fifo over/underrun */
-#define MCI_INT_HLE     (1<<12)     /* hw locked while error */
-#define MCI_INT_SBE     (1<<13)     /* start bit error */
-#define MCI_INT_ACD     (1<<14)     /* auto command done */
-#define MCI_INT_EBE     (1<<15)     /* end bit error */
+/* interrupt bits */                /* C D E   (Cmd) (Data) (End) */
+#define MCI_INT_CRDDET  (1<<0)      /*          card detect */
+#define MCI_INT_RE      (1<<1)      /* x         response error */
+#define MCI_INT_CD      (1<<2)      /*     x     command done */
+#define MCI_INT_DTO     (1<<3)      /*     x     data transfer over */
+#define MCI_INT_TXDR    (1<<4)      /*          tx fifo data request */
+#define MCI_INT_RXDR    (1<<5)      /*          rx fifo data request */
+#define MCI_INT_RCRC    (1<<6)      /* x         response crc error */
+#define MCI_INT_DCRC    (1<<7)      /*   x       data crc error */
+#define MCI_INT_RTO     (1<<8)      /* x         response timeout */
+#define MCI_INT_DRTO    (1<<9)      /*   x       data read timeout */
+#define MCI_INT_HTO     (1<<10)     /*   x       data starv timeout */
+#define MCI_INT_FRUN    (1<<11)     /*   x       fifo over/underrun */
+#define MCI_INT_HLE     (1<<12)     /* x x        hw locked while error */
+#define MCI_INT_SBE     (1<<13)     /*   x       start bit error */
+#define MCI_INT_ACD     (1<<14)     /*          auto command done */
+#define MCI_INT_EBE     (1<<15)     /*   x       end bit error */
 #define MCI_INT_SDIO    (0xf<<16)
 
 /*
@@ -183,9 +185,20 @@
  *  & 0x418     = MCI_INT_DTO | MCI_INT_TXDR | MCI_INT_HTO
  */
 
-#define MCI_ERROR   (MCI_INT_RE | MCI_INT_RCRC | MCI_INT_DCRC /*| MCI_INT_RTO*/ \
-                   | MCI_INT_DRTO | MCI_INT_HTO | MCI_INT_FRUN | MCI_INT_HLE \
-                   | MCI_INT_SBE | MCI_INT_EBE)
+#define MCI_CMD_ERROR    \
+         (MCI_INT_RE   | \
+          MCI_INT_RCRC | \
+          MCI_INT_RTO  | \
+          MCI_INT_HLE)
+
+#define MCI_DATA_ERROR    \
+        ( MCI_INT_DCRC  | \
+          MCI_INT_DRTO  | \
+          MCI_INT_HTO   | \
+          MCI_INT_FRUN  | \
+          MCI_INT_HLE   | \
+          MCI_INT_SBE   | \
+          MCI_INT_EBE)
 
 #define MCI_STATUS      SD_REG(0x48)
 
@@ -305,6 +318,7 @@ static unsigned char aligned_buffer[UNALIGNED_NUM_SECTORS* SD_BLOCK_SIZE] __attr
 static unsigned char *uncached_buffer = UNCACHED_ADDR(&aligned_buffer[0]);
 
 static void init_controller(void);
+static int sd_wait_for_state(const int drive, unsigned int state);
 
 static tCardInfo card_info[NUM_DRIVES];
 
@@ -324,16 +338,10 @@ bool sd_enabled = false;
 
 static struct wakeup transfer_completion_signal;
 static volatile bool retry;
-static volatile bool data_transfer = false;
 
-static inline bool card_detect_target(void)
-{
 #if defined(HAVE_MULTIDRIVE)
-    return !(GPIOA_PIN(2));
-#else
-    return false;
+int active_card = 0;
 #endif
-}
 
 static inline void mci_delay(void) { int i = 0xffff; while(i--) ; }
 
@@ -344,19 +352,41 @@ void INT_NAND(void)
 
     MCI_RAW_STATUS = status;    /* clear status */
 
-    if(status & MCI_ERROR)
+    if(status & MCI_DATA_ERROR)
         retry = true;
 
-    if(data_transfer && status & (MCI_INT_DTO|MCI_ERROR))
+    if( status & (MCI_INT_DTO|MCI_DATA_ERROR))
         wakeup_signal(&transfer_completion_signal);
 
     MCI_CTRL |= INT_ENABLE;
 }
 
-static bool send_cmd(const int cmd, const int arg, const int flags,
+static inline bool card_detect_target(void)
+{
+#if defined(HAVE_MULTIDRIVE)
+    return !(GPIOA_PIN(2));
+#else
+    return false;
+#endif
+}
+
+static bool send_cmd(const int drive, const int cmd, const int arg, const int flags,
         unsigned long *response)
 {
+#if defined(HAVE_MULTIDRIVE)
+    /*  Check to see if we need to switch cards  */
+    if(sd_present(SD_SLOT_AS3525))
+         if(active_card != drive)
+        {
+            GPIOB_PIN(5) = (1-drive) << 5;
+            active_card = drive;
+        }
+
+    MCI_COMMAND = cmd | CMD_CARD_NO(drive);
+#else
+    (void) drive;
     MCI_COMMAND = cmd;
+#endif
 
     if(flags & MCI_RESP)
     {
@@ -372,9 +402,6 @@ static bool send_cmd(const int cmd, const int arg, const int flags,
             MCI_COMMAND |= CMD_RW_BIT | CMD_CHECK_CRC_BIT;
     }
 
-    int clkena = MCI_CLKENA;
-    MCI_CLKENA = 0;
-
     MCI_ARGUMENT = arg;
     MCI_COMMAND |= CMD_DONE_BIT;
 
@@ -382,13 +409,9 @@ static bool send_cmd(const int cmd, const int arg, const int flags,
     while(MCI_COMMAND & CMD_DONE_BIT)
     {
         if(--max == 0)  /* timeout */
-        {
-            MCI_CLKENA = clkena;
             return false;
-        }
     }
 
-    MCI_CLKENA = clkena;
 
     if(flags & MCI_RESP)
     {
@@ -398,11 +421,13 @@ static bool send_cmd(const int cmd, const int arg, const int flags,
 
         if(flags & MCI_LONG_RESP)
         {
-            response[3] = MCI_RESP3;
-            response[2] = MCI_RESP2;
-            response[1] = MCI_RESP1;
+            response[0] = MCI_RESP3;
+            response[1] = MCI_RESP2;
+            response[2] = MCI_RESP1;
+            response[3] = MCI_RESP0;
         }
-        response[0] = MCI_RESP0;
+        else
+            response[0] = MCI_RESP0;
     }
     return true;
 }
@@ -420,13 +445,13 @@ static int sd_init_card(const int drive)
     /*  Start of Card Identification Mode ************************************/
 
     /* CMD0 Go Idle  */
-    if(!send_cmd(SD_GO_IDLE_STATE, 0, MCI_NO_RESP, NULL))
+    if(!send_cmd(drive, SD_GO_IDLE_STATE, 0, MCI_NO_RESP, NULL))
         return -1;
     mci_delay();
 
     /* CMD8 Check for v2 sd card.  Must be sent before using ACMD41
       Non v2 cards will not respond to this command*/
-    if(send_cmd(SD_SEND_IF_COND, 0x1AA, MCI_RESP, &response))
+    if(send_cmd(drive, SD_SEND_IF_COND, 0x1AA, MCI_RESP, &response))
         if((response & 0xFFF) == 0x1AA)
             sd_v2 = true;
 
@@ -439,37 +464,63 @@ static int sd_init_card(const int drive)
             return -2;
 
         /* app_cmd */
-        send_cmd(SD_APP_CMD, 0, MCI_RESP, &response);
+        send_cmd(drive, SD_APP_CMD, 0, MCI_RESP, &response);
 
          /* ACMD41 For v2 cards set HCS bit[30] & send host voltage range to all */
-        if(!send_cmd(SD_APP_OP_COND, (sd_v2 ? 0x40FF8000 : (1<<23)),
+        if(!send_cmd(drive, SD_APP_OP_COND, (0x00FF8000 | (sd_v2 ? 1<<30 : 0)),
                         MCI_RESP, &card_info[drive].ocr))
             return -3;
     } while(!(card_info[drive].ocr & (1<<31)) );
 
     /* CMD2 send CID */
-    if(!send_cmd(SD_ALL_SEND_CID, 0, MCI_RESP|MCI_LONG_RESP, card_info[drive].cid))
-        return -5;
-
-    /* CMD3 send RCA */
-    if(!send_cmd(SD_SEND_RELATIVE_ADDR, 0, MCI_RESP, &card_info[drive].rca))
+    if(!send_cmd(drive, SD_ALL_SEND_CID, 0, MCI_RESP|MCI_LONG_RESP, card_info[drive].cid))
         return -4;
 
+    /* CMD3 send RCA */
+    if(!send_cmd(drive, SD_SEND_RELATIVE_ADDR, 0, MCI_RESP, &card_info[drive].rca))
+        return -5;
+
+#ifdef HAVE_MULTIDRIVE
+    /* Make sure we have 2 unique rca numbers */
+    if(card_info[INTERNAL_AS3525].rca == card_info[SD_SLOT_AS3525].rca)
+        if(!send_cmd(drive, SD_SEND_RELATIVE_ADDR, 0, MCI_RESP, &card_info[drive].rca))
+            return -6;
+#endif
     /*  End of Card Identification Mode   ************************************/
 
+    /* Attempt to switch cards to HS timings, non HS cards just ignore this */
+    /*  CMD7 w/rca: Select card to put it in TRAN state */
+    if(!send_cmd(drive, SD_SELECT_CARD, card_info[drive].rca, MCI_RESP, &response))
+        return -7;
+
+    if(sd_wait_for_state(drive, SD_TRAN))
+        return -8;
+
+    /* CMD6 */
+    if(!send_cmd(drive, SD_SWITCH_FUNC, 0x80fffff1, MCI_NO_RESP, NULL))
+        return -9;
+    mci_delay();
+
+    /*  We need to go back to STBY state now so we can read csd */
+    /*  CMD7 w/rca=0:  Deselect card to put it in STBY state */
+    if(!send_cmd(drive, SD_DESELECT_CARD, 0, MCI_RESP, &response))
+        return -10;
+
     /* CMD9 send CSD */
-    if(!send_cmd(SD_SEND_CSD, card_info[drive].rca,
+    if(!send_cmd(drive, SD_SEND_CSD, card_info[drive].rca,
                  MCI_RESP|MCI_LONG_RESP, card_info[drive].csd))
-        return -5;
+        return -11;
 
     sd_parse_csd(&card_info[drive]);
 
     /*  Card back to full speed  */
     MCI_CLKDIV &= ~(0xFF);    /* CLK_DIV_0 : bits 7:0 = 0x00 */
 
+#ifndef HAVE_MULTIDRIVE
     /*  CMD7 w/rca: Select card to put it in TRAN state */
-    if(!send_cmd(SD_SELECT_CARD, card_info[drive].rca, MCI_NO_RESP, NULL))
-        return -6;
+    if(!send_cmd(drive, SD_SELECT_CARD, card_info[drive].rca, MCI_NO_RESP, NULL))
+        return -12;
+#endif
 
     card_info[drive].initialized = 1;
 
@@ -566,12 +617,15 @@ static void sd_thread(void)
 
 static void init_controller(void)
 {
-    MCI_PWREN = 0x0;                       /*  power off all cards  */
+    int hcon_numcards = ((MCI_HCON>>1) & 0x1F) + 1;
+    int card_mask = (1 << hcon_numcards) - 1;
+
+    MCI_PWREN &= ~card_mask;               /*  power off all cards  */
 
     MCI_CLKSRC = 0x00;                     /* All CLK_SRC_CRD set to 0*/
     MCI_CLKDIV = 0x00;                     /* CLK_DIV_0 : bits 7:0  */
 
-    MCI_PWREN = PWR_CRD_0;                 /*  power up card 0 (internal)  */
+    MCI_PWREN |= card_mask;                /*  power up cards  */
     mci_delay();
 
     MCI_CTRL |= CTRL_RESET;
@@ -584,7 +638,7 @@ static void init_controller(void)
 
     MCI_CTYPE = 0x0;                    /*  all cards 1 bit bus for now */
 
-    MCI_CLKENA = CCLK_ENA_CRD0;
+    MCI_CLKENA = card_mask;
 
     MCI_ARGUMENT = 0;
     MCI_COMMAND = CMD_DONE_BIT|CMD_SEND_CLK_ONLY|CMD_WAIT_PRV_DAT_BIT;
@@ -596,7 +650,9 @@ static void init_controller(void)
     MCI_FIFOTH &= MCI_FIFOTH_MASK;
     MCI_FIFOTH |= 0x503f0080;
 
-    MCI_MASK = 0xffffffff & ~(MCI_INT_ACD|MCI_INT_CRDDET);
+    MCI_MASK = 0xffff & ~(MCI_INT_ACD|MCI_INT_CRDDET|MCI_INT_RXDR|MCI_INT_TXDR);
+
+    GPIOB_DIR |= (1<<5);         /* Pin B5 output  */
 
     MCI_CTRL |= INT_ENABLE;
 }
@@ -604,24 +660,35 @@ static void init_controller(void)
 int sd_init(void)
 {
     int ret;
+
     CGU_PERI |= CGU_MCI_CLOCK_ENABLE;
 
-    CGU_IDE =   (1<<7)  /* AHB interface enable */  |
-                (1<<6)  /* interface enable */      |
-                ((CLK_DIV(AS3525_PLLA_FREQ, AS3525_IDE_FREQ) - 1) << 2) |
-                1;       /* clock source = PLLA */
+    CGU_IDE =   (1<<7)          /* AHB interface enable */
+            |   (AS3525_IDE_DIV << 2)
+            |   1;              /* clock source = PLLA */
 
-    CGU_MEMSTICK = (1<<8) | (1<<7) |
-        ((CLK_DIV(AS3525_PLLA_FREQ, AS3525_MS_FREQ) -1) << 2) | 1;
+    CGU_MEMSTICK =  (1<<7)      /* interface enable */
+                 |  (AS3525_MS_DIV << 2)
+                 |  1;          /* clock source = PLLA */
 
-    /* FIXME: divider should be shifted by 2, but doing prevents card
-     * initialisation */
-    *(volatile int*)(CGU_BASE+0x3C) = (1<<7) |
-        (CLK_DIV(AS3525_PLLA_FREQ, 24000000) -1) | 1;
+    CGU_SDSLOT = (1<<7)         /* interface enable */
+               | (AS3525_SDSLOT_DIV << 2)
+               | 1;             /* clock source = PLLA */
 
     wakeup_init(&transfer_completion_signal);
 
-    VIC_INT_ENABLE |= INTERRUPT_NAND;
+#ifdef HAVE_MULTIDRIVE
+    /* setup isr for microsd monitoring */
+    VIC_INT_ENABLE = (INTERRUPT_GPIOA);
+    /* clear previous irq */
+    GPIOA_IC = (1<<2);
+    /* enable edge detecting */
+    GPIOA_IS &= ~(1<<2);
+    /* detect both raising and falling edges */
+    GPIOA_IBE |= (1<<2);
+#endif
+
+    VIC_INT_ENABLE = INTERRUPT_NAND;
 
     init_controller();
     ret = sd_init_card(INTERNAL_AS3525);
@@ -642,17 +709,6 @@ int sd_init(void)
     return 0;
 }
 
-#ifdef STORAGE_GET_INFO
-void sd_get_info(struct storage_info *info)
-{
-    info->sector_size=card_info[drive].blocksize;
-    info->num_sectors=card_info[drive].numblocks;
-    info->vendor="Rockbox";
-    info->product = "Internal Storage";
-    info->revision="0.00";
-}
-#endif
-
 static int sd_wait_for_state(const int drive, unsigned int state)
 {
     unsigned long response;
@@ -663,7 +719,7 @@ static int sd_wait_for_state(const int drive, unsigned int state)
     {
         long tick;
 
-        if(!send_cmd(SD_SEND_STATUS, card_info[drive].rca,
+        if(!send_cmd(drive, SD_SEND_STATUS, card_info[drive].rca,
                     MCI_RESP, &response))
             return -1;
 
@@ -697,6 +753,7 @@ static int sd_transfer_sectors(IF_MD2(int drive,) unsigned long start,
     mutex_lock(&sd_mtx);
 #ifndef BOOTLOADER
     sd_enable(true);
+    led(true);
 #endif
 
     if (card_info[drive].initialized <= 0)
@@ -709,25 +766,17 @@ static int sd_transfer_sectors(IF_MD2(int drive,) unsigned long start,
         }
     }
 
-    last_disk_activity = current_tick;
-    ret = sd_wait_for_state(drive, SD_TRAN);
-    if (ret < 0)
-    {
-        static const char *st[9] = {
-            "IDLE", "RDY", "IDENT", "STBY", "TRAN", "DATA", "RCV", "PRG", "DIS"
-        };
-        if(ret <= -10)
-            panicf("wait for state failed (%s)", st[(-ret / 10) % 9]);
-        else
-            panicf("wait for state failed");
-        goto sd_transfer_error;
-    }
+#ifdef HAVE_MULTIDRIVE
+    /*  CMD7 w/rca: Select card to put it in TRAN state */
+    if(!send_cmd(drive, SD_SELECT_CARD, card_info[drive].rca, MCI_NO_RESP, NULL))
+        return -6;
+#endif
 
+    last_disk_activity = current_tick;
     dma_retain();
 
     const int cmd = write ? SD_WRITE_MULTIPLE_BLOCK : SD_READ_MULTIPLE_BLOCK;
 
-    /* Interrupt handler might set this to true during transfer */
     do
     {
         void *dma_buf = aligned_buffer;
@@ -738,31 +787,38 @@ static int sd_transfer_sectors(IF_MD2(int drive,) unsigned long start,
         if(write)
             memcpy(uncached_buffer, buf, transfer * SD_BLOCK_SIZE);
 
+        /* Interrupt handler might set this to true during transfer */
         retry = false;
 
         MCI_BLKSIZ = SD_BLOCK_SIZE;
         MCI_BYTCNT = transfer * SD_BLOCK_SIZE;
 
-        MCI_CTRL |= (FIFO_RESET|DMA_RESET);
-        while(MCI_CTRL & (FIFO_RESET|DMA_RESET))
-            ;
+        ret = sd_wait_for_state(drive, SD_TRAN);
+        if (ret < 0)
+        {
+            static const char *st[9] = {
+                "IDLE", "RDY", "IDENT", "STBY", "TRAN", "DATA", "RCV",
+                                                                "PRG", "DIS"};
+            if(ret <= -10)
+                panicf("wait for TRAN state failed (%s) %d",
+                                                    st[(-ret / 10) % 9], drive);
+            else
+                panicf("wait for state failed");
+            goto sd_transfer_error;
+        }
 
+        MCI_MASK |= (MCI_DATA_ERROR | MCI_INT_DTO);
         MCI_CTRL |= DMA_ENABLE;
-        MCI_MASK = MCI_INT_CD|MCI_INT_DTO|MCI_INT_DCRC|MCI_INT_DRTO| \
-            MCI_INT_HTO|MCI_INT_FRUN|MCI_INT_HLE|MCI_INT_SBE|MCI_INT_EBE;
 
         MCI_FIFOTH &= MCI_FIFOTH_MASK;
         MCI_FIFOTH |= 0x503f0080;
 
+        int arg = start;
+        if(!(card_info[drive].ocr & (1<<30))) /* not SDHC */
+            arg *= SD_BLOCK_SIZE;
 
-        if(card_info[drive].ocr & (1<<30) ) /* SDHC */
-            ret = send_cmd(cmd, start, MCI_NO_RESP, NULL);
-        else
-            ret = send_cmd(cmd, start * SD_BLOCK_SIZE,
-                    MCI_NO_RESP, NULL);
-
-        if (ret < 0)
-            panicf("transfer multiple blocks failed (%d)", ret);
+        if(!send_cmd(drive, cmd, arg, MCI_NO_RESP, NULL))
+            panicf("%s multiple blocks failed", write ? "write" : "read");
 
         if(write)
             dma_enable_channel(0, dma_buf, MCI_FIFO, DMA_PERI_SD,
@@ -771,23 +827,16 @@ static int sd_transfer_sectors(IF_MD2(int drive,) unsigned long start,
             dma_enable_channel(0, MCI_FIFO, dma_buf, DMA_PERI_SD,
                 DMAC_FLOWCTRL_PERI_PERI_TO_MEM, false, true, 0, DMA_S8, NULL);
 
-        data_transfer = true;
         wakeup_wait(&transfer_completion_signal, TIMEOUT_BLOCK);
-        data_transfer = false;
+
+        MCI_MASK &= ~(MCI_DATA_ERROR | MCI_INT_DTO);
 
         last_disk_activity = current_tick;
 
-        if(!send_cmd(SD_STOP_TRANSMISSION, 0, MCI_NO_RESP, NULL))
+        if(!send_cmd(drive, SD_STOP_TRANSMISSION, 0, MCI_NO_RESP, NULL))
         {
             ret = -666;
             panicf("STOP TRANSMISSION failed");
-            goto sd_transfer_error;
-        }
-
-        ret = sd_wait_for_state(drive, SD_TRAN);
-        if (ret < 0)
-        {
-            panicf(" wait for state TRAN failed (%d)", ret);
             goto sd_transfer_error;
         }
 
@@ -799,12 +848,27 @@ static int sd_transfer_sectors(IF_MD2(int drive,) unsigned long start,
             start += transfer;
             count -= transfer;
         }
+        else   /*  reset controller if we had an error  */
+        {
+            MCI_CTRL |= (FIFO_RESET|DMA_RESET);
+            while(MCI_CTRL & (FIFO_RESET|DMA_RESET))
+                ;
+        }
+
     } while(retry || count);
 
     dma_release();
 
+#ifdef HAVE_MULTIDRIVE
+    /* CMD lines are separate, not common, so we need to actively deselect */
+    /*  CMD7 w/rca =0 : deselects card & puts it in STBY state */
+    if(!send_cmd(drive, SD_DESELECT_CARD, 0, MCI_NO_RESP, NULL))
+        return -6;
+#endif
+
 #ifndef BOOTLOADER
     sd_enable(false);
+    led(false);
 #endif
     mutex_unlock(&sd_mtx);
     return 0;
@@ -847,7 +911,10 @@ long sd_last_disk_activity(void)
 void sd_enable(bool on)
 {
     /* TODO */
-    (void)on;
+    if(on)
+        CCU_IO |= (1<<2);              /* XPD is SD-MCI interface (b3:2 = 01) */
+    else
+        CCU_IO &= ~(1<<2);             /* XPD is general purpose IO (b3:2 = 00) */
     return;
 }
 
@@ -900,3 +967,13 @@ void card_enable_monitoring_target(bool on)
         GPIOA_IE &= ~(1<<2);
 }
 #endif /* HAVE_HOTSWAP */
+
+#ifdef CONFIG_STORAGE_MULTI
+int sd_num_drives(int first_drive)
+{
+    /* We don't care which logical drive number(s) we have been assigned */
+    (void)first_drive;
+
+    return NUM_DRIVES;
+}
+#endif /* CONFIG_STORAGE_MULTI */

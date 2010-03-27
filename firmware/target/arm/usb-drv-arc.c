@@ -606,14 +606,19 @@ int usb_drv_send_nonblocking(int endpoint, void* ptr, int length)
     return usb_drv_queue_send_nonblocking(endpoint, ptr, length);
 }
 
-int usb_drv_send(int endpoint, void* ptr, int length)
+int usb_drv_send_blocking(int endpoint, void* ptr, int length)
 {
-    return usb_drv_queue_send(endpoint, ptr, length);
+    return usb_drv_queue_send_blocking(endpoint, ptr, length);
 }
 
-int usb_drv_recv(int endpoint, void* ptr, int length)
+int usb_drv_recv_blocking(int endpoint, void* ptr, int length)
 {
-    return usb_drv_queue_recv(endpoint, ptr, length);
+    return usb_drv_queue_recv_blocking(endpoint, ptr, length);
+}
+
+int usb_drv_recv_nonblocking(int endpoint, void* ptr, int length)
+{
+    return usb_drv_queue_recv_nonblocking(endpoint, ptr, length);
 }
 
 int usb_drv_port_speed(void)
@@ -849,7 +854,7 @@ static int usb_drv_queue_transfer(int ep_num, bool send, bool wait, void *ptr, i
     return 0;
 }
 
-int usb_drv_queue_send(int endpoint, void *ptr, int length)
+int usb_drv_queue_send_blocking(int endpoint, void *ptr, int length)
 {
     return usb_drv_queue_transfer(EP_NUM(endpoint), true, true, ptr, length);
 }
@@ -859,9 +864,14 @@ int usb_drv_queue_send_nonblocking(int endpoint, void *ptr, int length)
     return usb_drv_queue_transfer(EP_NUM(endpoint), true, false, ptr, length);
 }
 
-int usb_drv_queue_recv(int endpoint, void *ptr, int length)
+int usb_drv_queue_recv_nonblocking(int endpoint, void *ptr, int length)
 {
     return usb_drv_queue_transfer(EP_NUM(endpoint), false, false, ptr, length);
+}
+
+int usb_drv_queue_recv_blocking(int endpoint, void *ptr, int length)
+{
+    return usb_drv_queue_transfer(EP_NUM(endpoint), false, true, ptr, length);
 }
 
 /* manual: 32.14.5.2 */
@@ -1043,10 +1053,6 @@ static void transfer_completed(void)
             int pipe = ep * 2 + dir;
             if (mask & pipe2mask[pipe]) {
                 struct queue_head* qh = &qh_array[pipe];
-                if(qh->wait) {
-                    qh->wait = 0;
-                    wakeup_signal(&transfer_completion_signal[pipe]);
-                }
                 int length=0;
                 struct transfer_descriptor* td;
                 
@@ -1062,6 +1068,15 @@ static void transfer_completed(void)
                 {
                     length += td->length -
                         ((td->size_ioc_sts & DTD_PACKET_SIZE) >> DTD_LENGTH_BIT_POS);
+                    /* It seems that the controller sets the pipe bit to one even if the TD
+                     * dosn't have the IOC bit set. So we have the rely the active status bit
+                     * to check that all the TDs of the transfer are really finished and let
+                     * the transfer continue if it's no the case */
+                    if(td->size_ioc_sts & DTD_STATUS_ACTIVE)
+                    {
+                        logf("skip half finished transfer");
+                        goto Lskip;
+                    }
                     if(td->size_ioc_sts & DTD_IOC)
                         break;
                     else
@@ -1091,6 +1106,8 @@ static void transfer_completed(void)
                 }
                 
                 usb_core_transfer_complete(ep, dir ? USB_DIR_IN : USB_DIR_OUT, 0, length);
+                Lskip:
+                continue;
             }
         }
     }

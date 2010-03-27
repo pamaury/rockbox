@@ -167,7 +167,7 @@ static int calc_freq(int clk)
                     return 0;
             }
         case CLK_I2C:
-            return calc_freq(CLK_PCLK)/(I2C2_CPSR1<<8 | I2C2_CPSR0);
+            return calc_freq(CLK_PCLK)/AS3525_I2C_PRESCALER;
         case CLK_I2SI:
             switch((CGU_AUDIO>>12) & 3) {
                 case 0:
@@ -380,6 +380,9 @@ bool __dbg_hw_info(void)
 #if CONFIG_CPU == AS3525
         lcd_putsf(0, line++, "MCI_NAND  :%8x", (unsigned int)(MCI_NAND));
         lcd_putsf(0, line++, "MCI_SD    :%8x", (unsigned int)(MCI_SD));
+#else
+        lcd_putsf(0, line++, "CGU_MEMSTK:%8x", (unsigned int)(CGU_MEMSTICK));
+        lcd_putsf(0, line++, "CGU_SDSLOT:%8x", (unsigned int)(CGU_SDSLOT));
 #endif
 
         lcd_update();

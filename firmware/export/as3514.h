@@ -46,10 +46,11 @@ extern void audiohw_set_lineout_vol(int vol_l, int vol_r);
 #define AS3514_DAC_L      0x0f
 #define AS3514_ADC_R      0x10
 #define AS3514_ADC_L      0x11
+#define AS3543_DAC_IF     0x12  /* only in as3543 */
 #define AS3514_AUDIOSET1  0x14
 #define AS3514_AUDIOSET2  0x15
 #define AS3514_AUDIOSET3  0x16
-#define AS3514_USB_UTIL   0x17  /* Only in AS3525 ? */
+#define AS3517_USB_UTIL   0x17  /* only in as3517+ */
 #define AS3514_PLLMODE    0x1d
 
 #define AS3514_SYSTEM     0x20
@@ -281,6 +282,21 @@ extern void audiohw_set_lineout_vol(int vol_l, int vol_r);
 #define USB_CHANGED     (0x1 << 2)
 #define RVDD_WASLOW     (0x1 << 1)
 #define BVDD_ISLOW      (0x1 << 0)
+
+#define IRQ_ENDOFCH     (0x1 << 6)
+#define IRQ_CHGSTAT     (0x1 << 4)
+#define IRQ_USBSTAT     (0x1 << 2)
+
+/* AS3514_IRQ_ENRD2 */
+#define DEBOUNCE_128MS  (0x2 << 6)
+#define DEBOUNCE_256MS  (0x1 << 6)
+#define DEBOUNCE_512MS  (0x0 << 6)
+#define IRQ_HIGHACTIVE  (0x1 << 5)
+#define IRQ_PUSHPULL    (0x1 << 4)
+#define IRQ_REMDET2     (0x1 << 3)
+#define IRQ_REMDET1     (0x1 << 2)
+#define IRQ_RTC         (0x1 << 1)
+#define IRQ_ADC         (0x1 << 0)
 
 #define AS3514_I2C_ADDR 0x46
 
