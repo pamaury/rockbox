@@ -173,6 +173,8 @@ static usb_hid_report_t usb_hid_reports[REPORT_ID_COUNT];
 static unsigned char report_descriptor[HID_BUF_SIZE_REPORT]
     USB_DEVBSS_ATTR __attribute__((aligned(32)));
 
+static unsigned char ep_int_slot[USB_DRV_SLOT_SIZE] USB_DRV_SLOT_ATTR;
+
 static unsigned char send_buffer[HID_NUM_BUFFERS][HID_BUF_SIZE_MSG]
     USB_DEVBSS_ATTR __attribute__((aligned(32)));
 static size_t send_buffer_len[HID_NUM_BUFFERS];
@@ -594,6 +596,9 @@ int usb_hid_get_config_descriptor(unsigned char *dest, int max_packet_size)
 void usb_hid_init_connection(void)
 {
     logf("hid: init connection");
+    
+    usb_drv_select_endpoint_mode(ep_in, USB_DRV_ENDPOINT_MODE_QUEUE);
+    usb_drv_allocate_slots(ep_in, 1, ep_int_slot);
 
     active = true;
     currently_sending = false;

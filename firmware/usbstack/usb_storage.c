@@ -73,6 +73,11 @@
 #endif
 #endif
 
+/* FIXME: this should probably depend on the usb driver because one slot
+ * can send/receive a limited amount of data. On the ARC controller, a
+ * slot is a TD and can carry up to 16kiB, so use 4 slots per direction */
+static unsigned char ep_bulk_slots[2][USB_DRV_SLOT_SIZE * 4] USB_DRV_SLOT_ATTR;
+
 #define ALLOCATE_BUFFER_SIZE (2*MAX(READ_BUFFER_SIZE,WRITE_BUFFER_SIZE))
 
 /* bulk-only class specific requests */
@@ -475,7 +480,14 @@ void usb_storage_init_connection(void)
     ramdisk_buffer = tb.transfer_buffer + ALLOCATE_BUFFER_SIZE;
 #endif
 #endif
-    usb_drv_recv_nonblocking(ep_out, cbw_buffer, 1024);
+    
+    /* keep coherent with definition of ep_bulk_slots */
+    usb_drv_select_endpoint_mode(ep_out, USB_DRV_ENDPOINT_MODE_QUEUE);
+    usb_drv_allocate_slots(ep_out, 4, ep_bulk_slots[0]);
+    usb_drv_select_endpoint_mode(ep_in, USB_DRV_ENDPOINT_MODE_QUEUE);
+    usb_drv_allocate_slots(ep_in, 4, ep_bulk_slots[1]);
+
+    /*usb_drv_recv_nonblocking(ep_out, cbw_buffer, 1024);*/
 
     int i;
     for(i=0;i<storage_num_drives();i++) {
@@ -668,6 +680,7 @@ bool usb_storage_control_request(struct usb_ctrlrequest* req, unsigned char* des
     bool handled = false;
 
     (void)dest;
+    
     switch (req->bRequest) {
         case USB_BULK_GET_MAX_LUN: {
             *tb.max_lun = storage_num_drives() - 1;

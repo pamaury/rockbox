@@ -543,7 +543,7 @@ static void control_request_handler_drivers(struct usb_ctrlrequest* req)
         /* nope. flag error */
         logf("bad req:desc %d:%d", req->bRequest, req->wValue>>8);
         usb_drv_stall(EP_CONTROL, true, true);
-        usb_core_ack_control(req);
+        /*usb_core_ack_control(req);*/
     }
 }
 
@@ -751,7 +751,7 @@ static void request_handler_endoint_drivers(struct usb_ctrlrequest* req)
         /* nope. flag error */
         logf("usb bad req %d",req->bRequest);
         usb_drv_stall(EP_CONTROL,true,true);
-        usb_core_ack_control(req);
+        /*usb_core_ack_control(req);*/
     }
 }
 

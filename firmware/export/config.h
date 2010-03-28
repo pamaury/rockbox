@@ -918,10 +918,6 @@ Lyre prototype 1 */
 #endif
 #endif
 
-#undef USB_ENABLE_STORAGE
-#undef USB_ENABLE_HID
-#define USB_ENABLE_CHARGING_ONLY
-
 #endif /* BOOTLOADER */
 
 #endif /* HAVE_USBSTACK */

@@ -61,13 +61,20 @@ int usb_drv_allocate_slots(int ep, int nb_slots, void *buffer);
 /* Release the slots previously allocated.
  * Returns 0 on success and <0 on error. */
 int usb_drv_release_slots(int ep);
+/* Returns the number of allocated slots for the endpoint
+ * Returns the actual valud on success and <0 on error. */
+int usb_drv_nb_endpoint_slots(int ep);
 
 /* Void mode (default mode):
  * The endpoint is not activated: you cannot send data / received data is ignored */
 #define USB_DRV_ENDPOINT_MODE_VOID      0
 /* Queue mode:
  * The endpoint is activated and the slots are used to queue transfers up to the maximum number of slots.
- * Use usb_drv_queue_{send,send_nonblocking,recv} to add transfers to the queu. */
+ * Use usb_drv_queue_{send,send_nonblocking,recv} to add transfers to the queue. In this mode, there is no
+ * limit on the size of a transfer: the driver is responsible for splitting bit transfers and perhaps use
+ * several slots for one transfer. As a consequence, the number of slots does not represent the maximum 
+ * number of queueable transfers. The only guarantee is that a slot must suffice for a transfer as big as
+ * the maximum packet size. */
 #define USB_DRV_ENDPOINT_MODE_QUEUE     1
 /* Repeat mode:
  * The endpoint is activated and the slots are as a circular transfer queue. Contrary to the queueing mode,
@@ -75,7 +82,8 @@ int usb_drv_release_slots(int ep);
  * mode, one starts by filling each slot with parameters using usb_drv_fill_repeat_slot. Then, the transfers
  * are started using usb_drv_start_repeat and are stopped using usb_drv_stop_repeat. In this mode, no attention
  * is paid to data corruption: if the completion handlers are not fast enough, a buffer can be reused and the 
- * data overwritten. */
+ * data overwritten. In this mode, the transfer size of a slot cannot exceed the maximum packet size. This mode
+ * shoud only be used for isochronous endpoints. */
 #define USB_DRV_ENDPOINT_MODE_REPEAT    2
 
 /* Select endpoint mode.
