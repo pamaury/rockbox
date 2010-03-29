@@ -32,7 +32,13 @@
 #define BATT_CHG_V          CHG_V_4_20V
 #define BATT_CHG_I          CHG_I_100MA
 #define CHARGER_TOTAL_TIMER (6*3600*2)  /* about 1.5 * capacity / current */
+#if defined(SANSA_CLIP)
 #define ADC_BATTERY         ADC_BVDD
+#else
+/* ADC_RTCSUP seems to represent battery voltage better than ADC_BVDD during
+ * charging (ADC_BVDD is way too high) and appears the same in normal use. */
+#define ADC_BATTERY         ADC_RTCSUP
+#endif
 
 #elif defined(SANSA_E200V2)
 
@@ -44,7 +50,7 @@
 #define CHARGER_TOTAL_TIMER (4*3600*2)
 #define ADC_BATTERY         ADC_BVDD
 
-#elif defined(SANSA_FUZE)
+#elif defined(SANSA_FUZE) || defined(SANSA_FUZEV2) /* FIXME */
 
 /* Check if topped-off and monitor voltage while plugged. */
 #define BATT_FULL_VOLTAGE   4160
