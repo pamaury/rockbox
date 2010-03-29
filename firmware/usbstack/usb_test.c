@@ -100,6 +100,9 @@ struct usb_test_data_request usb_data_req USB_DEVBSS_ATTR __attribute__((aligned
 struct usb_test_iso_request usb_iso_req USB_DEVBSS_ATTR __attribute__((aligned(32)));
 struct usb_test_stat_request usb_stat_req USB_DEVBSS_ATTR __attribute__((aligned(32)));
 
+unsigned char ep_bulk_slots[2][USB_DRV_SLOT_SIZE] USB_DRV_SLOT_ATTR;
+unsigned char ep_iso_slots[2][USB_DRV_SLOT_SIZE * 8] USB_DRV_SLOT_ATTR;
+
 int usb_test_set_first_string_index(int string_index)
 {
     usb_string_index = string_index;
@@ -400,6 +403,16 @@ void usb_test_init(void)
     usb_buffer = (void *)((unsigned int)(audio_buffer+31) & 0xffffffe0);
 #endif
     cpucache_invalidate();
+    
+    usb_drv_select_endpoint_mode(ep_bulk_out, USB_DRV_ENDPOINT_MODE_QUEUE);
+    usb_drv_allocate_slots(ep_bulk_out, 1, ep_bulk_slots[0]);
+    usb_drv_select_endpoint_mode(ep_bulk_in, USB_DRV_ENDPOINT_MODE_QUEUE);
+    usb_drv_allocate_slots(ep_bulk_in, 1, ep_bulk_slots[1]);
+    
+    usb_drv_select_endpoint_mode(ep_iso_out, USB_DRV_ENDPOINT_MODE_QUEUE);
+    usb_drv_allocate_slots(ep_iso_out, 8, ep_iso_slots[0]);
+    usb_drv_select_endpoint_mode(ep_iso_in, USB_DRV_ENDPOINT_MODE_QUEUE);
+    usb_drv_allocate_slots(ep_iso_in, 8, ep_iso_slots[1]);
 }
 
 void usb_test_disconnect(void)

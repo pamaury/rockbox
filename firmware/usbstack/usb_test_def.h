@@ -34,6 +34,8 @@
 #define USB_TEST_REQ_TEST_ISO       0x79
 #define USB_TEST_REQ_STAT           0x80
 #define USB_TEST_REQ_CANCEL         0x81
+#define USB_TEST_REQ_TEST_BULK      0x82
+#define USB_TEST_REQ_TEST_INT       0x83
 
 #define USB_TEST_MAGIC          0xdeadbeef
 
@@ -48,6 +50,11 @@
 #define USB_TEST_ISO_OUT            0x00
 #define USB_TEST_ISO_IN             0x01
 
+#define USB_TEST_BULK_OUT           0x00
+#define USB_TEST_BULK_IN            0x01
+
+#define USB_TEST_INT_IN             0x00
+
 #define USB_TEST_STAT_CLEAR         0x00
 #define USB_TEST_STAT_LOG           0x01
 
@@ -58,6 +65,20 @@ struct usb_test_data_request
 } __attribute__ ((packed));
 
 struct usb_test_iso_request
+{
+    uint32_t dwMagic;
+    uint8_t  bReq;
+    uint32_t dwLength;
+} __attribute__ ((packed));
+
+struct usb_test_bulk_request
+{
+    uint32_t dwMagic;
+    uint8_t  bReq;
+    uint32_t dwLength;
+} __attribute__ ((packed));
+
+struct usb_test_int_request
 {
     uint32_t dwMagic;
     uint8_t  bReq;

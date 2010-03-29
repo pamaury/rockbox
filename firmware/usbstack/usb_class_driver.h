@@ -29,6 +29,8 @@ struct usb_class_driver {
     bool enabled;
     int first_interface;
     int last_interface;
+    int first_string_index;
+    int last_string_index;
 
     /* Driver api starts here */
 
@@ -83,6 +85,28 @@ struct usb_class_driver {
        Optional function */
     void (*notify_hotswap)(int volume, bool inserted);
 #endif
+
+    /* Tells the driver to select an alternate setting for a specific interface.
+     * Returns 0 on success and -1 on error.
+     * Mandatory function if alternate interface support is needed */
+    int (*set_interface)(int interface, int alt_setting);
+
+    /* Asks the driver what is the current alternate setting for a specific interface.
+     * Returns value on success and -1 on error.
+     * Mandatory function if alternate interface support is needed */
+    int (*get_interface)(int interface);
+
+    /* Tells the driver what its first string id number will be. The driver
+       returns the number of the first available string id for the next driver
+       (i.e. a driver with one string will return string_index+1) */
+    int (*set_first_string_index)(int string_index);
+
+    /* Asks the driver to return the string descriptor associated with the index
+     * and that has been *allocated* by the set_first_string_index mechanism.
+     * Return NULL on error
+     * Mandatory function if set_first_string_index is implemented and allocates
+     * at least one string index */
+    const struct usb_string_descriptor* (*get_string_descriptor)(int string_index);
 };
 
 #define PACK_DATA(dest, data) \

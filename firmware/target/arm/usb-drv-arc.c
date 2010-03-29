@@ -784,9 +784,9 @@ static int usb_drv_queue_transfer(int ep_num, bool send, bool wait, void *ptr, i
         bool last_td = ((i + 1) == nb_tds);
         /* compute current td and next td indexes */
         int cur_td = (first_td + i) % queue_size;
-        int next_td = (first_td + i) % queue_size;
+        int next_td = (cur_td + 1) % queue_size;
         
-        logf("fill td %d", cur_td);
+        logf("fill td %d %d", cur_td, len);
         
         td = &endpoints[ep_num].tds[send][cur_td];
         /* FIXME td allow iso packets per frame override but we don't use it here */
@@ -799,6 +799,7 @@ static int usb_drv_queue_transfer(int ep_num, bool send, bool wait, void *ptr, i
         td->size_ioc_sts = (len << DTD_LENGTH_BIT_POS) | DTD_STATUS_ACTIVE;
         if(last_td)
             td->size_ioc_sts |= DTD_IOC;
+        td->length = len;
         
         td->buff_ptr0 = (unsigned int)ptr;
         td->buff_ptr1 = ((unsigned int)ptr & 0xfffff000) + 0x1000;
@@ -807,6 +808,7 @@ static int usb_drv_queue_transfer(int ep_num, bool send, bool wait, void *ptr, i
         td->buff_ptr4 = ((unsigned int)ptr & 0xfffff000) + 0x4000;
         
         ptr += len;
+        length -= len;
     }
     
     /* add TD to the queue */
@@ -817,14 +819,21 @@ static int usb_drv_queue_transfer(int ep_num, bool send, bool wait, void *ptr, i
     {
         /* setup the list */
         qh_array[pipe].head_td = 0;
-        qh_array[pipe].tail_td = first_td + nb_tds - 1;
+        qh_array[pipe].tail_td = nb_tds - 1;
+        
+        logf("usb: nb_tds=%d head=%d tail=%d queue=%d", nb_tds, 
+            qh_array[pipe].head_td, qh_array[pipe].tail_td, queue_size);
         /* prime endpoint */
-        return prime_transfer(ep_num, &endpoints[ep_num].tds[send][first_td], send, wait);
+        return prime_transfer(ep_num, &endpoints[ep_num].tds[send][0], send, wait);
     }
     else
     {
         /* add at the end of the list */
         endpoints[ep_num].tds[send][qh_array[pipe].tail_td].next_td_ptr = (unsigned int)&endpoints[ep_num].tds[send][first_td];
+        qh_array[pipe].tail_td = (qh_array[pipe].tail_td + nb_tds) % queue_size;
+        
+        logf("usb: nb_tds=%d head=%d tail=%d queue=%d", nb_tds, 
+            qh_array[pipe].head_td, qh_array[pipe].tail_td, queue_size);
         /* check prime */
         if(REG_ENDPTPRIME & pipe2mask[pipe])
             goto Lend;
@@ -885,6 +894,7 @@ static int prime_transfer(int ep_num, struct transfer_descriptor *new_td, bool s
 
     int oldlevel = disable_irq_save();
 
+    logf("prime endpoint");
     qh->status = 0;
     qh->wait = wait;
     qh->dtd.next_td_ptr = (unsigned int)new_td;
@@ -1066,6 +1076,8 @@ static void transfer_completed(void)
                 
                 while(true)
                 {
+                    logf("td=0x%x length=%d remaining=%d", (unsigned int)td, td->length,
+                        (td->size_ioc_sts & DTD_PACKET_SIZE) >> DTD_LENGTH_BIT_POS);
                     length += td->length -
                         ((td->size_ioc_sts & DTD_PACKET_SIZE) >> DTD_LENGTH_BIT_POS);
                     /* It seems that the controller sets the pipe bit to one even if the TD
@@ -1082,6 +1094,7 @@ static void transfer_completed(void)
                     else
                         td = (struct transfer_descriptor*) td->next_td_ptr;
                 }
+                logf("usb: xfer complete on EP%d %s: len=%d", ep, dir == DIR_IN ? "IN" : "OUT", length);
                 
                 if(endpoints[ep].mode[dir] == USB_DRV_ENDPOINT_MODE_QUEUE)
                 {

@@ -918,6 +918,10 @@ Lyre prototype 1 */
 #endif
 #endif
 
+#ifdef USB_HAS_ISOCHRONOUS
+#define USB_ENABLE_TEST
+#endif
+
 #endif /* BOOTLOADER */
 
 #endif /* HAVE_USBSTACK */
