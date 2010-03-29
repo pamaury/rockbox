@@ -431,7 +431,9 @@ drivers/generic_i2c.c
 target/arm/adc-as3514.c
 target/arm/as3525/audio-as3525.c
 target/arm/as3525/debug-as3525.c
+#if CONFIG_TUNER
 target/arm/as3525/fmradio-i2c-as3525.c
+#endif /* CONFIG_TUNER */
 target/arm/as3525/i2s-as3525.c
 target/arm/as3525/pcm-as3525.c
 #endif /* BOOTLOADER */
@@ -1214,8 +1216,9 @@ target/arm/tcc77x/c100/audio-c100.c
 
 #ifdef SANSA_CLIPPLUS
 #ifndef SIMULATOR
-target/arm/as3525/sansa-clip/lcd-ssd1303.c      /* FIXME */
-target/arm/as3525/sansa-clip/lcd-as-clip.S
+target/arm/as3525/lcd-ssd1303.c
+target/arm/as3525/sansa-clipplus/lcd-clip-plus.c
+target/arm/as3525/sansa-clipplus/lcd-as-clip-plus.S
 target/arm/as3525/sansa-clipplus/button-clip.c
 target/arm/as3525/sansa-clipplus/backlight-clip.c
 #ifndef BOOTLOADER
@@ -1223,12 +1226,13 @@ target/arm/powermgmt-ascodec.c
 target/arm/as3525/sansa-clip/powermgmt-clip.c
 #endif /* !BOOTLOADER */
 #endif /* !SIMULATOR */
-#endif /* SANSA_CLIPV2 */
+#endif /* SANSA_CLIPPLUS */
 
 #ifdef SANSA_CLIPV2
 #ifndef SIMULATOR
-target/arm/as3525/sansa-clip/lcd-ssd1303.c
-target/arm/as3525/sansa-clip/lcd-as-clip.S
+target/arm/as3525/lcd-ssd1303.c
+target/arm/as3525/sansa-clipv2/lcd-clipv2.c
+target/arm/as3525/sansa-clip/lcd-as-clip.S  /* TODO for clipv2 */
 target/arm/as3525/sansa-clipv2/button-clip.c
 target/arm/as3525/sansa-clipv2/backlight-clip.c
 #ifndef BOOTLOADER
@@ -1240,7 +1244,8 @@ target/arm/as3525/sansa-clip/powermgmt-clip.c
 
 #ifdef SANSA_CLIP
 #ifndef SIMULATOR
-target/arm/as3525/sansa-clip/lcd-ssd1303.c
+target/arm/as3525/lcd-ssd1303.c
+target/arm/as3525/sansa-clip/lcd-clip.c
 target/arm/as3525/sansa-clip/lcd-as-clip.S
 target/arm/as3525/sansa-clip/button-clip.c
 target/arm/as3525/sansa-clip/backlight-clip.c
@@ -1301,6 +1306,19 @@ target/arm/as3525/sansa-fuze/powermgmt-fuze.c
 #endif /* !BOOTLOADER */
 #endif /* !SIMULATOR */
 #endif /* SANSA_FUZE */
+
+#ifdef SANSA_FUZEV2
+#ifndef SIMULATOR
+target/arm/as3525/sansa-fuzev2/lcd-fuzev2.c
+target/arm/as3525/lcd-as-e200v2-fuze.S
+target/arm/as3525/sansa-fuzev2/backlight-fuzev2.c
+target/arm/as3525/sansa-fuzev2/button-fuzev2.c
+#ifndef BOOTLOADER
+target/arm/powermgmt-ascodec.c
+target/arm/as3525/sansa-fuzev2/powermgmt-fuzev2.c
+#endif /* !BOOTLOADER */
+#endif /* !SIMULATOR */
+#endif /* SANSA_FUZEV2 */
 
 #ifdef IAUDIO_7
 #ifndef SIMULATOR
@@ -1414,24 +1432,26 @@ target/arm/s5l8700/udacodec-meizu.c
 
 #ifdef IPOD_NANO2G
 #ifndef SIMULATOR
-drivers/audio/wm8975.c
-target/arm/usb-s3c6400x.c
 target/arm/ipod/button-clickwheel.c
 target/arm/s5l8700/kernel-s5l8700.c
-target/arm/s5l8700/wmcodec-s5l8700.c
-target/arm/s5l8700/pcm-s5l8700.c
-target/arm/s5l8700/adc-s5l8700.c
-target/arm/s5l8700/debug-s5l8700.c
 target/arm/s5l8700/dma-s5l8700.c
 target/arm/s5l8700/ipodnano2g/backlight-nano2g.c
 target/arm/s5l8700/ipodnano2g/lcd-nano2g.c
 target/arm/s5l8700/ipodnano2g/powermgmt-nano2g.c
 target/arm/s5l8700/ipodnano2g/power-nano2g.c
-target/arm/s5l8700/ipodnano2g/audio-nano2g.c
 target/arm/s5l8700/ipodnano2g/ftl-nano2g.c
 target/arm/s5l8700/ipodnano2g/nand-nano2g.c
 target/arm/s5l8700/ipodnano2g/pmu-nano2g.c
 target/arm/s5l8700/ipodnano2g/rtc-nano2g.c
+#ifndef BOOTLOADER
+drivers/audio/wm8975.c
+target/arm/usb-s3c6400x.c
+target/arm/s5l8700/debug-s5l8700.c
+target/arm/s5l8700/pcm-s5l8700.c
+target/arm/s5l8700/wmcodec-s5l8700.c
+target/arm/s5l8700/ipodnano2g/audio-nano2g.c
+target/arm/s5l8700/ipodnano2g/adc-nano2g.c
+#endif
 #endif
 #endif
 

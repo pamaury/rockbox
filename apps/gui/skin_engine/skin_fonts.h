@@ -5,7 +5,7 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id: skin_tokens.c 24526 2010-02-05 23:58:53Z jdgordon $
+ * $Id$
  *
  * Copyright (C) 2010 Jonathan Gordon
  *
@@ -32,7 +32,6 @@
 #ifndef _SKINFONTS_H_
 #define _SKINFONTS_H_
 
-#define MAXUSERFONTS (MAXFONTS - SYSTEMFONTCOUNT)
 
 void skin_font_init(void);
 
@@ -42,5 +41,4 @@ int skin_font_load(char* font_name);
 /* unload a skin font. If a font has been loaded more than once it wont actually
  * be unloaded untill all references have been unloaded */
 void skin_font_unload(int font_id);
-    
 #endif

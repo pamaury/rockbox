@@ -148,6 +148,10 @@ recording_mic
 #endif
 #endif
 
+#if defined(HAVE_RECORDING_HISTOGRAM)
+recording_histogram
+#endif
+
 #if defined(HAVE_REMOTE_LCD)
 remote
 remote_lcd_invert
@@ -219,6 +223,10 @@ usb_hid_mouse
 
 #if defined(HAVE_WHEEL_ACCELERATION)
 wheel_acceleration
+#endif
+
+#if defined(HAVE_LINEOUT_POWEROFF)
+lineout_poweroff
 #endif
 
 #if defined(HAVE_TOUCHSCREEN)

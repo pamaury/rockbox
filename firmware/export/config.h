@@ -392,6 +392,8 @@ Lyre prototype 1 */
 #include "config/sansam200v4.h"
 #elif defined(SANSA_FUZE)
 #include "config/sansafuze.h"
+#elif defined(SANSA_FUZEV2)
+#include "config/sansafuzev2.h"
 #elif defined(SANSA_C200V2)
 #include "config/sansac200v2.h"
 #elif defined(SANSA_VIEW)
@@ -717,6 +719,7 @@ Lyre prototype 1 */
     defined(CPU_COLDFIRE) || /* Coldfire: core, plugins, codecs */ \
     defined(CPU_PP) ||  /* PortalPlayer: core, plugins, codecs */ \
     (CONFIG_CPU == AS3525 && MEMORYSIZE > 2) || /* AS3525 +2MB: core, plugins, codecs */ \
+    (CONFIG_CPU == AS3525v2) || /* AS3525v2: core, plugins, codecs */ \
     (CONFIG_CPU == AS3525 && MEMORYSIZE <= 2 && !defined(PLUGIN) && !defined(CODEC)) || /* AS3525 2MB:core only */ \
     (CONFIG_CPU == PNX0101) || \
     defined(CPU_S5L870X)) || /* Samsung S5L8700: core, plugins, codecs */ \
@@ -743,6 +746,22 @@ Lyre prototype 1 */
 #define IDATA_ATTR
 #define IBSS_ATTR
 #define STATICIRAM static
+#endif
+#if (defined(CPU_PP) || (CONFIG_CPU == AS3525)) && !defined(SIMULATOR) && !defined(BOOTLOADER)
+/* Functions that have INIT_ATTR attached are NOT guaranteed to survive after
+ * root_menu() has been called. Their code may be overwritten by other data or
+ * code in order to save RAM, and references to them might point into
+ * zombie area.
+ *
+ * It is critical that you make sure these functions are only called before
+ * the final call to root_menu() (see apps/main.c) is called (i.e. basically
+ * only while main() runs), otherwise things may go wild,
+ * from crashes to freezes to exploding daps.
+ */
+#define INIT_ATTR       __attribute__ ((section(".init")))
+#define HAVE_INIT_ATTR
+#else
+#define INIT_ATTR
 #endif
 
 #if defined(SIMULATOR) && defined(__APPLE__)
@@ -860,8 +879,12 @@ Lyre prototype 1 */
 #define USB_HAS_BULK
 #elif CONFIG_USBOTG == USBOTG_S3C6400X
 #define USB_HAS_BULK
-#define USB_HAS_INTERRUPT
+//#define USB_HAS_INTERRUPT -- seems to be broken
 #endif /* CONFIG_USBOTG */
+
+#if CONFIG_USBOTG == USBOTG_ARC
+#define USB_HAS_ISOCHRONOUS
+#endif
 
 /* define the class drivers to enable */
 #ifdef BOOTLOADER
@@ -892,23 +915,6 @@ Lyre prototype 1 */
 #endif /* BOOTLOADER */
 
 #endif /* HAVE_USBSTACK */
-
-/* Storage alignment: the mask specifies a mask of bits which should be
- * clear in addresses used for storage_{read,write}_sectors(). This is
- * only relevant for buffers that will contain one or more whole sectors.
- */ 
-
-/* PP502x DMA requires an alignment of at least 16 bytes */
-#ifdef HAVE_ATA_DMA
-#ifdef  CPU_PP502x
-#define STORAGE_ALIGN_MASK 15
-#endif
-#endif /* HAVE_ATA_DMA */
-
-/* by default no alignment is required */
-#ifndef STORAGE_ALIGN_MASK
-#define STORAGE_ALIGN_MASK 0
-#endif
 
 /* This attribute can be used to enable to detection of plugin file handles leaks.
  * When enabled, the plugin core will monitor open/close/creat and when the plugin exits

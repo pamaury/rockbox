@@ -33,6 +33,7 @@
 #include "statusbar-skinned.h"
 #include "debug.h"
 #include "font.h"
+#include "icon.h"
 
 
 /* currently only one wps_state is needed */
@@ -44,6 +45,26 @@ static struct wps_sync_data sb_skin_sync_data        = { .do_full_update = false
 /* initial setup of wps_data  */
 static int update_delay = DEFAULT_UPDATE_DELAY;
 
+bool sb_set_title_text(char* title, enum themable_icons icon, enum screen_type screen)
+{
+    int i;
+    bool retval = false;
+    for(i=0; i<sb_skin_data[screen].num_tokens; i++)
+    {
+        if (sb_skin_data[screen].tokens[i].type == WPS_TOKEN_LIST_TITLE_TEXT)
+        {
+            sb_skin_data[screen].tokens[i].value.data = title;
+            retval = true;
+        }
+        else if (sb_skin_data[screen].tokens[i].type == WPS_TOKEN_LIST_TITLE_ICON)
+        {
+            /* Icon_NOICON == -1 which the skin engine wants at position 1, so + 2 */
+            sb_skin_data[screen].tokens[i].value.i = icon+2;
+        }
+    }
+    return retval;
+}
+    
 
 void sb_skin_data_load(enum screen_type screen, const char *buf, bool isfile)
 {
@@ -153,10 +174,23 @@ void sb_create_from_settings(enum screen_type screen)
 {
     char buf[128], *ptr, *ptr2;
     int len, remaining = sizeof(buf);
-    
+    int bar_position = statusbar_position(screen);
     ptr = buf;
     ptr[0] = '\0';
     
+    /* setup the inbuilt statusbar */
+    if (bar_position != STATUSBAR_OFF)
+    {
+        int y = 0, height = STATUSBAR_HEIGHT;
+        if (bar_position == STATUSBAR_BOTTOM)
+        {
+            y = screens[screen].lcdheight - STATUSBAR_HEIGHT;
+        }
+        len = snprintf(ptr, remaining, "%%V|0|%d|-|%d|0|-|-|\n%%wi\n", 
+                       y, height);
+        remaining -= len;
+        ptr += len;
+    }
     /* %Vi viewport, colours handled by the parser */
 #if NB_SCREENS > 1
     if (screen == SCREEN_REMOTE)
@@ -174,7 +208,7 @@ void sb_create_from_settings(enum screen_type screen)
     else
     {
         int y = 0, height;
-        switch (statusbar_position(screen))
+        switch (bar_position)
         {
             case STATUSBAR_TOP:
                 y = STATUSBAR_HEIGHT;

@@ -4,10 +4,18 @@
 #define TARGET_TREE /* this target is using the target tree system */
 
 /* For Rolo and boot loader */
-#define MODEL_NUMBER 68
+#define MODEL_NUMBER 66
 #define MODEL_NAME   "Sandisk Sansa Clip+"
 #define FIRMWARE_OFFSET_FILE_DATA 8
 #define FIRMWARE_OFFSET_FILE_CRC 0
+
+
+#ifndef BOOTLOADER
+#define HAVE_MULTIDRIVE
+#define NUM_DRIVES 2
+#define HAVE_HOTSWAP
+#endif
+
 
 #if 0 /* disabled since there is no driver (yet) */
 
@@ -177,7 +185,7 @@
 /* enable these for the experimental usb stack */
 #define HAVE_USBSTACK
 #define USB_VENDOR_ID 0x0781
-#define USB_PRODUCT_ID 0x7433
+#define USB_PRODUCT_ID 0x74d1
 #endif /* BOOTLOADER */
 
 #endif
@@ -187,7 +195,7 @@
 #define CONFIG_LED LED_VIRTUAL
 
 /* Define this if you have adjustable CPU frequency */
-#define HAVE_ADJUSTABLE_CPU_FREQ
+//#define HAVE_ADJUSTABLE_CPU_FREQ
 
 #define BOOTFILE_EXT    "sansa"
 #define BOOTFILE        "rockbox." BOOTFILE_EXT

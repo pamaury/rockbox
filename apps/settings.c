@@ -68,7 +68,6 @@
 #endif
 #include "wps.h"
 #include "skin_engine/skin_engine.h"
-#include "skin_engine/skin_fonts.h"
 #include "viewport.h"
 #include "statusbar-skinned.h"
 
@@ -360,7 +359,10 @@ bool settings_load_config(const char* file, bool apply)
     close(fd);
     settings_save();
     if (apply)
+    {
         settings_apply(true);
+        settings_apply_skins();
+    }
     return true;
 }
 
@@ -739,66 +741,6 @@ void sound_settings_apply(void)
 }
 
 
-
-/* call this after loading a .wps/.rwps pr other skin files, so that the
- * skin buffer is reset properly
- */
-void settings_apply_skins(void)
-{
-    char buf[MAX_PATH];
-    /* re-initialize the skin buffer before we start reloading skins */
-    skin_buffer_init();
-    int i;
-#ifdef HAVE_LCD_BITMAP
-    skin_backdrop_init();
-    skin_font_init();
-    FOR_NB_SCREENS(i)
-    {
-        const char* setting;
-#ifdef HAVE_REMOTE_LCD
-        if (i == SCREEN_REMOTE)
-            setting = global_settings.rsbs_file;
-        else
-#endif
-            setting = global_settings.sbs_file;
-        if (setting[0] && setting[0] != '-')
-        {
-            snprintf(buf, sizeof buf, SBS_DIR "/%s.%ssbs", setting,
-                      i == SCREEN_MAIN? "" : "r");
-            sb_skin_data_load(i, buf, true);
-        }
-        else
-        {
-            sb_skin_data_load(i, NULL, true);
-        }
-    }
-#endif
-    FOR_NB_SCREENS(i)
-    {
-        const char* setting = global_settings.wps_file;
-#ifdef HAVE_REMOTE_LCD
-        if (i == SCREEN_REMOTE)
-            setting = global_settings.rsbs_file;
-#endif
-        if (setting[0] && setting[0] != '-')
-        {
-            snprintf(buf, sizeof buf, WPS_DIR "/%s.%swps", setting,
-                    i == SCREEN_MAIN? "" : "r");
-            wps_data_load(SCREEN_MAIN, buf, true);
-        }
-        else
-        {
-            wps_data_load(SCREEN_MAIN, NULL, true);
-        }
-    }
-
-    viewportmanager_theme_changed(THEME_STATUSBAR);
-#if LCD_DEPTH > 1 || defined(HAVE_REMOTE_LCD) && LCD_REMOTE_DEPTH > 1
-    FOR_NB_SCREENS(i)
-        screens[i].backdrop_show(sb_get_backdrop(i));
-#endif
-}
-
 void settings_apply(bool read_disk)
 {
     
@@ -895,7 +837,8 @@ void settings_apply(bool read_disk)
     {
 #ifdef HAVE_LCD_BITMAP
         /* fonts need to be loaded before the WPS */
-        if ( global_settings.font_file[0]) {
+        if (global_settings.font_file[0]
+            && global_settings.font_file[0] != '-') {
             snprintf(buf, sizeof buf, FONT_DIR "/%s.fnt",
                      global_settings.font_file);
             if (font_load(NULL, buf) < 0)
@@ -904,7 +847,8 @@ void settings_apply(bool read_disk)
         else
             font_reset(NULL);
 #ifdef HAVE_REMOTE_LCD        
-        if ( global_settings.remote_font_file[0]) {
+        if ( global_settings.remote_font_file[0]
+            && global_settings.remote_font_file[0] != '-') {
             snprintf(buf, sizeof buf, FONT_DIR "/%s.fnt",
                      global_settings.remote_font_file);
             if (font_load_remoteui(buf) < 0)
@@ -929,9 +873,6 @@ void settings_apply(bool read_disk)
             talk_init(); /* use voice of same language */
         }
 
-        /* reload wpses */
-        settings_apply_skins();
-
         /* load the icon set */
         icons_init();
 
@@ -940,7 +881,6 @@ void settings_apply(bool read_disk)
             read_color_theme_file();
 #endif
     }
-
 #ifdef HAVE_LCD_COLOR
     screens[SCREEN_MAIN].set_foreground(global_settings.fg_color);
     screens[SCREEN_MAIN].set_background(global_settings.bg_color);
@@ -1026,7 +966,7 @@ void settings_apply(bool read_disk)
 #endif
 #ifdef HAVE_LCD_BITMAP
     /* already called with THEME_STATUSBAR in settings_apply_skins() */
-    viewportmanager_theme_changed(THEME_UI_VIEWPORT|THEME_LANGUAGE);
+    viewportmanager_theme_changed(THEME_UI_VIEWPORT|THEME_LANGUAGE|THEME_BUTTONBAR);
 #endif
 }
 

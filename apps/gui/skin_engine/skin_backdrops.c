@@ -5,7 +5,7 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id: skin_tokens.c 24526 2010-02-05 23:58:53Z jdgordon $
+ * $Id$
  *
  * Copyright (C) 2010 Jonathan Gordon
  *
@@ -93,7 +93,7 @@ char* skin_backdrop_load(char* backdrop, char *bmpdir, enum screen_type screen)
         {
             return backdrops[i].buffer;
         }
-        else if (backdrops[i].buffer == NULL)
+        else if (!bdrop && backdrops[i].buffer == NULL)
         {
             bdrop = &backdrops[i];
         }
@@ -107,7 +107,6 @@ char* skin_backdrop_load(char* backdrop, char *bmpdir, enum screen_type screen)
     loaded = screens[screen].backdrop_load(filename, bdrop->buffer);
     bdrop->screen = screen;
     strlcpy(bdrop->name, backdrop, MAX_FILENAME+1);
-    bdrop->name[MAX_FILENAME] = '\0';
     
     return loaded ? bdrop->buffer : NULL;
 }
@@ -117,4 +116,3 @@ void skin_backdrop_init(void)
 {
 }
 #endif
-

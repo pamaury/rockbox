@@ -104,7 +104,7 @@
 
 #if CONFIG_CPU == DM320 || CONFIG_CPU == S3C2440 || CONFIG_CPU == TCC7801 \
     || CONFIG_CPU == IMX31L || CONFIG_CPU == AS3525 || CONFIG_CPU == JZ4732 \
-    || defined(CPU_S5L870X)
+    || defined(CPU_S5L870X) || CONFIG_CPU == AS3525v2
 #include "debug-target.h"
 #endif
 
@@ -1101,7 +1101,27 @@ bool dbg_ports(void)
     while(1)
     {
         line = 0;
-        lcd_puts(0, line++, "GPIO STATES:");
+#if (LCD_HEIGHT >= 176) /* Only for displays with appropriate height. */
+        lcd_puts(0, line++, "GPIO ENABLE:");
+        lcd_putsf(0, line++, "A: %02x  E: %02x  I: %02x",
+                               (unsigned int)GPIOA_ENABLE,
+                               (unsigned int)GPIOE_ENABLE,
+                               (unsigned int)GPIOI_ENABLE);
+        lcd_putsf(0, line++, "B: %02x  F: %02x  J: %02x",
+                               (unsigned int)GPIOB_ENABLE,
+                               (unsigned int)GPIOF_ENABLE,
+                               (unsigned int)GPIOJ_ENABLE);
+        lcd_putsf(0, line++, "C: %02x  G: %02x  K: %02x",
+                               (unsigned int)GPIOC_ENABLE,
+                               (unsigned int)GPIOG_ENABLE,
+                               (unsigned int)GPIOK_ENABLE);
+        lcd_putsf(0, line++, "D: %02x  H: %02x  L: %02x",
+                               (unsigned int)GPIOD_ENABLE,
+                               (unsigned int)GPIOH_ENABLE,
+                               (unsigned int)GPIOL_ENABLE);
+        line++;
+#endif
+        lcd_puts(0, line++, "GPIO INPUT VAL:");
         lcd_putsf(0, line++, "A: %02x  E: %02x  I: %02x",
                                (unsigned int)GPIOA_INPUT_VAL,
                                (unsigned int)GPIOE_INPUT_VAL,
@@ -1646,6 +1666,8 @@ static bool view_battery(void)
                 lcd_putsf(0, 5, "CHARGER: %02X", 
                          ascodec_read(AS3514_CHARGER));
 #elif defined(IPOD_NANO2G)
+                y = pmu_read_battery_voltage();
+                lcd_putsf(17, 1, "RAW: %d.%03d V", y / 1000, y % 1000);
                 y = pmu_read_battery_current();
                 lcd_putsf(0, 2, "Battery current: %d mA", y);
                 lcd_putsf(0, 3, "PWRCON: %8x", PWRCON);
@@ -2622,7 +2644,7 @@ static const struct the_menu_item menuitems[] = {
 #endif
 #if CONFIG_CPU == SH7034 || defined(CPU_COLDFIRE) || defined(CPU_PP) \
     || CONFIG_CPU == S3C2440 || CONFIG_CPU == IMX31L || CONFIG_CPU == AS3525 \
-    || CONFIG_CPU == DM320 || defined(CPU_S5L870X)
+    || CONFIG_CPU == DM320 || defined(CPU_S5L870X) || CONFIG_CPU == AS3525v2
         { "View I/O ports", dbg_ports },
 #endif
 #if (CONFIG_RTC == RTC_PCF50605) && !defined(SIMULATOR)

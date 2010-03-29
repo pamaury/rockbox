@@ -29,14 +29,8 @@
 #include "power.h"
 #include "as3525.h"
 
-#if defined(SANSA_CLIP)
-#define USB_DETECT_PIN 6
-
-#elif defined(SANSA_FUZE) || defined(SANSA_E200V2)
-#define USB_DETECT_PIN 3
-
-#elif defined(SANSA_C200V2)
-#define USB_DETECT_PIN 1
+#if CONFIG_CPU == AS3525
+static int usb_status = USB_EXTRACTED;
 #endif
 
 void usb_enable(bool on)
@@ -58,6 +52,22 @@ void usb_init_device(void)
 #endif
 }
 
+#if CONFIG_CPU == AS3525
+void usb_insert_int(void)
+{
+    usb_status = USB_INSERTED;
+}
+
+void usb_remove_int(void)
+{
+    usb_status = USB_EXTRACTED;
+}
+
+int usb_detect(void)
+{
+    return usb_status;
+}
+#else
 int usb_detect(void)
 {
 #ifdef USB_DETECT_PIN
@@ -67,3 +77,4 @@ int usb_detect(void)
 #endif
         return USB_EXTRACTED;
 }
+#endif

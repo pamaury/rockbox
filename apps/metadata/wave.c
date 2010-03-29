@@ -8,6 +8,7 @@
  * $Id$
  *
  * Copyright (C) 2005 Dave Chapman
+ * Copyright (C) 2010 Yoshihisa Uchida
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -20,8 +21,6 @@
  ****************************************************************************/
 #include <stdio.h>
 #include <string.h>
-#include <stdlib.h>
-#include <ctype.h>
 #include <inttypes.h>
 
 #include "system.h"
@@ -29,6 +28,9 @@
 #include "metadata_common.h"
 #include "metadata_parsers.h"
 #include "logf.h"
+
+/* Wave(RIFF)/Wave64 format */
+
 
 #   define AV_WL32(p, d) do {                   \
         ((uint8_t*)(p))[0] = (d);               \
@@ -41,6 +43,37 @@
         ((uint8_t*)(p))[1] = (d)>>8;            \
     } while(0)
 
+enum {
+   RIFF_CHUNK = 0,
+   WAVE_CHUNK,
+   FMT_CHUNK,
+   FACT_CHUNK,
+   DATA_CHUNK,
+};
+
+/* Wave chunk names */
+#define WAVE_CHUNKNAME_LENGTH 4
+#define WAVE_CHUNKSIZE_LENGTH 4
+
+static const unsigned char *wave_chunklist = "RIFF"
+                                             "WAVE"
+                                             "fmt "
+                                             "fact"
+                                             "data";
+
+/* Wave64 GUIDs */
+#define WAVE64_CHUNKNAME_LENGTH 16
+#define WAVE64_CHUNKSIZE_LENGTH 8
+
+static const unsigned char *wave64_chunklist
+                 = "riff\x2e\x91\xcf\x11\xa5\xd6\x28\xdb\x04\xc1\x00\x00"
+                   "wave\xf3\xac\xd3\x11\x8c\xd1\x00\xc0\x4f\x8e\xdb\x8a"
+                   "fmt \xf3\xac\xd3\x11\x8c\xd1\x00\xc0\x4f\x8e\xdb\x8a"
+                   "fact\xf3\xac\xd3\x11\x8c\xd1\x00\xc0\x4f\x8e\xdb\x8a"
+                   "data\xf3\xac\xd3\x11\x8c\xd1\x00\xc0\x4f\x8e\xdb\x8a";
+
+
+/* support formats */
 enum
 {
     WAVE_FORMAT_PCM = 0x0001,   /* Microsoft PCM Format */
@@ -56,21 +89,21 @@ enum
     IBM_FORMAT_ALAW = 0x0102,   /* same as WAVE_FORMAT_ALAW */
     WAVE_FORMAT_ATRAC3 = 0x0270, /* Atrac3 stream */
     WAVE_FORMAT_SWF_ADPCM = 0x5346, /* Adobe SWF ADPCM */
+    WAVE_FORMAT_EXTENSIBLE = 0xFFFE,
 };
 
 struct wave_fmt {
     unsigned int formattag;
-    unsigned long channels;
+    unsigned int channels;
     unsigned int blockalign;
-    unsigned long bitspersample;
+    unsigned int bitspersample;
     unsigned int samplesperblock;
-    unsigned long numbytes;
+    uint32_t totalsamples;
+    uint64_t numbytes;
 };
 
-static unsigned long get_totalsamples(struct wave_fmt *fmt, struct mp3entry* id3)
+static void set_totalsamples(struct wave_fmt *fmt, struct mp3entry* id3)
 {
-    unsigned long totalsamples = 0;
-
     switch (fmt->formattag)
     {
         case WAVE_FORMAT_PCM:
@@ -79,61 +112,114 @@ static unsigned long get_totalsamples(struct wave_fmt *fmt, struct mp3entry* id3
         case WAVE_FORMAT_MULAW:
         case IBM_FORMAT_ALAW:
         case IBM_FORMAT_MULAW:
-            totalsamples =
-                 fmt->numbytes / ((((fmt->bitspersample - 1) / 8) + 1) * fmt->channels);
-            break;
-        case WAVE_FORMAT_ADPCM:
-        case WAVE_FORMAT_DVI_ADPCM:
-        case WAVE_FORMAT_XBOX_ADPCM:
-            totalsamples = (fmt->numbytes / fmt->blockalign) * fmt->samplesperblock;
+            fmt->blockalign      = fmt->bitspersample * fmt->channels >> 3;
+            fmt->samplesperblock = 1;
             break;
         case WAVE_FORMAT_YAMAHA_ADPCM:
-            if (fmt->samplesperblock == 0)
+            if (id3->channels != 0)
             {
-                if (fmt->blockalign == ((id3->frequency / 60) + 4) * fmt->channels)
-                    fmt->samplesperblock = id3->frequency / 30;
-                else
-                    fmt->samplesperblock = fmt->blockalign * 2 / fmt->channels;
+                fmt->samplesperblock =
+                    (fmt->blockalign == ((id3->frequency / 60) + 4) * fmt->channels)?
+                        id3->frequency / 30 : (fmt->blockalign << 1) / fmt->channels;
             }
-            totalsamples = (fmt->numbytes / fmt->blockalign) * fmt->samplesperblock;
             break;
         case WAVE_FORMAT_DIALOGIC_OKI_ADPCM:
-            totalsamples = 2 * fmt->numbytes;
+            fmt->blockalign      = 1;
+            fmt->samplesperblock = 2;
             break;
         case WAVE_FORMAT_SWF_ADPCM:
-            if (fmt->samplesperblock == 0)
-                fmt->samplesperblock = (((fmt->blockalign << 3) - 2) / fmt->channels - 22)
-                                                                     / fmt->bitspersample;
-
-            totalsamples = (fmt->numbytes / fmt->blockalign) * fmt->samplesperblock;
+            if (fmt->bitspersample != 0 && id3->channels != 0)
+            {
+                fmt->samplesperblock
+                     = (((fmt->blockalign << 3) - 2) / fmt->channels - 22)
+                                                     / fmt->bitspersample + 1;
+            }
             break;
         default:
-            totalsamples = 0;
             break;
     }
-    return totalsamples;
+
+    if (fmt->blockalign != 0)
+        fmt->totalsamples = (fmt->numbytes / fmt->blockalign) * fmt->samplesperblock;
 }
 
-bool get_wave_metadata(int fd, struct mp3entry* id3)
+static void parse_riff_format(unsigned char* buf, int fmtsize, struct wave_fmt *fmt,
+                              struct mp3entry* id3)
 {
-    /* Use the trackname part of the id3 structure as a temporary buffer */
+    /* wFormatTag */
+    fmt->formattag = buf[0] | (buf[1] << 8);
+    /* wChannels */
+    fmt->channels = buf[2] | (buf[3] << 8);
+    /* dwSamplesPerSec */
+    id3->frequency = get_long_le(&buf[4]);
+    /* dwAvgBytesPerSec */
+    id3->bitrate = (get_long_le(&buf[8]) * 8) / 1000;
+    /* wBlockAlign */
+    fmt->blockalign = buf[12] | (buf[13] << 8);
+    /* wBitsPerSample */
+    fmt->bitspersample = buf[14] | (buf[15] << 8);
+
+    if (fmt->formattag != WAVE_FORMAT_EXTENSIBLE)
+    {
+        if (fmtsize > 19)
+        {
+            /* wSamplesPerBlock */
+            fmt->samplesperblock = buf[18] | (buf[19] << 8);
+        }
+    }
+    else if (fmtsize > 25)
+    {
+        /* wValidBitsPerSample */
+        fmt->bitspersample = buf[18] | (buf[19] << 8);
+        /* SubFormat */
+        fmt->formattag = buf[24] | (buf[25] << 8);
+    }
+
+    /* Check for ATRAC3 stream */
+    if (fmt->formattag == WAVE_FORMAT_ATRAC3)
+    {
+        int jsflag = 0;
+        if(id3->bitrate == 66 || id3->bitrate == 94)
+            jsflag = 1;
+
+        id3->extradata_size = 14;
+        id3->channels = 2;
+        id3->codectype = AFMT_OMA_ATRAC3;
+        id3->bytesperframe = fmt->blockalign;
+        
+        /* Store the extradata for the codec */
+        AV_WL16(&id3->id3v2buf[0],  1);             // always 1
+        AV_WL32(&id3->id3v2buf[2],  id3->frequency);// samples rate
+        AV_WL16(&id3->id3v2buf[6],  jsflag);        // coding mode
+        AV_WL16(&id3->id3v2buf[8],  jsflag);        // coding mode
+        AV_WL16(&id3->id3v2buf[10], 1);             // always 1
+        AV_WL16(&id3->id3v2buf[12], 0);             // always 0
+    }
+}
+
+static bool read_header(int fd, struct mp3entry* id3, const unsigned char *chunknames,
+                        bool is_64)
+{
+    /* Use the temporary buffer */
     unsigned char* buf = (unsigned char *)id3->path;
+
     struct wave_fmt fmt;
-    unsigned long totalsamples = 0;
-    unsigned long offset = 0;
-    int read_bytes;
-    int i;
+
+    unsigned int namelen = (is_64)? WAVE64_CHUNKNAME_LENGTH : WAVE_CHUNKNAME_LENGTH;
+    unsigned int sizelen = (is_64)? WAVE64_CHUNKSIZE_LENGTH : WAVE_CHUNKSIZE_LENGTH;
+    unsigned int len = namelen + sizelen;
+    uint64_t chunksize;
+    uint64_t offset = len + namelen;
+    int read_data;
 
     memset(&fmt, 0, sizeof(struct wave_fmt));
 
     /* get RIFF chunk header */
-    if ((lseek(fd, 0, SEEK_SET) < 0) || (read(fd, buf, 12) < 12))
-    {
-        return false;
-    }
-    offset += 12;
+    lseek(fd, 0, SEEK_SET);
+    read(fd, buf, offset);
 
-    if ((memcmp(buf, "RIFF", 4) != 0) || (memcmp(&buf[8], "WAVE", 4) != 0))
+    if ((memcmp(buf,       chunknames + RIFF_CHUNK * namelen, namelen) != 0) ||
+        (memcmp(buf + len, chunknames + WAVE_CHUNK * namelen, namelen) != 0))
     {
         DEBUGF("metadata error: missing riff header.\n");
         return false;
@@ -143,116 +229,105 @@ bool get_wave_metadata(int fd, struct mp3entry* id3)
     while (true)
     {
         /* get chunk header */
-        if (read(fd, buf, 8) < 8)
+        if (read(fd, buf, len) <= 0)
+        {
+            DEBUGF("metadata error: read error or missing 'data' chunk.\n");
             return false;
-        offset += 8;
-
-        /* chunkSize */
-        i = get_long_le(&buf[4]);
-
-        if (memcmp(buf, "fmt ", 4) == 0)
-        {
-            /* get rest of chunk */
-            if (i < 16)
-                return false;
-
-            read_bytes = 16;
-            if (i > 19)
-                read_bytes = 20;
-
-            if (read(fd, buf, read_bytes) != read_bytes)
-                return false;
-
-            offset += read_bytes;
-            i -= read_bytes;
-
-            /* wFormatTag */
-            fmt.formattag = buf[0] | (buf[1] << 8);
-            /* wChannels */
-            fmt.channels = buf[2] | (buf[3] << 8);
-            /* dwSamplesPerSec */
-            id3->frequency = get_long_le(&buf[4]);
-            /* dwAvgBytesPerSec */
-            id3->bitrate = (get_long_le(&buf[8]) * 8) / 1000;
-            /* wBlockAlign */
-            fmt.blockalign = buf[12] | (buf[13] << 8);
-            id3->bytesperframe = fmt.blockalign;
-            /* wBitsPerSample */
-            fmt.bitspersample = buf[14] | (buf[15] << 8);
-            if (read_bytes > 19)
-            {
-                /* wSamplesPerBlock */
-                fmt.samplesperblock = buf[18] | (buf[19] << 8);
-            }
-
-            /* Check for ATRAC3 stream */
-            if (fmt.formattag == WAVE_FORMAT_ATRAC3)
-            {
-                int jsflag = 0;
-                if(id3->bitrate == 66 || id3->bitrate == 94)
-                    jsflag = 1;
-
-                id3->extradata_size = 14;
-                id3->channels = 2;
-                id3->codectype = AFMT_OMA_ATRAC3;
-                /* Store the extradata for the codec */
-                AV_WL16(&id3->id3v2buf[0],  1);             // always 1
-                AV_WL32(&id3->id3v2buf[2],  id3->frequency);    // samples rate
-                AV_WL16(&id3->id3v2buf[6],  jsflag);        // coding mode
-                AV_WL16(&id3->id3v2buf[8],  jsflag);        // coding mode
-                AV_WL16(&id3->id3v2buf[10], 1);             // always 1
-                AV_WL16(&id3->id3v2buf[12], 0);             // always 0
-            }
         }
-        else if (memcmp(buf, "data", 4) == 0)
+
+        offset += len;
+
+        /* get chunk size (when the header is wave64, chunksize includes GUID and data length) */
+        chunksize = (is_64) ? get_uint64_le(buf + namelen) - len :
+                              get_long_le(buf + namelen);
+
+        if (memcmp(buf, chunknames + DATA_CHUNK * namelen, namelen) == 0)
         {
-            fmt.numbytes = i;
+            DEBUGF("find 'data' chunk\n");
+            fmt.numbytes = chunksize;
             if (fmt.formattag == WAVE_FORMAT_ATRAC3)
                 id3->first_frame_offset = offset;
             break;
         }
-        else if (memcmp(buf, "fact", 4) == 0)
+
+        /* padded to next chunk */
+        chunksize += ((is_64)? ((1 + ~chunksize) & 0x07) : (chunksize & 1));
+        offset += chunksize;
+
+        read_data = 0;
+        if (memcmp(buf, chunknames + FMT_CHUNK * namelen, namelen) == 0)
         {
-            /* dwSampleLength */
-            if (i >= 4)
+            DEBUGF("find 'fmt ' chunk\n");
+
+            if (chunksize < 16)
             {
-                /* get rest of chunk */
-                if (read(fd, buf, 4) < 4)
-                    return false;
-                offset += 4;
-                i -= 4;
-                totalsamples = get_long_le(buf);
+                DEBUGF("metadata error: 'fmt ' chunk is too small: %d\n", (int)chunksize);
+                return false;
+            }
+
+            /* get and parse format */
+            read_data = (chunksize > 25)? 26 : chunksize;
+
+            read(fd, buf, read_data);
+            parse_riff_format(buf, read_data, &fmt, id3);
+        }
+        else if (memcmp(buf, chunknames + FACT_CHUNK * namelen, namelen) == 0)
+        {
+            DEBUGF("find 'fact' chunk\n");
+
+            /* dwSampleLength */
+            if (chunksize >= sizelen)
+            {
+                /* get totalsamples */
+                read_data = sizelen;
+                read(fd, buf, read_data);
+                fmt.totalsamples = (is_64)? get_uint64_le(buf) : get_long_le(buf);
             }
         }
 
-        /* seek to next chunk (even chunk sizes must be padded) */
-        if (i & 0x01)
-            i++;
-
-        if(lseek(fd, i, SEEK_CUR) < 0)
-            return false;
-        offset += i;
+        lseek(fd, chunksize - read_data, SEEK_CUR);
     }
 
-    if ((fmt.numbytes == 0) || (fmt.channels == 0) || (fmt.blockalign == 0))
+    if (fmt.totalsamples == 0)
+        set_totalsamples(&fmt, id3);
+
+    if (id3->frequency == 0 || id3->bitrate == 0)
     {
-        DEBUGF("metadata error: numbytes, channels, or blockalign is 0.\n");
+        DEBUGF("metadata error: frequency or bitrate is 0\n");
         return false;
     }
 
-    if (totalsamples == 0)
-    {
-        totalsamples = get_totalsamples(&fmt, id3);
-    }
-
-    id3->vbr = false;   /* All WAV files are CBR */
+    id3->vbr = false;   /* All Wave/Wave64 files are CBR */
     id3->filesize = filesize(fd);
 
     /* Calculate track length (in ms) and estimate the bitrate (in kbit/s) */
-    if(id3->codectype != AFMT_OMA_ATRAC3)
-        id3->length = ((int64_t) totalsamples * 1000) / id3->frequency;
-    else
-        id3->length   = ((id3->filesize - id3->first_frame_offset) * 8) / id3->bitrate;
+    id3->length = (fmt.formattag != WAVE_FORMAT_ATRAC3)?
+                      (uint64_t)fmt.totalsamples * 1000 / id3->frequency :
+                      ((id3->filesize - id3->first_frame_offset) * 8) / id3->bitrate;
+
+    /* output header/id3 info (for debug) */
+    DEBUGF("%s header info ----\n", (is_64)? "wave64" : "wave");
+    DEBUGF("  format:          %04x\n", (int)fmt.formattag);
+    DEBUGF("  channels:        %u\n", fmt.channels);
+    DEBUGF("  blockalign:      %u\n", fmt.blockalign);
+    DEBUGF("  bitspersample:   %u\n", fmt.bitspersample);
+    DEBUGF("  samplesperblock: %u\n", fmt.samplesperblock);
+    DEBUGF("  totalsamples:    %u\n", (unsigned int)fmt.totalsamples);
+    DEBUGF("  numbytes;        %u\n", (unsigned int)fmt.numbytes);
+    DEBUGF("id3 info ----\n");
+    DEBUGF("  frquency:        %u\n", (unsigned int)id3->frequency);
+    DEBUGF("  bitrate:         %d\n", id3->bitrate);
+    DEBUGF("  length:          %u\n", (unsigned int)id3->length);
 
     return true;
+}
+
+bool get_wave_metadata(int fd, struct mp3entry* id3)
+{
+    return read_header(fd, id3, wave_chunklist, false);
+}
+
+bool get_wave64_metadata(int fd, struct mp3entry* id3)
+{
+    return read_header(fd, id3, wave64_chunklist, true);
 }

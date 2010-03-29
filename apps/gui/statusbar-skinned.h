@@ -29,16 +29,18 @@
 #include <string.h>
 #include <stdlib.h>
 #include "config.h"
+#include "icon.h"
 
 
 void sb_skin_data_load(enum screen_type screen, const char *buf, bool isfile);
 
 void sb_create_from_settings(enum screen_type screen);
-void sb_skin_init(void);
+void sb_skin_init(void) INIT_ATTR;
 struct viewport *sb_skin_get_info_vp(enum screen_type screen);
 void sb_skin_update(enum screen_type screen, bool force);
 
 void sb_skin_set_update_delay(int delay);
+bool sb_set_title_text(char* title, enum themable_icons icon, enum screen_type screen);
 
 #if (LCD_DEPTH > 1) || (defined(HAVE_REMOTE_LCD) && LCD_REMOTE_DEPTH > 1)
 char* sb_get_backdrop(enum screen_type screen);

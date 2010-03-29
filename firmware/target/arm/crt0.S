@@ -57,9 +57,55 @@ _vectorsend:
 newstart:
     msr     cpsr_c, #0xd3 /* enter supervisor mode, disable IRQ/FIQ */
 
-#if CONFIG_CPU==AS3525 && !defined(BOOTLOADER)
+#if (CONFIG_CPU==AS3525 || CONFIG_CPU==AS3525v2) && !defined(BOOTLOADER)
+
+#define CACHE_NONE  0
+#define CACHE_ALL   0x0C
+#define UNCACHED_ADDR(a) (a + 0x10000000)
+
     /* Setup MMU : has to be done before accessing IRAM ! */
-    bl      memory_init
+
+    bl      ttb_init
+
+    mov     r0, #0                          @ physical address
+    mov     r1, #0                          @ virtual address
+    mov     r2, #0x1000                     @ size (all memory)
+    mov     r3, #CACHE_NONE
+    bl      map_section
+
+    mov     r0, #0                          @ physical address
+    ldr     r1, =IRAM_ORIG                  @ virtual address
+    mov     r2, #1                          @ size : 1MB
+    mov     r3, #CACHE_ALL
+    bl      map_section
+
+    mov     r0, #0                          @ physical address
+    ldr     r1, =UNCACHED_ADDR(IRAM_ORIG)   @ virtual address
+    mov     r2, #1                          @ size : 1MB
+    mov     r3, #CACHE_NONE
+    bl      map_section
+
+    mov     r0, #0x30000000                 @ physical address
+    mov     r1, #DRAM_ORIG                  @ virtual address
+    mov     r2, #MEMORYSIZE                 @ size
+    mov     r3, #CACHE_ALL
+    bl      map_section
+
+    mov     r0, #0x30000000                 @ physical address
+    mov     r1, #UNCACHED_ADDR(DRAM_ORIG)   @ virtual address
+    mov     r2, #MEMORYSIZE                 @ size
+    mov     r3, #CACHE_NONE
+    bl      map_section
+
+    /* map 1st mbyte of DRAM at 0x0 to have exception vectors available */
+
+    mov     r0, #0x30000000                 @ physical address
+    mov     r1, #0                          @ virtual address
+    mov     r2, #1                          @ size
+    mov     r3, #CACHE_ALL
+    bl      map_section
+
+    bl      enable_mmu
 
     /* Zero out IBSS */
     ldr     r2, =_iedata
@@ -71,6 +117,7 @@ newstart:
     bhi     1b
 
     /* Copy the IRAM */
+    /* must be done before bss is zeroed */
     ldr     r2, =_iramcopy
     ldr     r3, =_iramstart
     ldr     r4, =_iramend
@@ -79,6 +126,23 @@ newstart:
     ldrhi   r5, [r2], #4
     strhi   r5, [r3], #4
     bhi     1b
+
+#endif
+
+#ifdef HAVE_INIT_ATTR
+    /* copy init data to codec buffer */
+    /* must be done before bss is zeroed */
+    ldr    r2, =_initcopy
+    ldr    r3, =_initstart
+    ldr    r4, =_initend
+1:
+    cmp     r4, r3
+    ldrhi   r5, [r2], #4
+    strhi   r5, [r3], #4
+    bhi     1b
+
+    mov     r2, #0
+    mcr     p15, 0, r2, c7, c5, 0   @ Invalidate ICache
 #endif
 
     /* Initialise bss section to zero */
@@ -89,7 +153,7 @@ newstart:
     cmp     r3, r2
     strhi   r4, [r2], #4
     bhi     1b
-    
+
     /* Set up some stack and munge it with 0xdeadbeef */
     ldr     sp, =stackend
     ldr     r2, =stackbegin
@@ -115,7 +179,6 @@ newstart:
 
     /* Switch back to supervisor mode */
     msr     cpsr_c, #0xd3
-
     bl      main
 
 

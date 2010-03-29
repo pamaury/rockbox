@@ -64,7 +64,7 @@ struct viewport_stack_item
 
 #ifdef HAVE_LCD_BITMAP
 static void viewportmanager_redraw(void* data);
-   
+
 static int theme_stack_top[NB_SCREENS]; /* the last item added */
 static struct viewport_stack_item theme_stack[NB_SCREENS][VPSTACK_DEPTH];
 static bool is_theme_enabled(enum screen_type screen);
@@ -91,7 +91,7 @@ static void toggle_events(bool enable)
         remove_event(PLAYBACK_EVENT_TRACK_CHANGE, do_sbs_update_callback);
         remove_event(PLAYBACK_EVENT_NEXTTRACKID3_AVAILABLE, do_sbs_update_callback);
         remove_event(GUI_EVENT_ACTIONUPDATE, viewportmanager_redraw);
-    }   
+    }
 }
 
 
@@ -99,22 +99,25 @@ static void toggle_theme(enum screen_type screen, bool force)
 {
     bool enable_event = false;
     static bool was_enabled[NB_SCREENS] = {false};
+    static bool after_boot[NB_SCREENS] = {false};
     int i;
 
     FOR_NB_SCREENS(i)
     {
         enable_event = enable_event || is_theme_enabled(i);
+        sb_set_title_text(NULL, Icon_NOICON, i);
     }
     toggle_events(enable_event);
 
     if (is_theme_enabled(screen))
     {
+        bool first_boot = theme_stack_top[screen] == 0;
         /* remove the left overs from the previous screen.
          * could cause a tiny flicker. Redo your screen code if that happens */
 #if LCD_DEPTH > 1 || defined(HAVE_REMOTE_LCD) && LCD_REMOTE_DEPTH > 1
         screens[screen].backdrop_show(sb_get_backdrop(screen));
 #endif
-        if (!was_enabled[screen] || force)
+        if (LIKELY(after_boot[screen]) && (!was_enabled[screen] || force))
         {
             struct viewport deadspace, user;
             viewport_set_defaults(&user, screen);
@@ -159,8 +162,10 @@ static void toggle_theme(enum screen_type screen, bool force)
                 screens[screen].clear_viewport();
                 screens[screen].update_viewport();
             }
+            screens[screen].set_viewport(NULL);
         }
-        send_event(GUI_EVENT_ACTIONUPDATE, (void*)1); /* force a redraw */
+        intptr_t force = first_boot?0:1;
+        send_event(GUI_EVENT_ACTIONUPDATE, (void*)force);
     }
     else
     {
@@ -173,6 +178,8 @@ static void toggle_theme(enum screen_type screen, bool force)
     send_event(GUI_EVENT_THEME_CHANGED, NULL);
     FOR_NB_SCREENS(i)
         was_enabled[i] = is_theme_enabled(i);
+
+    after_boot[screen] = true;
 }
 
 void viewportmanager_theme_enable(enum screen_type screen, bool enable,
@@ -222,11 +229,12 @@ static void viewportmanager_redraw(void* data)
     FOR_NB_SCREENS(i)
     {
 #ifdef HAVE_LCD_BITMAP
-       if (statusbar_position(i) == STATUSBAR_CUSTOM)
-           sb_skin_update(i, NULL != data);
-        else if (statusbar_position(i) != STATUSBAR_OFF)
+        if (is_theme_enabled(i))
+            sb_skin_update(i, NULL != data);
+#else
+        (void)data;
+        gui_statusbar_draw(&statusbars.statusbars[i], NULL, NULL);
 #endif
-            gui_statusbar_draw(&statusbars.statusbars[i], NULL != data);
     }
 }
 
@@ -238,7 +246,7 @@ void viewportmanager_init()
     {
         theme_stack_top[i] = -1; /* the next call fixes this to 0 */
         /* We always want the theme enabled by default... */
-        viewportmanager_theme_enable(i, true, NULL); 
+        viewportmanager_theme_enable(i, true, NULL);
     }
 #else
     add_event(GUI_EVENT_ACTIONUPDATE, false, viewportmanager_redraw);
@@ -260,7 +268,7 @@ void viewportmanager_theme_changed(const int which)
     {
     }
     if (which & THEME_LANGUAGE)
-    {   
+    {
     }
     if (which & THEME_STATUSBAR)
     {
@@ -347,20 +355,19 @@ void viewport_set_defaults(struct viewport *vp,
                             const enum screen_type screen)
 {
 #if defined(HAVE_LCD_BITMAP) && !defined(__PCTOOL__)
-    
     struct viewport *sbs_area = NULL;
     if (!is_theme_enabled(screen))
     {
-       viewport_set_fullscreen(vp, screen);
-       return;
+        viewport_set_fullscreen(vp, screen);
+        return;
     }
     sbs_area = sb_skin_get_info_vp(screen);
     
     if (sbs_area)
         *vp = *sbs_area;
-    else  
+    else
 #endif /* HAVE_LCD_BITMAP */
-        viewport_set_fullscreen(vp, screen);  
+        viewport_set_fullscreen(vp, screen);
 }
 
 
@@ -412,7 +419,7 @@ const char* viewport_parse_viewport(struct viewport *vp,
     /* X and Y *must* be set */
     if (!LIST_VALUE_PARSED(set, PL_X) || !LIST_VALUE_PARSED(set, PL_Y))
         return NULL;
-    /* check for negative values */        
+    /* check for negative values */
     if (vp->x < 0)
         vp->x += screens[screen].lcdwidth;
     if (vp->y < 0)

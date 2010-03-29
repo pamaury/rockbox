@@ -111,7 +111,7 @@
 #define CODEC_SIZE 0x48000  /* in IRAM */
 
 /* The number of bytes reserved for loadable plugins */
-#define PLUGIN_BUFFER_SIZE 0x60000
+#define PLUGIN_BUFFER_SIZE 0x45000
 
 #define AB_REPEAT_ENABLE 1
 
@@ -154,7 +154,7 @@
 /* #define HAVE_POWEROFF_WHILE_CHARGING */
 
 /* define current usage levels (based on battery bench) */
-#define CURRENT_NORMAL     65
+#define CURRENT_NORMAL     50
 #define CURRENT_BACKLIGHT  14
 #define CURRENT_RECORD     CURRENT_NORMAL
 

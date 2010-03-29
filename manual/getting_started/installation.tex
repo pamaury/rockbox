@@ -11,7 +11,7 @@ before beginning there are a few things it is important to know.
 follow the instructions at 
 \url{http://www.rockbox.org/twiki/bin/view/Main/SansaE200RInstallation}.}}
 
-\opt{ipodnano,ipodnano2g,ipodvideo,e200,c200,e200v2,clip,cowond2,fuze}{
+\opt{ipodnano,ipodnano2g,ipodvideo,e200,c200,e200v2,clipv1,clipv2,cowond2,fuze}{
 \begin{description}  
 \item[Supported hardware versions.] 
     \opt{ipodnano,ipodnano2g}{
@@ -43,13 +43,12 @@ follow the instructions at
     v2 firmware begins with 03. Make sure that you are following the
     instructions from the correct manual.
 }
-  \opt{clip}{
-    The \playertype{} is available in multiple versions, not all of which
-    run Rockbox.  Rockbox doesn't run on the newer v2 models. They can be
-    identified by checking the Sandisk firmware version number under 
-    Settings $\rightarrow$ System Info. The v1 firmware is named 01.xx.xx,
-    while the v2 firmware begins with 02.  In addition, Rockbox does not
-    run on the Clip+.
+  \opt{clipv1,clipv2}{
+    The \playertype{} is available in multiple versions, and you need to make
+    sure which you have by checking the Sandisk firmware version number under 
+    Settings $\rightarrow$ Info. The v1 firmware is named 01.xx.xx, while the
+    v2 firmware begins with 02. Make sure that you are following the
+    instructions from the correct manual.
 }
   \opt{fuze}{
     The \playertype{} is available in multiple versions, not all of which
@@ -124,17 +123,19 @@ follow the instructions at
 
   \opt{ipod}{
     If you have Itunes installed and it is configured to open automatically
-    when your \dap{} is attached (the default behaviour), 
-    then wait for it to open and then quit it. You
-    also need to ensure the ``Enable use as disk'' option is enabled for
-    your \dap{} in Itunes. Your \dap{} should then enter disk mode
-    automatically when connected to a computer via \nopt{ipod1g2g}{USB.}\opt{ipod1g2g}{Firewire.}
-    If your computer does not recognise your \dap{}, you may
-    need to enter disk mode manually. Disconnect your \dap{} from the
-    computer. Hard reset the \dap{} by pressing and holding the \ButtonMenu{} and
-    \ButtonSelect{} buttons simultaneously. As soon as the \dap{} resets, press
-    and hold the \ButtonSelect{} and \ButtonPlay{} buttons simultaneously. Your
-    \dap{} should enter disk mode and you can try reconnecting to the computer.
+    when your \dap{} is attached (the default behaviour), then wait for it to
+    open and then quit it. You also need to ensure the ``Enable use as disk''
+    option is enabled for your \dap{} in Itunes. Your \dap{} should then enter
+    disk mode automatically when connected to a computer via
+    \nopt{ipod1g2g}{USB.}\opt{ipod1g2g}{Firewire.} If your computer does not
+    recognise your \dap{}, you may need to enter disk mode manually. Disconnect
+    your \dap{} from the computer. Hard reset the \dap{} by pressing and
+    holding the \ButtonMenu{} and \nopt{IPOD_3G_PAD}{\ButtonSelect{}}%
+    \opt{IPOD_3G_PAD}{\ButtonPlay{}} buttons simultaneously. As soon as the
+    \dap{} resets, press and hold the \nopt{IPOD_3G_PAD}{\ButtonSelect{} and
+    \ButtonPlay{}}\opt{IPOD_3G_PAD}{\ButtonLeft{} and \ButtonRight{}} buttons
+    simultaneously. Your \dap{} should enter disk mode and you can try
+    reconnecting to the computer.
   }
   \opt{x5}{
     When instructed to connect/disconnect the USB cable, always use
@@ -142,7 +143,7 @@ follow the instructions at
     is intended to be used for USB OTG connections only (digital cameras, memory
     sticks, etc.).
   }    
-  \opt{sansa,e200v2,clip}{
+  \opt{sansa,e200v2,clipv1,clipv2,clipplus}{
     \note{The following steps require you to change the setting in
     \setting{Settings $\rightarrow$ USB Mode} to \setting{MSC} from within the
     original firmware.}
@@ -165,8 +166,11 @@ follow the instructions at
       \note{Once Rockbox has been installed, when you shut down your \dap{} from Rockbox it will totally
        power the player off so step 1 is no longer necessary.}
   }
-  \opt{gigabeatf}{During installation, do not connect your \dap{}
-  using the cradle but plug the USB cable directly to the \dap{}.
+  \opt{gigabeatf}{The installation requires you to change a setting in the
+      original firmware.  Make sure the option under \setting{Setup
+      $\rightarrow$ Connections $\rightarrow$ PC Connections} is set to 
+      \setting{gigabeat room}. Also, during installation, do not connect your
+      \dap{} using the cradle but plug the USB cable directly to the \dap{}.
   } 
 \end{description}
 }
@@ -282,7 +286,7 @@ housekeeping tool \caps{Rockbox Utility}. It allows you to:
 Prebuilt binaries for Windows, Linux and Mac OS X are
 available at the \wikilink{RockboxUtility} wiki page.\\
 
-\opt{gigabeats,clip}{\note{Rockbox Utility does not currently support the 
+\opt{gigabeats,clipv1,clipv2,clipplus}{\note{Rockbox Utility does not currently support the 
 \playertype{} and you will therefore need to follow the manual install
 instructions below.\\}}
 
@@ -527,8 +531,8 @@ to speak file and folder names.
 \nopt{ipod,gigabeats,cowond2}{When
 you turn the unit on, Rockbox should load.}
 \opt{ipod}{Hard reset the Ipod by holding
-  \opt{IPOD_4G_PAD}{\ButtonMenu{}+\ButtonSelect{}}%
-  \opt{IPOD_3G_PAD}{\ButtonMenu{}+\ButtonPlay{}}
+  \opt{IPOD_4G_PAD}{\ButtonMenu{} and \ButtonSelect{} simultaneously}%
+  \opt{IPOD_3G_PAD}{\ButtonMenu{} and \ButtonPlay{} simultaneously}
   for a couple of seconds until the \dap{} resets. Now Rockbox should load.
 }
 

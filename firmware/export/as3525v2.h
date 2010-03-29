@@ -26,4 +26,12 @@
 
 /* insert differences here */
 
+#ifndef IRAM_SIZE   /* protect in case the define name changes */
+#   error IRAM_SIZE not defined !
+#endif
+#undef IRAM_SIZE
+#define IRAM_SIZE 0x100000
+
+#define CGU_SDSLOT         (*(volatile unsigned long *)(CGU_BASE + 0x3C))
+
 #endif /* __AS3525V2_H__ */

@@ -1057,6 +1057,8 @@ void input_thread_entry(void)
 
 				input[fft_idx] = left;
 				fft_idx++;
+				input[fft_idx] = 0;
+				fft_idx++;
 
 				if (fft_idx == ARRAYSIZE_IN)
 					break;
@@ -1103,6 +1105,8 @@ enum plugin_status plugin_start(const void* parameter)
 #ifdef HAVE_ADJUSTABLE_CPU_FREQ
     rb->cpu_boost(true);
 #endif
+
+    rb->mutex_init(&input_mutex);
 
     /* Defaults */
     bool run = true;

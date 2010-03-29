@@ -55,7 +55,7 @@ struct opt_items {
 #error ROCKBOX_DIR not defined (should be in autoconf.h)
 #endif
 #define ROCKBOX_DIR_LEN sizeof(ROCKBOX_DIR)
-#endif
+#endif /* def __PCTOOL__ */
 
 
 #define FONT_DIR    ROCKBOX_DIR "/fonts"
@@ -469,6 +469,9 @@ struct user_settings
     int rec_stop_gap;       /* index of trig_durations */
     int rec_trigger_mode;   /* see TRIG_MODE_XXX constants */
     int rec_trigger_type;   /* what to do when trigger released */
+#ifdef HAVE_RECORDING_HISTOGRAM
+    int rec_histogram_interval; /* recording peakmeter histogram */
+#endif
 
 #ifdef HAVE_AGC
     int rec_agc_preset_mic; /* AGC mic preset modes:
@@ -763,6 +766,9 @@ struct user_settings
 #endif
 #ifdef HAVE_ACCESSORY_SUPPLY
     bool accessory_supply; /* 0=off 1=on, accessory power supply for iPod */
+#endif
+#ifdef HAVE_LINEOUT_POWEROFF
+    bool lineout_active;
 #endif
 
 #ifdef HAVE_SPEAKER

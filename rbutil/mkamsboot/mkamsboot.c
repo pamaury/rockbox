@@ -118,6 +118,7 @@ const unsigned short hw_revisions[] = {
     [MODEL_M200V4]  = 4,
     [MODEL_C200V2]  = 2,
     [MODEL_CLIPPLUS]= 1,
+    [MODEL_FUZEV2]  = 2,
 };
 
 /* version 2 is used in Clipv2, Clip+ and Fuzev2 firmwares */
@@ -129,6 +130,7 @@ const unsigned short fw_revisions[] = {
     [MODEL_M200V4]  = 1,
     [MODEL_C200V2]  = 1,
     [MODEL_CLIPPLUS]= 2,
+    [MODEL_FUZEV2]  = 2,
 };
 
 /* Descriptive name of these models */
@@ -140,6 +142,7 @@ const char* model_names[] = {
     [MODEL_E200V2]  = "e200",
     [MODEL_M200V4]  = "m200",
     [MODEL_C200V2]  = "c200",
+    [MODEL_FUZEV2]  = "Fuze",
 };
 
 /* Dualboot functions for these models */
@@ -151,6 +154,7 @@ static const unsigned char* bootloaders[] = {
     [MODEL_M200V4]  = dualboot_m200v4,
     [MODEL_C200V2]  = dualboot_c200v2,
     [MODEL_CLIPPLUS]= dualboot_clipplus,
+    [MODEL_FUZEV2]  = dualboot_fuzev2,
 };
 
 /* Size of dualboot functions for these models */
@@ -162,6 +166,7 @@ const int bootloader_sizes[] = {
     [MODEL_M200V4]  = sizeof(dualboot_m200v4),
     [MODEL_C200V2]  = sizeof(dualboot_c200v2),
     [MODEL_CLIPPLUS]= sizeof(dualboot_clipplus),
+    [MODEL_FUZEV2]  = sizeof(dualboot_fuzev2),
 };
 
 /* Model names used in the Rockbox header in ".sansa" files - these match the
@@ -174,6 +179,7 @@ static const char* rb_model_names[] = {
     [MODEL_M200V4]  = "m2v4",
     [MODEL_C200V2]  = "c2v2",
     [MODEL_CLIPPLUS]= "cli+",
+    [MODEL_FUZEV2]  = "fuz2",
 };
 
 /* Model numbers used to initialise the checksum in the Rockbox header in
@@ -186,6 +192,7 @@ static const int rb_model_num[] = {
     [MODEL_M200V4]  = 42,
     [MODEL_C200V2]  = 44,
     [MODEL_CLIPPLUS]= 66,
+    [MODEL_FUZEV2]  = 68,
 };
 
 /* Checksums of unmodified original firmwares - for safety, and device
@@ -218,11 +225,17 @@ static struct md5sums sansasums[] = {
     { MODEL_CLIP,   "1.01.29", "c12711342169c66e209540cd1f27cd26" },
     { MODEL_CLIP,   "1.01.30", "f2974d47c536549c9d8259170f1dbe4d" },
     { MODEL_CLIP,   "1.01.32", "d835d12342500732ffb9c4ee54abec15" },
+    { MODEL_CLIP,   "1.01.35", "b4d0edb3b8f2a4e8eee0a344f7f8e480" },
 
     { MODEL_CLIPV2, "2.01.16", "c57fb3fcbe07c2c9b360f060938f80cb" },
     { MODEL_CLIPV2, "2.01.32", "0ad3723e52022509089d938d0fbbf8c5" },
+    { MODEL_CLIPV2, "2.01.35", "a3cbbd22b9508d7f8a9a1a39acc342c2" },
 
     { MODEL_CLIPPLUS, "01.02.09", "656d38114774c2001dc18e6726df3c5d" },
+
+    { MODEL_FUZEV2, "2.01.17", "8b85fb05bf645d08a4c8c3e344ec9ebe" },
+    { MODEL_FUZEV2, "2.02.26", "d4f6f85c3e4a8ea8f2e5acc421641801" },
+    { MODEL_FUZEV2, "2.03.31", "74fb197ccd51707388f3b233402186a6" },
 };
 
 #define NUM_MD5S (sizeof(sansasums)/sizeof(sansasums[0]))
@@ -324,6 +337,8 @@ static int get_model(int model_id)
             return MODEL_CLIPV2;
         case 0x28:
             return MODEL_CLIPPLUS;
+        case 0x70:
+            return MODEL_FUZEV2;
     }
 
     return MODEL_UNKNOWN;

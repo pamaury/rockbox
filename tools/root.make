@@ -16,7 +16,7 @@ DEFINES = -DROCKBOX -DMEMORYSIZE=$(MEMORYSIZE) -DMEM=$(MEMORYSIZE) $(TARGET) \
 INCLUDES = -I$(BUILDDIR) -I$(BUILDDIR)/lang $(TARGET_INC)
 
 CFLAGS = $(INCLUDES) $(DEFINES) $(GCCOPTS) 
-PPCFLAGS = $(filter-out -Dmain=SDL_main,$(CFLAGS)) # cygwin sdl-config fix
+PPCFLAGS = $(filter-out -g -Dmain=SDL_main,$(CFLAGS)) # cygwin sdl-config fix
 
 TOOLS = $(TOOLSDIR)/rdf2binary $(TOOLSDIR)/convbdf \
 	$(TOOLSDIR)/codepages $(TOOLSDIR)/scramble $(TOOLSDIR)/bmp2rb \
@@ -57,8 +57,10 @@ all: $(DEPFILE) build
 include $(TOOLSDIR)/tools.make
 
 ifeq (,$(findstring checkwps,$(APPSDIR)))
-  include $(FIRMDIR)/firmware.make
-  include $(ROOTDIR)/apps/bitmaps/bitmaps.make
+  ifeq (,$(findstring database,$(APPSDIR)))
+    include $(FIRMDIR)/firmware.make
+    include $(ROOTDIR)/apps/bitmaps/bitmaps.make
+  endif
 endif
 
 ifneq (,$(findstring bootloader,$(APPSDIR)))

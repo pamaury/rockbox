@@ -19,8 +19,8 @@
  *
  ****************************************************************************/
 #include "codeclib.h"
-#include "pcm_common.h"
 #include "adpcm_seek.h"
+#include "support_formats.h"
 
 /*
  * YAMAHA ADPCM
@@ -81,6 +81,12 @@ static struct pcm_format *fmt;
 static bool set_format(struct pcm_format *format)
 {
     fmt = format;
+
+    if (fmt->channels == 0)
+    {
+        DEBUGF("CODEC_ERROR: channels is 0\n");
+        return false;
+    }
 
     if (fmt->bitspersample != 4)
     {
@@ -172,8 +178,8 @@ static int decode(const uint8_t *inbuf, size_t inbufsize,
     ch = fmt->channels - 1;
     while (inbufsize)
     {
-        *outbuf++ = create_pcmdata(0,  *inbuf     ) << 13;
-        *outbuf++ = create_pcmdata(ch, *inbuf >> 4) << 13;
+        *outbuf++ = create_pcmdata(0,  *inbuf     ) << (PCM_OUTPUT_DEPTH - 16);
+        *outbuf++ = create_pcmdata(ch, *inbuf >> 4) << (PCM_OUTPUT_DEPTH - 16);
         nsamples += 2;
 
         inbuf++;
@@ -208,15 +214,14 @@ static int decode_for_seek(const uint8_t *inbuf, size_t inbufsize)
     return CODEC_OK;
 }
 
-static struct pcm_pos *get_seek_pos(long seek_time,
+static struct pcm_pos *get_seek_pos(uint32_t seek_val, int seek_mode,
                                     uint8_t *(*read_buffer)(size_t *realsize))
 {
     static struct pcm_pos newpos;
-    uint32_t new_count= 0;
-
-    if (seek_time > 0)
-        new_count = ((uint64_t)seek_time * ci->id3->frequency
-                                  / (1000LL * fmt->samplesperblock)) / blocksperchunk;
+    uint32_t new_count = (seek_mode == PCM_SEEK_TIME)?
+                         ((uint64_t)seek_val * ci->id3->frequency / 1000LL)
+                                             / (blocksperchunk * fmt->samplesperblock) :
+                         seek_val / (unsigned long)fmt->chunksize;
 
     if (!has_block_header)
     {

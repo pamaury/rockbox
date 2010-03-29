@@ -116,55 +116,59 @@ void skin_statusbar_changed(struct gui_wps *skin)
 
 static void draw_progressbar(struct gui_wps *gwps,
                              struct skin_viewport *wps_vp)
- {
+{
     struct screen *display = gwps->display;
     struct wps_state *state = gwps->state;
     struct progressbar *pb = wps_vp->pb;
     struct mp3entry *id3 = state->id3;
-    int y = pb->y;
+    int y = pb->y, height = pb->height;
+    unsigned long length, elapsed;
+    
+    if (height < 0)
+        height = font_get(wps_vp->vp.font)->height;
 
     if (y < 0)
     {
         int line_height = font_get(wps_vp->vp.font)->height;
         /* center the pb in the line, but only if the line is higher than the pb */
-        int center = (line_height-pb->height)/2;
+        int center = (line_height-height)/2;
         /* if Y was not set calculate by font height,Y is -line_number-1 */
         y = (-y -1)*line_height + (0 > center ? 0 : center);
     }
 
-    int elapsed, length;
-    if (id3)
+    if (id3 && id3->length)
     {
-        elapsed = id3->elapsed;
         length = id3->length;
+        elapsed = id3->elapsed + state->ff_rewind_count;
     }
     else
     {
+        length = 1;
         elapsed = 0;
-        length = 0;
     }
 
     if (pb->have_bitmap_pb)
         gui_bitmap_scrollbar_draw(display, pb->bm,
                                 pb->x, y, pb->width, pb->bm.height,
-                                length ? length : 1, 0,
-                                length ? elapsed + state->ff_rewind_count : 0,
-                                HORIZONTAL);
+                                length, 0, elapsed, HORIZONTAL);
     else
-        gui_scrollbar_draw(display, pb->x, y, pb->width, pb->height,
-                           length ? length : 1, 0,
-                           length ? elapsed + state->ff_rewind_count : 0,
-                           HORIZONTAL);
+        gui_scrollbar_draw(display, pb->x, y, pb->width, height,
+                           length, 0, elapsed, HORIZONTAL);
+
+    if (id3 && id3->length)
+    {
 #ifdef AB_REPEAT_ENABLE
-    if ( ab_repeat_mode_enabled() && length != 0 )
-        ab_draw_markers(display, length,
-                        pb->x, pb->x + pb->width, y, pb->height);
+        if (ab_repeat_mode_enabled())
+            ab_draw_markers(display, id3->length,
+                            pb->x, y, pb->width, height);
 #endif
 
-    if (id3 && id3->cuesheet)
-        cue_draw_markers(display, state->id3->cuesheet, length,
-                         pb->x, pb->x + pb->width, y+1, pb->height-2);
+        if (id3->cuesheet)
+            cue_draw_markers(display, id3->cuesheet, id3->length,
+                             pb->x, y+1, pb->width, height-2);
+    }
 }
+
 bool audio_peek_track(struct mp3entry* id3, int offset);
 static void draw_playlist_viewer_list(struct gui_wps *gwps,
                                       struct playlistviewer *viewer)
@@ -181,10 +185,9 @@ static void draw_playlist_viewer_list(struct gui_wps *gwps,
     struct mp3entry *pid3;
 #if CONFIG_CODEC == SWCODEC
     struct mp3entry id3;
-#endif    
+#endif
     char buf[MAX_PATH*2], tempbuf[MAX_PATH];
     unsigned int buf_used = 0;
-    
     
     gwps->display->set_viewport(viewer->vp);
     for(i=start_item; (i-start_item)<lines && i<playlist_amount(); i++)
@@ -207,8 +210,8 @@ static void draw_playlist_viewer_list(struct gui_wps *gwps,
         {
             pid3 = NULL;
         }
-            
-        int line = pid3 ? TRACK_HAS_INFO : TRACK_HAS_NO_INFO;        
+
+        int line = pid3 ? TRACK_HAS_INFO : TRACK_HAS_NO_INFO;
         int j = 0, cur_string = 0;
         char *filename = playlist_peek(i-cur_playlist_pos);
         buf[0] = '\0';
@@ -263,7 +266,7 @@ static void draw_playlist_viewer_list(struct gui_wps *gwps,
             }
             j++;
         }
-            
+
         int vpwidth = viewer->vp->width;
         length = gwps->display->getstringsize(buf, NULL, NULL);
         if (viewer->lines[line].scroll && length >= vpwidth)
@@ -271,7 +274,7 @@ static void draw_playlist_viewer_list(struct gui_wps *gwps,
             gwps->display->puts_scroll(0, (i-start_item), buf );
         }
         else
-        {    
+        {
             if (length >= vpwidth)
                 x = 0;
             else
@@ -303,7 +306,7 @@ static void draw_playlist_viewer_list(struct gui_wps *gwps,
                         x = 0;
                         break;
                 }
-            }                    
+            }
             gwps->display->putsxy(x, (i-start_item)*line_height, buf );
         }
     }
@@ -626,7 +629,8 @@ static bool get_line(struct gui_wps *gwps,
                      struct skin_subline *subline,
                      struct align_pos *align,
                      char *linebuf,
-                     int linebuf_size)
+                     int linebuf_size,
+                     unsigned refresh_mode)
 {
     struct wps_data *data = gwps->data;
 
@@ -635,6 +639,7 @@ static bool get_line(struct gui_wps *gwps,
     char *linebuf_end = linebuf + linebuf_size - 1;
     bool update = false;
     int i;
+    (void)refresh_mode; /* silence warning on charcell */
 
     /* alignment-related variables */
     int cur_align;
@@ -672,6 +677,11 @@ static bool get_line(struct gui_wps *gwps,
                     img->display = subimage;
                 break;
             }
+            case WPS_TOKEN_DRAW_INBUILTBAR:
+                gui_statusbar_draw(&(statusbars.statusbars[gwps->display->screen_type]),
+                                   refresh_mode == WPS_REFRESH_ALL,
+                                   data->tokens[i].value.data);
+                break;
 #endif
 
             case WPS_TOKEN_ALIGN_LEFT:
@@ -847,7 +857,7 @@ static bool update_curr_subline(struct gui_wps *gwps, struct skin_line *line)
         else
             line->curr_subline = &line->sublines;
         get_subline_timeout(gwps, line->curr_subline);
-        line->subline_expire_time += TIMEOUT_UNIT*line->curr_subline->time_mult;
+        line->subline_expire_time = current_tick + TIMEOUT_UNIT*line->curr_subline->time_mult;
         return true;
     }
     return false;
@@ -1077,8 +1087,8 @@ static bool skin_redraw(struct gui_wps *gwps, unsigned refresh_mode)
     int i;
     for (i = 0; i < 8; i++)
     {
-       if (data->wps_progress_pat[i] == 0)
-           data->wps_progress_pat[i] = display->get_locked_pattern();
+        if (data->wps_progress_pat[i] == 0)
+            data->wps_progress_pat[i] = display->get_locked_pattern();
     }
 #endif
 
@@ -1172,8 +1182,8 @@ static bool skin_redraw(struct gui_wps *gwps, unsigned refresh_mode)
                 || new_subline_refresh || hidden_vp)
             {
                 /* get_line tells us if we need to update the line */
-                update_line = get_line(gwps, subline,
-                                       &align, linebuf, sizeof(linebuf));
+                update_line = get_line(gwps, subline, &align,
+                                       linebuf, sizeof(linebuf), vp_refresh_mode);
             }
 #ifdef HAVE_LCD_BITMAP
             /* peakmeter */

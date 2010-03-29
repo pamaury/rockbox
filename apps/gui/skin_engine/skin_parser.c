@@ -154,6 +154,8 @@ static int parse_statusbar_enable(const char *wps_bufptr,
         struct wps_token *token, struct wps_data *wps_data);
 static int parse_statusbar_disable(const char *wps_bufptr,
         struct wps_token *token, struct wps_data *wps_data);
+static int parse_statusbar_inbuilt(const char *wps_bufptr,
+        struct wps_token *token, struct wps_data *wps_data);
 static int parse_image_display(const char *wps_bufptr,
         struct wps_token *token, struct wps_data *wps_data);
 static int parse_image_load(const char *wps_bufptr,
@@ -326,6 +328,8 @@ static const struct wps_tag all_tags[] = {
     { WPS_TOKEN_TRACK_TIME_ELAPSED,       "pc",  WPS_REFRESH_DYNAMIC, NULL },
     { WPS_TOKEN_TRACK_TIME_REMAINING,     "pr",  WPS_REFRESH_DYNAMIC, NULL },
     { WPS_TOKEN_TRACK_LENGTH,             "pt",  WPS_REFRESH_STATIC,  NULL },
+    { WPS_TOKEN_TRACK_STARTING,           "pS",  WPS_REFRESH_DYNAMIC, parse_timeout },
+    { WPS_TOKEN_TRACK_ENDING,             "pE",  WPS_REFRESH_DYNAMIC, parse_timeout },
 
     { WPS_TOKEN_PLAYLIST_POSITION,        "pp",  WPS_REFRESH_STATIC,  NULL },
     { WPS_TOKEN_PLAYLIST_ENTRIES,         "pe",  WPS_REFRESH_STATIC,  NULL },
@@ -349,6 +353,7 @@ static const struct wps_tag all_tags[] = {
 #ifdef HAVE_LCD_BITMAP
     { WPS_NO_TOKEN,                       "we",  0, parse_statusbar_enable },
     { WPS_NO_TOKEN,                       "wd",  0, parse_statusbar_disable },
+    { WPS_TOKEN_DRAW_INBUILTBAR,          "wi",  WPS_REFRESH_DYNAMIC, parse_statusbar_inbuilt },
 
     { WPS_NO_TOKEN,                       "xl",  0,       parse_image_load },
 
@@ -366,6 +371,8 @@ static const struct wps_tag all_tags[] = {
                                                     parse_viewport_display },
 #ifdef HAVE_LCD_BITMAP
     { WPS_VIEWPORT_CUSTOMLIST,            "Vp",  WPS_REFRESH_STATIC, parse_playlistview },
+    { WPS_TOKEN_LIST_TITLE_TEXT,          "Lt",  WPS_REFRESH_DYNAMIC, NULL },
+    { WPS_TOKEN_LIST_TITLE_ICON,          "Li",  WPS_REFRESH_DYNAMIC, NULL },
 #endif
     { WPS_NO_TOKEN,                       "V",   0,    parse_viewport      },
 
@@ -375,7 +382,7 @@ static const struct wps_tag all_tags[] = {
 #endif
 
     { WPS_TOKEN_SETTING,                  "St",  WPS_REFRESH_DYNAMIC,
-                                                    parse_setting_and_lang },    
+                                                    parse_setting_and_lang },
     { WPS_TOKEN_TRANSLATEDSTRING,         "Sx",  WPS_REFRESH_STATIC,
                                                     parse_setting_and_lang },
     { WPS_TOKEN_LANG_IS_RTL ,             "Sr",  WPS_REFRESH_STATIC, NULL },
@@ -383,8 +390,8 @@ static const struct wps_tag all_tags[] = {
     { WPS_TOKEN_LASTTOUCH,                "Tl",  WPS_REFRESH_DYNAMIC, parse_timeout },
     { WPS_TOKEN_CURRENT_SCREEN,           "cs",  WPS_REFRESH_DYNAMIC, NULL },
     { WPS_NO_TOKEN,                       "T",   0,    parse_touchregion      },
-    
-    
+
+
     /* Recording Tokens */
     { WPS_TOKEN_HAVE_RECORDING,         "Rp", WPS_REFRESH_STATIC, NULL },
 #ifdef HAVE_RECORDING
@@ -428,6 +435,7 @@ struct gui_img* find_image(char label, struct wps_data *data)
     }
     return NULL;
 }
+
 #endif
 
 /* traverse the viewport linked list for a viewport */
@@ -542,6 +550,7 @@ static int parse_statusbar_enable(const char *wps_bufptr,
     wps_data->show_sb_on_wps = true;
     struct skin_viewport *default_vp = find_viewport(VP_DEFAULT_LABEL, wps_data);
     viewport_set_defaults(&default_vp->vp, curr_screen);
+    default_vp->vp.font = FONT_UI;
     return skip_end_of_line(wps_bufptr);
 }
 
@@ -554,6 +563,15 @@ static int parse_statusbar_disable(const char *wps_bufptr,
     wps_data->show_sb_on_wps = false;
     struct skin_viewport *default_vp = find_viewport(VP_DEFAULT_LABEL, wps_data);
     viewport_set_fullscreen(&default_vp->vp, curr_screen);
+    default_vp->vp.font = FONT_UI;
+    return skip_end_of_line(wps_bufptr);
+}
+
+static int parse_statusbar_inbuilt(const char *wps_bufptr,
+        struct wps_token *token, struct wps_data *wps_data)
+{
+    (void)wps_data;
+    token->value.data = (void*)&curr_vp->vp;
     return skip_end_of_line(wps_bufptr);
 }
 
@@ -571,14 +589,13 @@ char *get_image_filename(const char *start, const char* bmpdir,
                                 char *buf, int buf_size)
 {
     const char *end = strchr(start, '|');
+    int bmpdirlen = strlen(bmpdir);
 
-    if ( !end || (end - start) >= (buf_size - (int)ROCKBOX_DIR_LEN - 2) )
+    if ( !end || (end - start) >= (buf_size - bmpdirlen - 2) )
     {
-        buf = "\0";
+        buf[0] = '\0';
         return NULL;
     }
-
-    int bmpdirlen = strlen(bmpdir);
 
     strcpy(buf, bmpdir);
     buf[bmpdirlen] = '/';
@@ -691,18 +708,18 @@ static int parse_image_load(const char *wps_bufptr,
     /* Skip the rest of the line */
     return skip_end_of_line(wps_bufptr);
 }
-
-/* this array acts as a simple mapping between the id the user uses for a font
- * and the id the font actually gets from the font loader.
- * font id 2 is always the first skin font (regardless of how many screens */
-static int font_ids[MAXUSERFONTS];
+struct skin_font {
+    int id; /* the id from font_load */
+    char *name;  /* filename without path and extension */
+};
+static struct skin_font skinfonts[MAXUSERFONTS];
 static int parse_font_load(const char *wps_bufptr,
         struct wps_token *token, struct wps_data *wps_data)
 {
     (void)wps_data; (void)token;
     const char *ptr = wps_bufptr;
     int id;
-    char *filename, buf[MAX_PATH];
+    char *filename;
     
     if (*ptr != '|')
         return WPS_ERROR_INVALID_PARAM;
@@ -718,13 +735,21 @@ static int parse_font_load(const char *wps_bufptr,
         
     if (id <= FONT_UI || id >= MAXFONTS-1)
         return WPS_ERROR_INVALID_PARAM;
-    id -= FONT_UI;
+#if defined(DEBUG) || defined(SIMULATOR)
+    if (skinfonts[id-FONT_FIRSTUSERFONT].name != NULL)
+    {
+        DEBUGF("font id %d already being used\n", id);
+    }
+#endif
+    /* make sure the filename contains .fnt, 
+     * we dont actually use it, but require it anyway */
+    ptr = strchr(filename, '.');
+    if (!ptr || strncmp(ptr, ".fnt|", 5))
+        return WPS_ERROR_INVALID_PARAM;
+    skinfonts[id-FONT_FIRSTUSERFONT].id = -1;
+    skinfonts[id-FONT_FIRSTUSERFONT].name = filename;
     
-    memcpy(buf, filename, ptr-filename);
-    buf[ptr-filename] = '\0';
-    font_ids[id] = skin_font_load(buf);
-    
-    return font_ids[id] >= 0 ? skip_end_of_line(wps_bufptr) : WPS_ERROR_INVALID_PARAM;
+    return skip_end_of_line(wps_bufptr);
 }
     
     
@@ -804,12 +829,12 @@ static int parse_playlistview_text(struct playlistviewer *viewer,
                     taglen = i;
                 }
                 else
-                { 
+                {
                     if (tag->parse_func)
                     {
                         /* unsupported tag, reject */
                         return -1;
-                    }                   
+                    }
                     taglen = strlen(tag->name);
                     viewer->lines[line].tokens[viewer->lines[line].count++] = tag->type;
                 }
@@ -834,7 +859,7 @@ static int parse_playlistview_text(struct playlistviewer *viewer,
     }
     return text - start;
 }
-    
+
 
 static int parse_playlistview(const char *wps_bufptr,
         struct wps_token *token, struct wps_data *wps_data)
@@ -851,10 +876,10 @@ static int parse_playlistview(const char *wps_bufptr,
     viewer->start_offset = atoi(ptr+1);
     token->value.data = (void*)viewer;
     ptr = strchr(ptr+1, '|');
-    length = parse_playlistview_text(viewer, TRACK_HAS_INFO, ptr);          
+    length = parse_playlistview_text(viewer, TRACK_HAS_INFO, ptr);
     if (length < 0)
         return WPS_ERROR_INVALID_PARAM;
-    length = parse_playlistview_text(viewer, TRACK_HAS_NO_INFO, ptr+length);          
+    length = parse_playlistview_text(viewer, TRACK_HAS_NO_INFO, ptr+length);
     if (length < 0)
         return WPS_ERROR_INVALID_PARAM;
     
@@ -886,8 +911,7 @@ static int parse_viewport(const char *wps_bufptr,
     curr_line = NULL;
     if (!skin_start_new_line(skin_vp, wps_data->num_tokens))
         return WPS_ERROR_INVALID_PARAM;
-        
-    
+
     if (*ptr == 'i')
     {
         skin_vp->label = VP_INFO_LABEL;
@@ -917,7 +941,7 @@ static int parse_viewport(const char *wps_bufptr,
     /* format: %V|x|y|width|height|font|fg_pattern|bg_pattern| */
     if (!(ptr = viewport_parse_viewport(vp, curr_screen, ptr, '|')))
         return WPS_ERROR_INVALID_PARAM;
-        
+
     /* Check for trailing | */
     if (*ptr != '|')
         return WPS_ERROR_INVALID_PARAM;
@@ -929,14 +953,6 @@ static int parse_viewport(const char *wps_bufptr,
     }
     else
         vp->flags &= ~VP_FLAG_ALIGN_RIGHT; /* ignore right-to-left languages */
-
-#ifdef HAVE_REMOTE_LCD
-    if (vp->font == FONT_UI && curr_screen == SCREEN_REMOTE)
-        vp->font = FONT_UI_REMOTE;
-    else
-#endif
-    if (vp->font > FONT_UI)
-        vp->font = font_ids[vp->font - FONT_UI];
 
     struct skin_token_list *list = new_skin_token_list_item(NULL, skin_vp);
     if (!list)
@@ -960,9 +976,8 @@ static int parse_image_special(const char *wps_bufptr,
 
     pos = strchr(wps_bufptr + 1, '|');
     newline = strchr(wps_bufptr, '\n');
-    
+
     error = (pos > newline);
-        
 
 #if LCD_DEPTH > 1
     if (token->type == WPS_TOKEN_IMAGE_BACKDROP)
@@ -1093,6 +1108,8 @@ static int parse_timeout(const char *wps_bufptr,
             case WPS_TOKEN_SUBLINE_TIMEOUT:
                 return -1;
             case WPS_TOKEN_BUTTON_VOLUME:
+            case WPS_TOKEN_TRACK_STARTING:
+            case WPS_TOKEN_TRACK_ENDING:
                 val = 10;
                 break;
         }
@@ -1127,11 +1144,6 @@ static int parse_progressbar(const char *wps_bufptr,
         return WPS_ERROR_INVALID_PARAM;
 
     struct viewport *vp = &curr_vp->vp;
-#ifndef __PCTOOL__
-    int font_height = font_get(vp->font)->height;
-#else
-    int font_height = 8;
-#endif
     /* we need to know what line number (viewport relative) this pb is,
      * so count them... */
     int line_num = -1;
@@ -1190,7 +1202,18 @@ static int parse_progressbar(const char *wps_bufptr,
         pb->height = height;
     }
     else
-        pb->height = font_height;
+    {
+        if (vp->font > FONT_UI)
+            pb->height = -1; /* calculate at display time */
+        else
+        {
+#ifndef __PCTOOL__
+            pb->height = font_get(vp->font)->height;
+#else
+            pb->height = 8;
+#endif
+        }
+    }
 
     if (LIST_VALUE_PARSED(set, PB_Y)) /* y */
         pb->y = y;
@@ -1365,7 +1388,7 @@ static int parse_albumart_load(const char *wps_bufptr,
         aa->height = 0;
     else if (aa->height > LCD_HEIGHT)
         aa->height = LCD_HEIGHT;
-        
+
     if (swap_for_rtl)
         aa->x = LCD_WIDTH - (aa->x + aa->width);
 
@@ -1478,6 +1501,7 @@ static int parse_touchregion(const char *wps_bufptr,
     region->width = w;
     region->height = h;
     region->wvp = curr_vp;
+    region->armed = false;
 
     if(!strncmp(pb_string, action, sizeof(pb_string)-1)
         && *(action + sizeof(pb_string)-1) == '|')
@@ -1667,7 +1691,7 @@ static int check_feature_tag(const char *wps_bufptr, const int type)
             return 0;
 #else
             return find_false_branch(wps_bufptr);
-#endif          
+#endif
         default: /* not a tag we care about, just don't skip */
             return 0;
     }
@@ -1927,7 +1951,10 @@ static bool wps_parse(struct wps_data *data, const char *wps_bufptr, bool debug)
 
 #if defined(DEBUG) || defined(SIMULATOR)
     if (debug)
+    {
         print_debug_info(data, fail, line_number);
+        debug_skin_usage();
+    }
 #else
     (void)debug;
 #endif
@@ -2012,6 +2039,7 @@ static bool load_skin_bmp(struct wps_data *wps_data, struct bitmap *bitmap, char
     else
     {
         /* Abort if we can't load an image */
+        DEBUGF("Couldn't load '%s'\n", img_path);
         return false;
     }
 }
@@ -2057,14 +2085,71 @@ static bool load_skin_bitmaps(struct wps_data *wps_data, char *bmpdir)
     if (wps_data->backdrop)
     {
         bool needed = wps_data->backdrop[0] != '-';
-        wps_data->backdrop = skin_backdrop_load(wps_data->backdrop, 
-                                               bmpdir, curr_screen);
+        wps_data->backdrop = skin_backdrop_load(wps_data->backdrop,
+                                                bmpdir, curr_screen);
         if (!wps_data->backdrop && needed)
             retval = false;
     }
 #endif /* has backdrop support */
 
     return retval;
+}
+
+static bool skin_load_fonts(struct wps_data *data)
+{
+    /* don't spit out after the first failue to aid debugging */
+    bool success = true;
+    struct skin_token_list *vp_list;
+    int font_id;
+    /* walk though each viewport and assign its font */
+    for(vp_list = data->viewports; vp_list; vp_list = vp_list->next)
+    {
+        /* first, find the viewports that have a non-sys/ui-font font */
+        struct skin_viewport *skin_vp =
+                (struct skin_viewport*)vp_list->token->value.data;
+        struct viewport *vp = &skin_vp->vp;
+
+
+        if (vp->font <= FONT_UI)
+        {   /* the usual case -> built-in fonts */
+#ifdef HAVE_REMOTE_LCD
+            if (vp->font == FONT_UI)
+                vp->font += curr_screen;
+#endif
+            continue;
+        }
+        font_id = vp->font;
+
+        /* now find the corresponding skin_font */
+        struct skin_font *font = &skinfonts[font_id-FONT_FIRSTUSERFONT];
+        if (!font->name)
+        {
+            DEBUGF("font %d not specified\n", font_id);
+            success = false;
+            continue;
+        }
+
+        /* load the font - will handle loading the same font again if
+         * multiple viewports use the same */
+        if (font->id < 0)
+        {
+            char *dot = strchr(font->name, '.');
+            *dot = '\0';
+            font->id = skin_font_load(font->name);
+        }
+
+        if (font->id < 0)
+        {
+            DEBUGF("Unable to load font %d: '%s.fnt'\n",
+                    font_id, font->name);
+            success = false;
+            continue;
+        }
+
+        /* finally, assign the font_id to the viewport */
+        vp->font = font->id;
+    }
+    return success;
 }
 
 #endif /* HAVE_LCD_BITMAP */
@@ -2074,7 +2159,7 @@ static bool load_skin_bitmaps(struct wps_data *wps_data, char *bmpdir)
 bool skin_data_load(enum screen_type screen, struct wps_data *wps_data,
                     const char *buf, bool isfile)
 {
-
+    char *wps_buffer = NULL;
     if (!wps_data || !buf)
         return false;
 #ifdef HAVE_ALBUMART
@@ -2089,8 +2174,23 @@ bool skin_data_load(enum screen_type screen, struct wps_data *wps_data,
         old_aa.width = wps_data->albumart->width;
     }
 #endif
+#ifdef HAVE_LCD_BITMAP
+    int i;
+    for (i=0;i<MAXUSERFONTS;i++)
+    {
+        skinfonts[i].id = -1;
+        skinfonts[i].name = NULL;
+    }
+#endif
+#ifdef DEBUG_SKIN_ENGINE
+    if (isfile && debug_wps)
+    {
+        DEBUGF("\n=====================\nLoading '%s'\n=====================\n", buf);
+    }
+#endif
 
     skin_data_reset(wps_data);
+    wps_data->wps_loaded = false;
     curr_screen = screen;
     
     /* alloc default viewport, will be fixed up later */
@@ -2110,27 +2210,15 @@ bool skin_data_load(enum screen_type screen, struct wps_data *wps_data,
     curr_vp->lines         = NULL;
     
     viewport_set_defaults(&curr_vp->vp, screen);
+#ifdef HAVE_LCD_BITMAP
+    curr_vp->vp.font = FONT_UI;
+#endif
 
     curr_line = NULL;
     if (!skin_start_new_line(curr_vp, 0))
         return false;
 
-    if (!isfile)
-    {
-        if (wps_parse(wps_data, buf, false))
-        {
-#ifdef HAVE_LCD_BITMAP
-            /* load the backdrop */
-            if (!load_skin_bitmaps(wps_data, BACKDROP_DIR)) {
-                skin_data_reset(wps_data);
-                return false;
-            }
-#endif
-            return true;
-        }
-        return false;
-    }
-    else
+    if (isfile)
     {
         int fd = open_utf8(buf, O_RDONLY);
 
@@ -2139,7 +2227,7 @@ bool skin_data_load(enum screen_type screen, struct wps_data *wps_data,
 
         /* get buffer space from the plugin buffer */
         size_t buffersize = 0;
-        char *wps_buffer = (char *)plugin_get_buffer(&buffersize);
+        wps_buffer = (char *)plugin_get_buffer(&buffersize);
 
         if (!wps_buffer)
             return false;
@@ -2156,55 +2244,62 @@ bool skin_data_load(enum screen_type screen, struct wps_data *wps_data,
                 wps_buffer[start] = 0;
             }
         }
-
         close(fd);
-
         if (start <= 0)
             return false;
-
-        /* parse the WPS source */
-        if (!wps_parse(wps_data, wps_buffer, true)) {
-            skin_data_reset(wps_data);
-            return false;
-        }
-
-        wps_data->wps_loaded = true;
+    }
+    else
+    {
+        wps_buffer = (char*)buf;
+    }
+    /* parse the WPS source */
+    if (!wps_parse(wps_data, wps_buffer, isfile)) {
+        skin_data_reset(wps_data);
+        return false;
+    }
 
 #ifdef HAVE_LCD_BITMAP
+    char bmpdir[MAX_PATH];
+    if (isfile)
+    {
         /* get the bitmap dir */
-        char bmpdir[MAX_PATH];
         char *dot = strrchr(buf, '.');
-
         strlcpy(bmpdir, buf, dot - buf + 1);
-
-        /* load the bitmaps that were found by the parsing */
-        if (!load_skin_bitmaps(wps_data, bmpdir)) {
-            skin_data_reset(wps_data);
-            wps_data->wps_loaded = false;
-            return false;
-        }
+    }
+    else
+    {
+        snprintf(bmpdir, MAX_PATH, "%s", BACKDROP_DIR);
+    }
+    /* load the bitmaps that were found by the parsing */
+    if (!load_skin_bitmaps(wps_data, bmpdir) ||
+        !skin_load_fonts(wps_data)) 
+    {
+        skin_data_reset(wps_data);
+        return false;
+    }
 #endif
 #if defined(HAVE_ALBUMART) && !defined(__PCTOOL__)
-        status = audio_status();
-        if (status & AUDIO_STATUS_PLAY)
+    status = audio_status();
+    if (status & AUDIO_STATUS_PLAY)
+    {
+        struct skin_albumart *aa = wps_data->albumart;
+        if (aa && ((aa->state && !old_aa.state) ||
+            (aa->state &&
+            (((old_aa.height != aa->height) ||
+            (old_aa.width != aa->width))))))
         {
-            struct skin_albumart *aa = wps_data->albumart;
-            if (aa && ((aa->state && !old_aa.state) ||
-                (aa->state &&
-                (((old_aa.height != aa->height) ||
-                (old_aa.width != aa->width))))))
-            {
-                curtrack = audio_current_track();
-                offset = curtrack->offset;
-                audio_stop();
-                if (!(status & AUDIO_STATUS_PAUSE))
-                    audio_play(offset);
-            }
+            curtrack = audio_current_track();
+            offset = curtrack->offset;
+            audio_stop();
+            if (!(status & AUDIO_STATUS_PAUSE))
+                audio_play(offset);
         }
+    }
 #endif
-#if defined(DEBUG) || defined(SIMULATOR)
+    wps_data->wps_loaded = true;
+#ifdef DEBUG_SKIN_ENGINE
+    if (isfile && debug_wps)
         debug_skin_usage();
 #endif
-        return true;
-    }
+    return true;
 }

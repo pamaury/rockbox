@@ -420,7 +420,6 @@ void iap_handlepkt(void)
                 {
                     global_settings.playlist_shuffle = 1;
                     settings_save();
-                    settings_apply(false);
                     if (audio_status() & AUDIO_STATUS_PLAY)
                         playlist_randomise(NULL, current_tick, true);
                 }
@@ -428,7 +427,6 @@ void iap_handlepkt(void)
                 {
                     global_settings.playlist_shuffle = 0;
                     settings_save();
-                    settings_apply(false);
                     if (audio_status() & AUDIO_STATUS_PLAY)
                         playlist_sort(NULL, true);
                 }
@@ -451,7 +449,6 @@ void iap_handlepkt(void)
                         global_settings.repeat_mode = REPEAT_ALL;
 
                 settings_save();
-                settings_apply(false);
                 if (audio_status() & AUDIO_STATUS_PLAY)
                 audio_flush_and_reload_tracks();
             }
@@ -716,7 +713,6 @@ void iap_handlepkt(void)
                 {
                     global_settings.playlist_shuffle = 1;
                     settings_save();
-                    settings_apply(false);
                     if (audio_status() & AUDIO_STATUS_PLAY)
                         playlist_randomise(NULL, current_tick, true);
                 }
@@ -724,7 +720,6 @@ void iap_handlepkt(void)
                 {
                     global_settings.playlist_shuffle = 0;
                     settings_save();
-                    settings_apply(false);
                     if (audio_status() & AUDIO_STATUS_PLAY)
                         playlist_sort(NULL, true);
                 }
@@ -762,7 +757,6 @@ void iap_handlepkt(void)
                 if (oldmode != global_settings.repeat_mode)
                 {
                     settings_save();
-                    settings_apply(false);
                     if (audio_status() & AUDIO_STATUS_PLAY)
                         audio_flush_and_reload_tracks();
                 }
@@ -772,10 +766,13 @@ void iap_handlepkt(void)
                 iap_send_pkt(data, sizeof(data));
                 break;
             }        
-            /* Get Max Screen Size for Picture Upload??? */
+            /* Get Screen Size */
             case 0x0033:
             {
-                unsigned char data[] = {0x04, 0x00, 0x34, 0x01, 0x36, 0x00, 0xA8, 0x01};
+                unsigned char data[] = {0x04, 0x00, 0x34,
+                                        LCD_WIDTH >> 8, LCD_WIDTH & 0xff,
+                                        LCD_HEIGHT >> 8, LCD_HEIGHT & 0xff,
+                                        0x01};
                 iap_send_pkt(data, sizeof(data));
                 break;
             }

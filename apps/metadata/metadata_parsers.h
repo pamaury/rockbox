@@ -42,4 +42,7 @@ bool get_asap_metadata(int fd, struct mp3entry* id3);
 bool get_rm_metadata(int fd, struct mp3entry* id3);
 bool get_nsf_metadata(int fd, struct mp3entry* id3);
 bool get_oma_metadata(int fd, struct mp3entry* id3);
-
+bool get_smaf_metadata(int fd, struct mp3entry* id3);
+bool get_au_metadata(int fd, struct mp3entry* id3);
+bool get_vox_metadata(int fd, struct mp3entry* id3);
+bool get_wave64_metadata(int fd, struct mp3entry* id3);

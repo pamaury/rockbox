@@ -149,6 +149,7 @@ void RbUtilQt::shutdown(void)
     // object destruction -- the trace object could already be destroyed.
     // Fixes segfaults on exit.
     qInstallMsgHandler(0);
+    SysTrace::save();
     this->close();
 }
 
@@ -393,7 +394,8 @@ void RbUtilQt::updateManual()
         QString manual= SystemInfo::value(SystemInfo::CurManual).toString();
 
         if(manual == "")
-            manual = "rockbox-" + RbSettings::value(RbSettings::Platform).toString();
+            manual = "rockbox-"
+                + SystemInfo::value(SystemInfo::CurBuildserverModel).toString();
         QString pdfmanual;
         pdfmanual = SystemInfo::value(SystemInfo::ManualUrl).toString()
                             + "/" + manual + ".pdf";
@@ -1052,7 +1054,8 @@ void RbUtilQt::downloadManual(void)
 
     QString manual = SystemInfo::value(SystemInfo::CurManual).toString();
     if(manual.isEmpty())
-        manual = "rockbox-" + RbSettings::value(RbSettings::Platform).toString();
+        manual = "rockbox-"
+            + SystemInfo::value(SystemInfo::CurBuildserverModel).toString();
 
     QString date = ServerInfo::value(ServerInfo::DailyDate).toString();
 
@@ -1257,7 +1260,7 @@ void RbUtilQt::downloadUpdateDone(bool error)
     else {
         QString toParse(update->readAll());
         
-        QRegExp searchString("<a[^>]*>(rbutilqt[^<]*)</a>");
+        QRegExp searchString("<a[^>]*>([a-zA-Z]+[^<]*)</a>");
         QStringList rbutilList;
         int pos = 0;
         while ((pos = searchString.indexIn(toParse, pos)) != -1) 

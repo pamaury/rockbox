@@ -51,10 +51,13 @@ enum {
 #ifdef HAVE_REMOTE_LCD
     FONT_UI_REMOTE, /* UI font for remote LCD */
 #endif
-    SYSTEMFONTCOUNT /* Number of fonts reserved for the system and ui */
+    SYSTEMFONTCOUNT, /* Number of fonts reserved for the system and ui */
+    FONT_FIRSTUSERFONT = 2
 };
+#define MAXUSERFONTS 8
 
-#define MAXFONTS 10
+/* SYSFONT, FONT_UI, FONT_UI_REMOTE + MAXUSERFONTS fonts in skins */
+#define MAXFONTS (SYSTEMFONTCOUNT + MAXUSERFONTS)
 
 /*
  * .fnt loadable font file format definition
@@ -112,7 +115,7 @@ struct font {
 };
 
 /* font routines*/
-void font_init(void);
+void font_init(void) INIT_ATTR;
 #ifdef HAVE_REMOTE_LCD
 /* Load a font into the special remote ui font slot */
 int font_load_remoteui(const char* path);

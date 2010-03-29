@@ -43,9 +43,10 @@
 #    les entrées vocales par Simon Descarpentries (Siltaar) <siltaar chez fdn.fr> Mar 07)
 #    
 #    Refonte totale du fichier par Mustapha Senhaji (Moos) <moos75 AT gmail.com>
+#
 #    Nov 2005, Avr 2006, Mai 2006, Juil 2006, Oct 2006, Dec 2006, Mar 2007, Sep 2007,
 #    Oct 2007, Nov 2007, Dec 2007, Jan 2008, Avril 2008, Août 2008, Oct 2008
-#    Dec 2008, Fév 2009, Août 2009, Nov 2009
+#    Dec 2008, Fév 2009, Août 2009, Nov 2009, Fev 2010
 #
 <phrase>
   id: LANG_SET_BOOL_YES
@@ -296,6 +297,7 @@
     samsungyh*,ipod*,iaudiox5,iaudiom5,gigabeat*,sansae200*,sansac200*,iriverh10,iriverh10_5gb,mrobe100,sansaclip*,sansafuze*: "SELECT = Yes"
     mrobe500: "PLAY, POWER, or top-right = Yes"
     archosplayer: "(PLAY/STOP)"
+    vibe500: "OK = Yes"
   </source>
   <dest>
     *: "PLAY = Oui"
@@ -304,6 +306,7 @@
     samsungyh*,ipod*,iaudiox5,iaudiom5,gigabeat*,sansae200*,sansac200*,iriverh10,iriverh10_5gb,mrobe100,sansaclip*,sansafuze*: "SELECT = Oui"
     mrobe500: "PLAY ou POWER = Oui"
     archosplayer: "(PLAY/STOP)"
+    vibe500: "OK = Oui"
   </dest>
   <voice>
     *: ""
@@ -2419,7 +2422,7 @@
     iriverh100,iriverh120,iriverh300: "Building database... %d found (STOP to return)"
     ipod*: "Building database... %d found (PREV to return)"
     iaudiox5,iaudiom5,gigabeat*,mrobe100: "Building database... %d found (LEFT to return)"
-    iriverh10,iriverh10_5gb,sansae200*,sansac200*,sansafuze*: "Building database... %d found (PREV to return)"
+    iriverh10,iriverh10_5gb,sansae200*,sansac200*,sansafuze*,vibe500: "Building database... %d found (PREV to return)"
     gogearsa9200: "Building database... %d found (REW to return)"
   </source>
   <dest>
@@ -2427,7 +2430,7 @@
     iriverh100,iriverh120,iriverh300: "Création base de données... %d trouvés (STOP = retour)"
     ipod*: "Création base de données... %d trouvés (PREV = retour)"
     iaudiox5,iaudiom5,gigabeat*,mrobe100: "Création base de données... %d trouvés (LEFT = retour)"
-    iriverh10,iriverh10_5gb,sansae200*,sansac200*,sansafuze*: "Création base de données... %d trouvés (PREV = retour)"
+    iriverh10,iriverh10_5gb,sansae200*,sansac200*,sansafuze*,vibe500: "Création base de données... %d trouvés (PREV = retour)"
     gogearsa9200: "Création base de données... %d trouvés (REW = retour)"
   </dest>
   <voice>
@@ -4183,6 +4186,7 @@
     iriverh100,iriverh120,iriverh300: "NAVI = Set"
     ipod*,iaudiox5,iaudiom5,iriverh10,iriverh10_5gb,sansae200*,sansac200*,gigabeat*,mrobe100,sansaclip*,sansafuze*: "SELECT = Set"
     gogearsa9200: "PLAY = Set"
+    vibe500: "OK = Set"
   </source>
   <dest>
     *: none
@@ -4191,6 +4195,7 @@
     iriverh100,iriverh120,iriverh300: "NAVI = Valider"
     ipod*,iaudiox5,iaudiom5,iriverh10,iriverh10_5gb,sansae200*,sansac200*,gigabeat*,mrobe100,sansaclip*,sansafuze*: "SELECT = Valider"
     gogearsa9200: "PLAY = Valider"
+    vibe500: "OK = Valider"
   </dest>
   <voice>
     *: none
@@ -4213,6 +4218,7 @@
     mrobe100: "DISPLAY = Revert"
     gigabeats: "BACK = Revert"
     gogearsa9200: "LEFT = Revert"
+    vibe500: "CANCEL = Revert"
   </source>
   <dest>
     *: none
@@ -4226,6 +4232,7 @@
     mrobe100: "DISPLAY = Annuler"
     gigabeats: "BACK = Annuler"
     gogearsa9200: "LEFT = Annuler"
+    vibe500: "C = Annuler"
   </dest>
   <voice>
     *: none
@@ -5027,7 +5034,7 @@
   desc: "talkbox" mode for directories + files
   user: core
   <source>
-    *: ".talk mp3 clip"
+    *: ".talk Clip"
   </source>
   <dest>
     *: "En station"
@@ -8361,14 +8368,14 @@
     recording: "The disk is full. Press OFF to continue."
     iriverh100,iriverh120,iriverh300: "The disk is full. Press STOP to continue."
     iaudiom5,iaudiox5: "The disk is full. Press POWER to continue."
-    sansae200*,sansac200*: "The disk is full. Press PREV to continue."
+    sansae200*,sansac200*,vibe500: "The disk is full. Press PREV to continue."
   </source>
   <dest>
     *: none
     recording: "Disque plein. Presser OFF pour continuer."
     iriverh100,iriverh120,iriverh300: "Disque plein. Presser STOP pour continuer."
     iaudiom5,iaudiox5: "Disque plein. Presser POWER pour continuer."
-    sansae200*,sansac200*: "Disque plein. Presser PREV pour continuer."
+    sansae200*,sansac200*,vibe500: "Disque plein. Presser PREV pour continuer."
   </dest>
   <voice>
     *: none
@@ -8463,7 +8470,7 @@
     archosplayer,iriverh100,iriverh120,iriverh300: "STOP to abort"
     ipod*: "PLAY/PAUSE to abort"
     iaudiox5,iaudiom5: "Long PLAY to abort"
-    iriverh10,iriverh10_5gb,sansae200*,sansac200*: "PREV to abort"
+    iriverh10,iriverh10_5gb,sansae200*,sansac200*,vibe500: "PREV to abort"
     gigabeats: "BACK to abort"
     gigabeatfx: "POWER to abort"
   </source>
@@ -8472,7 +8479,7 @@
     archosplayer,iriverh100,iriverh120,iriverh300: "STOP pour Annuler"
     ipod*: "PLAY/PAUSE pour Annuler"
     iaudiox5,iaudiom5: "Long PLAY pour Annuler"
-    iriverh10,iriverh10_5gb,sansae200*,sansac200*: "PREV pour Annuler"
+    iriverh10,iriverh10_5gb,sansae200*,sansac200*,vibe500: "PREV pour Annuler"
     gigabeats: "BACK pour Annuler"
     gigabeatfx: "POWER pour Annuler"
   </dest>
@@ -12616,15 +12623,15 @@
   user: core
   <source>
     *: none
-    usb_hid: "USB Keypad Mode"
+    usb_hid: "USB Keypad"
   </source>
   <dest>
     *: none
-    usb_hid: "Mode clavier USB"
+    usb_hid: "Clavier USB"
   </dest>
   <voice>
     *: none
-    usb_hid: "Mode clavier USB"
+    usb_hid: "Clavier USB"
   </voice>
 </phrase>
 <phrase>
@@ -12633,15 +12640,15 @@
   user: core
   <source>
     *: none
-    usb_hid: "Multimedia Mode"
+    usb_hid: "Multimedia"
   </source>
   <dest>
     *: none
-    usb_hid: "Mode Multimédia"
+    usb_hid: "Multimédia"
   </dest>
   <voice>
     *: none
-    usb_hid: "Mode Multimédia"
+    usb_hid: "Multimédia"
   </voice>
 </phrase>
 <phrase>
@@ -12650,15 +12657,15 @@
   user: core
   <source>
     *: none
-    usb_hid: "Presentation Mode"
+    usb_hid: "Presentation"
   </source>
   <dest>
     *: none
-    usb_hid: "Mode Présentation"
+    usb_hid: "Présentation"
   </dest>
   <voice>
     *: none
-    usb_hid: "Mode Présentation"
+    usb_hid: "Présentation"
   </voice>
 </phrase>
 <phrase>
@@ -12667,15 +12674,15 @@
   user: core
   <source>
     *: none
-    usb_hid: "Browser Mode"
+    usb_hid: "Browser"
   </source>
   <dest>
     *: none
-    usb_hid: "Mode Navigateur"
+    usb_hid: "Navigateur"
   </dest>
   <voice>
     *: none
-    usb_hid: "Mode Navigateur"
+    usb_hid: "Navigateur"
   </voice>
 </phrase>
 <phrase>
@@ -12684,15 +12691,15 @@
   user: core
   <source>
     *: none
-    usb_hid: "Mouse Mode"
+    usb_hid: "Mouse"
   </source>
   <dest>
     *: none
-    usb_hid: "Mode Souris"
+    usb_hid: "Souris"
   </dest>
   <voice>
     *: none
-    usb_hid: "Mouse Souris"
+    usb_hid: "Souris"
   </voice>
 </phrase>
 <phrase>
@@ -13242,7 +13249,7 @@
   desc: browse for the base skin in theme settings
   user: core
   <source>
-    *: none
+    *:none
     lcd_bitmap: "Base Skin"
   </source>
   <dest>
@@ -13259,7 +13266,7 @@
   desc: browse for the base skin in theme settings
   user: core
   <source>
-    *: none
+    *:none
     lcd_bitmap: "Remote Base Skin"
   </source>
   <dest>
@@ -13269,5 +13276,73 @@
   <voice>
     *: none
     lcd_bitmap: "Habillage télécommande"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_MAIN_SCREEN
+  desc: in the main menu
+  user: core
+  <source>
+    *:none
+    remote: "Main Screen"
+  </source>
+  <dest>
+    *:none
+    remote: "Ecran principal"
+  </dest>
+  <voice>
+    *:none
+    remote: "écran principal"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_REMOTE_SCREEN
+  desc: in the main menu
+  user: core
+  <source>
+    *:none
+    remote: "Remote Screen"
+  </source>
+  <dest>
+    *:none
+    remote: "Ecran télécommande"
+  </dest>
+  <voice>
+    *:none
+    remote: "écran télécommande"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_RECORDING_HISTOGRAM_INTERVAL
+  desc: in record settings menu
+  user: core
+  <source>
+    *: none
+    recording_histogram: "Histogram interval"
+  </source>
+  <dest>
+    *: none
+    recording_histogram: "Intervalle de l'histogramme"
+  </dest>
+  <voice>
+    *: none
+    recording_histogram: "Intervalle de l'histogramme"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_LINEOUT_ONOFF
+  desc: in system settings menu
+  user: core
+  <source>
+    *: none
+    lineout_poweroff: "Line Out"
+  </source>
+  <dest>
+    *: none
+    lineout_poweroff: "Sortie audio"
+  </dest>
+  <voice>
+    *: none
+    lineout_poweroff: "Sortie audio"
   </voice>
 </phrase>

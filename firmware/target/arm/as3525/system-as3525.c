@@ -111,6 +111,8 @@ struct vec_int_src vec_int_srcs[] =
     { INT_SRC_TIMER2, INT_TIMER2 },
     { INT_SRC_DMAC, INT_DMAC },
     { INT_SRC_NAND, INT_NAND },
+    { INT_SRC_I2C_AUDIO, INT_I2C_AUDIO },
+    { INT_SRC_AUDIO, INT_AUDIO },
 #ifdef HAVE_MULTIDRIVE
     { INT_SRC_MCI0, INT_MCI0 },
 #endif
@@ -161,7 +163,6 @@ void fiq_handler(void)
     );
 }
 
-#if (CONFIG_CPU == AS3525) /* not v2 */
 #if defined(BOOTLOADER)
 static void sdram_delay(void)
 {
@@ -207,7 +208,7 @@ static void sdram_init(void)
 #define MEMORY_MODEL 0x21
 
 #elif defined(SANSA_E200V2) || defined(SANSA_FUZE) || defined(SANSA_CLIPV2) \
-    || defined(SANSA_CLIPPLUS)
+    || defined(SANSA_CLIPPLUS) || defined(SANSA_FUZEV2)
 /* 16 bits external bus, high performance SDRAM, 64 Mbits = 8 Mbytes */
 #define MEMORY_MODEL 0x5
 
@@ -234,50 +235,18 @@ static void sdram_init(void)
 
     MPMC_DYNAMIC_CONFIG_0 |= (1<<19); /* buffer enable */
 }
-#else   /* !BOOTLOADER */
-void memory_init(void)
-{
-    ttb_init();
-    /* map every region to itself, uncached */
-    map_section(0, 0, 4096, CACHE_NONE);
-
-    /* IRAM */
-    map_section(0, IRAM_ORIG, 1, CACHE_ALL);
-    map_section(0, UNCACHED_ADDR(IRAM_ORIG), 1, CACHE_NONE);
-
-    /* DRAM */
-    map_section(0x30000000, DRAM_ORIG, MEMORYSIZE, CACHE_ALL);
-    map_section(0x30000000, UNCACHED_ADDR(DRAM_ORIG), MEMORYSIZE, CACHE_NONE);
-
-    /* map 1st mbyte of DRAM at 0x0 to have exception vectors available */
-    map_section(0x30000000, 0, 1, CACHE_ALL);
-
-    enable_mmu();
-}
 #endif /* BOOTLOADER */
-#endif /* CONFIG_CPU == AS3525 (not v2) */
 
 void system_init(void)
 {
 #if CONFIG_CPU == AS3525v2
-    /* Init procedure isn't fully understood yet
-     * CCU_* registers differ from AS3525
-     */
-    unsigned int reset_loops = 640;
-
     CCU_SRC = 0x57D7BF0;
-    while(reset_loops--)
-        CCU_SRL = CCU_SRL_MAGIC_NUMBER;
-    CCU_SRC = CCU_SRL = 0;
-
-    CGU_PERI &= ~0x7f;      /* pclk 24 MHz */
-    CGU_PERI |= ((CLK_DIV(AS3525_PLLA_FREQ, AS3525_PCLK_FREQ) - 1) << 2)
-                | 1; /* clk_in = PLLA */
 #else
-    unsigned int reset_loops = 640;
-
     CCU_SRC = 0x1fffff0
         & ~CCU_SRC_IDE_EN; /* FIXME */
+#endif
+
+    unsigned int reset_loops = 640;
     while(reset_loops--)
         CCU_SRL = CCU_SRL_MAGIC_NUMBER;
     CCU_SRC = CCU_SRL = 0;
@@ -285,7 +254,9 @@ void system_init(void)
     CCU_SCON = 1; /* AHB master's priority configuration :
                      TIC (Test Interface Controller) > DMA > USB > IDE > ARM */
 
+#if CONFIG_CPU == AS3525
     CGU_PROC = 0;           /* fclk 24 MHz */
+#endif
     CGU_PERI &= ~0x7f;      /* pclk 24 MHz */
 
     CGU_PLLASUP = 0;        /* enable PLLA */
@@ -298,12 +269,15 @@ void system_init(void)
     while(!(CGU_INTCTRL & (1<<1)));           /* wait until PLLB is locked */
 #endif
 
+#if CONFIG_CPU == AS3525
     /*  Set FCLK frequency */
     CGU_PROC = ((AS3525_FCLK_POSTDIV << 4) |
                 (AS3525_FCLK_PREDIV  << 2) |
                  AS3525_FCLK_SEL);
+#endif
+
     /*  Set PCLK frequency */
-    CGU_PERI = ((CGU_PERI & ~0x7F)  |       /* reset divider bits 0:6 */
+    CGU_PERI = ((CGU_PERI & ~0x7F)  |       /* reset divider & clksel bits */
                  (AS3525_PCLK_DIV0 << 2) |
                  (AS3525_PCLK_DIV1 << 6) |
                   AS3525_PCLK_SEL);
@@ -317,8 +291,6 @@ void system_init(void)
 #ifdef BOOTLOADER
     sdram_init();
 #endif  /* BOOTLOADER */
-
-#endif /* CONFIG_CPU == AS3525v2 */
 
 #if 0 /* the GPIO clock is already enabled by the dualboot function */
     CGU_PERI |= CGU_GPIO_CLOCK_ENABLE;
@@ -336,7 +308,7 @@ void system_init(void)
 #ifndef BOOTLOADER
     /*  Initialize power management settings */
     ascodec_write(AS3514_CVDD_DCDC3, AS314_CP_DCDC3_SETTING);
-#ifdef CONFIG_TUNER
+#if CONFIG_TUNER
     fmradio_i2c_init();
 #endif
 #endif /* !BOOTLOADER */

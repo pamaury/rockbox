@@ -20,7 +20,6 @@
  *
  ****************************************************************************/
 #include "codeclib.h"
-#include "pcm_common.h"
 #include "support_formats.h"
 
 /*
@@ -113,6 +112,12 @@ static bool set_format(struct pcm_format *format)
 {
     fmt = format;
 
+    if (fmt->channels == 0)
+    {
+        DEBUGF("CODEC_ERROR: channels is 0\n");
+        return false;
+    }
+
     if (fmt->bitspersample != 8)
     {
         DEBUGF("CODEC_ERROR: alaw and mulaw must have 8 bitspersample: %d\n",
@@ -120,13 +125,12 @@ static bool set_format(struct pcm_format *format)
         return false;
     }
 
-    if (fmt->totalsamples == 0)
-    {
-        fmt->bytespersample = 1;
-        fmt->totalsamples = fmt->numbytes / (fmt->bytespersample * fmt->channels);
-    }
+    fmt->bytespersample = 1;
 
-    fmt->samplesperblock = fmt->blockalign / (fmt->bytespersample * fmt->channels);
+    if (fmt->blockalign == 0)
+        fmt->blockalign = fmt->channels;
+
+    fmt->samplesperblock = fmt->blockalign / fmt->channels;
 
     /* chunksize = about 1/50[sec] data */
     fmt->chunksize = (ci->id3->frequency / (50 * fmt->samplesperblock))
@@ -135,12 +139,14 @@ static bool set_format(struct pcm_format *format)
     return true;
 }
 
-static struct pcm_pos *get_seek_pos(long seek_time,
+static struct pcm_pos *get_seek_pos(uint32_t seek_val, int seek_mode,
                                     uint8_t *(*read_buffer)(size_t *realsize))
 {
     static struct pcm_pos newpos;
-    uint32_t newblock = ((uint64_t)seek_time * ci->id3->frequency)
-                              / (1000LL * fmt->samplesperblock);
+    uint32_t newblock = (seek_mode == PCM_SEEK_TIME) ?
+                        ((uint64_t)seek_val * ci->id3->frequency / 1000LL)
+                                            / fmt->samplesperblock :
+                        seek_val / fmt->blockalign;
 
     (void)read_buffer;
     newpos.pos     = newblock * fmt->blockalign;
@@ -154,7 +160,7 @@ static int decode_alaw(const uint8_t *inbuf, size_t inbufsize,
     uint32_t i;
 
     for (i = 0; i < inbufsize; i++)
-        outbuf[i] = alaw2linear16[inbuf[i]] << 13;
+        outbuf[i] = alaw2linear16[inbuf[i]] << (PCM_OUTPUT_DEPTH - 16);
 
     *outbufsize = (fmt->channels == 2) ? (inbufsize >> 1) : inbufsize;
 
@@ -167,7 +173,7 @@ static int decode_mulaw(const uint8_t *inbuf, size_t inbufsize,
     uint32_t i;
 
     for (i = 0; i < inbufsize; i++)
-        outbuf[i] = ulaw2linear16[inbuf[i]] << 13;
+        outbuf[i] = ulaw2linear16[inbuf[i]] << (PCM_OUTPUT_DEPTH - 16);
 
     *outbufsize = (fmt->channels == 2) ? (inbufsize >> 1) : inbufsize;
 

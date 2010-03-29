@@ -34,9 +34,9 @@ PLUGIN_HEADER
     (CONFIG_KEYPAD == IPOD_1G2G_PAD)
 
 #define ROCKBLOX_OFF           (BUTTON_MENU | BUTTON_SELECT)
-#define ROCKBLOX_ROTATE_RIGHT  BUTTON_SCROLL_BACK
-#define ROCKBLOX_ROTATE_RIGHT2 (BUTTON_MENU | BUTTON_REL)
-#define ROCKBLOX_ROTATE_LEFT   BUTTON_SCROLL_FWD
+#define ROCKBLOX_ROTATE_CCW    BUTTON_SCROLL_BACK
+#define ROCKBLOX_ROTATE_CCW2   (BUTTON_MENU | BUTTON_REL)
+#define ROCKBLOX_ROTATE_CW     BUTTON_SCROLL_FWD
 #define ROCKBLOX_LEFT          BUTTON_LEFT
 #define ROCKBLOX_RIGHT         BUTTON_RIGHT
 #define ROCKBLOX_DOWN          BUTTON_PLAY
@@ -47,8 +47,8 @@ PLUGIN_HEADER
       (CONFIG_KEYPAD == IRIVER_H300_PAD)
 
 #define ROCKBLOX_OFF           BUTTON_OFF
-#define ROCKBLOX_ROTATE_RIGHT  BUTTON_UP
-#define ROCKBLOX_ROTATE_LEFT   BUTTON_SELECT
+#define ROCKBLOX_ROTATE_CCW    BUTTON_UP
+#define ROCKBLOX_ROTATE_CW     BUTTON_SELECT
 #define ROCKBLOX_DOWN          BUTTON_DOWN
 #define ROCKBLOX_LEFT          BUTTON_LEFT
 #define ROCKBLOX_RIGHT         BUTTON_RIGHT
@@ -60,8 +60,8 @@ PLUGIN_HEADER
 #elif CONFIG_KEYPAD == RECORDER_PAD
 
 #define ROCKBLOX_OFF           BUTTON_OFF
-#define ROCKBLOX_ROTATE_RIGHT  BUTTON_UP
-#define ROCKBLOX_ROTATE_LEFT   BUTTON_PLAY
+#define ROCKBLOX_ROTATE_CCW    BUTTON_UP
+#define ROCKBLOX_ROTATE_CW     BUTTON_PLAY
 #define ROCKBLOX_DOWN          BUTTON_DOWN
 #define ROCKBLOX_LEFT          BUTTON_LEFT
 #define ROCKBLOX_RIGHT         BUTTON_RIGHT
@@ -71,8 +71,8 @@ PLUGIN_HEADER
 #elif CONFIG_KEYPAD == ARCHOS_AV300_PAD
 
 #define ROCKBLOX_OFF           BUTTON_OFF
-#define ROCKBLOX_ROTATE_RIGHT  BUTTON_UP
-#define ROCKBLOX_ROTATE_LEFT   BUTTON_SELECT
+#define ROCKBLOX_ROTATE_CCW    BUTTON_UP
+#define ROCKBLOX_ROTATE_CW     BUTTON_SELECT
 #define ROCKBLOX_DOWN          BUTTON_DOWN
 #define ROCKBLOX_LEFT          BUTTON_LEFT
 #define ROCKBLOX_RIGHT         BUTTON_RIGHT
@@ -83,8 +83,8 @@ PLUGIN_HEADER
 
 #define ROCKBLOX_OFF_PRE       BUTTON_STOP
 #define ROCKBLOX_OFF           (BUTTON_STOP|BUTTON_REL)
-#define ROCKBLOX_ROTATE_RIGHT  BUTTON_PLAY
-#define ROCKBLOX_ROTATE_LEFT   (BUTTON_ON|BUTTON_PLAY)
+#define ROCKBLOX_ROTATE_CCW    BUTTON_PLAY
+#define ROCKBLOX_ROTATE_CW     (BUTTON_ON|BUTTON_PLAY)
 #define ROCKBLOX_DOWN          BUTTON_MENU
 #define ROCKBLOX_LEFT          BUTTON_LEFT
 #define ROCKBLOX_RIGHT         BUTTON_RIGHT
@@ -96,8 +96,8 @@ PLUGIN_HEADER
 
 #define ROCKBLOX_OFF_PRE       BUTTON_OFF
 #define ROCKBLOX_OFF           (BUTTON_OFF|BUTTON_REL)
-#define ROCKBLOX_ROTATE_RIGHT  BUTTON_UP
-#define ROCKBLOX_ROTATE_LEFT   (BUTTON_MENU|BUTTON_UP)
+#define ROCKBLOX_ROTATE_CCW    BUTTON_UP
+#define ROCKBLOX_ROTATE_CW     (BUTTON_MENU|BUTTON_UP)
 #define ROCKBLOX_DOWN          BUTTON_DOWN
 #define ROCKBLOX_LEFT          BUTTON_LEFT
 #define ROCKBLOX_RIGHT         BUTTON_RIGHT
@@ -108,8 +108,8 @@ PLUGIN_HEADER
 #elif CONFIG_KEYPAD == IAUDIO_X5M5_PAD
 
 #define ROCKBLOX_OFF           BUTTON_POWER
-#define ROCKBLOX_ROTATE_RIGHT  BUTTON_UP
-#define ROCKBLOX_ROTATE_LEFT   BUTTON_SELECT
+#define ROCKBLOX_ROTATE_CCW    BUTTON_UP
+#define ROCKBLOX_ROTATE_CW     BUTTON_SELECT
 #define ROCKBLOX_DOWN          BUTTON_DOWN
 #define ROCKBLOX_LEFT          BUTTON_LEFT
 #define ROCKBLOX_RIGHT         BUTTON_RIGHT
@@ -119,9 +119,9 @@ PLUGIN_HEADER
 #elif CONFIG_KEYPAD == SANSA_E200_PAD
 
 #define ROCKBLOX_OFF           BUTTON_POWER
-#define ROCKBLOX_ROTATE_RIGHT  BUTTON_SCROLL_BACK
-#define ROCKBLOX_ROTATE_RIGHT2 BUTTON_UP
-#define ROCKBLOX_ROTATE_LEFT   BUTTON_SCROLL_FWD
+#define ROCKBLOX_ROTATE_CCW    BUTTON_SCROLL_BACK
+#define ROCKBLOX_ROTATE_CCW2   BUTTON_UP
+#define ROCKBLOX_ROTATE_CW     BUTTON_SCROLL_FWD
 #define ROCKBLOX_DOWN          BUTTON_DOWN
 #define ROCKBLOX_LEFT          BUTTON_LEFT
 #define ROCKBLOX_RIGHT         BUTTON_RIGHT
@@ -131,9 +131,9 @@ PLUGIN_HEADER
 #elif CONFIG_KEYPAD == SANSA_FUZE_PAD
 
 #define ROCKBLOX_OFF           (BUTTON_HOME|BUTTON_REPEAT)
-#define ROCKBLOX_ROTATE_RIGHT  BUTTON_SCROLL_BACK
-#define ROCKBLOX_ROTATE_RIGHT2 BUTTON_UP
-#define ROCKBLOX_ROTATE_LEFT   BUTTON_SCROLL_FWD
+#define ROCKBLOX_ROTATE_CCW    BUTTON_SCROLL_BACK
+#define ROCKBLOX_ROTATE_CCW2   BUTTON_UP
+#define ROCKBLOX_ROTATE_CW     BUTTON_SCROLL_FWD
 #define ROCKBLOX_DOWN          BUTTON_DOWN
 #define ROCKBLOX_LEFT          BUTTON_LEFT
 #define ROCKBLOX_RIGHT         BUTTON_RIGHT
@@ -144,9 +144,9 @@ PLUGIN_HEADER
 #elif CONFIG_KEYPAD == SANSA_C200_PAD
 
 #define ROCKBLOX_OFF           BUTTON_POWER
-#define ROCKBLOX_ROTATE_RIGHT  BUTTON_UP
-#define ROCKBLOX_ROTATE_RIGHT2 BUTTON_VOL_DOWN
-#define ROCKBLOX_ROTATE_LEFT   BUTTON_VOL_UP
+#define ROCKBLOX_ROTATE_CCW    BUTTON_UP
+#define ROCKBLOX_ROTATE_CCW2   BUTTON_VOL_DOWN
+#define ROCKBLOX_ROTATE_CW     BUTTON_VOL_UP
 #define ROCKBLOX_DOWN          BUTTON_DOWN
 #define ROCKBLOX_LEFT          BUTTON_LEFT
 #define ROCKBLOX_RIGHT         BUTTON_RIGHT
@@ -156,9 +156,9 @@ PLUGIN_HEADER
 #elif CONFIG_KEYPAD == SANSA_CLIP_PAD
 
 #define ROCKBLOX_OFF           BUTTON_POWER
-#define ROCKBLOX_ROTATE_RIGHT  BUTTON_UP
-#define ROCKBLOX_ROTATE_RIGHT2 BUTTON_VOL_DOWN
-#define ROCKBLOX_ROTATE_LEFT   BUTTON_VOL_UP
+#define ROCKBLOX_ROTATE_CCW    BUTTON_UP
+#define ROCKBLOX_ROTATE_CCW2   BUTTON_VOL_DOWN
+#define ROCKBLOX_ROTATE_CW     BUTTON_VOL_UP
 #define ROCKBLOX_DOWN          BUTTON_DOWN
 #define ROCKBLOX_LEFT          BUTTON_LEFT
 #define ROCKBLOX_RIGHT         BUTTON_RIGHT
@@ -168,9 +168,9 @@ PLUGIN_HEADER
 #elif CONFIG_KEYPAD == SANSA_M200_PAD
 
 #define ROCKBLOX_OFF           BUTTON_POWER
-#define ROCKBLOX_ROTATE_RIGHT  BUTTON_UP
-#define ROCKBLOX_ROTATE_RIGHT2 BUTTON_VOL_DOWN
-#define ROCKBLOX_ROTATE_LEFT   BUTTON_VOL_UP
+#define ROCKBLOX_ROTATE_CCW    BUTTON_UP
+#define ROCKBLOX_ROTATE_CCW2   BUTTON_VOL_DOWN
+#define ROCKBLOX_ROTATE_CW     BUTTON_VOL_UP
 #define ROCKBLOX_DOWN          BUTTON_DOWN
 #define ROCKBLOX_LEFT          BUTTON_LEFT
 #define ROCKBLOX_RIGHT         BUTTON_RIGHT
@@ -180,8 +180,8 @@ PLUGIN_HEADER
 #elif CONFIG_KEYPAD == IRIVER_H10_PAD
 
 #define ROCKBLOX_OFF           BUTTON_POWER
-#define ROCKBLOX_ROTATE_RIGHT  BUTTON_SCROLL_UP
-#define ROCKBLOX_ROTATE_LEFT   BUTTON_REW
+#define ROCKBLOX_ROTATE_CCW    BUTTON_SCROLL_UP
+#define ROCKBLOX_ROTATE_CW     BUTTON_REW
 #define ROCKBLOX_DOWN          BUTTON_SCROLL_DOWN
 #define ROCKBLOX_LEFT          BUTTON_LEFT
 #define ROCKBLOX_RIGHT         BUTTON_RIGHT
@@ -191,8 +191,8 @@ PLUGIN_HEADER
 #elif CONFIG_KEYPAD == GIGABEAT_PAD
 
 #define ROCKBLOX_OFF           BUTTON_POWER
-#define ROCKBLOX_ROTATE_RIGHT  BUTTON_VOL_DOWN
-#define ROCKBLOX_ROTATE_LEFT   BUTTON_VOL_UP
+#define ROCKBLOX_ROTATE_CCW    BUTTON_VOL_DOWN
+#define ROCKBLOX_ROTATE_CW     BUTTON_VOL_UP
 #define ROCKBLOX_ROTATE        BUTTON_UP
 #define ROCKBLOX_DOWN          BUTTON_DOWN
 #define ROCKBLOX_LEFT          BUTTON_LEFT
@@ -203,8 +203,8 @@ PLUGIN_HEADER
 #elif CONFIG_KEYPAD == IRIVER_IFP7XX_PAD
 
 #define ROCKBLOX_OFF           BUTTON_PLAY
-#define ROCKBLOX_ROTATE_RIGHT  BUTTON_UP
-#define ROCKBLOX_ROTATE_LEFT   BUTTON_SELECT
+#define ROCKBLOX_ROTATE_CCW    BUTTON_UP
+#define ROCKBLOX_ROTATE_CW     BUTTON_SELECT
 #define ROCKBLOX_DOWN          BUTTON_DOWN
 #define ROCKBLOX_LEFT          BUTTON_LEFT
 #define ROCKBLOX_RIGHT         BUTTON_RIGHT
@@ -216,8 +216,8 @@ PLUGIN_HEADER
 
 #elif CONFIG_KEYPAD == GIGABEAT_S_PAD
 #define ROCKBLOX_OFF           BUTTON_BACK
-#define ROCKBLOX_ROTATE_RIGHT  BUTTON_VOL_DOWN
-#define ROCKBLOX_ROTATE_LEFT   BUTTON_VOL_UP
+#define ROCKBLOX_ROTATE_CCW    BUTTON_VOL_DOWN
+#define ROCKBLOX_ROTATE_CW     BUTTON_VOL_UP
 #define ROCKBLOX_ROTATE        BUTTON_UP
 #define ROCKBLOX_DOWN          BUTTON_DOWN
 #define ROCKBLOX_LEFT          BUTTON_LEFT
@@ -228,8 +228,8 @@ PLUGIN_HEADER
 #elif CONFIG_KEYPAD == MROBE100_PAD
 
 #define ROCKBLOX_OFF           BUTTON_POWER
-#define ROCKBLOX_ROTATE_RIGHT  BUTTON_MENU
-#define ROCKBLOX_ROTATE_LEFT   BUTTON_PLAY
+#define ROCKBLOX_ROTATE_CCW    BUTTON_MENU
+#define ROCKBLOX_ROTATE_CW     BUTTON_PLAY
 #define ROCKBLOX_ROTATE        BUTTON_UP
 #define ROCKBLOX_DOWN          BUTTON_DOWN
 #define ROCKBLOX_LEFT          BUTTON_LEFT
@@ -240,8 +240,8 @@ PLUGIN_HEADER
 #elif CONFIG_KEYPAD == IAUDIO_M3_PAD
 
 #define ROCKBLOX_OFF           BUTTON_RC_REC
-#define ROCKBLOX_ROTATE_RIGHT  BUTTON_RC_VOL_DOWN
-#define ROCKBLOX_ROTATE_LEFT   BUTTON_RC_VOL_UP
+#define ROCKBLOX_ROTATE_CCW    BUTTON_RC_VOL_DOWN
+#define ROCKBLOX_ROTATE_CW     BUTTON_RC_VOL_UP
 #define ROCKBLOX_DOWN          BUTTON_RC_MENU
 #define ROCKBLOX_LEFT          BUTTON_RC_REW
 #define ROCKBLOX_RIGHT         BUTTON_RC_FF
@@ -249,14 +249,15 @@ PLUGIN_HEADER
 #define ROCKBLOX_RESTART       BUTTON_RC_MODE
 
 #elif CONFIG_KEYPAD == COWON_D2_PAD
+
 #define ROCKBLOX_OFF           BUTTON_POWER
 #define ROCKBLOX_RESTART       BUTTON_MENU
 
 #elif CONFIG_KEYPAD == IAUDIO67_PAD
 
 #define ROCKBLOX_OFF           BUTTON_POWER
-#define ROCKBLOX_ROTATE_RIGHT  BUTTON_VOLDOWN
-#define ROCKBLOX_ROTATE_LEFT   BUTTON_VOLUP
+#define ROCKBLOX_ROTATE_CCW    BUTTON_VOLDOWN
+#define ROCKBLOX_ROTATE_CW     BUTTON_VOLUP
 #define ROCKBLOX_DOWN          BUTTON_STOP
 #define ROCKBLOX_LEFT          BUTTON_LEFT
 #define ROCKBLOX_RIGHT         BUTTON_RIGHT
@@ -265,8 +266,8 @@ PLUGIN_HEADER
 
 #elif CONFIG_KEYPAD == CREATIVEZVM_PAD
 #define ROCKBLOX_OFF           BUTTON_BACK
-#define ROCKBLOX_ROTATE_RIGHT  BUTTON_UP
-#define ROCKBLOX_ROTATE_LEFT   BUTTON_PLAY
+#define ROCKBLOX_ROTATE_CCW    BUTTON_UP
+#define ROCKBLOX_ROTATE_CW     BUTTON_PLAY
 #define ROCKBLOX_DOWN          BUTTON_DOWN
 #define ROCKBLOX_LEFT          BUTTON_LEFT
 #define ROCKBLOX_RIGHT         BUTTON_RIGHT
@@ -276,8 +277,8 @@ PLUGIN_HEADER
 #elif CONFIG_KEYPAD == PHILIPS_HDD1630_PAD
 
 #define ROCKBLOX_OFF           BUTTON_POWER
-#define ROCKBLOX_ROTATE_RIGHT  BUTTON_VOL_DOWN
-#define ROCKBLOX_ROTATE_LEFT   BUTTON_VOL_UP
+#define ROCKBLOX_ROTATE_CCW    BUTTON_VOL_DOWN
+#define ROCKBLOX_ROTATE_CW     BUTTON_VOL_UP
 #define ROCKBLOX_ROTATE        BUTTON_UP
 #define ROCKBLOX_DOWN          BUTTON_DOWN
 #define ROCKBLOX_LEFT          BUTTON_LEFT
@@ -288,8 +289,8 @@ PLUGIN_HEADER
 # elif CONFIG_KEYPAD == PHILIPS_SA9200_PAD
 
 #define ROCKBLOX_OFF           BUTTON_POWER
-#define ROCKBLOX_ROTATE_RIGHT  BUTTON_VOL_DOWN
-#define ROCKBLOX_ROTATE_LEFT   BUTTON_VOL_UP
+#define ROCKBLOX_ROTATE_CCW    BUTTON_VOL_DOWN
+#define ROCKBLOX_ROTATE_CW     BUTTON_VOL_UP
 #define ROCKBLOX_ROTATE        BUTTON_UP
 #define ROCKBLOX_DOWN          BUTTON_DOWN
 #define ROCKBLOX_LEFT          BUTTON_PREV
@@ -306,8 +307,8 @@ PLUGIN_HEADER
 #elif CONFIG_KEYPAD == SAMSUNG_YH_PAD
 
 #define ROCKBLOX_OFF           (BUTTON_REC|BUTTON_PLAY)
-#define ROCKBLOX_ROTATE_RIGHT  BUTTON_UP
-#define ROCKBLOX_ROTATE_LEFT   BUTTON_DOWN
+#define ROCKBLOX_ROTATE_CCW    BUTTON_UP
+#define ROCKBLOX_ROTATE_CW     BUTTON_DOWN
 #define ROCKBLOX_DOWN          BUTTON_REW
 #define ROCKBLOX_LEFT          BUTTON_LEFT
 #define ROCKBLOX_RIGHT         BUTTON_RIGHT
@@ -317,8 +318,8 @@ PLUGIN_HEADER
 #elif CONFIG_KEYPAD == PBELL_VIBE500_PAD
 
 #define ROCKBLOX_OFF           BUTTON_REC
-#define ROCKBLOX_ROTATE_RIGHT  BUTTON_PLAY
-#define ROCKBLOX_ROTATE_LEFT   BUTTON_MENU
+#define ROCKBLOX_ROTATE_CCW    BUTTON_PLAY
+#define ROCKBLOX_ROTATE_CW     BUTTON_MENU
 #define ROCKBLOX_DOWN          BUTTON_DOWN
 #define ROCKBLOX_LEFT          BUTTON_PREV
 #define ROCKBLOX_RIGHT         BUTTON_NEXT
@@ -333,11 +334,16 @@ PLUGIN_HEADER
 #ifndef ROCKBLOX_OFF
 #define ROCKBLOX_OFF           BUTTON_TOPLEFT
 #endif
-#ifndef ROCKBLOX_ROTATE_RIGHT
-#define ROCKBLOX_ROTATE_RIGHT  BUTTON_BOTTOMRIGHT
+#ifdef ROCKBLOX_ROTATE_CCW
+#define ROCKBLOX_ROTATE_CCW2  BUTTON_BOTTOMLEFT
+#else
+#define ROCKBLOX_ROTATE_CCW   BUTTON_BOTTOMLEFT
 #endif
-#ifndef ROCKBLOX_ROTATE_LEFT
-#define ROCKBLOX_ROTATE_LEFT   BUTTON_BOTTOMLEFT
+#ifdef ROCKBLOX_ROTATE_CW
+#define ROCKBLOX_ROTATE_CW2   BUTTON_BOTTOMRIGHT
+#else
+#define ROCKBLOX_ROTATE_CW    BUTTON_BOTTOMRIGHT
+#define ROCKBLOX_ROTATE_CW2   BUTTON_TOPMIDDLE
 #endif
 #ifndef ROCKBLOX_DOWN
 #define ROCKBLOX_DOWN          BUTTON_BOTTOMMIDDLE
@@ -767,12 +773,12 @@ bool resume = false;
 bool resume_file = false;
 
 /* Rockbox File System only supports full filenames inc dir */
-#define HIGH_SCORE PLUGIN_GAMES_DIR "/rockblox.score"
+#define SCORE_FILE  PLUGIN_GAMES_DIR "/rockblox.score"
 #define RESUME_FILE PLUGIN_GAMES_DIR "/rockblox.resume"
-#define MAX_HIGH_SCORES 5
+#define NUM_SCORES  5
 
 /* Default High Scores... */
-struct highscore highest[MAX_HIGH_SCORES];
+struct highscore highscores[NUM_SCORES];
 
 /* get random number from (0) to (range-1) */
 static int t_rand (int range)
@@ -825,10 +831,10 @@ static void show_highscores (void)
     int i;
     char str[25];               /* for strings */
 
-    for (i = 0; i<MAX_HIGH_SCORES; i++)
+    for (i = 0; i<NUM_SCORES; i++)
     {
         rb->snprintf (str, sizeof (str), "%06d" _SPACE "L%1d",
-                      highest[i].score, highest[i].level);
+                      highscores[i].score, highscores[i].level);
         rb->lcd_putsxy (HIGH_LABEL_X, HIGH_SCORE_Y + (10 * i), str);
     }
 }
@@ -1218,20 +1224,20 @@ static void move_down (void)
 
 static bool rockblox_help(void)
 {
-    int button;
-
-#define WORDS (sizeof help_text / sizeof (char*))
-    char *help_text[] = {
-        "Rockblox", "", "Aim", "", "Make", "the", "falling", "blocks", "of", "different",
-        "shapes", "form", "full", "rows.", "Whenever", "a", "row", "is", "completed,", "it",
-        "will", "be", "cleared", "away", "and", "you", "gain", "points."
+    static char *help_text[] = {
+        "Rockblox", "", "Aim", "",
+        "Make", "the", "falling", "blocks", "of",
+        "different", "shapes", "form", "full", "rows.",
+        "Whenever", "a", "row", "is", "completed,",
+        "it", "will", "be", "cleared", "away",
+        "and", "you", "gain", "points."
     };
-
     static struct style_text formation[]={
         { 0, TEXT_CENTER|TEXT_UNDERLINE },
         { 2, C_RED },
-        { -1, 0 }
+        LAST_STYLE_ITEM
     };
+
 #ifdef HAVE_LCD_BITMAP
     rb->lcd_setfont(FONT_UI);
 #endif
@@ -1239,17 +1245,12 @@ static bool rockblox_help(void)
     rb->lcd_set_background(LCD_BLACK);
     rb->lcd_set_foreground(LCD_WHITE);
 #endif
-    if (display_text(WORDS, help_text, formation, NULL))
+    if (display_text(ARRAYLEN(help_text), help_text, formation, NULL, true))
         return true;
-    do {
-        button = rb->button_get(true);
-        if ( rb->default_event_handler( button ) == SYS_USB_CONNECTED )
-            return true;
-    } while( ( button == BUTTON_NONE )
-            || ( button & (BUTTON_REL|BUTTON_REPEAT) ) );
 #ifdef HAVE_LCD_BITMAP
     rb->lcd_setfont(FONT_SYSFIXED);
 #endif
+
     return false;
 }
 
@@ -1287,11 +1288,7 @@ static int rockblox_menu(void)
                     return 1;
                 break;
             case 3:
-#ifdef HAVE_LCD_BITMAP
-                highscore_show(MAX_HIGH_SCORES, highest, MAX_HIGH_SCORES, true);
-#else
-                rb->splashf(2*HZ, "High Score: %d", highest[0].score);
-#endif
+                highscore_show(-1, highscores, NUM_SCORES, true);
                 break;
             case 4:
                 if (playback_control(NULL))
@@ -1367,8 +1364,8 @@ static int rockblox_loop (void)
 #if defined(ROCKBLOX_ROTATE)
             case ROCKBLOX_ROTATE:
 #endif
-            case ROCKBLOX_ROTATE_RIGHT:
-            case ROCKBLOX_ROTATE_RIGHT | BUTTON_REPEAT:
+            case ROCKBLOX_ROTATE_CCW:
+            case ROCKBLOX_ROTATE_CCW | BUTTON_REPEAT:
 #ifdef HAVE_SCROLLWHEEL
                 /* if the wheel is disabled, add an event to the stack. */
                 if(wheel_enabled == false)
@@ -1377,27 +1374,29 @@ static int rockblox_loop (void)
                 /* if it's enabled, go ahead and rotate.. */
                 if(wheel_enabled)
 #endif
+#ifdef ROCKBLOX_ROTATE_CCW2
+                /* fallback */
+            case ROCKBLOX_ROTATE_CCW2:
+#endif
                 move_block (0, 0, (rockblox_status.co + 1) % figures[rockblox_status.cf].max_or);
                 break;
 
-            case ROCKBLOX_ROTATE_LEFT:
-            case ROCKBLOX_ROTATE_LEFT | BUTTON_REPEAT:
+            case ROCKBLOX_ROTATE_CW:
+            case ROCKBLOX_ROTATE_CW | BUTTON_REPEAT:
 #ifdef HAVE_SCROLLWHEEL
                 if(wheel_enabled == false)
                     wheel_events++;
 
                 if(wheel_enabled)
 #endif
+#ifdef ROCKBLOX_ROTATE_CW2
+                /* fallback */
+            case ROCKBLOX_ROTATE_CW2:
+#endif
                 move_block (0, 0,
                             (rockblox_status.co + figures[rockblox_status.cf].max_or -
                              1) % figures[rockblox_status.cf].max_or);
                 break;
-
-#ifdef ROCKBLOX_ROTATE_RIGHT2
-            case ROCKBLOX_ROTATE_RIGHT2:
-                move_block (0, 0, (rockblox_status.co + 1) % figures[rockblox_status.cf].max_or);
-                break;
-#endif
 
             case ROCKBLOX_DOWN:
             case ROCKBLOX_DOWN | BUTTON_REPEAT:
@@ -1495,7 +1494,7 @@ enum plugin_status plugin_start (const void *parameter)
     rb->srand (*rb->current_tick);
 
     /* Load HighScore if any */
-    highscore_load(HIGH_SCORE, highest, MAX_HIGH_SCORES);
+    highscore_load(SCORE_FILE, highscores, NUM_SCORES);
 
 #if LCD_DEPTH > 1
     rb->lcd_set_backdrop(NULL);
@@ -1516,17 +1515,13 @@ enum plugin_status plugin_start (const void *parameter)
     resume_file = resume;
     while(!rockblox_loop()) {
         if(!resume) {
-            int position = highscore_update(rockblox_status.score, rockblox_status.level, "", highest,
-                MAX_HIGH_SCORES);
-            if (position == 0) {
-                rb->splash(HZ*2, "New High Score");
-            }
+            int position = highscore_update(rockblox_status.score,
+                                            rockblox_status.level, "",
+                                            highscores, NUM_SCORES);
             if (position != -1) {
-#ifdef HAVE_LCD_BITMAP
-                highscore_show(position, highest, MAX_HIGH_SCORES, true);
-#else
-                rb->splashf(2*HZ, "High Score: %d", highest[position].score);
-#endif
+                if (position == 0)
+                    rb->splash(HZ*2, "New High Score");
+                highscore_show(position, highscores, NUM_SCORES, true);
             }
         }
     }
@@ -1535,7 +1530,7 @@ enum plugin_status plugin_start (const void *parameter)
     pgfx_release();
 #endif
     /* Save user's HighScore */
-    highscore_save(HIGH_SCORE, highest, MAX_HIGH_SCORES);
+    highscore_save(SCORE_FILE, highscores, NUM_SCORES);
     backlight_use_settings(); /* backlight control in lib/helper.c */
 
     return PLUGIN_OK;

@@ -23,7 +23,7 @@
 #define _SKIN_TOKENS_H_
 
 #include <stdbool.h>
- 
+
 
 enum wps_token_type {
     
@@ -178,6 +178,8 @@ enum wps_token_type {
     WPS_TOKEN_TRACK_TIME_ELAPSED,
     WPS_TOKEN_TRACK_TIME_REMAINING,
     WPS_TOKEN_TRACK_LENGTH,
+    WPS_TOKEN_TRACK_STARTING,
+    WPS_TOKEN_TRACK_ENDING,
 
     /* Playlist */
   TOKEN_MARKER_PLAYLIST,
@@ -189,6 +191,9 @@ enum wps_token_type {
 
     /* buttons */
   TOKEN_MARKER_MISC,
+    WPS_TOKEN_DRAW_INBUILTBAR,
+    WPS_TOKEN_LIST_TITLE_TEXT,
+    WPS_TOKEN_LIST_TITLE_ICON,
     WPS_TOKEN_BUTTON_VOLUME,
     WPS_TOKEN_LASTTOUCH,
 #if (CONFIG_LED == LED_VIRTUAL) || defined(HAVE_REMOTE_LCD)
@@ -232,13 +237,12 @@ struct wps_token {
         void* data;
     } value;
 };
- 
+
 struct skin_token_list {
     struct wps_token *token;
     struct skin_token_list *next;
 };
 
 char* get_dir(char* buf, int buf_size, const char* path, int level);
- 
+
 #endif
- 

@@ -136,8 +136,7 @@
 #define CONFIG_I2C I2C_PP5020
 
 /* define this if the hardware can be powered off while charging */
-/* It is possible to do it (OF seems to do that) but the method is unknown yet */
-/* #define HAVE_POWEROFF_WHILE_CHARGING */
+#define HAVE_POWEROFF_WHILE_CHARGING
 
 /* The start address index for ROM builds */
 #define ROM_START 0x00000000
@@ -192,7 +191,7 @@
 #define MI4_FORMAT
 #define BOOTFILE_EXT "mi4"
 #define BOOTFILE "rockbox." BOOTFILE_EXT
-#define BOOTDIR "/.system"
+#define BOOTDIR "/.rockbox"
 
 #define ICODE_ATTR_TREMOR_NOT_MDCT
 

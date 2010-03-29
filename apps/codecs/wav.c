@@ -21,7 +21,6 @@
  ****************************************************************************/
 
 #include "codeclib.h"
-#include "inttypes.h"
 #include "codecs/libpcm/support_formats.h"
 
 CODEC_HEADER
@@ -38,7 +37,9 @@ CODEC_HEADER
  *
  */
 
-static int32_t samples[PCM_CHUNK_SIZE] IBSS_ATTR;
+#define PCM_SAMPLE_SIZE (4096*2)
+
+static int32_t samples[PCM_SAMPLE_SIZE] IBSS_ATTR;
 
 /* This codec support WAVE files with the following formats: */
 enum
@@ -154,7 +155,6 @@ enum codec_status codec_main(void)
 {
     int status = CODEC_OK;
     uint32_t decodedsamples;
-    uint32_t i;
     size_t n;
     int bufcount;
     int endofstream;
@@ -162,9 +162,10 @@ enum codec_status codec_main(void)
     uint8_t *wavbuf;
     off_t firstblockposn;     /* position of the first block in file */
     const struct pcm_codec *codec;
+    uint32_t size;
 
     /* Generic codec initialisation */
-    ci->configure(DSP_SET_SAMPLE_DEPTH, 28);
+    ci->configure(DSP_SET_SAMPLE_DEPTH, PCM_OUTPUT_DEPTH-1);
   
 next_track:
     if (codec_init()) {
@@ -217,11 +218,11 @@ next_track:
         }
 
         /* chunkSize */
-        i = (buf[4]|(buf[5]<<8)|(buf[6]<<16)|(buf[7]<<24));
+        size = (buf[4]|(buf[5]<<8)|(buf[6]<<16)|(buf[7]<<24));
         if (memcmp(buf, "fmt ", 4) == 0) {
-            if (i < 16) {
+            if (size < 16) {
                 DEBUGF("CODEC_ERROR: 'fmt ' chunk size=%lu < 16\n",
-                       (unsigned long)i);
+                       (unsigned long)size);
                 status = CODEC_ERROR;
                 goto done;
             }
@@ -230,26 +231,26 @@ next_track:
             /* wChannels */
             format.channels=buf[10]|(buf[11]<<8);
             /* skipping dwSamplesPerSec */
-            /* dwAvgBytesPerSec */
-            format.avgbytespersec = buf[16]|(buf[17]<<8)|(buf[18]<<16)|(buf[19]<<24);
+            /* skipping dwAvgBytesPerSec */
             /* wBlockAlign */
             format.blockalign=buf[20]|(buf[21]<<8);
             /* wBitsPerSample */
             format.bitspersample=buf[22]|(buf[23]<<8);
             if (format.formattag != WAVE_FORMAT_PCM) {
-                if (i < 18) {
+                if (size < 18) {
                     /* this is not a fatal error with some formats,
                      * we'll see later if we can't decode it */
                     DEBUGF("CODEC_WARNING: non-PCM WAVE (formattag=0x%x) "
                            "doesn't have ext. fmt descr (chunksize=%d<18).\n",
-                           (unsigned int)format.formattag, (int)i);
+                           (unsigned int)format.formattag, (int)size);
                 }
                 else
                 {
-                    format.size = buf[24]|(buf[25]<<8);
                     if (format.formattag != WAVE_FORMAT_EXTENSIBLE)
                         format.samplesperblock = buf[26]|(buf[27]<<8);
-                    else {
+                    else
+                    {
+                        format.size = buf[24]|(buf[25]<<8);
                         if (format.size < 22) {
                             DEBUGF("CODEC_ERROR: WAVE_FORMAT_EXTENSIBLE is "
                                    "missing extension\n");
@@ -296,26 +297,26 @@ next_track:
                 goto done;
             }
         } else if (memcmp(buf, "data", 4) == 0) {
-            format.numbytes = i;
+            format.numbytes = size;
             /* advance to start of data */
             ci->advance_buffer(8);
             firstblockposn += 8;
             break;
         } else if (memcmp(buf, "fact", 4) == 0) {
             /* dwSampleLength */
-            if (i >= 4)
+            if (size >= 4)
                 format.totalsamples =
                              (buf[8]|(buf[9]<<8)|(buf[10]<<16)|(buf[11]<<24));
         } else {
             DEBUGF("unknown WAVE chunk: '%c%c%c%c', size=%lu\n",
-                   buf[0], buf[1], buf[2], buf[3], (unsigned long)i);
+                   buf[0], buf[1], buf[2], buf[3], (unsigned long)size);
         }
 
         /* go to next chunk (even chunk sizes must be padded) */
-        if (i & 0x01)
-            i++;
-        ci->advance_buffer(i+8);
-        firstblockposn += i + 8;
+        size += 8 + (size & 0x01);
+
+        ci->advance_buffer(size);
+        firstblockposn += size;
     }
 
     if (!codec)
@@ -339,7 +340,7 @@ next_track:
     if (format.blockalign == 0)
     {
         DEBUGF("CODEC_ERROR: 'fmt ' chunk not found or 0-blockalign file\n");
-        i = CODEC_ERROR;
+        status = CODEC_ERROR;
         goto done;
     }
     if (format.numbytes == 0) {
@@ -350,12 +351,12 @@ next_track:
 
     /* check chunksize */
     if ((format.chunksize / format.blockalign) * format.samplesperblock * format.channels
-           > PCM_CHUNK_SIZE)
-        format.chunksize = (PCM_CHUNK_SIZE / format.blockalign) * format.blockalign;
+           > PCM_SAMPLE_SIZE)
+        format.chunksize = (PCM_SAMPLE_SIZE / format.blockalign) * format.blockalign;
     if (format.chunksize == 0)
     {
         DEBUGF("CODEC_ERROR: chunksize is 0\n");
-        i = CODEC_ERROR;
+        status = CODEC_ERROR;
         goto done;
     }
 
@@ -373,10 +374,17 @@ next_track:
     /* make sure we're at the correct offset */
     if (bytesdone > (uint32_t) firstblockposn) {
         /* Round down to previous block */
-        uint32_t offset = bytesdone - bytesdone % format.blockalign;
+        struct pcm_pos *newpos = codec->get_seek_pos(bytesdone - firstblockposn,
+                                                     PCM_SEEK_POS, &read_buffer);
 
-        ci->advance_buffer(offset-firstblockposn);
-        bytesdone = offset - firstblockposn;
+        if (newpos->pos > format.numbytes)
+            goto done;
+        if (ci->seek_buffer(firstblockposn + newpos->pos))
+        {
+            bytesdone      = newpos->pos;
+            decodedsamples = newpos->samples;
+        }
+        ci->seek_complete();
     } else {
         /* already where we need to be */
         bytesdone = 0;
@@ -392,14 +400,15 @@ next_track:
         }
 
         if (ci->seek_time) {
-            struct pcm_pos *newpos = codec->get_seek_pos(ci->seek_time, &read_buffer);
+            struct pcm_pos *newpos = codec->get_seek_pos(ci->seek_time, PCM_SEEK_TIME,
+                                                         &read_buffer);
 
-            decodedsamples = newpos->samples;
             if (newpos->pos > format.numbytes)
                 break;
             if (ci->seek_buffer(firstblockposn + newpos->pos))
             {
-                bytesdone = newpos->pos;
+                bytesdone      = newpos->pos;
+                decodedsamples = newpos->samples;
             }
             ci->seek_complete();
         }

@@ -33,7 +33,7 @@
 
 #include "skin_tokens.h"
 
-                           
+
 /* TODO: sort this mess out */
 
 #include "screen_access.h"
@@ -222,6 +222,8 @@ struct touchregion {
     } type;                  /* type of touch region */
     bool repeat;             /* requires the area be held for the action */
     int action;              /* action this button will return */
+    bool armed;              /* A region is armed on press. Only armed regions are triggered
+                                on repeat or release. */
 };
 #endif
 
@@ -243,7 +245,6 @@ struct playlistviewer {
         bool scroll;
     } lines[2];
 };
-    
 
 
 #ifdef HAVE_ALBUMART
@@ -368,5 +369,11 @@ const char *get_id3_token(struct wps_token *token, struct mp3entry *id3,
 
 struct gui_img* find_image(char label, struct wps_data *data);
 struct skin_viewport* find_viewport(char label, struct wps_data *data);
+
+
+#if defined(DEBUG) || defined(SIMULATOR)
+#define DEBUG_SKIN_ENGINE
+extern bool debug_wps;
+#endif
 
 #endif

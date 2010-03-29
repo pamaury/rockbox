@@ -1352,29 +1352,14 @@ static void audio_finish_load_track(void)
     case AFMT_MPA_L3:
         if (offset > 0) {
             file_offset = offset;
-            track_id3->offset = offset;
         }
         break;
 
     case AFMT_WAVPACK:
         if (offset > 0) {
             file_offset = offset;
-            track_id3->offset = offset;
             track_id3->elapsed = track_id3->length / 2;
         }
-        break;
-
-    case AFMT_OGG_VORBIS:
-    case AFMT_SPEEX:
-    case AFMT_FLAC:
-    case AFMT_PCM_WAV:
-    case AFMT_A52:
-    case AFMT_MP4_AAC:
-    case AFMT_MPC:
-    case AFMT_APE:
-    case AFMT_WMA:
-        if (offset > 0)
-            track_id3->offset = offset;
         break;
 
     case AFMT_NSF:
@@ -1382,6 +1367,10 @@ static void audio_finish_load_track(void)
     case AFMT_SID:
         logf("Loading atomic %d",track_id3->codectype);
         type = TYPE_ATOMIC_AUDIO;
+        break;
+    
+    default:
+        /* no special treatment needed */
         break;
     }
 
@@ -1565,6 +1554,7 @@ static int audio_check_new_track(void)
 
     /* Move to the new track */
     track_ridx = (track_ridx + ci.new_track) & MAX_TRACK_MASK;
+    buf_set_base_handle(CUR_TI->audio_hid);
 
 
     if (automatic_skip)
@@ -1723,6 +1713,7 @@ static void audio_play_start(size_t offset)
 
     sound_set_volume(global_settings.volume);
     track_widx = track_ridx = 0;
+    buf_set_base_handle(-1);
 
     /* Clear all track entries. */
     for (i = 0; i < MAX_TRACK; i++) {

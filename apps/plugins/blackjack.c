@@ -29,7 +29,7 @@
 PLUGIN_HEADER
 
 /* save files */
-#define HIGH_SCORE PLUGIN_GAMES_DIR "/blackjack.score"
+#define SCORE_FILE PLUGIN_GAMES_DIR "/blackjack.score"
 #define SAVE_FILE  PLUGIN_GAMES_DIR "/blackjack.save"
 #define NUM_SCORES 5
 
@@ -491,7 +491,7 @@ typedef struct game_context {
 
 static bool resume = false;
 static bool resume_file = false;
-static struct highscore highest[NUM_SCORES];
+static struct highscore highscores[NUM_SCORES];
 
 /*****************************************************************************
 * blackjack_init() initializes blackjack data structures.
@@ -1135,7 +1135,6 @@ static unsigned int play_again(void) {
 * blackjack_help() displays help text.
 ******************************************************************************/
 static bool blackjack_help(void) {
-#define WORDS (sizeof help_text / sizeof (char*))
     static char *help_text[] = {
         "Blackjack", "", "Aim", "",
         "Try", "to", "get", "as", "close", "to", "21", "without", "going",
@@ -1151,26 +1150,18 @@ static bool blackjack_help(void) {
         { 0, TEXT_CENTER|TEXT_UNDERLINE },
         { 2, C_RED },
         { 26, C_RED },
-        { -1, 0 }
+        LAST_STYLE_ITEM
     };
-    int button;
 
     rb->lcd_setfont(FONT_UI);
 #ifdef HAVE_LCD_COLOR
     rb->lcd_set_background(LCD_BLACK);
     rb->lcd_set_foreground(LCD_WHITE);
 #endif
-
-    if (display_text(WORDS, help_text, formation, NULL))
+    if (display_text(ARRAYLEN(help_text), help_text, formation, NULL, true))
         return true;
-    do {
-        button = rb->button_get(true);
-        if (rb->default_event_handler(button) == SYS_USB_CONNECTED) {
-            return true;
-        }
-    } while( ( button == BUTTON_NONE )
-          || ( button & (BUTTON_REL|BUTTON_REPEAT) ) );
     rb->lcd_setfont(FONT_SYSFIXED);
+
     return false;
 }
 
@@ -1209,7 +1200,7 @@ static unsigned int blackjack_menu(void) {
                 resume = false;
                 break;
             case 2:
-                highscore_show(NUM_SCORES, highest, NUM_SCORES, false);
+                highscore_show(-1, highscores, NUM_SCORES, false);
                 break;
             case 3:
                 if(blackjack_help())
@@ -1497,7 +1488,7 @@ enum plugin_status plugin_start(const void* parameter)
 #endif
 
     /* load high scores */
-    highscore_load(HIGH_SCORE,highest,NUM_SCORES);
+    highscore_load(SCORE_FILE, highscores, NUM_SCORES);
     resume = blackjack_loadgame(&bj);
     resume_file = resume;
 
@@ -1513,16 +1504,18 @@ enum plugin_status plugin_start(const void* parameter)
                 if(!resume && bj.player_money > 10) {
                     /* There is no level, so store -1 to blank column */
                     int position = highscore_update(bj.player_money, -1, "",
-                        highest, NUM_SCORES);
-                    if (position==0)
-                        rb->splash(HZ*2, "New High Score");
+                                                    highscores, NUM_SCORES);
                     if (position != -1)
-                        highscore_show(position, highest, NUM_SCORES, false);
+                    {
+                        if (position==0)
+                            rb->splash(HZ*2, "New High Score");
+                        highscore_show(position, highscores, NUM_SCORES, false);
+                    }
                 }
                 break;
 
             case BJ_USB:
-                highscore_save(HIGH_SCORE,highest,NUM_SCORES);
+                highscore_save(SCORE_FILE, highscores, NUM_SCORES);
                 return PLUGIN_USB_CONNECTED;
 
             case BJ_QUIT:
@@ -1538,6 +1531,6 @@ enum plugin_status plugin_start(const void* parameter)
                 break;
         }
     }
-    highscore_save(HIGH_SCORE,highest,NUM_SCORES);
+    highscore_save(SCORE_FILE, highscores, NUM_SCORES);
     return PLUGIN_OK;
 }

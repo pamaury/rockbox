@@ -1,7 +1,7 @@
 
 #change for releases
 ifndef APPVERSION
-APPVERSION=`../../tools/version.sh`
+APPVERSION=`../../tools/version.sh ../../`
 endif
 
 # We use the UCL code available in the Rockbox tools/ directory
@@ -46,6 +46,10 @@ SOURCES := $(LIBSOURCES) main.c
 OBJS := $(patsubst %.c,%.o,$(addprefix $(OBJDIR),$(SOURCES)))
 LIBOBJS := $(patsubst %.c,%.o,$(addprefix $(OBJDIR),$(LIBSOURCES)))
 EXTRADEPS := $(LIBUCL)
+
+# explicit dependencies on dualboot.{c,h}
+$(OBJDIR)mkamsboot.o: dualboot.h dualboot.c mkamsboot.c
+$(OBJDIR)main.o: dualboot.h dualboot.c main.c
 
 $(OBJDIR)%.o: %.c
 	@echo CC $< $

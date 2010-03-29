@@ -5,7 +5,7 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id: skin_tokens.c 24526 2010-02-05 23:58:53Z jdgordon $
+ * $Id$
  *
  * Copyright (C) 2010 Jonathan Gordon
  *
@@ -32,7 +32,7 @@
 #define FONT_SIZE 10000
 
 
-static struct skin_font {
+static struct skin_font_info {
     struct font font;
     int font_id;
     char name[MAX_PATH];
@@ -63,7 +63,7 @@ int skin_font_load(char* font_name)
 {
     int i;
     struct font *pf;
-    struct skin_font *font = NULL;
+    struct skin_font_info *font = NULL;
     char filename[MAX_PATH];
     
     if (!strcmp(font_name, global_settings.font_file))
@@ -109,7 +109,7 @@ int skin_font_load(char* font_name)
     
     if (font->font_id < 0)
         return -1;
-    font->ref_count = 1;    
+    font->ref_count = 1;
     
     return font->font_id;
 }
@@ -128,13 +128,8 @@ void skin_font_unload(int font_id)
                 font_unload(font_id);
                 font_table[i].font_id = -1;
                 font_table[i].name[0] = '\0';
-            }                
+            }
             return;
         }
     }
 }
-    
-    
-            
-    
-

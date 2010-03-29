@@ -1,6 +1,6 @@
-$publicrelease="3.5";
-$releasedate="February 3, 2010";
-$releasenotes="/wiki/ReleaseNotes35";
+$publicrelease="3.5.1";
+$releasedate="March 4, 2010";
+$releasenotes="/wiki/ReleaseNotes351";
 
 %builds = (
     'archosav300' => {
@@ -227,12 +227,17 @@ $releasenotes="/wiki/ReleaseNotes35";
         icon => 'sansac200',
     },
     'sansaclip' => {
-        name => 'SanDisk Sansa Clip',
+        name => 'SanDisk Sansa Clip v1',
         status => 2,
     },
     'sansaclipv2' => {
         name => 'SanDisk Sansa Clip v2',
-        status => 1,
+        status => 2,
+        icon => 'sansaclip',
+    },
+    'sansaclipplus' => {
+        name => 'SanDisk Sansa Clip+',
+        status => 2,
     },
     'sansae200' => {
         name => 'SanDisk Sansa e200',

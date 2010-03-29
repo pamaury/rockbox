@@ -30,6 +30,7 @@
 #include "usb_core.h"
 #ifdef USB_ENABLE_HID
 #include "usb_keymaps.h"
+#include "sprintf.h"
 #endif
 #endif
 #include "settings.h"
@@ -91,6 +92,10 @@ static int handle_usb_events(void)
             case SYS_USB_DISCONNECTED:
                 usb_acknowledge(SYS_USB_DISCONNECTED_ACK);
                 return 1;
+            case SYS_CHARGER_DISCONNECTED:
+                /*reset rockbox battery runtime*/
+                global_status.runtime = 0;
+                break;
             case SYS_TIMEOUT:
                 break;
         }
@@ -108,13 +113,8 @@ static int handle_usb_events(void)
 
     return 0;
 }
-#endif
+#endif /* SIMULATOR */
 
-#ifdef USB_NONE
-void gui_usb_screen_run(void)
-{
-}
-#else
 #define MODE_NAME_LEN 32
 
 struct usb_screen_vps_t
@@ -212,9 +212,13 @@ static void usb_screens_draw(struct usb_screen_vps_t *usb_screen_vps_ar)
 #ifdef USB_ENABLE_HID
             if (usb_hid)
             {
+                char modestring[100];
                 screen->set_viewport(&usb_screen_vps->title);
                 usb_screen_vps->title.flags |= VP_FLAG_ALIGN_CENTER;
-                screen->puts_scroll(0, 0, str(keypad_mode_name_get()));
+                snprintf(modestring, sizeof(modestring), "%s: %s",
+                        str(LANG_USB_KEYPAD_MODE),
+                        str(keypad_mode_name_get()));
+                screen->puts_scroll(0, 0, modestring);
             }
 #endif /* USB_ENABLE_HID */
         }
@@ -311,5 +315,4 @@ void gui_usb_screen_run(void)
     }
 
 }
-#endif /* !defined(USB_NONE) */
 

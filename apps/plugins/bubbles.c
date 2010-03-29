@@ -1262,7 +1262,7 @@ struct game_context {
     struct tile playboard[BB_HEIGHT][BB_WIDTH];
 };
 
-struct highscore highscores[NUM_SCORES];
+static struct highscore highscores[NUM_SCORES];
 
 /* used to denote available resume info */
 static bool resume = false;
@@ -2172,10 +2172,12 @@ static void bubbles_recordscore(struct game_context* bb) {
 
     position = highscore_update(bb->score, bb->level-1, "",
                                 highscores, NUM_SCORES);
-    if (position==0)
-        rb->splash(HZ*2, "New High Score");
     if (position != -1)
+    {
+        if (position == 0)
+            rb->splash(HZ*2, "New High Score");
         highscore_show(position, highscores, NUM_SCORES, true);
+    }
 }
 
 /*****************************************************************************
@@ -2409,7 +2411,7 @@ static int bubbles_menu(struct game_context* bb) {
                 startlevel--;
                 break;
             case 3: /* High scores */
-                highscore_show(NUM_SCORES, highscores, NUM_SCORES, true);
+                highscore_show(-1, highscores, NUM_SCORES, true);
                 break;
             case 4: /* Playback Control */
                 playback_control(NULL);
@@ -2417,10 +2419,7 @@ static int bubbles_menu(struct game_context* bb) {
             case 5: /* quit but don't save */
                 return BB_QUIT_WITHOUT_SAVING;
             case 6: /* save and quit  */
-                if (resume)
-                    return BB_QUIT;
-                else
-                    return BB_QUIT_WITHOUT_SAVING;
+                return BB_QUIT;
             case MENU_ATTACHED_USB:
                 bubbles_callback(bb);
                 return BB_USB;
@@ -2537,7 +2536,7 @@ enum plugin_status plugin_start(const void* parameter) {
                 break;
 
             case BB_QUIT:
-                rb->splash(HZ/3, "Saving game ...");
+                rb->splash(HZ/3, "Saving game data ...");
                 bubbles_savegame(&bb);
                 bubbles_savedata();
                 highscore_save(SCORE_FILE, highscores, NUM_SCORES);

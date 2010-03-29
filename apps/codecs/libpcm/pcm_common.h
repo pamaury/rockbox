@@ -25,12 +25,8 @@
 #include <stdbool.h>
 #include <inttypes.h>
 
-/*
- * PCM_CHUNK_SIZE has the size only of storing the sample at 1/50 seconds.
- * But it might not be 1/50 seconds according to the format.
- * Please confirm the source file of each format.
- */
-#define PCM_CHUNK_SIZE (4096*2)
+/* decoded pcm sample depth (sample 28bit + sign 1bit) */
+#define PCM_OUTPUT_DEPTH 29
 
 /* Macro that sign extends an unsigned byte */
 #define SE(x) ((int32_t)((int8_t)(x)))
@@ -128,6 +124,9 @@ struct pcm_pos {
     uint32_t samples;
 };
 
+#define PCM_SEEK_TIME 0
+#define PCM_SEEK_POS  1
+
 struct pcm_codec {
     /*
      * sets the format speciffic RIFF/AIFF header information and checks the pcm_format.
@@ -144,8 +143,12 @@ struct pcm_codec {
     /*
      * get seek position
      *
-     * [In] seek_time
-     *         seek time [ms]
+     * [In] seek_val
+     *         seek time [ms] or seek position
+     *
+     * [In] seek_mode
+     *         if seek_mode sets PCM_SEEK_TIME, then seek_val means the seek time.
+     *         if seek_mode sets PCM_SEEK_POS, then seek_val means the seek position.
      *
      * [In] read_buffer
      *         the function which reads the data from the file (chunksize bytes read).
@@ -153,7 +156,7 @@ struct pcm_codec {
      * return
      *     position after the seeking.
      */
-    struct pcm_pos *(*get_seek_pos)(long seek_time,
+    struct pcm_pos *(*get_seek_pos)(uint32_t seek_val, int seek_mode,
                                     uint8_t *(*read_buffer)(size_t *realsize));
 
     /*

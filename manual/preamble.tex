@@ -79,7 +79,6 @@
 \usepackage{url}
 \urlstyle{sf}
 \usepackage{marvosym}
-\usepackage{ifthen}
 \usepackage{rotating}
 
 % pdf output: try pdf first, then png and jpg as file format
@@ -255,16 +254,13 @@
 % usage: \begin{tagmap}{caption}{label} Tag & Description \\ \end{tagmap}
 % Note: this automatically sets the table lines.
 % Note: you *need* to terminate the last line with a linebreak \\
-% Note: you still need to enclose this with \begin{table} / \end{table}
 % Cheers for the usenet helping me building this up :)
-\newenvironment{tagmap}[2]{%
+\newenvironment{tagmap}{%
 \rowcolors{2}{tbloddrowbgcolor}{tblevenrowbgcolor}
   \expandafter\let\expandafter\SavedEndTab\csname endtabular*\endcsname
   \expandafter\renewcommand\expandafter*\csname endtabular*\endcsname{%
     \bottomrule
     \SavedEndTab%
-    \if\given{#1}\caption{#1}\fi%
-    \if\given{#2}\label{#2}\fi%
     \endcenter%
   }
   \center
@@ -323,14 +319,13 @@
    commandchars=\\\{\}%
    }
 
-% Use the nopt command to exclude a certain defined feature from a sectio
+% Use the nopt command to exclude a certain defined feature from a section
 % Example:
 % \nopt{ondio}{This text will be excluded for ondios}
-\newcommand{\optnvalue}{0}
- \newcommand{\nopt}[2]{%
-   \renewcommand{\optnvalue}{0}\opt{#1}{\renewcommand{\optnvalue}{1}}%
-   \ifthenelse{\optnvalue > 0}{}{#2}%
- }
+\makeatletter
+\newcommand*\nopt[1]{\if\Opl@notlisted{#1}\expandafter\@firstofone
+   \else \expandafter\@gobble \fi}
+\makeatother
 
 % Use the reference to handle get a flexible reference command
 % usage \reference{ref_section}

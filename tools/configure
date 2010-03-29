@@ -41,7 +41,7 @@ prefixtools () {
 findarmgcc() {
   if [ "$ARG_ARM_EABI" = "1" ]; then
     prefixtools arm-elf-eabi-
-    gccchoice="4.4.2"
+    gccchoice="4.4.3"
   else
     prefixtools arm-elf-
     gccchoice="4.0.3"
@@ -160,6 +160,12 @@ simcc () {
    GCCOPTS="$GCCOPTS $sdl_cflags"
    LDOPTS="$sdl_libs"
    SHARED_FLAG="-dynamiclib -Wl\,-single_module"
+   ;;
+
+   SunOS)
+   echo "*Solaris host detected"
+   GCCOPTS="$GCCOPTS $sdl_cflags"
+   LDOPTS="$sdl_libs"
    ;;
 
    *)
@@ -313,7 +319,7 @@ arm946cc () {
 arm926ejscc () {
  findarmgcc
  GCCOPTS="$CCOPTS -mcpu=arm926ej-s"
- if test "$ARG_ARM_EABI" != "1"; then
+ if test "$t_manufacturer" != "as3525" -a "$ARG_ARM_EABI" != "1"; then
   GCCOPTS="$GCCOPTS -mlong-calls"
  fi
  GCCOPTIMIZE="-fomit-frame-pointer"
@@ -911,7 +917,8 @@ cat <<EOF
  120) VX747               ==Meizu==              60) Sansa Clipv2
  121) VX767               110) M6SL              61) Sansa View
  122) VX747+              111) M6SP              62) Sansa Clip+
- 123) VX777               112) M3
+ 123) VX777               112) M3                63) Sansa Fuze v2
+ 
                                                  ==Logik==
  ==Samsung==              ==Tatung==             80) DAX 1GB MP3/DAB
  140) YH-820              150) Elio TPJ-1022
@@ -2019,7 +2026,6 @@ fi
     modelname="sansaclipv2"
     target="-DSANSA_CLIPV2"
     memory=8
-    arm926ejscc
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$bmp2rb_mono"
     tool="$rootdir/tools/scramble -add=clv2"
@@ -2032,6 +2038,7 @@ fi
     t_cpu="arm"
     t_manufacturer="as3525"
     t_model="sansa-clipv2"
+    arm926ejscc
     ;;
 
    61|sansaview)
@@ -2063,7 +2070,6 @@ fi
     modelname="sansaclipplus"
     target="-DSANSA_CLIPPLUS"
     memory=8
-    arm926ejscc
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$bmp2rb_mono"
     tool="$rootdir/tools/scramble -add=cli+"
@@ -2076,6 +2082,27 @@ fi
     t_cpu="arm"
     t_manufacturer="as3525"
     t_model="sansa-clipplus"
+    arm926ejscc
+    ;;
+
+   63|sansafuzev2)
+    target_id=68
+    modelname="sansafuzev2"
+    target="-DSANSA_FUZEV2"
+    memory=8 # not sure
+    bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
+    bmp2rb_native="$rootdir/tools/bmp2rb -f 4"
+    tool="$rootdir/tools/scramble -add=fuz2"
+    output="rockbox.sansa"
+    bootoutput="bootloader-fuzev2.sansa"
+    appextra="recorder:gui"
+    plugins=#"yes"
+    swcodec="yes"
+    toolset=$scramblebitmaptools
+    t_cpu="arm"
+    t_manufacturer="as3525"
+    t_model="sansa-fuzev2"
+    arm926ejscc
     ;;
 
    150|tatungtpj1022)
@@ -2475,12 +2502,12 @@ fi
     tool="$rootdir/tools/scramble -mi4v3 -model=v500 -type=RBOS"
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$rootdir/tools/bmp2rb -f 5"
-    output="jukebox.mi4"
+    output="rockbox.mi4"
     appextra="recorder:gui"
     plugins="yes"
     swcodec="yes"
     boottool="$rootdir/tools/scramble -mi4v3 -model=v500 -type=RBBL"
-    bootoutput="rockbox.mi4"
+    bootoutput="jukebox.mi4"
     # toolset is the tools within the tools directory that we build for
     # this particular target.
     toolset=$scramblebitmaptools
@@ -2659,6 +2686,7 @@ fi
       toolset='';
       t_cpu='';
       GCCOPTS='';
+      extradefines="-DDEBUG"
       appsdir='\$(ROOTDIR)/tools/checkwps';
       output='checkwps.'${modelname};
       archosrom='';
@@ -2671,8 +2699,17 @@ fi
       t_cpu='';
       GCCOPTS='';
       appsdir='\$(ROOTDIR)/tools/database';
-      output='database.'${modelname};
       archosrom='';
+
+      case $uname in
+          CYGWIN*|MINGW*)
+              output="database_${modelname}.exe"
+              ;;
+          *)
+              output='database.'${modelname};
+              ;;
+      esac
+
       echo "Database tool build selected"
       ;;
     *)
@@ -3006,6 +3043,7 @@ sed > Makefile \
  -e "s,@RBDIR@,${rbdir},g" \
  -e "s,@PREFIX@,$PREFIX,g" \
  -e "s,@CMDLINE@,$cmdline,g" \
+ -e "s,@SDLCONFIG@,$sdl,g" \
 <<EOF
 ## Automatically generated. http://www.rockbox.org/
 
@@ -3070,6 +3108,7 @@ export ENC_OPTS=@ENC_OPTS@
 export ENCODER=@ENCODER@
 export USE_ELF=@USE_ELF@
 export RBDIR=@RBDIR@
+export SDLCONFIG=@SDLCONFIG@
 
 CONFIGURE_OPTIONS=@CMDLINE@
 

@@ -435,10 +435,9 @@ struct puzzle_level puzzle_levels[NUM_PUZZLE_LEVELS] = {
               {4, 7, PUZZLE_TILE_LEFT|PUZZLE_TILE_UP} } },
 };
 
-#define SAVE_FILE PLUGIN_GAMES_DIR "/jewels.save"
-
-#define HIGH_SCORE PLUGIN_GAMES_DIR "/jewels.score"
-struct highscore highest[NUM_SCORES];
+#define SAVE_FILE  PLUGIN_GAMES_DIR "/jewels.save"
+#define SCORE_FILE PLUGIN_GAMES_DIR "/jewels.score"
+struct highscore highscores[NUM_SCORES];
 
 static bool resume_file = false;
 
@@ -1300,8 +1299,6 @@ static void jewels_nextlevel(struct game_context* bj) {
 
 static bool jewels_help(void)
 {
-    rb->lcd_setfont(FONT_UI);
-#define WORDS (sizeof help_text / sizeof (char*))
     static char *help_text[] = {
         "Jewels", "", "Aim", "",
         "Swap", "pairs", "of", "jewels", "to", "form", "connected", 
@@ -1323,22 +1320,12 @@ static bool jewels_help(void)
         { 0, TEXT_CENTER|TEXT_UNDERLINE },
         { 2, C_RED },
         { 42, C_RED },
-        { -1, 0 }
+        LAST_STYLE_ITEM
     };
-#ifdef HAVE_LCD_COLOR
-    rb->lcd_set_background(LCD_BLACK);
-    rb->lcd_set_foreground(LCD_WHITE);
-#endif
-    int button;
-    if (display_text(WORDS, help_text, formation, NULL))
+
+    rb->lcd_setfont(FONT_UI);
+    if (display_text(ARRAYLEN(help_text), help_text, formation, NULL, true))
         return true;
-    do {
-        button = rb->button_get(true);
-        if (rb->default_event_handler (button) == SYS_USB_CONNECTED) {
-            return true;
-        }
-    } while( ( button == BUTTON_NONE )
-          || ( button & (BUTTON_REL|BUTTON_REPEAT) ) );
     rb->lcd_setfont(FONT_SYSFIXED);
 
     return false;
@@ -1396,7 +1383,7 @@ static int jewels_game_menu(struct game_context* bj, bool ingame)
                     return 1;
                 break;
             case 4:
-                highscore_show(NUM_SCORES, highest, NUM_SCORES, true);
+                highscore_show(-1, highscores, NUM_SCORES, true);
                 break;
             case 5:
                 playback_control(NULL);
@@ -1564,11 +1551,13 @@ static int jewels_main(struct game_context* bj) {
                     rb->lcd_clear_display();
                     bj->score += (bj->level-1)*LEVEL_PTS;
                     position=highscore_update(bj->score, bj->level, "",
-                                              highest, NUM_SCORES);
-                    if (position == 0)
-                        rb->splash(HZ*2, "New High Score");
+                                              highscores, NUM_SCORES);
                     if (position != -1)
-                    highscore_show(position, highest, NUM_SCORES, true);
+                    {
+                        if (position == 0)
+                            rb->splash(HZ*2, "New High Score");
+                        highscore_show(position, highscores, NUM_SCORES, true);
+                    }
                     break;
                 case GAME_TYPE_PUZZLE:
                     rb->splash(2*HZ, "Game Over");
@@ -1587,7 +1576,7 @@ enum plugin_status plugin_start(const void* parameter)
     (void)parameter;
 
     /* load high scores */
-    highscore_load(HIGH_SCORE,highest,NUM_SCORES);
+    highscore_load(SCORE_FILE, highscores, NUM_SCORES);
 
     rb->lcd_setfont(FONT_SYSFIXED);
 #if LCD_DEPTH > 1
@@ -1597,7 +1586,7 @@ enum plugin_status plugin_start(const void* parameter)
     struct game_context bj;
     bj.tmp_type = GAME_TYPE_NORMAL;
     jewels_main(&bj);
-    highscore_save(HIGH_SCORE,highest,NUM_SCORES);
+    highscore_save(SCORE_FILE, highscores, NUM_SCORES);
     rb->lcd_setfont(FONT_UI);
 
     return PLUGIN_OK;

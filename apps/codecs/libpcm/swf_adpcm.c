@@ -19,8 +19,8 @@
  *
  ****************************************************************************/
 #include "codeclib.h"
-#include "pcm_common.h"
 #include "ima_adpcm_common.h"
+#include "support_formats.h"
 
 /*
  * Adobe SWF ADPCM
@@ -46,6 +46,8 @@ static int lastbytebits = 0;
 static bool after_seek = false;
 
 static struct pcm_format *fmt;
+
+#define GET_SAMPLE_COUNT(s) ((((s) << 3) / fmt->channels - 22) / fmt->bitspersample + 1)
 
 static bool set_format(struct pcm_format *format)
 {
@@ -79,20 +81,21 @@ static bool set_format(struct pcm_format *format)
    return true;
 }
 
-static struct pcm_pos *get_seek_pos(long seek_time,
+static struct pcm_pos *get_seek_pos(uint32_t seek_val, int seek_mode,
                                     uint8_t *(*read_buffer)(size_t *realsize))
 {
     static struct pcm_pos newpos;
-    uint32_t chunkbits = blockbits;
-    uint32_t seekbits = (((uint64_t)seek_time * ci->id3->frequency)
-                                       / (1000LL * fmt->samplesperblock)) * blockbits + 2;
+    uint32_t chunkbits  = blockbits;
+    uint32_t seekblocks = (seek_mode == PCM_SEEK_TIME)?
+                          ((uint64_t)seek_val * ci->id3->frequency)
+                                              / (1000LL * fmt->samplesperblock) :
+                          ((seek_val << 3) - 2) / blockbits;
+    uint32_t seekbits   = seekblocks * blockbits + 2;
 
     (void)read_buffer;
 
     newpos.pos     = seekbits >> 3;
-    newpos.samples = (((uint64_t)seek_time * ci->id3->frequency)
-                                           / (1000LL * fmt->samplesperblock))
-                                           * fmt->samplesperblock;
+    newpos.samples = seekblocks * fmt->samplesperblock;
 
     if (newpos.pos == 0)
     {
@@ -139,14 +142,14 @@ static int decode(const uint8_t *inbuf, size_t inbufsize,
 {
     int ch;
     int adpcm_code_size;
-    int count = fmt->samplesperblock;
+    int count = ((size_t)fmt->chunksize == inbufsize) ? fmt->samplesperblock :
+                                                        GET_SAMPLE_COUNT(inbufsize);
     int32_t init_pcmdata[2];
     int8_t init_index[2];
     static uint8_t lastbyte = 0;
 
-    (void)inbufsize;
-
     validity_bits = 8;
+    *outbufcount = count;
 
     /* read block header */
     ch = fmt->channels - 1;
@@ -192,21 +195,21 @@ static int decode(const uint8_t *inbuf, size_t inbufsize,
             init_pcmdata[1] -= 65536;
     }
 
-    *outbuf++ = init_pcmdata[0] << 13;
+    *outbuf++ = init_pcmdata[0] << IMA_ADPCM_INC_DEPTH;
     if (ch > 0)
-        *outbuf++ = init_pcmdata[1] << 13;
+        *outbuf++ = init_pcmdata[1] << IMA_ADPCM_INC_DEPTH;
 
     set_decode_parameters(fmt->channels, init_pcmdata, init_index);
 
     /* read block data */
     while (--count > 0)
     {
-        *outbuf++ = create_pcmdata(0, get_data(&inbuf, fmt->bitspersample)) << 13;
+        *outbuf++ = create_pcmdata(0, get_data(&inbuf, fmt->bitspersample))
+                        << IMA_ADPCM_INC_DEPTH;
         if (ch > 0)
-            *outbuf++ = create_pcmdata(ch, get_data(&inbuf, fmt->bitspersample)) << 13;
+            *outbuf++ = create_pcmdata(ch, get_data(&inbuf, fmt->bitspersample))
+                            << IMA_ADPCM_INC_DEPTH;
     }
-
-    *outbufcount = fmt->samplesperblock;
 
     lastbyte = *inbuf;
     lastbytebits = (8 - validity_bits) & 0x07;

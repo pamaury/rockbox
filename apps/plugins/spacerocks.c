@@ -371,7 +371,7 @@ PLUGIN_HEADER
 #define SET_BG(x)
 #endif
 
-#define HIGH_SCORE PLUGIN_GAMES_DIR "/spacerocks.score"
+#define SCORE_FILE PLUGIN_GAMES_DIR "/spacerocks.score"
 #define NUM_SCORES 5
 
 static struct highscore highscores[NUM_SCORES];
@@ -1745,31 +1745,22 @@ static void initialise_game(void)
 static bool spacerocks_help(void)
 {
     static char *help_text[] = {
-        "Spacerocks", "", "Aim", "", "The", "goal", "of", "the", "game", "is",
-        "to", "blow", "up", "the", "asteroids", "and", "avoid", "being", "hit", "by",
-        "them.", "Also", "you'd", "better", "watch", "out", "for", "the", "UFOs!"
+        "Spacerocks", "", "Aim", "",
+        "The", "goal", "of", "the", "game", "is", "to", "blow", "up",
+        "the", "asteroids", "and", "avoid", "being", "hit", "by", "them.",
+        "Also", "you'd", "better", "watch", "out", "for", "the", "UFOs!"
     };
     static struct style_text formation[]={
         { 0, TEXT_CENTER|TEXT_UNDERLINE },
         { 2, C_RED },
-        { -1, 0 }
+        LAST_STYLE_ITEM
     };
-    int button;
 
     rb->lcd_setfont(FONT_UI);
-#ifdef HAVE_LCD_COLOR
-    rb->lcd_set_background(LCD_BLACK);
-    rb->lcd_set_foreground(LCD_WHITE);
-#endif
-    if (display_text(ARRAYLEN(help_text), help_text, formation, NULL)
-            == PLUGIN_USB_CONNECTED)
+    SET_BG(LCD_BLACK);
+    SET_FG(LCD_WHITE);
+    if (display_text(ARRAYLEN(help_text), help_text, formation, NULL, true))
         return true;
-    do {
-        button = rb->button_get(true);
-        if (button == SYS_USB_CONNECTED)
-            return true;
-    } while( ( button == BUTTON_NONE )
-            || ( button & (BUTTON_REL|BUTTON_REPEAT) ) );
     rb->lcd_setfont(FONT_SYSFIXED);
 
     return false;
@@ -1808,7 +1799,7 @@ static int spacerocks_menu(void)
                     return PLUGIN_USB_CONNECTED;
                 break;
             case 3:
-                highscore_show(NUM_SCORES, highscores, NUM_SCORES, true);
+                highscore_show(-1, highscores, NUM_SCORES, true);
                 break;
             case 4:
                 playback_control(NULL);
@@ -1994,7 +1985,7 @@ enum plugin_status plugin_start(const void* parameter)
     rb->lcd_setfont(FONT_SYSFIXED);
     /* Turn off backlight timeout */
     backlight_force_on(); /* backlight control in lib/helper.c */
-    highscore_load(HIGH_SCORE, highscores, NUM_SCORES);
+    highscore_load(SCORE_FILE, highscores, NUM_SCORES);
     rb->srand(*rb->current_tick);
 
     /* create stars once, and once only: */
@@ -2004,7 +1995,7 @@ enum plugin_status plugin_start(const void* parameter)
         ret = spacerocks_game_loop();
 
     rb->lcd_setfont(FONT_UI);
-    highscore_save(HIGH_SCORE, highscores, NUM_SCORES);
+    highscore_save(SCORE_FILE, highscores, NUM_SCORES);
     /* Turn on backlight timeout (revert to settings) */
     backlight_use_settings(); /* backlight control in lib/helper.c */
 

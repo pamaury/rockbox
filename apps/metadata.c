@@ -165,6 +165,18 @@ const struct afmt_entry audio_formats[AFMT_NUM_CODECS] =
     /* Atrac3 in Sony OMA Container */
     [AFMT_OMA_ATRAC3] =
         AFMT_ENTRY("ATRAC3",  "atrac3_oma",     NULL,          "oma\0aa3\0"      ), 
+    /* SMAF (Synthetic music Mobile Application Format) */
+    [AFMT_SMAF] =
+        AFMT_ENTRY("SMAF",  "smaf",   NULL,          "mmf\0"      ),
+    /* Sun Audio file */
+    [AFMT_AU] =
+        AFMT_ENTRY("AU",  "au",     NULL,          "au\0snd\0"      ),
+    /* VOX (Dialogic telephony file formats) */
+    [AFMT_VOX] =
+        AFMT_ENTRY("VOX",  "vox",   NULL,          "vox\0"      ),
+    /* Wave64 */
+    [AFMT_WAVE64] =
+        AFMT_ENTRY("WAVE64",  "wav64",   NULL,          "w64\0"      ),
 #endif
 };
 
@@ -444,6 +456,38 @@ bool get_metadata(struct mp3entry* id3, int fd, const char* trackname)
         if (!get_oma_metadata(fd, id3))
         {
             DEBUGF("get_oma_metadata error\n");
+            return false;
+        }
+        break;
+
+    case AFMT_SMAF:
+        if (!get_smaf_metadata(fd, id3))
+        {
+            DEBUGF("get_smaf_metadata error\n");
+            return false;
+        }
+        break;
+
+    case AFMT_AU:
+        if (!get_au_metadata(fd, id3))
+        {
+            DEBUGF("get_au_metadata error\n");
+            return false;
+        }
+        break;
+        
+    case AFMT_VOX:
+        if (!get_vox_metadata(fd, id3))
+        {
+            DEBUGF("get_vox_metadata error\n");
+            return false;
+        }
+        break;
+        
+    case AFMT_WAVE64:
+        if (!get_wave64_metadata(fd, id3))
+        {
+            DEBUGF("get_wave64_metadata error\n");
             return false;
         }
         break;

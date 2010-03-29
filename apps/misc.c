@@ -291,7 +291,7 @@ static bool clean_shutdown(void (*callback)(void *), void *parameter)
 #ifdef SIMULATOR
     (void)callback;
     (void)parameter;
-    bookmark_autobookmark();
+    bookmark_autobookmark(false);
     call_storage_idle_notifys(true);
     exit(0);
 #else
@@ -356,7 +356,7 @@ static bool clean_shutdown(void (*callback)(void *), void *parameter)
                     sleep(1);
             }
 #endif
-            bookmark_autobookmark();
+            bookmark_autobookmark(false);
 
             /* audio_stop_recording == audio_stop for HWCODEC */
             audio_stop();
@@ -420,7 +420,7 @@ bool list_stop_handler(void)
         {
             if (global_settings.fade_on_stop)
                 fade(false, false);
-            bookmark_autobookmark();
+            bookmark_autobookmark(true);
             audio_stop();
             ret = true;  /* bookmarking can make a refresh necessary */
         }
@@ -590,6 +590,7 @@ long default_event_handler_ex(long event, void (*callback)(void *), void *parame
                 system_restore();
             }
             return SYS_USB_CONNECTED;
+
         case SYS_POWEROFF:
             if (!clean_shutdown(callback, parameter))
                 return SYS_POWEROFF;
@@ -601,6 +602,8 @@ long default_event_handler_ex(long event, void (*callback)(void *), void *parame
 
         case SYS_CHARGER_DISCONNECTED:
             car_adapter_mode_processing(false);
+            /*reset rockbox battery runtime*/
+            global_status.runtime = 0;
             return SYS_CHARGER_DISCONNECTED;
 
         case SYS_CAR_ADAPTER_RESUME:
@@ -659,7 +662,8 @@ int show_logo( void )
     snprintf(version, sizeof(version), "Ver. %s", appsversion);
 
     lcd_clear_display();
-#ifdef SANSA_CLIP   /* display the logo in the blue area of the screen */
+#if defined(SANSA_CLIP) || defined(SANSA_CLIPV2) || defined(SANSA_CLIPPLUS)
+    /* display the logo in the blue area of the screen */
     lcd_setfont(FONT_SYSFIXED);
     lcd_getstringsize((unsigned char *)"A", &font_w, &font_h);
     lcd_putsxy((LCD_WIDTH/2) - ((strlen(version)*font_w)/2),

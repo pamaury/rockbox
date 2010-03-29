@@ -84,6 +84,7 @@ gui/statusbar.c
 #ifdef HAVE_LCD_BITMAP
 gui/statusbar-skinned.c
 #endif
+gui/theme_settings.c
 gui/yesno.c
 gui/viewport.c
 
@@ -161,7 +162,9 @@ eq_arm.S
 #ifdef USB_ENABLE_HID
 usb_keymaps.c
 #endif
+#ifndef USB_NONE
 gui/usb_screen.c
+#endif
 metadata.c
 metadata/mp3.c
 #if CONFIG_CODEC == SWCODEC
@@ -186,6 +189,9 @@ metadata/asap.c
 metadata/rm.c
 metadata/nsf.c
 metadata/oma.c
+metadata/smaf.c
+metadata/au.c
+metadata/vox.c
 #endif
 #ifdef HAVE_TAGCACHE
 tagcache.c

@@ -368,7 +368,7 @@ static void prepare_td(struct transfer_descriptor* td,
         struct transfer_descriptor* previous_td, void *ptr, int len,int pipe);
 static void bus_reset(void);
 static void init_control_queue_heads(void);
-static void init_bulk_queue_heads(void);
+static void init_queue_heads(void);
 static void init_endpoints(void);
 /*-------------------------------------------------------------------------*/
 static void usb_drv_stop(void)
@@ -645,7 +645,7 @@ bool usb_drv_powered(void)
 void usb_drv_set_address(int address)
 {
     REG_DEVICEADDR = address << USBDEVICEADDRESS_BIT_POS;
-    init_bulk_queue_heads();
+    init_queue_heads();
     init_endpoints();
 }
 
@@ -862,6 +862,7 @@ static void prepare_td(struct transfer_descriptor* td,
                        void *ptr, int len,int pipe)
 {
     //logf("adding a td : %d",len);
+    /* FIXME td allow iso packets per frame override but we don't use it here */
     memset(td, 0, sizeof(struct transfer_descriptor));
     td->next_td_ptr = DTD_NEXT_TERMINATE;
     td->size_ioc_sts = (len<< DTD_LENGTH_BIT_POS) |
@@ -916,20 +917,33 @@ static void transfer_completed(void)
             int pipe = ep * 2 + dir;
             if (mask & pipe2mask[pipe]) {
                 struct queue_head* qh = &qh_array[pipe];
-                if(qh->wait) {
-                    qh->wait=0;
-                    wakeup_signal(&transfer_completion_signal[pipe]);
-                }
+                
                 int length=0;
                 struct transfer_descriptor* td=&td_array[pipe*NUM_TDS_PER_EP];
                 while(td!=(struct transfer_descriptor*)DTD_NEXT_TERMINATE && td!=0)
                 {
+                    /* It seems that the controller sets the pipe bit to one even if the TD
+                     * dosn't have the IOC bit set. So we have the rely the active status bit
+                     * to check that all the TDs of the transfer are really finished and let
+                     * the transfer continue if it's no the case */
+                    if(td->size_ioc_sts & DTD_STATUS_ACTIVE)
+                    {
+                        logf("skip half finished transfer");
+                        goto Lskip;
+                    }
                     length += ((td->reserved & DTD_RESERVED_LENGTH_MASK) -
                         ((td->size_ioc_sts & DTD_PACKET_SIZE) >> DTD_LENGTH_BIT_POS));
                     td=(struct transfer_descriptor*) td->next_td_ptr;
                 }
+                if(qh->wait) {
+                    qh->wait=0;
+                    wakeup_signal(&transfer_completion_signal[pipe]);
+                }
+                
                 usb_core_transfer_complete(ep, dir?USB_DIR_IN:USB_DIR_OUT,
                         qh->status, length);
+                Lskip:
+                continue;
             }
         }
     }
@@ -979,18 +993,33 @@ static void init_control_queue_heads(void)
     qh_array[EP_CONTROL+1].dtd.next_td_ptr = QH_NEXT_TERMINATE;
 }
 /* manual: 32.14.4.1 Queue Head Initialization */
-static void init_bulk_queue_heads(void)
+static void init_queue_heads(void)
 {
+    /* FIXME the packetsize for isochronous transfers is 1023 : 1024 but
+     * the current code only support one type of packet size so we restrict
+     * isochronous packet size for now also */
     int packetsize = (usb_drv_port_speed() ? 512 : 64);
     int i;
 
     /* TODO: this should take ep_allocation into account */
     for (i=1;i<USB_NUM_ENDPOINTS;i++) {
-        qh_array[i*2].max_pkt_length = packetsize << QH_MAX_PKT_LEN_POS |
-            QH_ZLT_SEL;
+        
+        /* OUT */
+        if(endpoints[i].type[DIR_OUT] == USB_ENDPOINT_XFER_ISOC)
+            /* FIXME: we can adjust the number of packets per frame, currently use one */
+            qh_array[i*2].max_pkt_length = packetsize << QH_MAX_PKT_LEN_POS | QH_ZLT_SEL | 1 << QH_MULT_POS;
+        else
+            qh_array[i*2].max_pkt_length = packetsize << QH_MAX_PKT_LEN_POS | QH_ZLT_SEL;
+        
         qh_array[i*2].dtd.next_td_ptr = QH_NEXT_TERMINATE;
-        qh_array[i*2+1].max_pkt_length = packetsize << QH_MAX_PKT_LEN_POS |
-            QH_ZLT_SEL;
+        
+        /* IN */
+        if(endpoints[i].type[DIR_IN] == USB_ENDPOINT_XFER_ISOC)
+            /* FIXME: we can adjust the number of packets per frame, currently use one */
+            qh_array[i*2+1].max_pkt_length = packetsize << QH_MAX_PKT_LEN_POS | QH_ZLT_SEL | 1 << QH_MULT_POS;
+        else
+            qh_array[i*2+1].max_pkt_length = packetsize << QH_MAX_PKT_LEN_POS | QH_ZLT_SEL;
+        
         qh_array[i*2+1].dtd.next_td_ptr = QH_NEXT_TERMINATE;
     }
 }
