@@ -2536,7 +2536,7 @@ static bool dbg_scrollwheel(void)
 
 #if defined (HAVE_USBSTACK)
 
-#if defined(ROCKBOX_HAS_LOGF) && defined(USB_ENABLE_SERIAL)
+#if (defined(ROCKBOX_HAS_LOGF) && defined(USB_ENABLE_SERIAL)) || defined(USB_ENABLE_TEST)
 static bool toggle_usb_core_driver(int driver, char *msg)
 {
     bool enabled = !usb_core_driver_enabled(driver);
@@ -2547,13 +2547,22 @@ static bool toggle_usb_core_driver(int driver, char *msg)
     return false;
 }
 
+#ifdef USB_ENABLE_SERIAL
 static bool toggle_usb_serial(void)
 {
     return toggle_usb_core_driver(USB_DRIVER_SERIAL,"USB Serial");
 }
 #endif
 
+#ifdef USB_ENABLE_TEST
+static bool toggle_usb_test(void)
+{
+    return toggle_usb_core_driver(USB_DRIVER_TEST,"USB Test");
+}
 #endif
+#endif /* defined(ROCKBOX_HAS_LOGF) && (defined(USB_ENABLE_SERIAL) || defined(USB_ENABLE_TEST)) */
+
+#endif /* HAVE_USBSTACK */
 
 #if CONFIG_USBOTG == USBOTG_ISP1583
 extern int dbg_usb_num_items(void);
@@ -2695,6 +2704,9 @@ static const struct the_menu_item menuitems[] = {
 #if defined(HAVE_USBSTACK)
 #if defined(ROCKBOX_HAS_LOGF) && defined(USB_ENABLE_SERIAL)
         {"USB Serial driver (logf)", toggle_usb_serial },
+#endif
+#if defined(USB_ENABLE_TEST)
+        {"USB Test driver", toggle_usb_test },
 #endif
 #endif /* HAVE_USBSTACK */
 #ifdef CPU_BOOST_LOGGING

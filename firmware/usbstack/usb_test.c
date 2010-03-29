@@ -220,8 +220,8 @@ bool usb_test_get_status(struct usb_ctrlrequest* req, unsigned char* dest)
     
     logf("usbtest: get status");
     dest[0] = USB_TEST_STATUS_OK;
-    usb_drv_recv(EP_CONTROL, NULL, 0); /* ack */
-    usb_drv_send(EP_CONTROL, dest, 1); /* send */
+    usb_drv_recv_blocking(EP_CONTROL, NULL, 0); /* ack */
+    usb_drv_send_blocking(EP_CONTROL, dest, 1); /* send */
     return true;
 }
 
@@ -265,8 +265,8 @@ bool usb_test_data_req(struct usb_ctrlrequest* req, unsigned char* dest)
 {
     (void) req;
     (void) dest;
-    usb_drv_recv(EP_CONTROL, &usb_data_req, sizeof(usb_data_req));
-    usb_drv_send(EP_CONTROL, NULL, 0); /* ack */
+    usb_drv_recv_blocking(EP_CONTROL, &usb_data_req, sizeof(usb_data_req));
+    usb_drv_send_blocking(EP_CONTROL, NULL, 0); /* ack */
 
     logf("usbtest: data");
     logf("usbtest: magic=0x%lx", usb_data_req.dwMagic);
@@ -286,11 +286,11 @@ void enqueue_xfer(void)
     if(usb_iso_req.bReq == USB_TEST_ISO_IN)
     {
         generate_data();
-        usb_drv_send(ep_iso_in, usb_buffer, MIN((int)usb_iso_req.dwLength, 3 * endpoint_descriptor.wMaxPacketSize));
+        usb_drv_send_nonblocking(ep_iso_in, usb_buffer, MIN((int)usb_iso_req.dwLength, 3 * endpoint_descriptor.wMaxPacketSize));
     }
     else if(usb_iso_req.bReq == USB_TEST_ISO_OUT)
     {
-        usb_drv_recv(ep_iso_out, usb_buffer, MIN((int)usb_iso_req.dwLength,
+        usb_drv_recv_nonblocking(ep_iso_out, usb_buffer, MIN((int)usb_iso_req.dwLength,
                 endpoint_descriptor.wMaxPacketSize));
     }
 }
@@ -299,8 +299,8 @@ bool usb_test_iso_test(struct usb_ctrlrequest* req, unsigned char* dest)
 {
     (void) req;
     (void) dest;
-    usb_drv_recv(EP_CONTROL, &usb_iso_req, sizeof(usb_iso_req));
-    usb_drv_send(EP_CONTROL, NULL, 0); /* ack */
+    usb_drv_recv_blocking(EP_CONTROL, &usb_iso_req, sizeof(usb_iso_req));
+    usb_drv_send_blocking(EP_CONTROL, NULL, 0); /* ack */
 
     logf("usbtest: iso test");
     logf("usbtest: magic=0x%lx", usb_iso_req.dwMagic);
@@ -317,8 +317,8 @@ bool usb_test_stat_req(struct usb_ctrlrequest* req, unsigned char* dest)
 {
     (void) req;
     (void) dest;
-    usb_drv_recv(EP_CONTROL, &usb_stat_req, sizeof(usb_stat_req));
-    usb_drv_send(EP_CONTROL, NULL, 0); /* ack */
+    usb_drv_recv_blocking(EP_CONTROL, &usb_stat_req, sizeof(usb_stat_req));
+    usb_drv_send_blocking(EP_CONTROL, NULL, 0); /* ack */
 
     logf("usbtest: stat");
     logf("usbtest: magic=0x%lx", usb_stat_req.dwMagic);
@@ -353,8 +353,8 @@ bool usb_test_cancel_req(struct usb_ctrlrequest* req, unsigned char* dest)
 
     usb_iso_req.dwLength = 0;
 
-    usb_drv_recv(EP_CONTROL, NULL, 0);
-    usb_drv_send(EP_CONTROL, NULL, 0); /* ack */
+    usb_drv_recv_blocking(EP_CONTROL, NULL, 0);
+    usb_drv_send_blocking(EP_CONTROL, NULL, 0); /* ack */
 
     return true;
 }
