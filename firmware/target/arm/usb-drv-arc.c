@@ -744,7 +744,7 @@ static int usb_drv_queue_transfer(int ep_num, bool send, bool wait, void *ptr, i
     
     if(endpoints[ep_num].mode[send] != USB_DRV_ENDPOINT_MODE_QUEUE)
     {
-        logf("usb: queue transfer on non-queue ep");
+        panicf("usb: queue transfer on non-queue ep");
         return -1;
     }
     
@@ -849,7 +849,7 @@ static int usb_drv_queue_transfer(int ep_num, bool send, bool wait, void *ptr, i
     Lend:
     if(wait)
     {
-        logf("usb: error, how could you wait for a transfer whereas the first one in the queue is not finished ?!");
+        panicf("usb: error, how could you wait for a transfer whereas the first one in the queue is not finished ?!");
     }
     return 0;
 }

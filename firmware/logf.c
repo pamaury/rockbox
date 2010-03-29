@@ -36,6 +36,7 @@
 #include "lcd-remote.h"
 #include "logf.h"
 #include "serial.h"
+#include "file.h"
 
 #ifdef HAVE_USBSTACK
 #include "usb_core.h"
