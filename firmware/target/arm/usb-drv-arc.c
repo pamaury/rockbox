@@ -290,6 +290,8 @@
 #define DTD_ADDR_MASK                        (0xFFFFFFE0)
 #define DTD_PACKET_SIZE                      (0x7FFF0000)
 #define DTD_LENGTH_BIT_POS                   (16)
+#define DTD_MULT_OVERRIDE_POS                (10)
+#define DTD_MULT_OVERRIDE_MASK               (0x00000c00)
 #define DTD_ERROR_MASK                       (DTD_STATUS_HALTED | \
                                                DTD_STATUS_DATA_BUFF_ERR | \
                                                DTD_STATUS_TRANSACTION_ERR)
@@ -934,7 +936,7 @@ int usb_drv_start_repeat(int ep)
 {
     int pipe = ep_to_pipe(EP_NUM(ep), EP_DIR(ep));
     
-    if(qh_array[pipe].dtd.next_td_ptr == QH_NEXT_TERMINATE)
+    if(qh_array[pipe].dtd.next_td_ptr != QH_NEXT_TERMINATE)
     {
         logf("usb: endpoint is already active");
         return -1;
@@ -952,6 +954,7 @@ int usb_drv_stop_repeat(int ep)
     usb_drv_reset_endpoint(EP_NUM(ep), EP_DIR(ep));
     /* FIXME: necessary ? */
     qh_array[ep_to_pipe(EP_NUM(ep), EP_DIR(ep))].dtd.next_td_ptr = QH_NEXT_TERMINATE;
+    qh_array[ep_to_pipe(EP_NUM(ep), EP_DIR(ep))].status = DTD_STATUS_HALTED;
     
     return 0;
 }
@@ -1156,89 +1159,117 @@ static void transfer_completed(void)
             int pipe = ep * 2 + dir;
             if (mask & pipe2mask[pipe]) {
                 struct queue_head* qh = &qh_array[pipe];
-                int length=0;
                 struct transfer_descriptor* td;
                 void *buf;
                 
-                if(endpoints[ep].mode[dir] == USB_DRV_ENDPOINT_MODE_QUEUE ||
-                        endpoints[ep].mode[dir] == USB_DRV_ENDPOINT_MODE_REPEAT)
-                    td = &endpoints[ep].tds[dir][qh->head_td];
-                else
-                {
-                    panicf("usb: unimplemented transfer type");
-                    td = NULL;
-                }
-                
-                /* the lower bits of buff_ptr0 are changed by the controller, so use the offset
-                 * we saved previously */
-                buf = (unsigned char *)((td->buff_ptr0 & 0xfffff000) | 
-                        (td->off_length & DTD_SOFTWARE_OFFSET_MASK) >> DTD_SOFTWARE_OFFSET_BIT_POS);
-                
+                /* several transfers can finish on the same endpoints, especially on an iso endpoint
+                 * in repeat mode, for this repeat, loop until all finished transfers are done */
                 while(true)
                 {
-                    logf("td=0x%x length=%d remaining=%d ptr=0x%x", (unsigned int)td, td->off_length & DTD_SOFTWARE_LENGTH_MASK,
-                        (td->size_ioc_sts & DTD_PACKET_SIZE) >> DTD_LENGTH_BIT_POS, (unsigned int)buf);
-                    length += (td->off_length & DTD_SOFTWARE_LENGTH_MASK) -
-                        ((td->size_ioc_sts & DTD_PACKET_SIZE) >> DTD_LENGTH_BIT_POS);
-                    /* It seems that the controller sets the pipe bit to one even if the TD
-                     * dosn't have the IOC bit set. So we have the rely the active status bit
-                     * to check that all the TDs of the transfer are really finished and let
-                     * the transfer continue if it's no the case */
-                    if(td->size_ioc_sts & DTD_STATUS_ACTIVE)
+                    int length=0;
+                    
+                    if(endpoints[ep].mode[dir] == USB_DRV_ENDPOINT_MODE_QUEUE ||
+                            endpoints[ep].mode[dir] == USB_DRV_ENDPOINT_MODE_REPEAT)
                     {
-                        logf("skip half finished transfer");
-                        goto Lskip;
+                        /* stop here if there are not more expected transfers */
+                        if(qh->head_td == -1)
+                            break;
+                        
+                        td = &endpoints[ep].tds[dir][qh->head_td];
                     }
-                    if(td->size_ioc_sts & DTD_IOC)
+                    else
+                    {
+                        panicf("usb: unimplemented transfer type");
+                        td = NULL;
                         break;
-                    else
-                        td = (struct transfer_descriptor*) td->next_td_ptr;
-                }
-                logf("usb: xfer complete on EP%d %s: len=%d", ep, dir == DIR_IN ? "IN" : "OUT", length);
-                
-                if(endpoints[ep].mode[dir] == USB_DRV_ENDPOINT_MODE_QUEUE)
-                {
-                    logf("usb: xfer complete head=%d tail=%d",
-                        qh->head_td, qh->tail_td);
-                    
-                    if(td->next_td_ptr & DTD_NEXT_TERMINATE)
-                    {
-                        /* list is now empty */
-                        qh->head_td = -1;
-                    }
-                    else
-                    {
-                        /* update head */
-                        /* FIXME: this is really ugly */
-                        qh->head_td = (td->next_td_ptr - (unsigned int)endpoints[ep].tds[dir]) / 
-                            sizeof(struct transfer_descriptor);
                     }
                     
-                    logf("usb: xfer complete head=%d tail=%d",
-                        qh->head_td, qh->tail_td);
-                }
-                else if(endpoints[ep].mode[dir] == USB_DRV_ENDPOINT_MODE_REPEAT)
-                {
-                    /* NOTE: in case of repeat, a transfer can't take more than one slot=TD
-                     * so td still points to the first=last td of the transfer */
-                    /* set page offset because the controller probably modified it */
-                    td->buff_ptr0 = (td->buff_ptr0 & 0xfffff000) | 
-                        ((td->off_length & DTD_SOFTWARE_OFFSET_MASK) >> DTD_SOFTWARE_OFFSET_BIT_POS);
-                    /* set TD as active once more, restore length because it was changed by controller */
-                    td->size_ioc_sts = (td->off_length & DTD_SOFTWARE_LENGTH_MASK) << DTD_LENGTH_BIT_POS | DTD_STATUS_ACTIVE | DTD_IOC;
+                    /* the lower bits of buff_ptr0 are changed by the controller, so use the offset
+                     * we saved previously */
+                    buf = (unsigned char *)((td->buff_ptr0 & 0xfffff000) | 
+                            (td->off_length & DTD_SOFTWARE_OFFSET_MASK) >> DTD_SOFTWARE_OFFSET_BIT_POS);
                     
-                    /* go to next TD */
-                    qh_array[pipe].head_td = (qh_array[pipe].head_td + 1) % endpoints[ep].nb_tds[dir];
+                    while(true)
+                    {
+                        logf("td=0x%x length=%d remaining=%d ptr=0x%x", (unsigned int)td, td->off_length & DTD_SOFTWARE_LENGTH_MASK,
+                            (td->size_ioc_sts & DTD_PACKET_SIZE) >> DTD_LENGTH_BIT_POS, (unsigned int)buf);
+                        length += (td->off_length & DTD_SOFTWARE_LENGTH_MASK) -
+                            ((td->size_ioc_sts & DTD_PACKET_SIZE) >> DTD_LENGTH_BIT_POS);
+                        /* It seems that the controller sets the pipe bit to one even if the TD
+                         * dosn't have the IOC bit set. So we have the rely the active status bit
+                         * to check that all the TDs of the transfer are really finished and let
+                         * the transfer continue if it's no the case */
+                        if(td->size_ioc_sts & DTD_STATUS_ACTIVE)
+                        {
+                            logf("skip half finished transfer");
+                            goto Lskip;
+                        }
+                        
+                        #if 1
+                        if(td->size_ioc_sts & DTD_STATUS_DATA_BUFF_ERR) _logf("usb: data buffer error");
+                        if(td->size_ioc_sts & DTD_STATUS_HALTED) _logf("usb: halted");
+                        if(td->size_ioc_sts & DTD_STATUS_TRANSACTION_ERR) _logf("usb: transaction error");
+                        _logf("usb: mult=%d", (td->size_ioc_sts & DTD_MULT_OVERRIDE_MASK) >> DTD_MULT_OVERRIDE_POS);
+                        #endif
+                        
+                        if(td->size_ioc_sts & DTD_IOC)
+                            break;
+                        else
+                            td = (struct transfer_descriptor*) td->next_td_ptr;
+                    }
+                    logf("usb: xfer complete on EP%d %s: len=%d", ep, dir == DIR_IN ? "IN" : "OUT", length);
+                    
+                    if(endpoints[ep].mode[dir] == USB_DRV_ENDPOINT_MODE_QUEUE)
+                    {
+                        logf("usb: xfer complete head=%d tail=%d",
+                            qh->head_td, qh->tail_td);
+                        
+                        if(td->next_td_ptr & DTD_NEXT_TERMINATE)
+                        {
+                            /* list is now empty */
+                            qh->head_td = -1;
+                        }
+                        else
+                        {
+                            /* update head */
+                            /* FIXME: this is really ugly */
+                            qh->head_td = (td->next_td_ptr - (unsigned int)endpoints[ep].tds[dir]) / 
+                                sizeof(struct transfer_descriptor);
+                        }
+                        
+                        logf("usb: xfer complete head=%d tail=%d",
+                            qh->head_td, qh->tail_td);
+                    }
+                    else if(endpoints[ep].mode[dir] == USB_DRV_ENDPOINT_MODE_REPEAT)
+                    {
+                        /* NOTE: in case of repeat, a transfer can't take more than one slot=TD
+                         * so td still points to the first=last td of the transfer */
+                        /* set page offset because the controller probably modified it */
+                        td->buff_ptr0 = (td->buff_ptr0 & 0xfffff000) | 
+                            ((td->off_length & DTD_SOFTWARE_OFFSET_MASK) >> DTD_SOFTWARE_OFFSET_BIT_POS);
+                        /* set TD as active once more, restore length because it was changed by controller */
+                        td->size_ioc_sts = (td->off_length & DTD_SOFTWARE_LENGTH_MASK) << DTD_LENGTH_BIT_POS 
+                            | DTD_STATUS_ACTIVE | DTD_IOC;
+                        
+                        /* go to next TD */
+                        qh_array[pipe].head_td = (qh_array[pipe].head_td + 1) % endpoints[ep].nb_tds[dir];
+                        
+                        /* check if next TD is also finished */
+                        td = &endpoints[ep].tds[dir][qh->head_td];
+                    }
+                    
+                    if(qh->wait)
+                    {
+                        qh->wait=0;
+                        wakeup_signal(&transfer_completion_signal[pipe]);
+                    }
+                    usb_core_transfer_complete(ep, dir ? USB_DIR_IN : USB_DIR_OUT, 0, length, buf);
+                    /* perhaps next transfer is complete also */
+                    continue;
+                    /* this transfer is not complete so stop here */
+                    Lskip:
+                    break;
                 }
-                
-                if(qh->wait)
-                {
-                    qh->wait=0;
-                    wakeup_signal(&transfer_completion_signal[pipe]);
-                }
-                usb_core_transfer_complete(ep, dir ? USB_DIR_IN : USB_DIR_OUT, 0, length, buf);
-                Lskip:
-                continue;
             }
         }
     }
@@ -1290,19 +1321,21 @@ static void init_control_queue_heads(void)
 /* manual: 32.14.4.1 Queue Head Initialization */
 static void init_queue_heads(void)
 {
-    /* FIXME the packetsize for isochronous transfers is 1023 : 1024 but
-     * the current code only support one type of packet size so we restrict
-     * isochronous packet size for now also */
-    int packetsize = (usb_drv_port_speed() ? 512 : 64);
     int i;
 
     /* TODO: this should take ep_allocation into account */
     for (i=1;i<USB_NUM_ENDPOINTS;i++) {
+        int packetsize = (usb_drv_port_speed() ? 512 : 64);
         
+        if(endpoints[i].type[DIR_OUT] == USB_ENDPOINT_XFER_ISOC)
+            packetsize = (usb_drv_port_speed() ? 1024 : 1023);
+        
+        endpoints[i].max_pkt_size[DIR_IN] = packetsize;
+        endpoints[i].max_pkt_size[DIR_OUT] = packetsize;
         /* OUT */
         if(endpoints[i].type[DIR_OUT] == USB_ENDPOINT_XFER_ISOC)
             /* FIXME: we can adjust the number of packets per frame, currently use one */
-            qh_array[i*2].max_pkt_length = packetsize << QH_MAX_PKT_LEN_POS | QH_ZLT_SEL | 1 << QH_MULT_POS;
+            qh_array[i*2].max_pkt_length = packetsize << QH_MAX_PKT_LEN_POS | QH_ZLT_SEL | 3 << QH_MULT_POS;
         else
             qh_array[i*2].max_pkt_length = packetsize << QH_MAX_PKT_LEN_POS | QH_ZLT_SEL;
         
@@ -1311,7 +1344,7 @@ static void init_queue_heads(void)
         /* IN */
         if(endpoints[i].type[DIR_IN] == USB_ENDPOINT_XFER_ISOC)
             /* FIXME: we can adjust the number of packets per frame, currently use one */
-            qh_array[i*2+1].max_pkt_length = packetsize << QH_MAX_PKT_LEN_POS | QH_ZLT_SEL | 1 << QH_MULT_POS;
+            qh_array[i*2+1].max_pkt_length = packetsize << QH_MAX_PKT_LEN_POS | QH_ZLT_SEL | 3 << QH_MULT_POS;
         else
             qh_array[i*2+1].max_pkt_length = packetsize << QH_MAX_PKT_LEN_POS | QH_ZLT_SEL;
         

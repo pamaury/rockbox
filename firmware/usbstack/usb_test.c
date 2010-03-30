@@ -26,11 +26,13 @@
 #include "usb_test.h"
 #include "usb_test_def.h"
 #include "usb_class_driver.h"
-/*#define LOGF_ENABLE*/
+#define LOGF_ENABLE
 #include "logf.h"
 #include "stdlib.h"
 #include "audio.h"
 #include "crc32.h"
+
+#define USB_TEST_USE_REPEAT_MODE
 
 #define USB_TEST_MIN_EP_INTERVAL    1
 #define USB_TEST_MAX_EP_INTERVAL    6
@@ -84,11 +86,13 @@ static struct usb_endpoint_descriptor __attribute__((aligned(2)))
 };
 
 #define NB_SLOTS    16
-#define SLOT_SIZE   512
+#define SLOT_SIZE   1024 * 3
 
 #define BUFFER_SIZE NB_SLOTS * SLOT_SIZE
 static unsigned char *usb_buffer;
+#ifndef USB_TEST_USE_REPEAT_MODE
 static unsigned int usb_buffer_bitmap;
+#endif
 
 static int ep_bulk_in, ep_bulk_out;
 static int ep_iso_in, ep_iso_out;
@@ -175,7 +179,7 @@ int usb_test_set_interface(int intf, int alt)
 {
     (void) intf;
     usb_test_cur_intf = alt;
-    logf("usbtest: use interface %d", alt);
+    _logf("usbtest: use interface %d", alt);
     return 0;
 }
 
@@ -187,6 +191,7 @@ int usb_test_get_interface(int intf)
 
 int usb_test_get_config_descriptor(unsigned char *dest, int max_packet_size)
 {
+    (void) max_packet_size;
     unsigned char *orig_dest = dest;
     int i;
 
@@ -196,21 +201,23 @@ int usb_test_get_config_descriptor(unsigned char *dest, int max_packet_size)
         interface_descriptor.bAlternateSetting = i;
         PACK_DATA(dest, interface_descriptor);
 
-        endpoint_descriptor.wMaxPacketSize = max_packet_size;
-
+        endpoint_descriptor.wMaxPacketSize = usb_drv_max_endpoint_packet_size(ep_bulk_in);
         endpoint_descriptor.bInterval = 0;
         endpoint_descriptor.bEndpointAddress = ep_bulk_in;
         endpoint_descriptor.bmAttributes = USB_ENDPOINT_XFER_BULK;
         PACK_DATA(dest, endpoint_descriptor);
 
+        endpoint_descriptor.wMaxPacketSize = usb_drv_max_endpoint_packet_size(ep_bulk_out);
         endpoint_descriptor.bEndpointAddress = ep_bulk_out;
         PACK_DATA(dest, endpoint_descriptor);
 
+        endpoint_descriptor.wMaxPacketSize = usb_drv_max_endpoint_packet_size(ep_iso_in) | 2 << 11;
         endpoint_descriptor.bEndpointAddress = ep_iso_in;
         endpoint_descriptor.bInterval = USB_TEST_MIN_EP_INTERVAL + i;
         endpoint_descriptor.bmAttributes = USB_ENDPOINT_XFER_ISOC | USB_ENDPOINT_SYNC_ADAPTIVE;
         PACK_DATA(dest, endpoint_descriptor);
 
+        endpoint_descriptor.wMaxPacketSize = usb_drv_max_endpoint_packet_size(ep_iso_out) | 2 << 11;
         endpoint_descriptor.bEndpointAddress = ep_iso_out;
         PACK_DATA(dest, endpoint_descriptor);
     }
@@ -275,6 +282,7 @@ bool usb_test_data_req(struct usb_ctrlrequest* req, unsigned char* dest)
     return true;
 }
 
+#ifndef USB_TEST_USE_REPEAT_MODE
 void enqueue_xfer(void)
 {
     int i;
@@ -305,12 +313,12 @@ void enqueue_xfer(void)
         logf("usbtest: no free slot");
     }
 }
+#endif
 
 bool usb_test_iso_test(struct usb_ctrlrequest* req, unsigned char* dest)
 {
     (void) req;
     (void) dest;
-    int i;
     
     usb_drv_recv_blocking(EP_CONTROL, &usb_iso_req, sizeof(usb_iso_req));
     usb_drv_send_blocking(EP_CONTROL, NULL, 0); /* ack */
@@ -321,9 +329,14 @@ bool usb_test_iso_test(struct usb_ctrlrequest* req, unsigned char* dest)
             (usb_iso_req.bReq == USB_TEST_ISO_OUT ? "OUT" : "UNKNOWN"));
     logf("usbtest: length=%lu", usb_iso_req.dwLength);
 
+    #ifdef USB_TEST_USE_REPEAT_MODE
+    usb_drv_start_repeat(ep_iso_out);
+    #else
+    int i;
     /* fill queue */
     for(i = 0; i < NB_SLOTS; i++)
         enqueue_xfer();
+    #endif
 
     return true;
 }
@@ -367,6 +380,10 @@ bool usb_test_cancel_req(struct usb_ctrlrequest* req, unsigned char* dest)
     logf("usbtest: cancel");
 
     usb_iso_req.dwLength = 0;
+    
+    #ifdef USB_TEST_USE_REPEAT_MODE
+    usb_drv_stop_repeat(ep_iso_out);
+    #endif
 
     usb_drv_send_blocking(EP_CONTROL, NULL, 0); /* ack */
 
@@ -401,6 +418,8 @@ bool usb_test_control_request(struct usb_ctrlrequest* req, unsigned char* dest)
 
 void usb_test_init_connection(void)
 {
+    int i;
+    
     cpu_boost(true);
     usb_test_cur_intf = 0;
     
@@ -409,12 +428,27 @@ void usb_test_init_connection(void)
     usb_drv_select_endpoint_mode(ep_bulk_in, USB_DRV_ENDPOINT_MODE_QUEUE);
     usb_drv_allocate_slots(ep_bulk_in, 1, ep_bulk_slots[1]);
     
+    #ifdef USB_TEST_USE_REPEAT_MODE
+    usb_drv_select_endpoint_mode(ep_iso_out, USB_DRV_ENDPOINT_MODE_REPEAT);
+    usb_drv_allocate_slots(ep_iso_out, NB_SLOTS, ep_iso_slots[0]);
+    usb_drv_select_endpoint_mode(ep_iso_in, USB_DRV_ENDPOINT_MODE_REPEAT);
+    usb_drv_allocate_slots(ep_iso_in, NB_SLOTS, ep_iso_slots[1]);
+    
+    for(i = 0; i < NB_SLOTS; i++)
+    {
+        usb_drv_fill_repeat_slot(ep_iso_out, i, usb_buffer + i * SLOT_SIZE, SLOT_SIZE);
+        usb_drv_fill_repeat_slot(ep_iso_in, i, usb_buffer + (i + NB_SLOTS) * SLOT_SIZE, SLOT_SIZE);
+    }
+    #else
+    
+    
     usb_drv_select_endpoint_mode(ep_iso_out, USB_DRV_ENDPOINT_MODE_QUEUE);
     usb_drv_allocate_slots(ep_iso_out, NB_SLOTS, ep_iso_slots[0]);
     usb_drv_select_endpoint_mode(ep_iso_in, USB_DRV_ENDPOINT_MODE_QUEUE);
     usb_drv_allocate_slots(ep_iso_in, NB_SLOTS, ep_iso_slots[1]);
     
     usb_buffer_bitmap = 0;
+    #endif
 }
 
 void usb_test_init(void)
@@ -439,7 +473,7 @@ void usb_test_disconnect(void)
 /* called by usb_core_transfer_complete() */
 void usb_test_transfer_complete(int ep, int dir, int status, int length, void *buffer)
 {
-    int slot;
+    (void)dir;
     
     logf("usbtest: xfer complete");
     logf("usbtest: ep=%d dir=%d status=%d length=%d buf=0x%x (main=0x%x)", ep, dir, status, length, 
@@ -447,9 +481,11 @@ void usb_test_transfer_complete(int ep, int dir, int status, int length, void *b
 
     if(status == 0 && ep == ep_iso_out)
     {
-        slot = ((unsigned char *)buffer - usb_buffer) / SLOT_SIZE;
+        #ifndef USB_TEST_USE_REPEAT_MODE
+        int slot = ((unsigned char *)buffer - usb_buffer) / SLOT_SIZE;
         usb_buffer_bitmap &= ~(1 << slot);
         logf("usbtest: free slot %d", slot);
+        #endif
         
         stat_nb_bytes += length;
 
@@ -458,7 +494,9 @@ void usb_test_transfer_complete(int ep, int dir, int status, int length, void *b
         else
         {
             usb_iso_req.dwLength -= length;
+            #ifndef USB_TEST_USE_REPEAT_MODE
             enqueue_xfer();
+            #endif
         }
         
         //process_out_data(length, buffer);
