@@ -30,7 +30,7 @@ int usb_test_get_config_descriptor(unsigned char *dest, int max_packet_size);
 void usb_test_init_connection(void);
 void usb_test_init(void);
 void usb_test_disconnect(void);
-void usb_test_transfer_complete(int ep, int dir, int status, int length);
+void usb_test_transfer_complete(int ep, int dir, int status, int length, void *buffer);
 bool usb_test_control_request(struct usb_ctrlrequest* req, unsigned char* dest);
 int usb_test_set_first_string_index(int string_index);
 const struct usb_string_descriptor *usb_test_get_string_descriptor(int string_index);

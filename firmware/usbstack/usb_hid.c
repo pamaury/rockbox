@@ -629,12 +629,13 @@ void usb_hid_disconnect(void)
 }
 
 /* called by usb_core_transfer_complete() */
-void usb_hid_transfer_complete(int ep, int dir, int status, int length)
+void usb_hid_transfer_complete(int ep, int dir, int status, int length, void *buffer)
 {
     (void)ep;
     (void)dir;
     (void)status;
     (void)length;
+    (void)buffer;
 
     logf("HID: transfer complete: %d %d %d %d",ep,dir,status,length);
     switch (dir)

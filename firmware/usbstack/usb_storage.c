@@ -510,9 +510,10 @@ void usb_storage_disconnect(void)
 }
 
 /* called by usb_core_transfer_complete() */
-void usb_storage_transfer_complete(int ep,int dir,int status,int length)
+void usb_storage_transfer_complete(int ep,int dir,int status,int length, void *buffer)
 {
     (void)ep;
+    (void)buffer;
     struct command_block_wrapper* cbw = (void*)cbw_buffer;
     struct tm tm;
 

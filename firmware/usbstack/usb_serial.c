@@ -217,10 +217,11 @@ void usb_serial_send(const unsigned char *data,int length)
 }
 
 /* called by usb_core_transfer_complete() */
-void usb_serial_transfer_complete(int ep,int dir, int status, int length)
+void usb_serial_transfer_complete(int ep,int dir, int status, int length, void *buffer)
 {
     (void)ep;
     (void)length;
+    (void)buffer;
 
     switch (dir) {
         case USB_DIR_OUT:

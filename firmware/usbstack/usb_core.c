@@ -22,7 +22,7 @@
 #include "thread.h"
 #include "kernel.h"
 #include "string.h"
-#define LOGF_ENABLE
+/*#define LOGF_ENABLE*/
 #include "logf.h"
 
 #include "usb.h"
@@ -173,7 +173,7 @@ static enum { DEFAULT, ADDRESS, CONFIGURED } usb_state;
 
 static int usb_core_num_interfaces;
 
-typedef void (*completion_handler_t)(int ep,int dir,int status,int length);
+typedef void (*completion_handler_t)(int ep,int dir,int status,int length,void *buf);
 typedef bool (*control_handler_t)(struct usb_ctrlrequest* req,unsigned char* dest);
 
 static struct
@@ -431,7 +431,7 @@ void usb_core_handle_transfer_completion(
         default:
             handler = ep_data[ep].completion_handler[EP_DIR(event->dir)];
             if(handler != NULL)
-                handler(ep,event->dir,event->status,event->length);
+                handler(ep,event->dir,event->status,event->length,event->data);
             break;
     }
 }
@@ -908,7 +908,7 @@ void usb_core_bus_reset(void)
 }
 
 /* called by usb_drv_transfer_completed() */
-void usb_core_transfer_complete(int endpoint,int dir,int status,int length)
+void usb_core_transfer_complete(int endpoint,int dir,int status,int length,void *buf)
 {
     struct usb_transfer_completion_event_data *completion_event;
 
@@ -922,7 +922,7 @@ void usb_core_transfer_complete(int endpoint,int dir,int status,int length)
 
             completion_event->endpoint=endpoint;
             completion_event->dir=dir;
-            completion_event->data=0;
+            completion_event->data=buf;
             completion_event->status=status;
             completion_event->length=length;
             /* All other endoints. Let the thread deal with it */

@@ -26,7 +26,7 @@
 #include "usb_test.h"
 #include "usb_test_def.h"
 #include "usb_class_driver.h"
-#define LOGF_ENABLE
+/*#define LOGF_ENABLE*/
 #include "logf.h"
 #include "stdlib.h"
 #include "audio.h"
@@ -83,8 +83,12 @@ static struct usb_endpoint_descriptor __attribute__((aligned(2)))
     .bInterval        = 0 /* filled later */
 };
 
-#define BUFFER_SIZE 16384 * 4
+#define NB_SLOTS    16
+#define SLOT_SIZE   512
+
+#define BUFFER_SIZE NB_SLOTS * SLOT_SIZE
 static unsigned char *usb_buffer;
+static unsigned int usb_buffer_bitmap;
 
 static int ep_bulk_in, ep_bulk_out;
 static int ep_iso_in, ep_iso_out;
@@ -101,7 +105,7 @@ struct usb_test_iso_request usb_iso_req USB_DEVBSS_ATTR __attribute__((aligned(3
 struct usb_test_stat_request usb_stat_req USB_DEVBSS_ATTR __attribute__((aligned(32)));
 
 unsigned char ep_bulk_slots[2][USB_DRV_SLOT_SIZE] USB_DRV_SLOT_ATTR;
-unsigned char ep_iso_slots[2][USB_DRV_SLOT_SIZE * 8] USB_DRV_SLOT_ATTR;
+unsigned char ep_iso_slots[2][USB_DRV_SLOT_SIZE * NB_SLOTS] USB_DRV_SLOT_ATTR;
 
 int usb_test_set_first_string_index(int string_index)
 {
@@ -229,34 +233,27 @@ void generate_data(void)
 {
 }
 
-void process_out_data(int length)
+void process_out_data(int length, void *buffer)
 {
-    int i;
-    
     if((usb_data_req.bReq & USB_TEST_DATA_OUT_MASK) == USB_TEST_DATA_OUT_CRC32)
     {
-        for(i = 0; i < (length / endpoint_descriptor.wMaxPacketSize); i++)
+        uint32_t expected_crc;
+        uint32_t actual_crc;
+        
+        if(length < 4)
         {
-            int actual_length = endpoint_descriptor.wMaxPacketSize;
-            unsigned char *buffer = usb_buffer + i * endpoint_descriptor.wMaxPacketSize;
-            uint32_t expected_crc;
-            uint32_t actual_crc;
-            
-            if(actual_length < 4)
-            {
-                logf("usbtest: short CRC block");
-                stat_crc_errors++;
-                return;
-            }
-            
-            expected_crc = *(uint32_t *)buffer;
-            actual_crc = crc_32(buffer + 4, actual_length - 4, 0xffffffff);
+            logf("usbtest: short CRC block");
+            stat_crc_errors++;
+            return;
+        }
+        
+        expected_crc = *(uint32_t *)buffer;
+        actual_crc = crc_32(buffer + 4, length - 4, 0xffffffff);
 
-            if(actual_crc != expected_crc)
-            {
-                logf("usbtest: CRC error on %d byte block", actual_length);
-                stat_crc_errors++;
-            }
+        if(actual_crc != expected_crc)
+        {
+            logf("usbtest: CRC error on %d byte block", length);
+            stat_crc_errors++;
         }
     }
 }
@@ -280,18 +277,32 @@ bool usb_test_data_req(struct usb_ctrlrequest* req, unsigned char* dest)
 
 void enqueue_xfer(void)
 {
+    int i;
+    
     if(usb_iso_req.dwLength == 0)
         return;
     
+    /*
     if(usb_iso_req.bReq == USB_TEST_ISO_IN)
     {
         generate_data();
-        usb_drv_send_nonblocking(ep_iso_in, usb_buffer, MIN((int)usb_iso_req.dwLength, 3 * endpoint_descriptor.wMaxPacketSize));
+        usb_drv_send_nonblocking(ep_iso_in, usb_buffer, MIN((int)usb_iso_req.dwLength, endpoint_descriptor.wMaxPacketSize));
     }
-    else if(usb_iso_req.bReq == USB_TEST_ISO_OUT)
+    
+    else*/ if(usb_iso_req.bReq == USB_TEST_ISO_OUT)
     {
-        usb_drv_recv_nonblocking(ep_iso_out, usb_buffer, MIN((int)usb_iso_req.dwLength,
-                endpoint_descriptor.wMaxPacketSize));
+        for(i = 0; i < NB_SLOTS; i++)
+            if((usb_buffer_bitmap & (1 << i)) == 0)
+            {
+                logf("usbtest: schedule slot %d ptr 0x%x", i, (unsigned int)usb_buffer + i * SLOT_SIZE);
+                usb_drv_recv_nonblocking(ep_iso_out,
+                    usb_buffer + i * SLOT_SIZE, 
+                    MIN((int)usb_iso_req.dwLength,
+                    endpoint_descriptor.wMaxPacketSize));
+                usb_buffer_bitmap |= 1 << i;
+                return;
+            }
+        logf("usbtest: no free slot");
     }
 }
 
@@ -299,6 +310,8 @@ bool usb_test_iso_test(struct usb_ctrlrequest* req, unsigned char* dest)
 {
     (void) req;
     (void) dest;
+    int i;
+    
     usb_drv_recv_blocking(EP_CONTROL, &usb_iso_req, sizeof(usb_iso_req));
     usb_drv_send_blocking(EP_CONTROL, NULL, 0); /* ack */
 
@@ -308,7 +321,9 @@ bool usb_test_iso_test(struct usb_ctrlrequest* req, unsigned char* dest)
             (usb_iso_req.bReq == USB_TEST_ISO_OUT ? "OUT" : "UNKNOWN"));
     logf("usbtest: length=%lu", usb_iso_req.dwLength);
 
-    enqueue_xfer();
+    /* fill queue */
+    for(i = 0; i < NB_SLOTS; i++)
+        enqueue_xfer();
 
     return true;
 }
@@ -334,11 +349,11 @@ bool usb_test_stat_req(struct usb_ctrlrequest* req, unsigned char* dest)
     else if(usb_stat_req.bReq == USB_TEST_STAT_LOG)
     {
         uint32_t endtick = current_tick;
-        logf("usbtest: data transfered=%d B=%d KiB=%d MiB", stat_nb_bytes,
+        _logf("usbtest: data transfered=%d B=%d KiB=%d MiB", stat_nb_bytes,
             stat_nb_bytes / 1024, stat_nb_bytes / 1024 / 1024);
         if((usb_data_req.bReq & USB_TEST_DATA_OUT_MASK) == USB_TEST_DATA_OUT_CRC32)
-            logf("usbtest: CRC errors=%d", stat_crc_errors);
-        logf("usbtest: time elapsed=%lu ms", ((endtick - stat_first_tick) * 1000) / HZ);
+            _logf("usbtest: CRC errors=%d", stat_crc_errors);
+        _logf("usbtest: time elapsed=%lu ms", ((endtick - stat_first_tick) * 1000) / HZ);
     }
 
     return true;
@@ -353,7 +368,6 @@ bool usb_test_cancel_req(struct usb_ctrlrequest* req, unsigned char* dest)
 
     usb_iso_req.dwLength = 0;
 
-    usb_drv_recv_blocking(EP_CONTROL, NULL, 0);
     usb_drv_send_blocking(EP_CONTROL, NULL, 0); /* ack */
 
     return true;
@@ -389,6 +403,18 @@ void usb_test_init_connection(void)
 {
     cpu_boost(true);
     usb_test_cur_intf = 0;
+    
+    usb_drv_select_endpoint_mode(ep_bulk_out, USB_DRV_ENDPOINT_MODE_QUEUE);
+    usb_drv_allocate_slots(ep_bulk_out, 1, ep_bulk_slots[0]);
+    usb_drv_select_endpoint_mode(ep_bulk_in, USB_DRV_ENDPOINT_MODE_QUEUE);
+    usb_drv_allocate_slots(ep_bulk_in, 1, ep_bulk_slots[1]);
+    
+    usb_drv_select_endpoint_mode(ep_iso_out, USB_DRV_ENDPOINT_MODE_QUEUE);
+    usb_drv_allocate_slots(ep_iso_out, NB_SLOTS, ep_iso_slots[0]);
+    usb_drv_select_endpoint_mode(ep_iso_in, USB_DRV_ENDPOINT_MODE_QUEUE);
+    usb_drv_allocate_slots(ep_iso_in, NB_SLOTS, ep_iso_slots[1]);
+    
+    usb_buffer_bitmap = 0;
 }
 
 void usb_test_init(void)
@@ -403,16 +429,6 @@ void usb_test_init(void)
     usb_buffer = (void *)((unsigned int)(audio_buffer+31) & 0xffffffe0);
 #endif
     cpucache_invalidate();
-    
-    usb_drv_select_endpoint_mode(ep_bulk_out, USB_DRV_ENDPOINT_MODE_QUEUE);
-    usb_drv_allocate_slots(ep_bulk_out, 1, ep_bulk_slots[0]);
-    usb_drv_select_endpoint_mode(ep_bulk_in, USB_DRV_ENDPOINT_MODE_QUEUE);
-    usb_drv_allocate_slots(ep_bulk_in, 1, ep_bulk_slots[1]);
-    
-    usb_drv_select_endpoint_mode(ep_iso_out, USB_DRV_ENDPOINT_MODE_QUEUE);
-    usb_drv_allocate_slots(ep_iso_out, 8, ep_iso_slots[0]);
-    usb_drv_select_endpoint_mode(ep_iso_in, USB_DRV_ENDPOINT_MODE_QUEUE);
-    usb_drv_allocate_slots(ep_iso_in, 8, ep_iso_slots[1]);
 }
 
 void usb_test_disconnect(void)
@@ -421,14 +437,19 @@ void usb_test_disconnect(void)
 }
 
 /* called by usb_core_transfer_complete() */
-void usb_test_transfer_complete(int ep, int dir, int status, int length)
+void usb_test_transfer_complete(int ep, int dir, int status, int length, void *buffer)
 {
+    int slot;
+    
     logf("usbtest: xfer complete");
-    logf("usbtest: ep=%d dir=%d status=%d length=%d", ep, dir, status, length);
+    logf("usbtest: ep=%d dir=%d status=%d length=%d buf=0x%x (main=0x%x)", ep, dir, status, length, 
+        (unsigned int)buffer, (unsigned int)usb_buffer);
 
     if(status == 0 && ep == ep_iso_out)
     {
-        process_out_data(length);
+        slot = ((unsigned char *)buffer - usb_buffer) / SLOT_SIZE;
+        usb_buffer_bitmap &= ~(1 << slot);
+        logf("usbtest: free slot %d", slot);
         
         stat_nb_bytes += length;
 
@@ -439,5 +460,7 @@ void usb_test_transfer_complete(int ep, int dir, int status, int length)
             usb_iso_req.dwLength -= length;
             enqueue_xfer();
         }
+        
+        //process_out_data(length, buffer);
     }
 }
