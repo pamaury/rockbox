@@ -1,5 +1,5 @@
 /*
- * This config file is for the Sandisk Sansa Fuze
+ * This config file is for the Sandisk Sansa Fuze v2
  */
 #define TARGET_TREE /* this target is using the target tree system */
 
@@ -10,9 +10,9 @@
 #define HW_SAMPR_CAPS       SAMPR_CAP_ALL
 
 /* define this if you have recording possibility */
-//#define HAVE_RECORDING
+#define HAVE_RECORDING
 
-//#define REC_SAMPR_CAPS      SAMPR_CAP_ALL
+#define REC_SAMPR_CAPS      SAMPR_CAP_ALL
 
 /* Default recording levels */
 #define DEFAULT_REC_MIC_GAIN    23
@@ -21,7 +21,7 @@
 
 /* Define bitmask of input sources - recordable bitmask can be defined
    explicitly if different */
-#define INPUT_SRC_CAPS (SRC_CAP_MIC | SRC_CAP_FMRADIO)
+#define INPUT_SRC_CAPS (SRC_CAP_MIC /*| SRC_CAP_FMRADIO*/)
 
 /* define this if you have a bitmap LCD display */
 #define HAVE_LCD_BITMAP
@@ -89,9 +89,9 @@
 #define LCD_PIXELFORMAT RGB565 /* rgb565 */
 
 
-/* We're working on the assumption that the AS3525 has something
-   similar to the AS3514 for audio codec etc */
+/* AS3514 or newer */
 #define HAVE_AS3514
+#define HAVE_AS3543
 
 /* Define this if you have a software controlled poweroff */
 #define HAVE_SW_POWEROFF
@@ -117,14 +117,14 @@
 
 /* Main LCD backlight brightness range and defaults */
 #define MIN_BRIGHTNESS_SETTING      1
-#define MAX_BRIGHTNESS_SETTING     12
+#define MAX_BRIGHTNESS_SETTING     25
 #define DEFAULT_BRIGHTNESS_SETTING  6
 
 /* define this if you have a light associated with the buttons */
 #define HAVE_BUTTON_LIGHT
 
 /* Which backlight fading type? */
-//#define CONFIG_BACKLIGHT_FADING BACKLIGHT_FADING_SW_SETTING
+#define CONFIG_BACKLIGHT_FADING BACKLIGHT_FADING_SW_SETTING
 
 /* define this if the unit uses a scrollwheel for navigation */
 //#define HAVE_SCROLLWHEEL
