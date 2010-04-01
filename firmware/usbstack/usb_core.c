@@ -51,10 +51,6 @@
 #include "usb_audio.h"
 #endif
 
-#ifdef USB_ENABLE_TEST
-#include "usb_test.h"
-#endif
-
 /* TODO: Move target-specific stuff somewhere else (serial number reading) */
 
 #ifdef HAVE_AS3514
@@ -286,29 +282,6 @@ static struct usb_class_driver drivers[USB_NUM_DRIVERS] =
         .get_interface = usb_audio_get_interface,
         .set_first_string_index = usb_audio_set_first_string_index,
         .get_string_descriptor = usb_audio_get_string_descriptor,
-    },
-#endif
-#ifdef USB_ENABLE_TEST
-    [USB_DRIVER_TEST] = {
-        .enabled = false,
-        .needs_exclusive_storage = false,
-        .first_interface = 0,
-        .last_interface = 0,
-        .request_endpoints = usb_test_request_endpoints,
-        .set_first_interface = usb_test_set_first_interface,
-        .get_config_descriptor = usb_test_get_config_descriptor,
-        .init_connection = usb_test_init_connection,
-        .init = usb_test_init,
-        .disconnect = usb_test_disconnect,
-        .transfer_complete = usb_test_transfer_complete,
-        .control_request = usb_test_control_request,
-#ifdef HAVE_HOTSWAP
-        .notify_hotswap = NULL,
-#endif
-        .set_interface = usb_test_set_interface,
-        .get_interface = usb_test_get_interface,
-        .set_first_string_index = usb_test_set_first_string_index,
-        .get_string_descriptor = usb_test_get_string_descriptor,
     },
 #endif
 };

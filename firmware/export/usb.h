@@ -122,9 +122,6 @@ enum {
 #ifdef USB_ENABLE_AUDIO
     USB_DRIVER_AUDIO,
 #endif
-#ifdef USB_ENABLE_TEST
-    USB_DRIVER_TEST,
-#endif
     USB_NUM_DRIVERS
 };
 
