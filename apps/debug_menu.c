@@ -2536,7 +2536,7 @@ static bool dbg_scrollwheel(void)
 
 #if defined (HAVE_USBSTACK)
 
-#if (defined(ROCKBOX_HAS_LOGF) && defined(USB_ENABLE_SERIAL)) || defined(USB_ENABLE_TEST)
+#if (defined(ROCKBOX_HAS_LOGF) && defined(USB_ENABLE_SERIAL)) || defined(USB_ENABLE_TEST) || defined(USB_ENABLE_AUDIO)
 static bool toggle_usb_core_driver(int driver, char *msg)
 {
     bool enabled = !usb_core_driver_enabled(driver);
@@ -2558,6 +2558,13 @@ static bool toggle_usb_serial(void)
 static bool toggle_usb_test(void)
 {
     return toggle_usb_core_driver(USB_DRIVER_TEST,"USB Test");
+}
+#endif
+
+#ifdef USB_ENABLE_TEST
+static bool toggle_usb_audio(void)
+{
+    return toggle_usb_core_driver(USB_DRIVER_AUDIO,"USB Audio");
 }
 #endif
 #endif /* defined(ROCKBOX_HAS_LOGF) && (defined(USB_ENABLE_SERIAL) || defined(USB_ENABLE_TEST)) */
@@ -2707,6 +2714,9 @@ static const struct the_menu_item menuitems[] = {
 #endif
 #if defined(USB_ENABLE_TEST)
         {"USB Test driver", toggle_usb_test },
+#endif
+#if defined(USB_ENABLE_AUDIO)
+        {"USB Audio driver", toggle_usb_audio },
 #endif
 #endif /* HAVE_USBSTACK */
 #ifdef CPU_BOOST_LOGGING
