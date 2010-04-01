@@ -306,6 +306,9 @@ usbstack/usb_hid.c
 #ifdef USB_ENABLE_TEST
 usbstack/usb_test.c
 #endif
+#ifdef USB_ENABLE_AUDIO
+usbstack/usb_audio.c
+#endif
 #if CONFIG_USBOTG == USBOTG_M66591
 drivers/m66591.c
 #elif CONFIG_USBOTG == USBOTG_ARC

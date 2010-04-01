@@ -47,6 +47,10 @@
 #include "usb_hid.h"
 #endif
 
+#ifdef USB_ENABLE_AUDIO
+#include "usb_audio.h"
+#endif
+
 #ifdef USB_ENABLE_TEST
 #include "usb_test.h"
 #endif
@@ -259,6 +263,29 @@ static struct usb_class_driver drivers[USB_NUM_DRIVERS] =
 #ifdef HAVE_HOTSWAP
         .notify_hotswap = NULL,
 #endif
+    },
+#endif
+#ifdef USB_ENABLE_AUDIO
+    [USB_DRIVER_AUDIO] = {
+        .enabled = false,
+        .needs_exclusive_storage = false,
+        .first_interface = 0,
+        .last_interface = 0,
+        .request_endpoints = usb_audio_request_endpoints,
+        .set_first_interface = usb_audio_set_first_interface,
+        .get_config_descriptor = usb_audio_get_config_descriptor,
+        .init_connection = usb_audio_init_connection,
+        .init = usb_audio_init,
+        .disconnect = usb_audio_disconnect,
+        .transfer_complete = usb_audio_transfer_complete,
+        .control_request = usb_audio_control_request,
+#ifdef HAVE_HOTSWAP
+        .notify_hotswap = NULL,
+#endif
+        .set_interface = usb_audio_set_interface,
+        .get_interface = usb_audio_get_interface,
+        .set_first_string_index = usb_audio_set_first_string_index,
+        .get_string_descriptor = usb_audio_get_string_descriptor,
     },
 #endif
 #ifdef USB_ENABLE_TEST

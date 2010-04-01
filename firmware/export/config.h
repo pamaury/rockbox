@@ -908,7 +908,7 @@ Lyre prototype 1 */
 #else /* BOOTLOADER */
 
 #ifndef SIMULATOR
-//#define USB_ENABLE_SERIAL
+/*#define USB_ENABLE_SERIAL*/
 #define USB_ENABLE_STORAGE
 
 #ifdef USB_HAS_INTERRUPT
@@ -920,6 +920,7 @@ Lyre prototype 1 */
 
 #ifdef USB_HAS_ISOCHRONOUS
 #define USB_ENABLE_TEST
+#define USB_ENABLE_AUDIO
 #endif
 
 #endif /* BOOTLOADER */
