@@ -225,14 +225,17 @@ static struct md5sums sansasums[] = {
     { MODEL_CLIP,   "1.01.29", "c12711342169c66e209540cd1f27cd26" },
     { MODEL_CLIP,   "1.01.30", "f2974d47c536549c9d8259170f1dbe4d" },
     { MODEL_CLIP,   "1.01.32", "d835d12342500732ffb9c4ee54abec15" },
+    { MODEL_CLIP,   "1.01.35", "b4d0edb3b8f2a4e8eee0a344f7f8e480" },
 
     { MODEL_CLIPV2, "2.01.16", "c57fb3fcbe07c2c9b360f060938f80cb" },
     { MODEL_CLIPV2, "2.01.32", "0ad3723e52022509089d938d0fbbf8c5" },
+    { MODEL_CLIPV2, "2.01.35", "a3cbbd22b9508d7f8a9a1a39acc342c2" },
 
     { MODEL_CLIPPLUS, "01.02.09", "656d38114774c2001dc18e6726df3c5d" },
 
     { MODEL_FUZEV2, "2.01.17", "8b85fb05bf645d08a4c8c3e344ec9ebe" },
     { MODEL_FUZEV2, "2.02.26", "d4f6f85c3e4a8ea8f2e5acc421641801" },
+    { MODEL_FUZEV2, "2.03.31", "74fb197ccd51707388f3b233402186a6" },
 };
 
 #define NUM_MD5S (sizeof(sansasums)/sizeof(sansasums[0]))

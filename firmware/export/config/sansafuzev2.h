@@ -1,5 +1,5 @@
 /*
- * This config file is for the Sandisk Sansa Fuze
+ * This config file is for the Sandisk Sansa Fuze v2
  */
 #define TARGET_TREE /* this target is using the target tree system */
 
@@ -10,9 +10,9 @@
 #define HW_SAMPR_CAPS       SAMPR_CAP_ALL
 
 /* define this if you have recording possibility */
-//#define HAVE_RECORDING
+#define HAVE_RECORDING
 
-//#define REC_SAMPR_CAPS      SAMPR_CAP_ALL
+#define REC_SAMPR_CAPS      SAMPR_CAP_ALL
 
 /* Default recording levels */
 #define DEFAULT_REC_MIC_GAIN    23
@@ -21,7 +21,7 @@
 
 /* Define bitmask of input sources - recordable bitmask can be defined
    explicitly if different */
-#define INPUT_SRC_CAPS (SRC_CAP_MIC | SRC_CAP_FMRADIO)
+#define INPUT_SRC_CAPS (SRC_CAP_MIC /*| SRC_CAP_FMRADIO*/)
 
 /* define this if you have a bitmap LCD display */
 #define HAVE_LCD_BITMAP
@@ -36,9 +36,6 @@
 
 /* define this to enable JPEG decoding */
 #define HAVE_JPEG
-
-/* define this if you have a light associated with the buttons */
-#define HAVE_BUTTON_LIGHT
 
 /* define this if you have access to the quickscreen */
 #define HAVE_QUICKSCREEN
@@ -92,9 +89,9 @@
 #define LCD_PIXELFORMAT RGB565 /* rgb565 */
 
 
-/* We're working on the assumption that the AS3525 has something
-   similar to the AS3514 for audio codec etc */
+/* AS3514 or newer */
 #define HAVE_AS3514
+#define HAVE_AS3543
 
 /* Define this if you have a software controlled poweroff */
 #define HAVE_SW_POWEROFF
@@ -111,7 +108,7 @@
 #define AB_REPEAT_ENABLE 1
 
 /* FM Tuner - suspected to be the SI4702 */
-#define CONFIG_TUNER SI4700
+//#define CONFIG_TUNER SI4700
 /* #define HAVE_TUNER_PWR_CTRL */
 
 /* Define this for LCD backlight available */
@@ -120,20 +117,23 @@
 
 /* Main LCD backlight brightness range and defaults */
 #define MIN_BRIGHTNESS_SETTING      1
-#define MAX_BRIGHTNESS_SETTING     12
+#define MAX_BRIGHTNESS_SETTING     25
 #define DEFAULT_BRIGHTNESS_SETTING  6
+
+/* define this if you have a light associated with the buttons */
+#define HAVE_BUTTON_LIGHT
 
 /* Which backlight fading type? */
 #define CONFIG_BACKLIGHT_FADING BACKLIGHT_FADING_SW_SETTING
 
 /* define this if the unit uses a scrollwheel for navigation */
-#define HAVE_SCROLLWHEEL
+//#define HAVE_SCROLLWHEEL
 /* define to activate advanced wheel acceleration code */
-#define HAVE_WHEEL_ACCELERATION
+//#define HAVE_WHEEL_ACCELERATION
 /* define from which rotation speed [degree/sec] on the acceleration starts */
-#define WHEEL_ACCEL_START 540
+//#define WHEEL_ACCEL_START 540
 /* define type of acceleration (1 = ^2, 2 = ^3, 3 = ^4) */
-#define WHEEL_ACCELERATION 1
+//#define WHEEL_ACCELERATION 1
 
 /* define this if you have a flash memory storage */
 #define HAVE_FLASH_STORAGE
@@ -148,16 +148,13 @@
 #define BATTERY_TYPES_COUNT  1          /* only one type */
 
 /* Charging implemented in a target-specific algorithm */
-#define CONFIG_CHARGING 0
+#define CONFIG_CHARGING CHARGING_TARGET
 
 /* define this if the unit can be powered or charged via USB */
 #define HAVE_USB_POWER
 
-/* Define this if you have an AMS AS3525*/
-#define CONFIG_CPU AS3525
-
-/* Define how much SD sectors are reserved for OF */
-#define AMS_OF_SIZE 0xF000
+/* Define this if you have an AMS AS3525v2 */
+#define CONFIG_CPU AS3525v2
 
 /* Define this if you want to use the AS2525 i2c interface */
 #define CONFIG_I2C I2C_AS3525
@@ -194,7 +191,7 @@
 /* enable these for the experimental usb stack */
 #define HAVE_USBSTACK
 #define USB_VENDOR_ID 0x0781
-#define USB_PRODUCT_ID 0x7423
+#define USB_PRODUCT_ID 0x74c3   /* MSC = 0x74c3, MTP = 0x74c2 */
 
 #endif /* !BOOTLOADER */
 

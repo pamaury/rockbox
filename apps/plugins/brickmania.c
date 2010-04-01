@@ -1789,7 +1789,7 @@ static int brickmania_game_loop(void)
             /* draw the fires */
             for(k=0;k<used_fires;k++)
             {
-                rb->lcd_vline(INT3(fire[k].x_pos), INT3(fire[k].top), 
+                rb->lcd_vline(INT3(fire[k].x_pos), INT3(fire[k].top),
                         INT3(fire[k].top + FIRE_LENGTH));
             }
 
@@ -1907,6 +1907,7 @@ static int brickmania_game_loop(void)
                                 ball[k].tempy = pt_hit.y;
                                 ball[k].tempx = pt_hit.x;
                                 brick_hit(i, j);
+                                break;
                             }
                         } /* for k */
                     } /* if(used) */
@@ -2001,7 +2002,7 @@ static int brickmania_game_loop(void)
                             ball[used_balls].tempy=0;
                             ball[used_balls].tempx=0;
                             ball[used_balls].pos_y=ON_PAD_POS_Y;
-                            ball[used_balls].pos_x=pad_pos_x+(pad_width/2)-2;
+                            ball[used_balls].pos_x=pad_pos_x+(pad_width/2)-HALFBALL;
 
                             k--;
                             continue;
@@ -2247,40 +2248,40 @@ static int brickmania_game_loop(void)
 #endif
                 if ((game_state==ST_PAUSE) && (button_right || button_left))
                     continue;
-                if ((button_right && !flip_sides) ||
-                    (button_left && flip_sides))
+
+                if (button_left || button_right)
                 {
-                    if (pad_pos_x+SPEED_PAD+pad_width > GAMESCREEN_WIDTH)
+                    int dx = 0;
+
+                    if ((button_right && !flip_sides) ||
+                        (button_left && flip_sides))
                     {
-                        for(k=0;k<used_balls;k++)
-                            if (game_state==ST_READY || ball[k].glue)
-                                ball[k].pos_x += GAMESCREEN_WIDTH-pad_pos_x -
-                                                pad_width;
-                        pad_pos_x += GAMESCREEN_WIDTH - pad_pos_x - pad_width;
+                        if (pad_pos_x+SPEED_PAD+pad_width > GAMESCREEN_WIDTH)
+                            dx = GAMESCREEN_WIDTH - pad_pos_x - pad_width;
+                        else
+                            dx = SPEED_PAD;
                     }
-                    else {
-                        for(k=0;k<used_balls;k++)
-                            if ((game_state==ST_READY || ball[k].glue))
-                                ball[k].pos_x+=SPEED_PAD;
-                        pad_pos_x+=SPEED_PAD;
-                    }
-                }
-                else if ((button_left && !flip_sides) ||
-                         (button_right && flip_sides))
-                {
-                    if (pad_pos_x-SPEED_PAD < 0)
+                    else if ((button_left && !flip_sides) ||
+                            (button_right && flip_sides))
                     {
-                        for(k=0;k<used_balls;k++)
-                            if (game_state==ST_READY || ball[k].glue)
-                                ball[k].pos_x-=pad_pos_x;
-                        pad_pos_x -= pad_pos_x;
+                        if (pad_pos_x-SPEED_PAD < 0)
+                            dx = -pad_pos_x;
+                        else
+                            dx = -SPEED_PAD;
                     }
-                    else
+
+                    pad_pos_x+=dx;
+                    for(k=0;k<used_balls;k++)
                     {
-                        for(k=0;k<used_balls;k++)
-                            if (game_state==ST_READY || ball[k].glue)
-                                ball[k].pos_x-=SPEED_PAD;
-                        pad_pos_x-=SPEED_PAD;
+                        if (game_state==ST_READY || ball[k].glue)
+                        {
+                            ball[k].pos_x+=dx;
+
+                            if (ball[k].pos_x < HALFBALL)
+                                ball[k].pos_x = HALFBALL;
+                            else if (ball[k].pos_x > GAMESCREEN_WIDTH - HALFBALL)
+                                ball[k].pos_x = GAMESCREEN_WIDTH - HALFBALL;
+                        }
                     }
                 }
             }

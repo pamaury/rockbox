@@ -7,7 +7,7 @@
  *                     \/            \/     \/    \/            \/
  * $Id$
  *
- * Driver for AS3514 audio codec
+ * Driver for AS3514 and compatible audio codec
  *
  * Copyright (c) 2007 Daniel Ankers
  * Copyright (c) 2007 Christian Gmeiner
@@ -31,12 +31,36 @@
 #include "i2s.h"
 #include "ascodec.h"
 
+/*
+ * This drivers supports:
+ * as3514 , as used in the PP targets
+ * as3517 , as used in the as3525 targets
+ * as3543 , as used in the as3525v2 targets
+ */
+
+#if CONFIG_CPU == AS3525
 /* AMS Sansas based on the AS3525 use the LINE2 input for the analog radio
    signal instead of LINE1 */
-#if CONFIG_CPU == AS3525
-#define LINE_INPUT 2
-#else
-#define LINE_INPUT 1
+#define AS3514_LINE_IN_R AS3514_LINE_IN2_R
+#define AS3514_LINE_IN_L AS3514_LINE_IN2_L
+#define ADC_R_ADCMUX_LINE_IN ADC_R_ADCMUX_LINE_IN2
+#define AUDIOSET1_LIN_on AUDIOSET1_LIN2_on
+
+#elif CONFIG_CPU == AS3525v2
+/* There is only 1 pair of registers on AS3543, the line input is selectable in
+   LINE_IN_R register */
+#define AS3514_LINE_IN_R AS3514_LINE_IN1_R
+#define AS3514_LINE_IN_L AS3514_LINE_IN1_L
+#define ADC_R_ADCMUX_LINE_IN ADC_R_ADCMUX_LINE_IN2
+#define AUDIOSET1_LIN_on AUDIOSET1_LIN1_on
+
+#else   /* PP use line1 */
+
+#define AS3514_LINE_IN_R AS3514_LINE_IN1_R
+#define AS3514_LINE_IN_L AS3514_LINE_IN1_L
+#define ADC_R_ADCMUX_LINE_IN ADC_R_ADCMUX_LINE_IN1
+#define AUDIOSET1_LIN_on AUDIOSET1_LIN1_on
+
 #endif
 
 const struct sound_settings_info audiohw_settings[] = {
@@ -170,14 +194,23 @@ void audiohw_preinit(void)
     as3514_write(AS3514_AUDIOSET3, AUDIOSET3_HPCM_off);
 #endif
 
+#ifdef HAVE_AS3543
+    as3514_clear(AS3543_DAC_IF, 0x80);
+    as3514_set(AS3514_LINE_IN1_R, LINE_IN_R_LINE_SELECT); /* Line 2 */
+#else
     /* Mute and disable speaker */
     as3514_write(AS3514_LSP_OUT_R, LSP_OUT_R_SP_OVC_TO_256MS | 0x00);
     as3514_write(AS3514_LSP_OUT_L, LSP_OUT_L_SP_MUTE | 0x00);
+#endif
 
+#ifdef HAVE_AS3543
+    as3514_write(AS3514_HPH_OUT_R, (0<<7) /* out */ | HPH_OUT_R_HP_OUT_DAC |
+                                  0x00);
+#else
     /* Set headphone over-current to 0, Min volume */
     as3514_write(AS3514_HPH_OUT_R,
                  HPH_OUT_R_HP_OVC_TO_0MS | 0x00);
-
+#endif
     /* Headphone ON, MUTE, Min volume */
     as3514_write(AS3514_HPH_OUT_L,
                  HPH_OUT_L_HP_ON | HPH_OUT_L_HP_MUTE | 0x00);
@@ -195,8 +228,10 @@ void audiohw_preinit(void)
 
     /* M1_Sup_off */
     as3514_set(AS3514_MIC1_L, MIC1_L_M1_SUP_off);
+#ifndef HAVE_AS3543
     /* M2_Sup_off */
     as3514_set(AS3514_MIC2_L, MIC2_L_M2_SUP_off);
+#endif
 }
 
 void audiohw_postinit(void)
@@ -241,12 +276,8 @@ void audiohw_set_master_vol(int vol_l, int vol_r)
     as3514_write_masked(AS3514_DAC_R, mix_r, AS3514_VOL_MASK);
     as3514_write_masked(AS3514_DAC_L, mix_l, AS3514_VOL_MASK);
 #if defined(HAVE_RECORDING) || defined(HAVE_FMRADIO_IN)
-    as3514_write_masked((LINE_INPUT == 1) ? AS3514_LINE_IN1_R : 
-                                            AS3514_LINE_IN2_R,
-                        mix_r, AS3514_VOL_MASK);
-    as3514_write_masked((LINE_INPUT == 1) ? AS3514_LINE_IN1_L : 
-                                            AS3514_LINE_IN2_L,
-                        mix_l, AS3514_VOL_MASK);
+    as3514_write_masked(AS3514_LINE_IN_R, mix_r, AS3514_VOL_MASK);
+    as3514_write_masked(AS3514_LINE_IN_L, mix_l, AS3514_VOL_MASK);
 #endif
     as3514_write_masked(AS3514_HPH_OUT_R, hph_r, AS3514_VOL_MASK);
     as3514_write_masked(AS3514_HPH_OUT_L, hph_l, AS3514_VOL_MASK);
@@ -262,8 +293,15 @@ void audiohw_mute(bool mute)
 {
     if (mute) {
         as3514_set(AS3514_HPH_OUT_L, HPH_OUT_L_HP_MUTE);
+#ifdef HAVE_AS3543
+        as3514_set(AS3543_DAC_IF, 0x80);
+#endif
+
     } else {
         as3514_clear(AS3514_HPH_OUT_L, HPH_OUT_L_HP_MUTE);
+#ifdef HAVE_AS3543
+        as3514_clear(AS3543_DAC_IF, 0x80);
+#endif
     }
 }
 
@@ -283,6 +321,10 @@ void audiohw_close(void)
     /* turn off everything */
     as3514_clear(AS3514_HPH_OUT_L, HPH_OUT_L_HP_ON);
     as3514_write(AS3514_AUDIOSET1, 0x0);
+
+#ifdef HAVE_AS3543
+    as3514_set(AS3543_DAC_IF, 0x80);
+#endif
 
     /* Allow caps to discharge */
     sleep(HZ/4);
@@ -305,20 +347,26 @@ void audiohw_enable_recording(bool source_mic)
         as3514_write_masked(AS3514_AUDIOSET1, AUDIOSET1_MIC1_on, 
                             AUDIOSET1_INPUT_MASK);
 
+#if CONFIG_CPU == AS3525v2
+        /* Enable supply */
+        as3514_clear(AS3514_MIC1_L, MIC1_L_M1_SUP_off);
+#endif
+
         /* M1_AGC_off */
         as3514_clear(AS3514_MIC1_R, MIC1_R_M1_AGC_off);
     } else {
         /* ADCmux = Line_IN1 or Line_IN2 */
-        as3514_write_masked(AS3514_ADC_R,
-                            (LINE_INPUT == 1) ? ADC_R_ADCMUX_LINE_IN1 :
-                                                ADC_R_ADCMUX_LINE_IN2,
+        as3514_write_masked(AS3514_ADC_R, ADC_R_ADCMUX_LINE_IN,
                             ADC_R_ADCMUX);
 
         /* LIN1_or LIN2 on, rest off */
-        as3514_write_masked(AS3514_AUDIOSET1,
-                            (LINE_INPUT == 1) ? AUDIOSET1_LIN1_on :
-                                                AUDIOSET1_LIN2_on,
+        as3514_write_masked(AS3514_AUDIOSET1, AUDIOSET1_LIN_on,
                             AUDIOSET1_INPUT_MASK);
+
+#if CONFIG_CPU == AS3525v2
+        /* Disable supply */
+        as3514_set(AS3514_MIC1_L, MIC1_L_M1_SUP_off);
+#endif
     }
 
     /* ADC_Mute_off */
@@ -395,21 +443,27 @@ void audiohw_set_monitor(bool enable)
 {
     if (enable) {
         /* select either LIN1 or LIN2 */
-        as3514_write_masked(AS3514_AUDIOSET1,
-                            (LINE_INPUT == 1) ? 
-                            AUDIOSET1_LIN1_on : AUDIOSET1_LIN2_on,
+        as3514_write_masked(AS3514_AUDIOSET1, AUDIOSET1_LIN_on,
                             AUDIOSET1_LIN1_on | AUDIOSET1_LIN2_on);
-        as3514_set((LINE_INPUT == 1) ? AS3514_LINE_IN1_R : AS3514_LINE_IN2_R,
-                   LINE_IN1_R_LI1R_MUTE_off);
-        as3514_set((LINE_INPUT == 1) ? AS3514_LINE_IN1_L : AS3514_LINE_IN2_L,
-                   LINE_IN1_L_LI1L_MUTE_off);
+        as3514_set(AS3514_LINE_IN_R, LINE_IN1_R_LI1R_MUTE_off);
+        as3514_set(AS3514_LINE_IN_L, LINE_IN1_L_LI1L_MUTE_off);
+
+#ifdef HAVE_AS3543
+        as3514_write_masked(AS3514_HPH_OUT_R,
+                            HPH_OUT_R_HP_OUT_LINE, HPH_OUT_R_HP_OUT_MASK);
+#endif
     }
     else {
         /* turn off both LIN1 and LIN2 */
         as3514_clear(AS3514_LINE_IN1_R, LINE_IN1_R_LI1R_MUTE_off);
         as3514_clear(AS3514_LINE_IN1_L, LINE_IN1_L_LI1L_MUTE_off);
+#ifdef HAVE_AS3543
+        as3514_write_masked(AS3514_HPH_OUT_R,
+                            HPH_OUT_R_HP_OUT_DAC, HPH_OUT_R_HP_OUT_MASK);
+#else
         as3514_clear(AS3514_LINE_IN2_R, LINE_IN2_R_LI2R_MUTE_off);
         as3514_clear(AS3514_LINE_IN2_L, LINE_IN2_L_LI2L_MUTE_off);
+#endif
         as3514_clear(AS3514_AUDIOSET1, AUDIOSET1_LIN1_on | AUDIOSET1_LIN2_on);
     }
 }

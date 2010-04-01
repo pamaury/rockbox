@@ -7,7 +7,7 @@
  *                     \/            \/     \/    \/            \/
  * $Id$
  *
- * Copyright © 2009 Rafaël Carré
+ * Copyright (C) 2010 by Thomas Martitz
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -18,34 +18,56 @@
  * KIND, either express or implied.
  *
  ****************************************************************************/
-
+#include "config.h"
 #include "backlight-target.h"
+#include "system.h"
 #include "lcd.h"
-#include "as3525v2.h"
+#include "backlight.h"
 #include "ascodec-target.h"
+#include "as3514.h"
+
+int buttonlight_is_on = 0;
+
+void _backlight_set_brightness(int brightness)
+{
+    ascodec_write_pmu(AS3543_BACKLIGHT, 2, brightness * 10);
+}
+
+bool _backlight_init(void)
+{
+    GPIOB_DIR |= 1<<5; /* for buttonlight, stuff below seems to be needed
+                          for buttonlight as well*/
+
+    ascodec_write_pmu(AS3543_BACKLIGHT, 1, 0x80);
+    ascodec_write_pmu(AS3543_BACKLIGHT, 2, backlight_brightness * 10);
+
+    return true;
+}
 
 void _backlight_on(void)
 {
-    ascodec_write(0x25, ascodec_read(0x25) | 2);    /* lcd power */
-    ascodec_write(0x1c, 8|1);
-    ascodec_write(0x1b, 0x90);
-    lcd_enable(true);
+#ifdef HAVE_LCD_ENABLE
+    lcd_enable(true); /* power on lcd + visible display */
+#endif
+    ascodec_write_pmu(AS3543_BACKLIGHT, 1, 0x80);
 }
 
 void _backlight_off(void)
 {
-    ascodec_write(0x25, ascodec_read(0x25) & ~2);    /* lcd power */
-    lcd_enable(false);
+    ascodec_write_pmu(AS3543_BACKLIGHT, 1, 0x0);
+#ifdef HAVE_LCD_ENABLE
+    lcd_enable(false); /* power off visible display */
+#endif
 }
 
 void _buttonlight_on(void)
 {
-    GPIOA_DIR |= (1<<5);
-    GPIOA_PIN(5) = (1<<5);  /* set pin a5 high */
+    GPIOB_PIN(5) = (1<<5);
+    buttonlight_is_on = 1;
 }
 
 void _buttonlight_off(void)
 {
-    GPIOA_DIR |= (1<<5);
-    GPIOA_PIN(5) = 0;       /* set pin a5 low */
+    GPIOB_PIN(5) = 0;
+    buttonlight_is_on = 0;
 }

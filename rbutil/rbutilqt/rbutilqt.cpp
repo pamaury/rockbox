@@ -77,6 +77,11 @@ RbUtilQt::RbUtilQt(QWidget *parent) : QMainWindow(parent)
     HttpGet::setGlobalUserAgent("rbutil/"VERSION);
     // init startup & autodetection
     ui.setupUi(this);
+#if defined(Q_OS_LINUX)
+    QIcon windowIcon(":/icons/rockbox-clef.svg");
+    this->setWindowIcon(windowIcon);
+#endif
+
     downloadInfo();
 
     m_gotInfo = false;
@@ -149,6 +154,7 @@ void RbUtilQt::shutdown(void)
     // object destruction -- the trace object could already be destroyed.
     // Fixes segfaults on exit.
     qInstallMsgHandler(0);
+    SysTrace::save();
     this->close();
 }
 
@@ -393,7 +399,8 @@ void RbUtilQt::updateManual()
         QString manual= SystemInfo::value(SystemInfo::CurManual).toString();
 
         if(manual == "")
-            manual = "rockbox-" + RbSettings::value(RbSettings::Platform).toString();
+            manual = "rockbox-"
+                + SystemInfo::value(SystemInfo::CurBuildserverModel).toString();
         QString pdfmanual;
         pdfmanual = SystemInfo::value(SystemInfo::ManualUrl).toString()
                             + "/" + manual + ".pdf";
@@ -1052,7 +1059,8 @@ void RbUtilQt::downloadManual(void)
 
     QString manual = SystemInfo::value(SystemInfo::CurManual).toString();
     if(manual.isEmpty())
-        manual = "rockbox-" + RbSettings::value(RbSettings::Platform).toString();
+        manual = "rockbox-"
+            + SystemInfo::value(SystemInfo::CurBuildserverModel).toString();
 
     QString date = ServerInfo::value(ServerInfo::DailyDate).toString();
 
