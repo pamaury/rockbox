@@ -392,7 +392,7 @@ static unsigned long get_sampling_frequency(void)
 static void enqueue_iso_xfer(void)
 {
     memset(usb_audio_xfer_buffer, 0, USB_AUDIO_XFER_BUFFER_SIZE);
-    usb_drv_recv(out_iso_ep_adr, usb_audio_xfer_buffer, USB_AUDIO_XFER_BUFFER_SIZE);
+    usb_drv_recv_nonblocking(out_iso_ep_adr, usb_audio_xfer_buffer, USB_AUDIO_XFER_BUFFER_SIZE);
 }
 
 #ifdef USB_AUDIO_USE_FEEDBACK_EP
@@ -632,10 +632,10 @@ static bool usb_audio_endpoint_request(struct usb_ctrlrequest* req)
                 break;
             }
             logf("usbaudio: SET_CUR sampling freq");
-            usb_drv_recv(EP_CONTROL, usb_buffer, req->wLength);
+            usb_drv_recv_blocking(EP_CONTROL, usb_buffer, req->wLength);
             /* FIXME: do we have to wait for completion or it works out of the box here ? */
             set_sampling_frequency(decode3(usb_buffer));
-            usb_drv_send(EP_CONTROL, NULL, 0); /* ack */
+            usb_drv_send_blocking(EP_CONTROL, NULL, 0); /* ack */
             handled = true;
             break;
         case USB_AC_GET_CUR:
@@ -646,8 +646,8 @@ static bool usb_audio_endpoint_request(struct usb_ctrlrequest* req)
             }
             logf("usbaudio: GET_CUR sampling freq");
             encode3(usb_buffer, get_sampling_frequency());
-            usb_drv_recv(EP_CONTROL, NULL, 0); /* ack */
-            usb_drv_send(EP_CONTROL, usb_buffer, req->wLength);
+            usb_drv_send_blocking(EP_CONTROL, usb_buffer, req->wLength);
+            usb_drv_recv_blocking(EP_CONTROL, NULL, 0); /* ack */
             handled = true;
             break;
         default:
@@ -764,10 +764,8 @@ static bool usb_audio_set_get_feature_unit(struct usb_ctrlrequest* req)
         for(i = 0; i < req->wLength; i++)
             usb_buffer[i] = (value >> (8 * i)) & 0xff;
         
-        /* ack */
-        usb_drv_recv(EP_CONTROL, NULL, 0);
-        /* send */
-        usb_drv_send(EP_CONTROL, usb_buffer, req->wLength);
+        usb_drv_send_blocking(EP_CONTROL, usb_buffer, req->wLength);
+        usb_drv_recv_blocking(EP_CONTROL, NULL, 0); /* ack */
         return true;
     }
     else
@@ -780,7 +778,7 @@ static bool usb_audio_set_get_feature_unit(struct usb_ctrlrequest* req)
         }
 
         /* receive */
-        usb_drv_recv(EP_CONTROL, usb_buffer, req->wLength);
+        usb_drv_recv_blocking(EP_CONTROL, usb_buffer, req->wLength);
         for(i = 0; i < req->wLength; i++)
             value = value | (usb_buffer[i] << (i * 8));
         
@@ -802,7 +800,7 @@ static bool usb_audio_set_get_feature_unit(struct usb_ctrlrequest* req)
             return false;
 
         /* ack */
-        usb_drv_send(EP_CONTROL, NULL, 0);
+        usb_drv_send_blocking(EP_CONTROL, NULL, 0);
         return true;
     }
 }
@@ -875,10 +873,11 @@ void usb_audio_disconnect(void)
     cpu_boost(false);
 }
 
-void usb_audio_transfer_complete(int ep, int dir, int status, int length)
+void usb_audio_transfer_complete(int ep, int dir, int status, int length, void *buffer)
 {
     (void) ep;
     (void) dir;
+    (void) buffer;
     int actual_length;
 
     //logf("usbaudio: xfer %s", status < 0 ? "failure" : "completed");

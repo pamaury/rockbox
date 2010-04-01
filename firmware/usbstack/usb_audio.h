@@ -27,7 +27,7 @@ int usb_audio_get_config_descriptor(unsigned char *dest,int max_packet_size);
 void usb_audio_init_connection(void);
 void usb_audio_init(void);
 void usb_audio_disconnect(void);
-void usb_audio_transfer_complete(int ep,int dir, int status, int length);
+void usb_audio_transfer_complete(int ep,int dir, int status, int length, void *buffer);
 bool usb_audio_control_request(struct usb_ctrlrequest* req, unsigned char *dest);
 int usb_audio_set_first_string_index(int string_index);
 const struct usb_string_descriptor *usb_audio_get_string_descriptor(int string_index);
