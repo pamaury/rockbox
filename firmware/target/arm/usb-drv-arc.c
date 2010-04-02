@@ -1205,11 +1205,10 @@ static void transfer_completed(void)
                             goto Lskip;
                         }
                         
-                        #if 1
+                        #if 0
                         if(td->size_ioc_sts & DTD_STATUS_DATA_BUFF_ERR) _logf("usb: data buffer error");
                         if(td->size_ioc_sts & DTD_STATUS_HALTED) _logf("usb: halted");
                         if(td->size_ioc_sts & DTD_STATUS_TRANSACTION_ERR) _logf("usb: transaction error");
-                        _logf("usb: mult=%d", (td->size_ioc_sts & DTD_MULT_OVERRIDE_MASK) >> DTD_MULT_OVERRIDE_POS);
                         #endif
                         
                         if(td->size_ioc_sts & DTD_IOC)

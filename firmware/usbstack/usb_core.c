@@ -594,7 +594,7 @@ static void control_request_handler_drivers(struct usb_ctrlrequest* req)
                 {
                     if(drivers[i].set_interface && drivers[i].set_interface(req->wIndex, req->wValue) >= 0)
                     {
-                        usb_drv_send_blocking(EP_CONTROL, NULL, 0);
+                        usb_drv_send_blocking(EP_CONTROL, NULL, 0); /* ack */
                         handled = true;
                     }
                     break;
@@ -610,7 +610,7 @@ static void control_request_handler_drivers(struct usb_ctrlrequest* req)
                     {
                         response_data[0] = alt;
                         usb_drv_send_blocking(EP_CONTROL, response_data, 1);
-                        usb_drv_recv_blocking(EP_CONTROL, NULL, 0);
+                        usb_drv_recv_blocking(EP_CONTROL, NULL, 0); /* ack */
                         handled = true;
                     }
                     break;
