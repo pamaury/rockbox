@@ -958,6 +958,13 @@ void usb_core_transfer_complete(int endpoint,int dir,int status,int length,void 
     }
 }
 
+void usb_core_fast_transfer_complete(int ep,int dir,int status,int length,void *buf)
+{
+    completion_handler_t handler = ep_data[ep].completion_handler[EP_DIR(dir)];
+    if(handler != NULL)
+        handler(ep,dir,status,length,buf);
+}
+
 /* called by usb_drv_int() */
 void usb_core_control_request(struct usb_ctrlrequest* req)
 {

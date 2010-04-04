@@ -18,6 +18,9 @@
  * KIND, either express or implied.
  *
  ****************************************************************************/
+#define USB_TEST_USE_REPEAT_MODE
+#define USB_TEST_WRITE_TO_FILE
+
 #include "string.h"
 #include "system.h"
 #include "usb_core.h"
@@ -26,13 +29,14 @@
 #include "usb_test.h"
 #include "usb_test_def.h"
 #include "usb_class_driver.h"
-#define LOGF_ENABLE
+//#define LOGF_ENABLE
 #include "logf.h"
 #include "stdlib.h"
 #include "audio.h"
 #include "crc32.h"
-
-#define USB_TEST_USE_REPEAT_MODE
+#ifdef USB_TEST_WRITE_TO_FILE
+#include "file.h"
+#endif
 
 #define USB_TEST_MIN_EP_INTERVAL    1
 #define USB_TEST_MAX_EP_INTERVAL    6
@@ -40,6 +44,14 @@
 enum
 {
     USB_TEST_INTERFACE_STRING = 0
+};
+
+enum
+{
+    #ifdef USB_TEST_WRITE_TO_FILE
+    USB_TEST_WRITE_BUFFER = 1,
+    #endif
+    USB_TEST_LAST_EVENT
 };
 
 static const struct usb_string_descriptor __attribute__((aligned(2)))
@@ -93,6 +105,11 @@ static unsigned char *usb_buffer;
 #ifndef USB_TEST_USE_REPEAT_MODE
 static unsigned int usb_buffer_bitmap;
 #endif
+#ifdef USB_TEST_WRITE_TO_FILE
+static unsigned char *write_buffer;
+static unsigned int write_buffer_size;
+#endif
+
 
 static int ep_bulk_in, ep_bulk_out;
 static int ep_iso_in, ep_iso_out;
@@ -110,6 +127,11 @@ struct usb_test_stat_request usb_stat_req USB_DEVBSS_ATTR __attribute__((aligned
 
 unsigned char ep_bulk_slots[2][USB_DRV_SLOT_SIZE] USB_DRV_SLOT_ATTR;
 unsigned char ep_iso_slots[2][USB_DRV_SLOT_SIZE * NB_SLOTS] USB_DRV_SLOT_ATTR;
+
+static long usb_test_stack[(DEFAULT_STACK_SIZE + 0x800)/sizeof(long)];
+static const char usb_test_thread_name[] = "usb-test";
+static unsigned int usb_test_thread_entry = 0;
+static struct event_queue usb_test_queue;
 
 int usb_test_set_first_string_index(int string_index)
 {
@@ -367,6 +389,8 @@ bool usb_test_stat_req(struct usb_ctrlrequest* req, unsigned char* dest)
         if((usb_data_req.bReq & USB_TEST_DATA_OUT_MASK) == USB_TEST_DATA_OUT_CRC32)
             _logf("usbtest: CRC errors=%d", stat_crc_errors);
         _logf("usbtest: time elapsed=%lu ms", ((endtick - stat_first_tick) * 1000) / HZ);
+        
+        queue_post(&usb_test_queue, USB_TEST_WRITE_BUFFER, 0);
     }
 
     return true;
@@ -416,9 +440,43 @@ bool usb_test_control_request(struct usb_ctrlrequest* req, unsigned char* dest)
     return handled;
 }
 
+static void usb_test_thread(void)
+{
+    struct queue_event ev;
+
+    while(1)
+    {
+        queue_wait(&usb_test_queue, &ev);
+        
+        switch(ev.id)
+        {
+#ifdef USB_TEST_WRITE_TO_FILE
+            case USB_TEST_WRITE_BUFFER:
+            {
+                int fd = open("/iso.bin", O_CREAT | O_TRUNC | O_RDWR);
+                if(fd >= 0)
+                {
+                    write(fd, write_buffer, write_buffer_size);
+                    close(fd);
+                }
+                break;
+            }
+#endif
+            case SYS_USB_CONNECTED:
+                usb_acknowledge(SYS_USB_CONNECTED_ACK);
+                usb_wait_for_disconnect(&usb_test_queue);
+                break ;
+            default:
+                break;
+        }
+    }
+}
+
 void usb_test_init_connection(void)
 {
     int i;
+    
+    _logf("usbtest: init connection");
     
     cpu_boost(true);
     usb_test_cur_intf = 0;
@@ -441,7 +499,6 @@ void usb_test_init_connection(void)
     }
     #else
     
-    
     usb_drv_select_endpoint_mode(ep_iso_out, USB_DRV_ENDPOINT_MODE_QUEUE);
     usb_drv_allocate_slots(ep_iso_out, NB_SLOTS, ep_iso_slots[0]);
     usb_drv_select_endpoint_mode(ep_iso_in, USB_DRV_ENDPOINT_MODE_QUEUE);
@@ -449,12 +506,24 @@ void usb_test_init_connection(void)
     
     usb_buffer_bitmap = 0;
     #endif
+    
+    #ifdef USB_TEST_WRITE_TO_FILE
+    write_buffer = usb_buffer + 2 * NB_SLOTS * SLOT_SIZE;
+    write_buffer_size = 0;
+    #endif
+    
+    queue_init(&usb_test_queue, true);
+    usb_test_thread_entry = create_thread(usb_test_thread, usb_test_stack,
+                       sizeof(usb_test_stack), 0, usb_test_thread_name
+                       IF_PRIO(, PRIORITY_BACKGROUND) IF_COP(, CPU));
 }
 
 void usb_test_init(void)
 {
     unsigned char * audio_buffer;
     size_t bufsize;
+    
+    _logf("usbtest: init");
     
     audio_buffer = audio_get_buffer(false,&bufsize);
 #ifdef UNCACHED_ADDR
@@ -468,6 +537,8 @@ void usb_test_init(void)
 void usb_test_disconnect(void)
 {
     cpu_boost(false);
+    remove_thread(usb_test_thread_entry);
+    queue_delete(&usb_test_queue);
 }
 
 /* called by usb_core_transfer_complete() */
@@ -500,5 +571,11 @@ void usb_test_transfer_complete(int ep, int dir, int status, int length, void *b
         }
         
         //process_out_data(length, buffer);
+        #ifdef USB_TEST_WRITE_TO_FILE
+        /*
+        memcpy(write_buffer + write_buffer_size, buffer, length);
+        write_buffer_size += length;
+        */
+        #endif
     }
 }

@@ -1205,7 +1205,7 @@ static void transfer_completed(void)
                             goto Lskip;
                         }
                         
-                        #if 0
+                        #if 1
                         if(td->size_ioc_sts & DTD_STATUS_DATA_BUFF_ERR) _logf("usb: data buffer error");
                         if(td->size_ioc_sts & DTD_STATUS_HALTED) _logf("usb: halted");
                         if(td->size_ioc_sts & DTD_STATUS_TRANSACTION_ERR) _logf("usb: transaction error");
@@ -1238,6 +1238,12 @@ static void transfer_completed(void)
                         
                         logf("usb: xfer complete head=%d tail=%d",
                             qh->head_td, qh->tail_td);
+                        if(qh->wait)
+                        {
+                            qh->wait=0;
+                            wakeup_signal(&transfer_completion_signal[pipe]);
+                        }
+                        usb_core_transfer_complete(ep, dir ? USB_DIR_IN : USB_DIR_OUT, 0, length, buf);
                     }
                     else if(endpoints[ep].mode[dir] == USB_DRV_ENDPOINT_MODE_REPEAT)
                     {
@@ -1255,14 +1261,11 @@ static void transfer_completed(void)
                         
                         /* check if next TD is also finished */
                         td = &endpoints[ep].tds[dir][qh->head_td];
+                        
+                        /* call directly completion handler to save time: the queue system is too slow */
+                        usb_core_fast_transfer_complete(ep, dir ? USB_DIR_IN : USB_DIR_OUT, 0, length, buf);
                     }
                     
-                    if(qh->wait)
-                    {
-                        qh->wait=0;
-                        wakeup_signal(&transfer_completion_signal[pipe]);
-                    }
-                    usb_core_transfer_complete(ep, dir ? USB_DIR_IN : USB_DIR_OUT, 0, length, buf);
                     /* perhaps next transfer is complete also */
                     continue;
                     /* this transfer is not complete so stop here */
@@ -1334,7 +1337,7 @@ static void init_queue_heads(void)
         /* OUT */
         if(endpoints[i].type[DIR_OUT] == USB_ENDPOINT_XFER_ISOC)
             /* FIXME: we can adjust the number of packets per frame, currently use one */
-            qh_array[i*2].max_pkt_length = packetsize << QH_MAX_PKT_LEN_POS | QH_ZLT_SEL | 3 << QH_MULT_POS;
+            qh_array[i*2].max_pkt_length = packetsize << QH_MAX_PKT_LEN_POS | QH_ZLT_SEL | 1 << QH_MULT_POS;
         else
             qh_array[i*2].max_pkt_length = packetsize << QH_MAX_PKT_LEN_POS | QH_ZLT_SEL;
         

@@ -33,7 +33,8 @@
 #include "logf.h"
 
 //#define USB_AUDIO_USE_FEEDBACK_EP
-#define USB_AUDIO_OUTPUT_TO_FILE
+//#define USB_AUDIO_OUTPUT_TO_FILE
+#define USB_AUDIO_OUTPUT_TO_AUDIO
 #define USB_AUDIO_USE_INTERMEDIATE_BUFFER
 
 /* Strings */
@@ -505,7 +506,7 @@ int usb_audio_get_config_descriptor(unsigned char *dest, int max_packet_size)
     as_interface_alt_1.bInterfaceNumber = usb_interface + 1;
 
     /* endpoints */
-    out_iso_ep.wMaxPacketSize = usb_drv_max_endpoint_packet_size(out_iso_ep_adr) | 2 << 11;
+    out_iso_ep.wMaxPacketSize = usb_drv_max_endpoint_packet_size(out_iso_ep_adr) | 0 << 11;
 #ifdef USB_AUDIO_USE_FEEDBACK_EP
     out_iso_sync_ep.wMaxPacketSize = max_packet_size;
 #endif
@@ -523,7 +524,7 @@ int usb_audio_get_config_descriptor(unsigned char *dest, int max_packet_size)
 
 static void usb_audio_pcm_get_more(unsigned char **start, size_t *size)
 {
-    #ifdef USB_AUDIO_USE_INTERMEDIATE_BUFFER
+    #if defined(USB_AUDIO_USE_INTERMEDIATE_BUFFER) && defined(USB_AUDIO_OUTPUT_TO_AUDIO)
     /* copy start and end to avoid any modification at the same time */
     /* NOTE: the filler can only change the end pointer */
     int buf_start = usb_audio_buffer_start;
@@ -566,22 +567,22 @@ static void usb_audio_start(void)
     usb_audio_buffer_start = 0;
     usb_audio_buffer_end = 0;
     
-    /*
+    #ifdef USB_AUDIO_OUTPUT_TO_AUDIO
     audio_set_input_source(AUDIO_SRC_PLAYBACK, SRCF_PLAYBACK);
     audio_set_output_source(AUDIO_SRC_PLAYBACK);
     pcm_set_frequency(hw_freq_sampr[as_freq_idx]);
     pcm_play_data(&usb_audio_pcm_get_more, NULL, 0);
     if(!pcm_is_playing())
         pcm_play_stop();
-    */ 
+    #endif
 }
 
 static void usb_audio_stop(void)
 {
-    /*
+    #ifdef USB_AUDIO_OUTPUT_TO_AUDIO
     if(pcm_is_playing())
         pcm_play_stop();
-    */
+    #endif
 }
 
 int usb_audio_set_interface(int intf, int alt)
@@ -915,7 +916,7 @@ void usb_audio_transfer_complete(int ep, int dir, int status, int length, void *
             }
             #endif
 
-            #if 0
+            #ifdef USB_AUDIO_OUTPUT_TO_AUDIO
             /* only start playback if there is sufficient data (to avoid repeated underflow) */
             if(usb_audio_underflow)
             {
