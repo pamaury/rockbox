@@ -51,7 +51,7 @@ enum
 static const struct usb_string_descriptor __attribute__((aligned(2)))
     usb_string_audio_control =
 {
-    21*2+2,
+    2 + 2 * 21,
     USB_DT_STRING,
     {'R', 'o', 'c', 'k', 'b', 'o', 'x', ' ',
      'A', 'u', 'd', 'i', 'o', ' ',
@@ -61,7 +61,7 @@ static const struct usb_string_descriptor __attribute__((aligned(2)))
 static const struct usb_string_descriptor __attribute__((aligned(2)))
     usb_string_audio_streaming_1 =
 {
-    29*2+2,
+    2 + 2 * 29,
     USB_DT_STRING,
     {'R', 'o', 'c', 'k', 'b', 'o', 'x', ' ',
      'D', 'u', 'm', 'm', 'y', ' ',
@@ -72,7 +72,7 @@ static const struct usb_string_descriptor __attribute__((aligned(2)))
 static const struct usb_string_descriptor __attribute__((aligned(2)))
     usb_string_audio_streaming_2 =
 {
-    30*2+2,
+    2 + 2 * 30,
     USB_DT_STRING,
     {'R', 'o', 'c', 'k', 'b', 'o', 'x', ' ',
      'A', 'u', 'd', 'i', 'o', ' ',
@@ -83,7 +83,7 @@ static const struct usb_string_descriptor __attribute__((aligned(2)))
 static const struct usb_string_descriptor __attribute__((aligned(2)))
     usb_string_input_terminal =
 {
-    22*2+2,
+    sizeof usb_string_input_terminal,
     USB_DT_STRING,
     {'R', 'o', 'c', 'k', 'b', 'o', 'x', ' ',
      'U', 'S', 'B', ' ',
@@ -93,7 +93,7 @@ static const struct usb_string_descriptor __attribute__((aligned(2)))
 static const struct usb_string_descriptor __attribute__((aligned(2)))
     usb_string_output_terminal =
 {
-    16*2+2,
+    2 + 2 * 16,
     USB_DT_STRING,
     {'R', 'o', 'c', 'k', 'b', 'o', 'x', ' ',
      'L', 'i', 'n', 'e', '-', 'O', 'u', 't'}
@@ -102,7 +102,7 @@ static const struct usb_string_descriptor __attribute__((aligned(2)))
 static const struct usb_string_descriptor __attribute__((aligned(2)))
     usb_string_feature_unit =
 {
-    25*2+2,
+    2 + 2 * 25,
     USB_DT_STRING,
     {'R', 'o', 'c', 'k', 'b', 'o', 'x', ' ',
      'M', 'a', 's', 't', 'e', 'r', ' ',
@@ -177,7 +177,7 @@ static struct usb_ac_output_terminal ac_output =
     .bTerminalId        = AC_OUTPUT_TERMINAL_ID,
     .wTerminalType      = USB_AC_OUTPUT_TERMINAL_HEADPHONES,
     .bAssocTerminal     = 0,
-    .bSourceId          = AC_INPUT_TERMINAL_ID,
+    .bSourceId          = AC_FEATURE_ID,
     .iTerminal          = 0,
 };
 
@@ -375,7 +375,7 @@ static void encode3(uint8_t arr[3], unsigned long freq)
 
 static unsigned long decode3(uint8_t arr[3])
 {
-    logf("arr=[0x%x,0x%x,0x%x]", arr[0], arr[1], arr[2]);
+    /*logf("arr=[0x%x,0x%x,0x%x]", arr[0], arr[1], arr[2]);*/
     return arr[0] | (arr[1] << 8) | (arr[2] << 16);
 }
 
@@ -508,7 +508,7 @@ int usb_audio_get_config_descriptor(unsigned char *dest, int max_packet_size)
     /* endpoints */
     out_iso_ep.wMaxPacketSize = usb_drv_max_endpoint_packet_size(out_iso_ep_adr) | 0 << 11;
 #ifdef USB_AUDIO_USE_FEEDBACK_EP
-    out_iso_sync_ep.wMaxPacketSize = max_packet_size;
+    out_iso_sync_ep.wMaxPacketSize = usb_drv_max_endpoint_packet_size(out_iso_sync_ep_adr);
 #endif
 
     /** Packing */
@@ -532,9 +532,11 @@ static void usb_audio_pcm_get_more(unsigned char **start, size_t *size)
     
     *start = NULL;
     *size = 0;
-    
+
+    /*
     logf("usbaudio: get more !");
     logf("usbaudio: start=%d end=%d", buf_start, buf_end);
+    */
 
     if(buf_start == buf_end)
     {
@@ -558,7 +560,9 @@ static void usb_audio_pcm_get_more(unsigned char **start, size_t *size)
         usb_audio_buffer_start = 0;
     }
 
+    /*
     logf("=> start=%d end=%d", usb_audio_buffer_start, usb_audio_buffer_end);
+    */
     #endif
 }
 

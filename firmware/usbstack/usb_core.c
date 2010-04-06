@@ -675,7 +675,7 @@ static void request_handler_device_get_descriptor(struct usb_ctrlrequest* req)
             }
 
         case USB_DT_STRING:
-            logf("STRING %d",index);
+            _logf("STRING %d",index);
             if ((unsigned)index < USB_STRINGS_LIST_SIZE) {
                 size = usb_strings[index]->bLength;
                 ptr = usb_strings[index];
@@ -700,6 +700,12 @@ static void request_handler_device_get_descriptor(struct usb_ctrlrequest* req)
                     ptr = desc;
                 }
             }
+            char buf[128];
+            int i;
+            for(i = 0; i < (size - 2) / 2; i++)
+                buf[i] = ((struct usb_string_descriptor *)ptr)->wString[i];
+            buf[i] = 0;
+            _logf("==> %s (%d)", buf, ((struct usb_string_descriptor *)ptr)->bLength);
             break;
 
         case USB_DT_DEVICE_QUALIFIER:
