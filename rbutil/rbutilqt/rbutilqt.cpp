@@ -31,6 +31,7 @@
 #include "themesinstallwindow.h"
 #include "uninstallwindow.h"
 #include "utils.h"
+#include "rockboxinfo.h"
 #include "rbzip.h"
 #include "sysinfo.h"
 #include "system.h"
@@ -82,6 +83,21 @@ RbUtilQt::RbUtilQt(QWidget *parent) : QMainWindow(parent)
     this->setWindowIcon(windowIcon);
 #endif
 
+#if defined(Q_OS_WIN32)
+    long ret;
+    HKEY hk;
+    ret = RegOpenKeyEx(HKEY_CURRENT_USER, _TEXT("Software\\Wine"),
+        0, KEY_QUERY_VALUE, &hk);
+    if(ret == ERROR_SUCCESS) {
+        QMessageBox::warning(this, tr("Wine detected!"),
+                tr("It seems you are trying to run this program under Wine. "
+                    "Please don't do this, running under Wine will fail. "
+                    "Use the native Linux binary instead."),
+                QMessageBox::Ok, QMessageBox::Ok);
+        qDebug() << "[RbUtil] WINE DETECTED!";
+        RegCloseKey(hk);
+    }
+#endif
     downloadInfo();
 
     m_gotInfo = false;
@@ -188,7 +204,6 @@ void RbUtilQt::downloadInfo()
     // try to get the current build information
     daily = new HttpGet(this);
     connect(daily, SIGNAL(done(bool)), this, SLOT(downloadDone(bool)));
-    connect(daily, SIGNAL(requestFinished(int, bool)), this, SLOT(downloadDone(int, bool)));
     connect(qApp, SIGNAL(lastWindowClosed()), daily, SLOT(abort()));
     if(RbSettings::value(RbSettings::CacheOffline).toBool())
         daily->setCache(true);
@@ -207,7 +222,9 @@ void RbUtilQt::downloadDone(bool error)
         qDebug() << "[RbUtil] network error:" << daily->error();
         ui.statusbar->showMessage(tr("Can't get version information!"));
         QMessageBox::critical(this, tr("Network error"),
-            tr("Can't get version information."));
+                tr("Can't get version information.\n"
+                   "Network error: %1. Please check your network and proxy settings.")
+                    .arg(daily->errorString()));
         return;
     }
     qDebug() << "[RbUtil] network status:" << daily->error();
@@ -217,10 +234,9 @@ void RbUtilQt::downloadDone(bool error)
     ServerInfo::readBuildInfo(buildInfo.fileName());
     buildInfo.close();
     
-    //start bleeding info download
+    // start bleeding info download
     bleeding = new HttpGet(this);
     connect(bleeding, SIGNAL(done(bool)), this, SLOT(downloadBleedingDone(bool)));
-    connect(bleeding, SIGNAL(requestFinished(int, bool)), this, SLOT(downloadDone(int, bool)));
     connect(qApp, SIGNAL(lastWindowClosed()), bleeding, SLOT(abort()));
     if(RbSettings::value(RbSettings::CacheOffline).toBool())
         bleeding->setCache(true);
@@ -235,6 +251,12 @@ void RbUtilQt::downloadBleedingDone(bool error)
 {
     if(error) {
         qDebug() << "[RbUtil] network error:" << bleeding->error();
+        ui.statusbar->showMessage(tr("Can't get version information!"));
+        QMessageBox::critical(this, tr("Network error"),
+                tr("Can't get version information.\n"
+                   "Network error: %1. Please check your network and proxy settings.")
+                    .arg(bleeding->errorString()));
+        return;
     }
     else {
         bleedingInfo.open();
@@ -248,19 +270,6 @@ void RbUtilQt::downloadBleedingDone(bool error)
         //start check for updates
         checkUpdate();
     }
-}
-
-
-void RbUtilQt::downloadDone(int id, bool error)
-{
-    QString errorString;
-    errorString = tr("Network error: %1. Please check your network and proxy settings.")
-        .arg(daily->errorString());
-    if(error) {
-        QMessageBox::about(this, "Network Error", errorString);
-        m_networkerror = daily->errorString();
-    }
-    qDebug() << "[RbUtil] downloadDone:" << id << "error:" << error;
 }
 
 
@@ -563,7 +572,7 @@ bool RbUtilQt::installAuto()
     file.replace("%RELVERSION%", ServerInfo::value(ServerInfo::CurReleaseVersion).toString());
 
     // check installed Version and Target
-    QString warning = check(false);
+    QString warning = Utils::checkEnvironment(false);
     if(!warning.isEmpty())
     {
         if(QMessageBox::warning(this, tr("Really continue?"), warning,
@@ -1249,7 +1258,6 @@ void RbUtilQt::checkUpdate(void)
     
     update = new HttpGet(this);
     connect(update, SIGNAL(done(bool)), this, SLOT(downloadUpdateDone(bool)));
-    connect(update, SIGNAL(requestFinished(int, bool)), this, SLOT(downloadDone(int, bool)));
     connect(qApp, SIGNAL(lastWindowClosed()), update, SLOT(abort()));
     if(RbSettings::value(RbSettings::CacheOffline).toBool())
         update->setCache(true);

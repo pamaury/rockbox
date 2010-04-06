@@ -112,7 +112,7 @@
 #define HAVE_FAT16SUPPORT
 
 /* The number of bytes reserved for loadable codecs */
-#define CODEC_SIZE 0x100000
+#define CODEC_SIZE (0x100000-0x8000)
 
 /* The number of bytes reserved for loadable plugins */
 #define PLUGIN_BUFFER_SIZE 0x80000
@@ -161,7 +161,7 @@
 #define ROM_START 0x00000000
 
 /* Define this to the CPU frequency */
-#define CPU_FREQ      250000000
+#define CPU_FREQ      240000000
 
 /* Type of LCD */
 #define CONFIG_LCD LCD_SSD1303
@@ -188,7 +188,7 @@
 #define CONFIG_LED LED_VIRTUAL
 
 /* Define this if you have adjustable CPU frequency */
-//#define HAVE_ADJUSTABLE_CPU_FREQ
+#define HAVE_ADJUSTABLE_CPU_FREQ
 
 #define BOOTFILE_EXT    "sansa"
 #define BOOTFILE        "rockbox." BOOTFILE_EXT
@@ -211,3 +211,6 @@
 #define DEFAULT_REC_MIC_GAIN    23
 #define DEFAULT_REC_LEFT_GAIN   23
 #define DEFAULT_REC_RIGHT_GAIN  23
+
+/* Define this if a programmable hotkey is mapped */
+//#define HAVE_HOTKEY

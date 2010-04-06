@@ -243,12 +243,6 @@ $releasenotes="/wiki/ReleaseNotes351";
         name => 'SanDisk Sansa e200',
         status => 3,
     },
-    'sansae200r' => {
-        name => 'SanDisk Sansa e200R',
-        status => 3,
-        icon => 'sansae200',
-        manual => 'sansae200',
-    },
     'sansae200v2' => {
         name => 'SanDisk Sansa e200 v2',
         status => 3,
@@ -257,6 +251,11 @@ $releasenotes="/wiki/ReleaseNotes351";
     'sansafuze' => {
         name => 'SanDisk Sansa Fuze',
         status => 3,
+    },
+    'sansafuzev2' => {
+        name => 'SanDisk Sansa Fuze v2',
+        status => 1,
+        icon => 'sansafuze',
     },
     'sansam200' => {
         name => 'SanDisk Sansa m200',

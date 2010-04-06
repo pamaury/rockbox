@@ -26,30 +26,14 @@
 #include <QString>
 #include <QUrl>
 
-bool recRmdir( const QString &dirName );
-QString resolvePathCase(QString path);
-qulonglong filesystemFree(QString path);
-QString findExecutable(QString name); 
-QString check(bool permission);
-
-class RockboxInfo
+class Utils
 {
 public:
-    RockboxInfo(QString mountpoint);
-    
-    QString version() {return m_version;}
-    QString features(){return m_features;}
-    QString targetID() {return m_targetid;}
-    QString target() {return m_target;}
-    int ram() { return m_ram; }
-    bool success() { return m_success; }
-private:
-    QString m_version;
-    QString m_features;
-    QString m_targetid;
-    QString m_target;
-    int m_ram;
-    bool m_success;
+    static bool recursiveRmdir(const QString &dirName);
+    static QString resolvePathCase(QString path);
+    static qulonglong filesystemFree(QString path);
+    static QString findExecutable(QString name);
+    static QString checkEnvironment(bool permission);
 };
 
 #endif

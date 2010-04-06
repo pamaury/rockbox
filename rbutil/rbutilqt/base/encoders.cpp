@@ -89,7 +89,7 @@ EncExes::EncExes(QString name,QObject *parent) : EncBase(parent)
 void EncExes::generateSettings()
 {
     QString exepath =RbSettings::subValue(m_name,RbSettings::EncoderPath).toString();
-    if(exepath == "") exepath = findExecutable(m_name);
+    if(exepath == "") exepath = Utils::findExecutable(m_name);
 
     insertSetting(eEXEPATH,new EncTtsSetting(this,EncTtsSetting::eSTRING,
             tr("Path to Encoder:"),exepath,EncTtsSetting::eBROWSEBTN));
@@ -207,9 +207,9 @@ bool EncRbSpeex::encode(QString input,QString output)
     }
     if ((fout = fopen(output.toLocal8Bit(), "wb")) == NULL) {
         qDebug() << "Error: could not open output file\n";
+        fclose(fin);
         return false;
     }
-
 
     int ret = encode_file(fin, fout, quality, complexity, narrowband, volume,
                       errstr, sizeof(errstr));

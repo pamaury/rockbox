@@ -108,7 +108,7 @@
 #define HAVE_FAT16SUPPORT
 
 /* The number of bytes reserved for loadable codecs */
-#define CODEC_SIZE 0x100000
+#define CODEC_SIZE (0x100000-0x8000)
 
 /* The number of bytes reserved for loadable plugins */
 #define PLUGIN_BUFFER_SIZE 0x80000
@@ -157,7 +157,7 @@
 #define ROM_START 0x00000000
 
 /* Define this to the CPU frequency */
-#define CPU_FREQ      250000000
+#define CPU_FREQ      240000000
 
 /* Type of LCD */
 #define CONFIG_LCD LCD_SSD1303
@@ -166,25 +166,20 @@
 
 #define USB_HANDLED_BY_OF
 
-#if 0 /* disabled since there is no USB driver */
-
 /* USB On-the-go */
-#define CONFIG_USBOTG USBOTG_ARC
+#define CONFIG_USBOTG USBOTG_AS3525
 
 /* enable these for the experimental usb stack */
 #define HAVE_USBSTACK
 #define USB_VENDOR_ID 0x0781
-#define USB_PRODUCT_ID 0x7433
+#define USB_PRODUCT_ID 0x7435
 #endif /* BOOTLOADER */
-
-#endif
-
 
 /* Virtual LED (icon) */
 #define CONFIG_LED LED_VIRTUAL
 
 /* Define this if you have adjustable CPU frequency */
-//#define HAVE_ADJUSTABLE_CPU_FREQ
+#define HAVE_ADJUSTABLE_CPU_FREQ
 
 #define BOOTFILE_EXT    "sansa"
 #define BOOTFILE        "rockbox." BOOTFILE_EXT
@@ -207,3 +202,6 @@
 #define DEFAULT_REC_MIC_GAIN    23
 #define DEFAULT_REC_LEFT_GAIN   23
 #define DEFAULT_REC_RIGHT_GAIN  23
+
+/* Define this if a programmable hotkey is mapped */
+//#define HAVE_HOTKEY

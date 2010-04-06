@@ -60,6 +60,10 @@
 #include <sys/param.h>
 #include <sys/ucred.h>
 #include <sys/mount.h>
+
+#include <CoreFoundation/CoreFoundation.h>
+#include <SystemConfiguration/SystemConfiguration.h>
+#include <CoreServices/CoreServices.h>
 #endif
 
 #include "utils.h"
@@ -177,6 +181,34 @@ QString System::osVersionString(void)
 
     result = QString("CPU: %1<br/>System: %2<br/>Release: %3<br/>Version: %4")
         .arg(u.machine).arg(u.sysname).arg(u.release).arg(u.version);
+#if defined(Q_OS_MACX)
+    SInt32 major;
+    SInt32 minor;
+    SInt32 bugfix;
+    OSErr error;
+    error = Gestalt(gestaltSystemVersionMajor, &major);
+    error = Gestalt(gestaltSystemVersionMinor, &minor);
+    error = Gestalt(gestaltSystemVersionBugFix, &bugfix);
+
+    result += QString("<br/>OS X %1.%2.%3 ").arg(major).arg(minor).arg(bugfix);
+    // 1: 86k, 2: ppc, 10: i386
+    SInt32 arch;
+    error = Gestalt(gestaltSysArchitecture, &arch);
+    switch(arch) {
+        case 1:
+        result.append("(86k)");
+        break;
+    case 2:
+        result.append("(ppc)");
+        break;
+    case 10:
+        result.append("(x86)");
+        break;
+    default:
+        result.append("(unknown)");
+        break;
+    }
+#endif
 #endif
     result += QString("<br/>Qt version %1").arg(qVersion());
     return result;
@@ -390,6 +422,42 @@ QUrl System::systemProxy(void)
         return QUrl("http://" + QString::fromWCharArray(proxyval));
     else
         return QUrl("");
+#elif defined(Q_OS_MACX)
+
+    CFDictionaryRef dictref;
+    CFStringRef stringref;
+    CFNumberRef numberref;
+    int enable;
+    int port;
+    unsigned int bufsize = 0;
+    char *buf;
+    QUrl proxy;
+
+    dictref = SCDynamicStoreCopyProxies(NULL);
+    stringref = (CFStringRef)CFDictionaryGetValue(dictref, kSCPropNetProxiesHTTPProxy);
+    numberref = (CFNumberRef)CFDictionaryGetValue(dictref, kSCPropNetProxiesHTTPEnable);
+    CFNumberGetValue(numberref, kCFNumberIntType, &enable);
+    if(enable == 1) {
+        // get number of characters. CFStringGetLength uses UTF-16 code pairs
+        bufsize = CFStringGetLength(stringref) * 2 + 1;
+        buf = (char*)malloc(sizeof(char) * bufsize);
+        if(buf == NULL) {
+            qDebug() << "[System] can't allocate memory for proxy string!";
+            CFRelease(dictref);
+            return QUrl("");
+        }
+        CFStringGetCString(stringref, buf, bufsize, kCFStringEncodingUTF16);
+        numberref = (CFNumberRef)CFDictionaryGetValue(dictref, kSCPropNetProxiesHTTPPort);
+        CFNumberGetValue(numberref, kCFNumberIntType, &port);
+        proxy.setScheme("http");
+        proxy.setHost(QString::fromUtf16((unsigned short*)buf));
+        proxy.setPort(port);
+
+        free(buf);
+    }
+    CFRelease(dictref);
+
+    return proxy;
 #else
     return QUrl("");
 #endif

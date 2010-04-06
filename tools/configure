@@ -12,6 +12,7 @@
 CCOPTS="-W -Wall -Wundef -O -nostdlib -ffreestanding -Wstrict-prototypes -pipe"
 
 use_logf="#undef ROCKBOX_HAS_LOGF"
+use_bootchart="#undef DO_BOOTCHART"
 
 scriptver=`echo '$Revision$' | sed -e 's:\\$::g' -e 's/Revision: //'`
 
@@ -67,24 +68,27 @@ findtool(){
   fi
 }
 
-# scan the $PATH for sdl-config - if crosscompiling, require that it is
-# a mingw32 sdl-config
+# scan the $PATH for sdl-config - check whether for a (cross-)win32
+# sdl as requested
 findsdl(){
   file="sdl-config"
+  winbuild="$1"
 
   IFS=":"
   for path in $PATH
   do
     #echo "checks for $file in $path" >&2
     if test -f "$path/$file"; then
-      if [ "yes" = "${crosscompile}" ]; then
-        if [ "0" != `$path/$file --libs |grep -c mwindows` ]; then
+      if [ "0" != `$path/$file --libs |grep -c mwindows` ]; then
+        if [ "yes" = "${winbuild}" ]; then
           echo "$path/$file"
           return
         fi
       else
-        echo "$path/$file"
-        return
+        if [ "yes" != "${winbuild}" ]; then
+          echo "$path/$file"
+          return
+        fi
       fi
     fi
   done
@@ -96,26 +100,13 @@ simcc () {
  prefixtools ""
 
  simver=sdl
+ winbuild="$crosscompile"
  GCCOPTS='-W -Wall -g -fno-builtin'
  GCCOPTIMIZE=''
+ LDOPTS=''
 
- output="rockboxui" # use this as default output binary name
- sdl=`findsdl`
- sdl_cflags=""
- sdl_libs=""
-
- if [ $1 = "sdl" ]; then
-    if [ -z "$sdl" ]; then
-        echo "configure didn't find sdl-config, which indicates that you"
-        echo "don't have SDL (properly) installed. Please correct and"
-        echo "re-run configure!"
-        exit 1
-    else 
-        # generic sdl-config checker
-        sdl_cflags=`$sdl --cflags`
-        sdl_libs=`$sdl --libs`
-    fi
- fi
+ # default output binary name
+ output="rockboxui"
 
  # default share option, override below if needed
  SHARED_FLAG="-shared"
@@ -124,55 +115,60 @@ simcc () {
    CYGWIN*)
    echo "Cygwin host detected"
 
-   # sdl version
-   GCCOPTS="$GCCOPTS $sdl_cflags"
-   LDOPTS="-mconsole $sdl_libs"
-
-   output="rockboxui.exe" # use this as output binary name
+   LDOPTS="-mconsole"
+   output="rockboxui.exe"
+   winbuild="yes"
    ;;
 
    MINGW*)
    echo "MinGW host detected"
 
-   # sdl version
-   GCCOPTS="$GCCOPTS $sdl_cflags"
-   LDOPTS="-mconsole $sdl_libs"
-
-   output="rockboxui.exe" # use this as output binary name
+   LDOPTS="-mconsole"
+   output="rockboxui.exe"
+   winbuild="yes"
    ;;
 
    Linux)
    echo "Linux host detected"
-   GCCOPTS="$GCCOPTS $sdl_cflags"
-   LDOPTS="$sdl_libs"
    ;;
 
    FreeBSD)
    echo "FreeBSD host detected"
-   # sdl version
-   GCCOPTS="$GCCOPTS $sdl_cflags"
-   LDOPTS="$sdl_libs"
    ;;
 
    Darwin)
    echo "Darwin host detected"
-   # sdl version
-   GCCOPTS="$GCCOPTS $sdl_cflags"
-   LDOPTS="$sdl_libs"
+
    SHARED_FLAG="-dynamiclib -Wl\,-single_module"
    ;;
 
    SunOS)
    echo "*Solaris host detected"
-   GCCOPTS="$GCCOPTS $sdl_cflags"
-   LDOPTS="$sdl_libs"
+
+   GCCOPTS="$GCCOPTS -fPIC"
+   LDOPTS="-lm"
    ;;
 
    *)
    echo "[ERROR] Unsupported system: $uname, fix configure and retry"
-   exit 2
+   exit 1
    ;;
  esac
+
+ sdl=`findsdl $winbuild`
+
+ if [ $1 = "sdl" ]; then
+    if [ -z "$sdl" ]; then
+        echo "configure didn't find sdl-config, which indicates that you"
+        echo "don't have SDL (properly) installed. Please correct and"
+        echo "re-run configure!"
+        exit 2
+    else 
+        # generic sdl-config checker
+        GCCOPTS="$GCCOPTS `$sdl --cflags`"
+        LDOPTS="$LDOPTS `$sdl --libs`"
+    fi
+ fi
 
  GCCOPTS="$GCCOPTS -I\$(SIMDIR)"
 
@@ -229,8 +225,8 @@ EOF
    # We are crosscompiling
    # add cross-compiler option(s)
    prefixtools i586-mingw32msvc-
-   LDOPTS="-mconsole $sdl_libs"
-   output="rockboxui.exe" # use this as output binary name
+   LDOPTS="$LDOPTS -mconsole"
+   output="rockboxui.exe"
    endian="little" # windows is little endian
    echo "Enabling MMX support"
    GCCOPTS="$GCCOPTS -mmmx"
@@ -366,7 +362,7 @@ whichadvanced () {
     interact=1
     echo ""
     echo "Enter your developer options (press enter when done)"
-    printf "(D)EBUG, (L)ogf, (S)imulator, (P)rofiling, (V)oice, (W)in32 crosscompile"
+    printf "(D)EBUG, (L)ogf, Boot(c)hart, (S)imulator, (P)rofiling, (V)oice, (W)in32 crosscompile, (T)est plugins"
     if [ "$memory" = "2" ]; then
       printf ", (8)MB MOD"
     fi
@@ -405,6 +401,15 @@ whichadvanced () {
         ;;
       [Ll])
         echo "logf() support enabled"
+        logf="yes"
+        ;;
+      [Tt])
+        echo "Including test plugins"
+        extradefines="$extradefines -DHAVE_TEST_PLUGINS"
+        ;;
+      [Cc])
+          echo "bootchart enabled (logf also enabled)"
+        bootchart="yes"
         logf="yes"
         ;;
       [Ss])
@@ -492,6 +497,9 @@ whichadvanced () {
   fi
   if [ "yes" = "$logf" ]; then
     use_logf="#define ROCKBOX_HAS_LOGF 1"
+  fi
+  if [ "yes" = "$bootchart" ]; then
+    use_bootchart="#define DO_BOOTCHART 1"
   fi
   if [ "yes" = "$simulator" ]; then
     debug="-DDEBUG"
@@ -2091,12 +2099,12 @@ fi
     target="-DSANSA_FUZEV2"
     memory=8 # not sure
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
-    bmp2rb_native="$rootdir/tools/bmp2rb -f 4"
+    bmp2rb_native="$rootdir/tools/bmp2rb -f 5"
     tool="$rootdir/tools/scramble -add=fuz2"
     output="rockbox.sansa"
     bootoutput="bootloader-fuzev2.sansa"
     appextra="recorder:gui"
-    plugins=#"yes"
+    plugins="yes"
     swcodec="yes"
     toolset=$scramblebitmaptools
     t_cpu="arm"
@@ -2904,6 +2912,7 @@ fi
 sed > autoconf.h \
  -e "s,@ENDIAN@,${defendian},g" \
  -e "s,^#undef ROCKBOX_HAS_LOGF,$use_logf,g" \
+ -e "s,^#undef DO_BOOTCHART,$use_bootchart,g" \
  -e "s,@config_rtc@,$config_rtc,g" \
  -e "s,@have_rtc_alarm@,$have_rtc_alarm,g" \
  -e "s,@RBDIR@,${rbdir},g" \
@@ -2920,6 +2929,9 @@ sed > autoconf.h \
 
 /* Define this if you build rockbox to support the logf logging and display */
 #undef ROCKBOX_HAS_LOGF
+
+/* Define this to record a chart with timings for the stages of boot */
+#undef DO_BOOTCHART
 
 /* optional define for a backlight modded Ondio */
 @have_backlight@

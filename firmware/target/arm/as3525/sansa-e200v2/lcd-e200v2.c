@@ -348,6 +348,8 @@ void lcd_yuv_set_options(unsigned options)
     lcd_yuv_options = options;
 }
 
+
+#ifndef BOOTLOADER
 static void lcd_window_blit(int xmin, int ymin, int xmax, int ymax)
 {
     if (!display_flipped)
@@ -433,6 +435,9 @@ void lcd_blit_yuv(unsigned char * const src[3],
         while (--height > 0);
     }
 }
+
+#endif
+
 
 /* Update the display.
    This must be called after all other LCD functions that change the display. */

@@ -254,39 +254,46 @@ void system_init(void)
     CCU_SCON = 1; /* AHB master's priority configuration :
                      TIC (Test Interface Controller) > DMA > USB > IDE > ARM */
 
-#if CONFIG_CPU == AS3525
     CGU_PROC = 0;           /* fclk 24 MHz */
-#endif
+#if CONFIG_CPU == AS3525v2
+    /* pclk is always based on PLLA, since we don't know the current PLLA speed,
+     * avoid having pclk too fast and hope it's not too low */
+    CGU_PERI |= 0xf << 2;   /* pclk lowest */
+#else
     CGU_PERI &= ~0x7f;      /* pclk 24 MHz */
-
-    CGU_PLLASUP = 0;        /* enable PLLA */
-    CGU_PLLA = AS3525_PLLA_SETTING;
-    while(!(CGU_INTCTRL & (1<<0)));           /* wait until PLLA is locked */
-    
-#if (AS3525_MCLK_SEL == AS3525_CLK_PLLB)
-    CGU_PLLBSUP = 0;        /* enable PLLB */
-    CGU_PLLB = AS3525_PLLB_SETTING;
-    while(!(CGU_INTCTRL & (1<<1)));           /* wait until PLLB is locked */
 #endif
 
-#if CONFIG_CPU == AS3525
-    /*  Set FCLK frequency */
-    CGU_PROC = ((AS3525_FCLK_POSTDIV << 4) |
-                (AS3525_FCLK_PREDIV  << 2) |
-                 AS3525_FCLK_SEL);
-#endif
-
-    /*  Set PCLK frequency */
-    CGU_PERI = ((CGU_PERI & ~0x7F)  |       /* reset divider & clksel bits */
-                 (AS3525_PCLK_DIV0 << 2) |
-                 (AS3525_PCLK_DIV1 << 6) |
-                  AS3525_PCLK_SEL);
-
+    /* bits 31:30 should be set to 0 in arm926-ejs */
     asm volatile(
         "mrc p15, 0, r0, c1, c0   \n"      /* control register */
         "bic r0, r0, #3<<30       \n"      /* clears bus bits : sets fastbus */
         "mcr p15, 0, r0, c1, c0   \n"
         : : : "r0" );
+
+    CGU_COUNTA = 0xff;
+    CGU_PLLA = AS3525_PLLA_SETTING;
+    CGU_PLLASUP = 0;        /* enable PLLA */
+    while(!(CGU_INTCTRL & (1<<0)));           /* wait until PLLA is locked */
+    
+#if (AS3525_MCLK_SEL == AS3525_CLK_PLLB)
+    CGU_COUNTB = 0xff;
+    CGU_PLLB = AS3525_PLLB_SETTING;
+    CGU_PLLBSUP = 0;        /* enable PLLB */
+    while(!(CGU_INTCTRL & (1<<1)));           /* wait until PLLB is locked */
+#endif
+
+    /*  Set FCLK frequency */
+    CGU_PROC = ((AS3525_FCLK_POSTDIV << 4) |
+                (AS3525_FCLK_PREDIV  << 2) |
+                 AS3525_FCLK_SEL);
+
+    /*  Set PCLK frequency */
+    CGU_PERI = ((CGU_PERI & ~0x7F)  |       /* reset divider & clksel bits */
+                 (AS3525_PCLK_DIV0 << 2) |
+#if CONFIG_CPU == AS3525
+                 (AS3525_PCLK_DIV1 << 6) |
+#endif
+                  AS3525_PCLK_SEL);
 
 #ifdef BOOTLOADER
     sdram_init();
@@ -353,6 +360,7 @@ void set_cpu_frequency(long frequency)
         while(adc_read(ADC_CVDD) < 470); /* 470 * .0025 = 1.175V */
 #endif  /*  HAVE_ADJUSTABLE_CPU_VOLTAGE */
 
+#if CONFIG_CPU == AS3525    /* only in arm922tdmi */
         asm volatile(
             "mrc p15, 0, r0, c1, c0  \n"
 
@@ -365,16 +373,42 @@ void set_cpu_frequency(long frequency)
 
             "mcr p15, 0, r0, c1, c0  \n"
             : : : "r0" );
+#else
+    /* AS3525v2 */
+    int oldstatus = disable_irq_save();
+
+    /* Change PCLK while FCLK is low, so it doesn't go too high */
+    CGU_PERI = (CGU_PERI & ~(0x1F << 2)) | (AS3525_PCLK_DIV0 << 2);
+
+    CGU_PROC = ((AS3525_FCLK_POSTDIV << 4) |
+                (AS3525_FCLK_PREDIV  << 2) |
+                 AS3525_FCLK_SEL);
+    restore_irq(oldstatus);
+#endif /* CONFIG_CPU == AS3525 */
 
         cpu_frequency = CPUFREQ_MAX;
     }
     else
     {
+#if CONFIG_CPU == AS3525    /* only in arm922tdmi */
         asm volatile(
             "mrc p15, 0, r0, c1, c0  \n"
             "bic r0, r0, #3<<30      \n"     /* fastbus clocking */
             "mcr p15, 0, r0, c1, c0  \n"
             : : : "r0" );
+#else
+    /* AS3525v2 */
+    int oldstatus = disable_irq_save();
+
+    CGU_PROC = ((AS3525_FCLK_POSTDIV_UNBOOSTED << 4) |
+                (AS3525_FCLK_PREDIV  << 2) |
+                 AS3525_FCLK_SEL);
+
+    /* Change PCLK after FCLK is low, so it doesn't go too high */
+    CGU_PERI = (CGU_PERI & ~(0x1F << 2)) | (AS3525_PCLK_DIV0_UNBOOSTED << 2);
+
+    restore_irq(oldstatus);
+#endif /* CONFIG_CPU == AS3525 */
 
 #ifdef HAVE_ADJUSTABLE_CPU_VOLTAGE
         /* Decreasing frequency so reduce voltage after change */

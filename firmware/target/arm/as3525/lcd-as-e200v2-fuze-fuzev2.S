@@ -62,8 +62,11 @@ lcd_write_yuv420_lines:
                                         @ r0 = scratch
     ldr         r12, [r3, #8]           @
     sub         r2, r2, #1              @ stride -= 1
-    orr         r12, r12, #3<<13        @
-    str         r12, [r3, #8]           @ DBOP_CTRL |= (1<<13|1<<14) (32bit mode)
+    orr         r12, r12, #3<<13        @ DBOP_CTRL |= (1<<13|1<<14) (32bit mode)
+#ifdef SANSA_FUZEV2
+    bic         r12, r12, #1<<13        @ DBOP_CTRL &= ~(1<<13),still 32bit mode
+#endif
+    str         r12, [r3, #8]           @ 
 10: @ loop line                         @
     ldrb        r7, [r4], #1            @ r7 = *Y'_p++;
     ldrb        r8, [r5], #1            @ r8 = *Cb_p++;
@@ -114,8 +117,13 @@ lcd_write_yuv420_lines:
     ldrb        r12, [r4, r2]           @ r12 = Y' = *(Y'_p + stride)
                                         @
     orr         r0, r0, lr, lsl #11     @ r0 = (r << 11) | b
-    orr         r11, r0, r7, lsl #5      @ r0 = (r << 11) | (g << 5) | b
-                                        @
+    orr         r11, r0, r7, lsl #5     @ r11 = (r << 11) | (g << 5) | b
+    orr         r11, r0, r7, lsl #5     @ r11 = (r << 11) | (g << 5) | b
+#ifdef SANSA_FUZEV2
+    mov         r0, r11, lsr #8         @
+    bic         r11, r11, #0xff00       @
+    orr         r11, r0, r11, lsl #8    @ swap bytes
+#endif
     sub         r7, r12, #16            @ r7 = Y = (Y' - 16)*74
     add         r12, r7, r7, asl #2     @
     add         r7, r12, r7, asl #5     @
@@ -143,6 +151,13 @@ lcd_write_yuv420_lines:
                                         @
     orr         r0, r0, lr, lsl #11     @ r0 = (r << 11) | b
     orr         r0, r0, r7, lsl #5      @ r0 = (r << 11) | (g << 5) | b
+
+#ifdef SANSA_FUZEV2
+    mov         r7, r0, lsr #8          @
+    bic         r7, r7, #0xff00         @
+    orr         r0, r7, r0, lsl #8      @ swap bytes
+#endif
+
     orr         r0, r11, r0, lsl#16     @ pack with 2nd pixel
     str         r0, [r3, #0x10]         @ write pixel
                                         @
@@ -173,8 +188,14 @@ lcd_write_yuv420_lines:
                                         @
                                         @
     orr         r0, r0, lr, lsl #11     @ r0 = (r << 11) | b
-    orr         r11, r0, r7, lsl #5      @ r0 = (r << 11) | (g << 5) | b
-                                        @
+    orr         r11, r0, r7, lsl #5     @ r0 = (r << 11) | (g << 5) | b
+
+#ifdef SANSA_FUZEV2
+    mov         r0, r11, lsr #8         @
+    bic         r11, r11, #0xff00       @
+    orr         r11, r0, r11, lsl #8    @ swap byte
+#endif
+
     sub         r7, r12, #16            @ r7 = Y = (Y' - 16)*74
     add         r12, r7, r7, asl #2     @
     add         r7, r12, r7, asl #5     @
@@ -200,6 +221,13 @@ lcd_write_yuv420_lines:
                                         @
     orr         r0, r0, lr, lsl #11     @ r0 = (r << 11) | b
     orr         r0, r0, r7, lsl #5      @ r0 = (r << 11) | (g << 5) | b
+    
+#ifdef SANSA_FUZEV2
+    mov         r7, r0, lsr #8          @
+    bic         r7, r7, #0xff00         @
+    orr         r0, r7, r0, lsl #8      @ swap bytes
+#endif
+
     orr         r0, r11, r0, lsl#16     @ pack with 2nd pixel
     str         r0, [r3, #0x10]         @ write pixel
                                         @
@@ -207,8 +235,8 @@ lcd_write_yuv420_lines:
     bgt         10b @ loop line         @
                                         @
 1: @ busy
-    @ writing at max 110*32 its (LCD_WIDTH/2), the fifo is bigger
-    @ so polling fifo empty after the loops is save
+    @ writing at max 110*32 (LCD_WIDTH/2), the fifo is bigger
+    @ so polling fifo empty only after each line is save
     ldr         r7, [r3,#0xc]           @ r7 = DBOP_STATUS
     tst         r7, #DBOP_BUSY          @ fifo not empty?
     beq         1b                      @
@@ -269,7 +297,10 @@ lcd_write_yuv420_lines_odither:
     orr         r3, r3, #0x120000       @ r3 = DBOP_BASE, need to be redone
                                         @ due to lack of registers
     ldr         r12, [r3, #8]           @
-    orr         r12, r12, #3<<13        @ DBOP_CTRL |= (1<<13|1<<14) 
+    orr         r12, r12, #3<<13        @ DBOP_CTRL |= (1<<13|1<<14)
+#ifdef SANSA_FUZEV2
+    bic         r12, r12, #1<<13        @ DBOP_CTRL &= ~(1<<13), still 32bit mode
+#endif
     str         r12, [r3, #8]           @ (32bit mode)
 10: @ loop line                         @
                                         @
@@ -341,6 +372,11 @@ lcd_write_yuv420_lines_odither:
     and         r7, r7, #0x7e00         @ r0 = pixel = (r & 0xf800) |
     orr         r11, r11, r7, lsr #4    @              ((g & 0x7e00) >> 4) |
     orr         r3, r11, r0, lsr #10    @              (b >> 10)
+#ifdef SANSA_FUZEV2
+    mov         r7, r3, lsr #8          @
+    bic         r3, r3, #0xff00         @
+    orr         r3, r7, r3, lsl #8      @ swap pixel
+#endif
                                         @ save pixel
     sub         r7, r12, #16            @ r7 = Y = (Y' - 16)*149
     add         r12, r7, r7, asl #2     @
@@ -385,6 +421,11 @@ lcd_write_yuv420_lines_odither:
     and         r7, r7, #0x7e00         @ r0 = pixel = (r & 0xf800) |
     orr         r11, r11, r7, lsr #4    @              ((g & 0x7e00) >> 4) |
     orr         r0, r11, r0, lsr #10    @              (b >> 10)
+#ifdef SANSA_FUZEV2
+    mov         r7, r0, lsr #8          @
+    bic         r0, r0, #0xff00         @
+    orr         r0, r7, r0, lsl #8      @ swap pixel
+#endif
     orr         r3, r3, r0, lsl#16      @ pack with 2nd pixel
     mov         r0, #0xC8000000         @
     orr         r0, r0, #0x120000       @ r3 = DBOP_BASE
@@ -436,6 +477,11 @@ lcd_write_yuv420_lines_odither:
     and         r7, r7, #0x7e00         @ r0 = pixel = (r & 0xf800) |
     orr         r11, r11, r7, lsr #4    @              ((g & 0x7e00) >> 4) |
     orr         r3, r11, r0, lsr #10    @              (b >> 10)
+#ifdef SANSA_FUZEV2
+    mov         r7, r3, lsr #8          @
+    bic         r3, r3, #0xff00         @
+    orr         r3, r7, r3, lsl #8      @ swap pixel
+#endif
                                         @ save pixel
                                         @
     sub         r7, r12, #16            @ r7 = Y = (Y' - 16)*149
@@ -479,6 +525,11 @@ lcd_write_yuv420_lines_odither:
     and         r7, r7, #0x7e00         @ r0 = pixel = (r & 0xf800) |
     orr         r11, r11, r7, lsr #4    @              ((g & 0x7e00) >> 4) |
     orr         r0, r11, r0, lsr #10    @              (b >> 10)
+#ifdef SANSA_FUZEV2
+    mov         r7, r0, lsr #8          @
+    bic         r0, r0, #0xff00         @
+    orr         r0, r7, r0, lsl #8      @ swap pixel
+#endif
     orr         r3, r3, r0, lsl#16      @ pack with 2nd pixel
     mov         r0, #0xC8000000         @
     orr         r0, r0, #0x120000       @ r3 = DBOP_BASE
@@ -489,8 +540,8 @@ lcd_write_yuv420_lines_odither:
     bgt         10b @ loop line         @
                                         @
 1: @ busy                               @
-    @ writing at max 110*32 its (LCD_WIDTH/2), the fifo is bigger
-    @ so polling fifo empty after the loops is save
+    @ writing at max 110*32 (LCD_WIDTH/2), the fifo is bigger (128*32)
+    @ so polling fifo empty only after each line is save
     ldr         r7, [r0,#0xc]           @ r7 = DBOP_STATUS
     tst         r7, #DBOP_BUSY          @ fifo not empty?
     beq         1b                      @
