@@ -49,6 +49,7 @@ sound_set_type* sound_get_fn(int setting);
 
 void sound_set_dsp_callback(int (*func)(int, intptr_t));
 void sound_set_volume(int value);
+int sound_get_volume(void);
 void sound_set_balance(int value);
 void sound_set_bass(int value);
 void sound_set_treble(int value);

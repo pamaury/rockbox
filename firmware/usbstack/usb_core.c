@@ -577,7 +577,7 @@ static void allocate_interfaces_and_endpoints(void)
 
 static void control_request_handler_drivers(struct usb_ctrlrequest* req)
 {
-    int i, interface = req->wIndex;
+    int i, interface = req->wIndex & 0xff;
     bool handled=false;
 
     for(i=0;i<USB_NUM_DRIVERS;i++) {
@@ -625,14 +625,14 @@ static void control_request_handler_drivers(struct usb_ctrlrequest* req)
     }
     if(!handled) {
         /* nope. flag error */
-        logf("bad req:desc %d:%d", req->bRequest, req->wValue>>8);
+        _logf("bad req:desc 0x%x:0x%x:0x%x:0x%x:0x%x", req->bRequestType,req->bRequest, req->wValue, req->wIndex, req->wLength);
         usb_drv_stall(EP_CONTROL, true, true);
     }
 }
 
 static void request_handler_device_get_descriptor(struct usb_ctrlrequest* req)
 {
-    int size;
+    int size = 0;
     bool handled = true;
     const void* ptr = NULL;
     int length = req->wLength;
@@ -791,6 +791,7 @@ static void request_handler_device(struct usb_ctrlrequest* req)
             usb_drv_recv_blocking(EP_CONTROL,NULL,0);
             break;
         default:
+            _logf("unhandled");
             break;
     }
 }
@@ -830,7 +831,7 @@ static void request_handler_interface(struct usb_ctrlrequest* req)
             break;
         case USB_TYPE_VENDOR:
         default:
-            logf("usb bad req type %d", req->bRequestType & USB_TYPE_MASK);
+            _logf("usb bad req type %d", req->bRequestType & USB_TYPE_MASK);
             usb_drv_stall(EP_CONTROL,true,true);
     }
 }
@@ -848,7 +849,7 @@ static void request_handler_endoint_drivers(struct usb_ctrlrequest* req)
     
     if (!handled) {
         /* nope. flag error */
-        logf("usb bad req %d",req->bRequest);
+        _logf("usb bad req %d",req->bRequest);
         usb_drv_stall(EP_CONTROL,true,true);
     }
 }
@@ -896,6 +897,7 @@ static void request_handler_endpoint(struct usb_ctrlrequest* req)
             break;
         case USB_TYPE_VENDOR:
         default:
+            _logf("unhandled (2)");
             break;
     }
 }
@@ -927,7 +929,7 @@ static void usb_core_control_request_handler(struct usb_ctrlrequest* req)
             request_handler_endpoint(req);
             break;
         case USB_RECIP_OTHER:
-            logf("unsupported recipient");
+            _logf("unsupported recipient");
             break;
     }
     //logf("control handled");

@@ -28,6 +28,7 @@
 #include "audio.h"
 #include "pcm.h"
 #include "file.h"
+#include "sound.h"
 
 #define LOGF_ENABLE
 #include "logf.h"
@@ -694,34 +695,67 @@ static bool feature_unit_get_mute(int *value, uint8_t cmd)
     return true;
 }
 
+static int db_to_usb_audio_volume(int db)
+{
+    return (int)(unsigned short)(signed short)(db*256);
+}
+
+static int usb_audio_volume_to_db(int vol)
+{
+    return ((signed short)(unsigned short)vol)/256;
+}
+
 static bool feature_unit_set_volume(int value, uint8_t cmd)
 {
     if(cmd != USB_AC_CUR_REQ)
     {
-        logf("usbaudio: feature unit VOLUME control only support CUR setting");
+        logf("usbaudio: feature unit VOLUME control only support setting CUR");
         return false;
     }
 
-    logf("usbaudio: set volume to 0x%x", value);
+    logf("usbaudio: set cur volume=%d dB)", usb_audio_volume_to_db(value));
+    sound_set_volume(usb_audio_volume_to_db(value));
     return true;
 }
 
 static bool feature_unit_get_volume(int *value, uint8_t cmd)
 {
-    if(cmd != USB_AC_CUR_REQ)
+    if(cmd == USB_AC_CUR_REQ)
     {
-        logf("usbaudio: feature unit VOLUME control only support CUR setting");
+        logf("usbaudio: get cur volume=%d dB", sound_get_volume());
+        *value = db_to_usb_audio_volume(sound_get_volume());
+        return true;
+    }
+    else if(cmd == USB_AC_MIN_REQ)
+    {
+        logf("usbaudio: get min volume=%d dB", sound_min(SOUND_VOLUME));
+        *value = db_to_usb_audio_volume(sound_min(SOUND_VOLUME));
+        return true;
+    }
+    else if(cmd == USB_AC_MAX_REQ)
+    {
+        logf("usbaudio: get max volume=%d dB", sound_max(SOUND_VOLUME));
+        *value = db_to_usb_audio_volume(sound_max(SOUND_VOLUME));
+        return true;
+    }
+    else if(cmd == USB_AC_RES_REQ)
+    {
+        logf("usbaudio: get res volume=%d dB", sound_steps(SOUND_VOLUME));
+        /* don't round and set minimum resolution even if it's unsupported */
+        *value = 1;
+        return true;
+    }
+    else
+    {
+        logf("usbaudio: feature unit VOLUME control doesn't support getting %d", cmd);
         return false;
     }
-
-    *value = 0xfe00; /* -1 dB */
-    return true;
 }
 
 static bool usb_audio_set_get_feature_unit(struct usb_ctrlrequest* req)
 {
-    int channel = req->bRequestType & 0xff;
-    int selector = req->bRequestType >> 8;
+    int channel = req->wValue & 0xff;
+    int selector = req->wValue >> 8;
     uint8_t cmd = (req->bRequest & ~USB_AC_GET_REQ);
     int value = 0;
     int i;
