@@ -22,7 +22,7 @@
 #include "thread.h"
 #include "kernel.h"
 #include "string.h"
-/*#define LOGF_ENABLE*/
+#define LOGF_ENABLE
 #include "logf.h"
 
 #include "usb.h"
@@ -451,7 +451,7 @@ void usb_core_handle_transfer_completion(
 
     switch(ep) {
         case EP_CONTROL:
-            logf("ctrl handled %ld",current_tick);
+            /*logf("ctrl handled %ld",current_tick);*/
             usb_core_control_request_handler(
                                     (struct usb_ctrlrequest*)event->data);
             break;
@@ -592,6 +592,7 @@ static void control_request_handler_drivers(struct usb_ctrlrequest* req)
             {
                 if(req->bRequest == USB_REQ_SET_INTERFACE)
                 {
+                    logf("usb_core: SET INTERFACE 0x%x 0x%x", req->wValue, req->wIndex);
                     if(drivers[i].set_interface && drivers[i].set_interface(req->wIndex, req->wValue) >= 0)
                     {
                         usb_drv_send_blocking(EP_CONTROL, NULL, 0); /* ack */
@@ -602,6 +603,7 @@ static void control_request_handler_drivers(struct usb_ctrlrequest* req)
                 else if(req->bRequest == USB_REQ_GET_INTERFACE)
                 {
                     int alt = -1;
+                    logf("usb_core: GET INTERFACE 0x%x", req->wIndex);
                     
                     if(drivers[i].get_interface)
                         alt = drivers[i].get_interface(req->wIndex);
@@ -640,12 +642,14 @@ static void request_handler_device_get_descriptor(struct usb_ctrlrequest* req)
 
     switch(req->wValue>>8) { /* type */
         case USB_DT_DEVICE:
+            logf("usb_core: DEVICE");
             ptr = &device_descriptor;
             size = sizeof(struct usb_device_descriptor);
             break;
 
         case USB_DT_OTHER_SPEED_CONFIG:
         case USB_DT_CONFIG: {
+                logf("usb_core: CONFIG/SPEED_CONFIG");
                 int i, max_packet_size;
 
                 if(req->wValue>>8==USB_DT_CONFIG) {
@@ -675,7 +679,7 @@ static void request_handler_device_get_descriptor(struct usb_ctrlrequest* req)
             }
 
         case USB_DT_STRING:
-            _logf("STRING %d",index);
+            _logf("usb_core: STRING %d",index);
             if ((unsigned)index < USB_STRINGS_LIST_SIZE) {
                 size = usb_strings[index]->bLength;
                 ptr = usb_strings[index];
@@ -693,6 +697,7 @@ static void request_handler_device_get_descriptor(struct usb_ctrlrequest* req)
                 {
                     logf("bad string id %d",index);
                     usb_drv_stall(EP_CONTROL,true,true);
+                    return;
                 }
                 else
                 {
@@ -714,14 +719,14 @@ static void request_handler_device_get_descriptor(struct usb_ctrlrequest* req)
             break;
 
         default:
-            logf("ctrl desc.");
+            /*logf("ctrl desc.");*/
             handled = false;
             control_request_handler_drivers(req);
             break;
     }
 
     if (ptr) {
-        logf("data %d (%d)",size,length);
+        /*logf("data %d (%d)",size,length);*/
         length = MIN(size,length);
 
         if (ptr != response_data) {
@@ -776,8 +781,13 @@ static void request_handler_device(struct usb_ctrlrequest* req)
             request_handler_device_get_descriptor(req);
             break;
         case USB_REQ_CLEAR_FEATURE:
+            logf("usb_core: CLEAR DEVICE FEATURE 0x%x 0x%x", req->wValue, req->wIndex);
+            logf("+------+");
+            logf("| oops |");
+            logf("+------+");
             break;
         case USB_REQ_SET_FEATURE:
+            logf("usb_core: SET DEVICE FEATURE 0x%x 0x%x", req->wValue, req->wIndex);
             if(req->wValue==USB_DEVICE_TEST_MODE) {
                 int mode=req->wIndex>>8;
                 usb_drv_send_blocking(EP_CONTROL,NULL,0);
@@ -785,6 +795,7 @@ static void request_handler_device(struct usb_ctrlrequest* req)
             }
             break;
         case USB_REQ_GET_STATUS:
+            logf("usb_core: GET DEVICE STATUS");
             response_data[0]= 0;
             response_data[1]= 0;
             usb_drv_send_blocking(EP_CONTROL, response_data, 2);
@@ -805,10 +816,19 @@ static void request_handler_interface_standard(struct usb_ctrlrequest* req)
             control_request_handler_drivers(req);
             break;
         case USB_REQ_CLEAR_FEATURE:
+            logf("usb_core: CLEAR INTERFACE FEATURE 0x%x 0x%x", req->wValue, req->wIndex);
+            logf("+------+");
+            logf("| oops |");
+            logf("+------+");
             break;
         case USB_REQ_SET_FEATURE:
+            logf("usb_core: SET INTERFACE FEATURE 0x%x 0x%x", req->wValue, req->wIndex);
+            logf("+------+");
+            logf("| oops |");
+            logf("+------+");
             break;
         case USB_REQ_GET_STATUS:
+            logf("usb_core: GET INTERFACE STATUS");
             response_data[0]=0;
             response_data[1]=0;
             usb_drv_send_blocking(EP_CONTROL, response_data, 2);
@@ -858,12 +878,14 @@ static void request_handler_endpoint_standard(struct usb_ctrlrequest* req)
 {
     switch (req->bRequest) {
         case USB_REQ_CLEAR_FEATURE:
+            logf("usb_core: CLEAR EP FEATURE 0x%x 0x%x", req->wValue, req->wIndex);
             if (req->wValue==USB_ENDPOINT_HALT) {
                 usb_drv_stall(EP_NUM(req->wIndex), false, EP_DIR(req->wIndex));
             }
             usb_drv_send_blocking(EP_CONTROL,NULL,0);
             break;
         case USB_REQ_SET_FEATURE:
+            logf("usb_core: SET EP FEATURE 0x%x 0x%x", req->wValue, req->wIndex);
             if (req->wValue==USB_ENDPOINT_HALT) {
                usb_drv_stall(EP_NUM(req->wIndex), true, EP_DIR(req->wIndex));
             }
@@ -872,7 +894,7 @@ static void request_handler_endpoint_standard(struct usb_ctrlrequest* req)
         case USB_REQ_GET_STATUS:
             response_data[0]=0;
             response_data[1]=0;
-            logf("usb_core: GET_STATUS");
+            logf("usb_core: GET EP STATUS");
             if(req->wIndex>0) {
                 response_data[0]=usb_drv_stalled(EP_NUM(req->wIndex),
                         EP_DIR(req->wIndex));
@@ -912,12 +934,8 @@ static void usb_core_control_request_handler(struct usb_ctrlrequest* req)
         allocate_interfaces_and_endpoints();
     }
 
-    logf("usb req: recip=%x type=%x req=0x%x wValue=0x%x wIndex=0x%x wLength=0x%x",
-        req->bRequestType & USB_RECIP_MASK,
-        (req->bRequestType & USB_TYPE_MASK) >> 5,
-        req->bRequest, req->wValue, req->wIndex, req->wLength);
-        
-
+    logf("control start: t=0x%x r=0x%x v=0x%x i=0x%x l=0x%x", req->bRequestType, req->bRequest,
+        req->wValue, req->wIndex, req->wLength);
     switch(req->bRequestType & USB_RECIP_MASK) {
         case USB_RECIP_DEVICE:
             request_handler_device(req);
@@ -932,7 +950,7 @@ static void usb_core_control_request_handler(struct usb_ctrlrequest* req)
             _logf("unsupported recipient");
             break;
     }
-    //logf("control handled");
+    logf("control handled");
 }
 
 /* called by usb_drv_int() */
@@ -984,7 +1002,7 @@ void usb_core_control_request(struct usb_ctrlrequest* req)
     completion_event->data=(void*)req;
     completion_event->status=0;
     completion_event->length=0;
-    logf("ctrl received %ld",current_tick);
+    /*logf("ctrl received %ld",current_tick);*/
     usb_signal_transfer_completion(completion_event);
 }
 

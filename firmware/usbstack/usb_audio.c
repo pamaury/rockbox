@@ -84,7 +84,7 @@ static const struct usb_string_descriptor __attribute__((aligned(2)))
 static const struct usb_string_descriptor __attribute__((aligned(2)))
     usb_string_input_terminal =
 {
-    sizeof usb_string_input_terminal,
+    2 + 2 * 22,
     USB_DT_STRING,
     {'R', 'o', 'c', 'k', 'b', 'o', 'x', ' ',
      'U', 'S', 'B', ' ',
@@ -417,11 +417,11 @@ void usb_audio_init(void)
 #endif
     cpucache_invalidate();
     
-    #ifdef USB_AUDIO_USE_INTERMEDIATE_BUFFER
+#ifdef USB_AUDIO_USE_INTERMEDIATE_BUFFER
     usb_audio_buffer = audio_buffer;
     for(i = 0; i < USB_AUDIO_NB_SLOTS; i++)
         usb_audio_slot_buffers[i] = audio_buffer + USB_AUDIO_BUFFER_SIZE + i * USB_AUDIO_SLOT_SIZE;
-    #endif
+#endif
 }
 
 int usb_audio_request_endpoints(struct usb_class_driver *drv)
@@ -485,6 +485,7 @@ int usb_audio_set_first_interface(int interface)
 
 int usb_audio_get_config_descriptor(unsigned char *dest, int max_packet_size)
 {
+    (void)max_packet_size;
     unsigned int i;
     unsigned char *orig_dest = dest;
 
@@ -496,7 +497,6 @@ int usb_audio_get_config_descriptor(unsigned char *dest, int max_packet_size)
 
     /* audio control interface */
     ac_interface.bInterfaceNumber = usb_interface;
-    
 
     /* compute total size of AC headers*/
     for(i = 0; i < AC_CS_DESCRIPTORS_LIST_SIZE; i++)
