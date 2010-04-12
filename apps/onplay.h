@@ -31,4 +31,8 @@ enum {
     ONPLAY_PLAYLIST,
 };
 
+#ifdef HAVE_HOTKEY
+char* get_hotkey_desc(int hk_func);
+#endif
+
 #endif

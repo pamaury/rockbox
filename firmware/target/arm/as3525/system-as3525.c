@@ -113,7 +113,7 @@ struct vec_int_src vec_int_srcs[] =
     { INT_SRC_NAND, INT_NAND },
     { INT_SRC_I2C_AUDIO, INT_I2C_AUDIO },
     { INT_SRC_AUDIO, INT_AUDIO },
-#ifdef HAVE_MULTIDRIVE
+#if (defined HAVE_MULTIDRIVE  && CONFIG_CPU == AS3525)
     { INT_SRC_MCI0, INT_MCI0 },
 #endif
 #ifdef HAVE_HOTSWAP
@@ -162,6 +162,41 @@ void fiq_handler(void)
         "subs   pc, lr, #4   \r\n"
     );
 }
+
+#if defined(SANSA_C200V2)
+#include "dbop-as3525.h"
+
+int c200v2_variant = 0;
+
+static void check_model_variant(void)
+{
+    unsigned int i;
+    unsigned int saved_dir = GPIOA_DIR;
+
+    /* Make A7 input */
+    GPIOA_DIR &= ~(1<<7);
+    /* wait a little to allow the pullup/pulldown resistor
+     * to charge the input capacitance */
+    for (i=0; i<1000; i++) asm volatile ("nop\n");
+    /* read the pullup/pulldown value on A7 to determine the variant */
+    if (GPIOA_PIN(7) == 0) {
+        /*
+         * Backlight on A7.
+         */
+        c200v2_variant = 1;
+    } else {
+        /*
+         * Backlight on A5.
+         */
+        c200v2_variant = 0;
+    }
+    GPIOA_DIR = saved_dir;
+}
+#else
+static inline void check_model_variant(void)
+{
+}
+#endif /* SANSA_C200V2*/
 
 #if defined(BOOTLOADER)
 static void sdram_delay(void)
@@ -319,6 +354,7 @@ void system_init(void)
     fmradio_i2c_init();
 #endif
 #endif /* !BOOTLOADER */
+    check_model_variant();
 }
 
 void system_reboot(void)
@@ -347,6 +383,8 @@ int system_memory_guard(int newmode)
 
 #ifndef BOOTLOADER
 #ifdef HAVE_ADJUSTABLE_CPU_FREQ
+
+#if CONFIG_CPU == AS3525
 void set_cpu_frequency(long frequency)
 {
     if(frequency == CPUFREQ_MAX)
@@ -360,7 +398,6 @@ void set_cpu_frequency(long frequency)
         while(adc_read(ADC_CVDD) < 470); /* 470 * .0025 = 1.175V */
 #endif  /*  HAVE_ADJUSTABLE_CPU_VOLTAGE */
 
-#if CONFIG_CPU == AS3525    /* only in arm922tdmi */
         asm volatile(
             "mrc p15, 0, r0, c1, c0  \n"
 
@@ -373,42 +410,17 @@ void set_cpu_frequency(long frequency)
 
             "mcr p15, 0, r0, c1, c0  \n"
             : : : "r0" );
-#else
-    /* AS3525v2 */
-    int oldstatus = disable_irq_save();
-
-    /* Change PCLK while FCLK is low, so it doesn't go too high */
-    CGU_PERI = (CGU_PERI & ~(0x1F << 2)) | (AS3525_PCLK_DIV0 << 2);
-
-    CGU_PROC = ((AS3525_FCLK_POSTDIV << 4) |
-                (AS3525_FCLK_PREDIV  << 2) |
-                 AS3525_FCLK_SEL);
-    restore_irq(oldstatus);
-#endif /* CONFIG_CPU == AS3525 */
 
         cpu_frequency = CPUFREQ_MAX;
     }
     else
     {
-#if CONFIG_CPU == AS3525    /* only in arm922tdmi */
         asm volatile(
             "mrc p15, 0, r0, c1, c0  \n"
             "bic r0, r0, #3<<30      \n"     /* fastbus clocking */
             "mcr p15, 0, r0, c1, c0  \n"
             : : : "r0" );
-#else
-    /* AS3525v2 */
-    int oldstatus = disable_irq_save();
 
-    CGU_PROC = ((AS3525_FCLK_POSTDIV_UNBOOSTED << 4) |
-                (AS3525_FCLK_PREDIV  << 2) |
-                 AS3525_FCLK_SEL);
-
-    /* Change PCLK after FCLK is low, so it doesn't go too high */
-    CGU_PERI = (CGU_PERI & ~(0x1F << 2)) | (AS3525_PCLK_DIV0_UNBOOSTED << 2);
-
-    restore_irq(oldstatus);
-#endif /* CONFIG_CPU == AS3525 */
 
 #ifdef HAVE_ADJUSTABLE_CPU_VOLTAGE
         /* Decreasing frequency so reduce voltage after change */
@@ -418,5 +430,46 @@ void set_cpu_frequency(long frequency)
         cpu_frequency = CPUFREQ_NORMAL;
     }
 }
+#else   /* as3525v2  */
+void set_cpu_frequency(long frequency)
+{
+    int oldstatus = disable_irq_save();
+    int delay;
+
+    if(frequency == CPUFREQ_MAX)
+    {
+        /* Change PCLK while FCLK is low, so it doesn't go too high */
+        CGU_PERI = (CGU_PERI & ~(0xF << 2)) | (AS3525_PCLK_DIV0 << 2);
+
+        delay = 40; while(delay--) asm("nop");
+
+        CGU_PROC = ((AS3525_FCLK_POSTDIV << 4) |
+                    (AS3525_FCLK_PREDIV  << 2) |
+                    AS3525_FCLK_SEL);
+
+        delay = 40; while(delay--) asm("nop");
+
+    }
+    else
+    {
+        frequency = CPUFREQ_NORMAL; /* We only have 2 settings */
+
+        CGU_PROC = ((AS3525_FCLK_POSTDIV_UNBOOSTED << 4) |
+                    (AS3525_FCLK_PREDIV  << 2) |
+                    AS3525_FCLK_SEL);
+
+        delay = 40; while(delay--) asm("nop");
+
+        /* Change PCLK after FCLK is low, so it doesn't go too high */
+        CGU_PERI = (CGU_PERI & ~(0xF << 2)) | (AS3525_PCLK_DIV0_UNBOOSTED << 2);
+        delay = 40; while(delay--) asm("nop");
+    }
+
+    cpu_frequency = frequency;
+
+    restore_irq(oldstatus);
+}
+#endif
+
 #endif /* HAVE_ADJUSTABLE_CPU_FREQ */
 #endif /* !BOOTLOADER */

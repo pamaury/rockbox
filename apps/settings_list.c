@@ -1662,10 +1662,26 @@ const struct settings_list settings[] = {
 #endif
 
 #ifdef HAVE_HOTKEY
-    CHOICE_SETTING(0, hotkey_wps, 0, 1, "hotkey wps", 0, NULL, 0),
-    CHOICE_SETTING(0, hotkey_wps_desc_id, 0, LANG_VIEW_DYNAMIC_PLAYLIST, "hotkey wps desc id", 0, NULL, 0),
-    CHOICE_SETTING(0, hotkey_tree, 0, 0, "hotkey tree", 0, NULL, 0),
-    CHOICE_SETTING(0, hotkey_tree_desc_id, 0, LANG_OFF, "hotkey tree desc id", 0, NULL, 0),
+    CHOICE_SETTING(0, hotkey_wps, -1, 1, "hotkey wps",
+        "off,view playlist,show track info,pitchscreen,open with,delete,insert",
+        NULL, 7, ID2P(LANG_OFF),
+        ID2P(LANG_VIEW_DYNAMIC_PLAYLIST), ID2P(LANG_MENU_SHOW_ID3_INFO),
+#ifdef HAVE_PITCHSCREEN
+        ID2P(LANG_PITCH),
+#else
+        NULL,
+#endif
+        ID2P(LANG_ONPLAY_OPEN_WITH), ID2P(LANG_DELETE), ID2P(LANG_INSERT)),
+    CHOICE_SETTING(0, hotkey_tree, -1, 0, "hotkey tree",
+        "off,view playlist,show track info,pitchscreen,open with,delete,insert",
+        NULL, 7, ID2P(LANG_OFF),
+        ID2P(LANG_VIEW_DYNAMIC_PLAYLIST), ID2P(LANG_MENU_SHOW_ID3_INFO),
+#ifdef HAVE_PITCHSCREEN
+        ID2P(LANG_PITCH),
+#else
+        NULL,
+#endif
+        ID2P(LANG_ONPLAY_OPEN_WITH), ID2P(LANG_DELETE), ID2P(LANG_INSERT)),
 #endif
 };
 

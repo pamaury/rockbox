@@ -42,6 +42,7 @@
 #include "plugin.h"
 #include "file.h"
 #include "filefuncs.h"
+#include "dsp.h"
 
 #define MAX_BOOKMARKS 10
 #define MAX_BOOKMARK_SIZE  350
@@ -61,28 +62,23 @@ struct bookmark_list
     char* items[];
 };
 
-/* bookmark flags */
-#define F_BMFILES   0x001
-#define F_RES_IND   0x002
-#define F_RES_OFF   0x004
-#define F_RES_SED   0x008
-#define F_RES_1ST   0x010
-#define F_RES_TIM   0x020
-#define F_REP_MOD   0x040
-#define F_SHUFFLE   0x080
+/* flags for optional bookmark tokens */
+#define BM_PITCH    0x01
+#define BM_SPEED    0x02
 
-static struct bookmark_values
-{
-    int resume_index;
-    int resume_offset;
-    int resume_seed;
-    int resume_first_index; /* ?? */
+/* bookmark values */
+static struct {
+    int  resume_index;
+    unsigned long resume_offset;
+    int  resume_seed;
     long resume_time;
     int  repeat_mode;
     bool shuffle;
+    /* optional values */
+    int  pitch;
+    int  speed; 
 } bm;
 
-#define CHECK_BOOKMARK(bookmark) parse_bookmark(bookmark, 0)
 static bool  add_bookmark(const char* bookmark_file_name, const char* bookmark, 
                           bool most_recent);
 static char* create_bookmark(void);
@@ -91,7 +87,7 @@ static void  say_bookmark(const char* bookmark,
                           int bookmark_id, bool show_playlist_name);
 static bool  play_bookmark(const char* bookmark);
 static bool  generate_bookmark_file_name(const char *in);
-static bool  parse_bookmark(const char *bookmark, const int flags);
+static bool  parse_bookmark(const char *bookmark, const bool get_filenames);
 static int   buffer_bookmarks(struct bookmark_list* bookmarks, int first_line);
 static const char* get_bookmark_info(int list_index,
                                      void* data,
@@ -294,7 +290,7 @@ static bool add_bookmark(const char* bookmark_file_name, const char* bookmark,
                         
             cp  = strchr(global_read_buffer,'/');
             tmp = strrchr(global_read_buffer,';');
-            if (CHECK_BOOKMARK(global_read_buffer) &&
+            if (parse_bookmark(global_read_buffer, false) &&
                (!unique || len != tmp -cp || strncmp(playlist,cp,len)))
             {
                 bookmark_count++;
@@ -343,20 +339,37 @@ static char* create_bookmark()
 
     /* create the bookmark */
     snprintf(global_bookmark, sizeof(global_bookmark),
-             "%d;%ld;%d;%d;%ld;%d;%d;%s;%s",
+             /* new optional bookmark token descriptors should be inserted
+                just before the "%s;%s" in this line... */
+#if CONFIG_CODEC == SWCODEC
+             ">%d;%d;%ld;%d;%ld;%d;%d;%d;%d;%s;%s",
+#else
+             ">%d;%d;%ld;%d;%ld;%d;%d;%s;%s",
+#endif
+             /* ... their flags should go here ... */
+#if CONFIG_CODEC == SWCODEC
+             BM_PITCH | BM_SPEED,
+#else
+             0,
+#endif
              resume_index,
              id3->offset,
              playlist_get_seed(NULL),
-             0,
              id3->elapsed,
              global_settings.repeat_mode,
              global_settings.playlist_shuffle,
+             /* ...and their values should go here */
+#if CONFIG_CODEC == SWCODEC
+             sound_get_pitch(),
+             dsp_get_timestretch(),
+#endif
+             /* more mandatory tokens */
              playlist_get_name(NULL, global_temp_buffer,
                 sizeof(global_temp_buffer)),
              file+1);
 
     /* checking to see if the bookmark is valid */
-    if (CHECK_BOOKMARK(global_bookmark))
+    if (parse_bookmark(global_bookmark, false))
         return global_bookmark;
     else
         return NULL;
@@ -572,9 +585,7 @@ static const char* get_bookmark_info(int list_index,
         }
     }
     
-    const int flags = F_BMFILES | F_RES_IND | F_RES_TIM | F_SHUFFLE;
-    
-    if (!parse_bookmark(bookmarks->items[index - bookmarks->start], flags))
+    if (!parse_bookmark(bookmarks->items[index - bookmarks->start], true))
     {
         return list_index % 2 == 0 ? (char*) str(LANG_BOOKMARK_INVALID) : " ";
     }
@@ -841,9 +852,7 @@ static void say_bookmark(const char* bookmark,
 {
     bool is_dir;
 
-    const int flags = F_BMFILES | F_RES_IND | F_RES_TIM | F_SHUFFLE;
-    
-    if (!parse_bookmark(bookmark, flags))
+    if (!parse_bookmark(bookmark, true))
     {
         talk_id(LANG_BOOKMARK_INVALID, false);
         return;
@@ -897,13 +906,20 @@ static void say_bookmark(const char* bookmark,
 /* ------------------------------------------------------------------------*/
 static bool play_bookmark(const char* bookmark)
 {
-    const int flags = F_BMFILES | F_RES_IND | F_RES_OFF | F_RES_SED | 
-                      F_REP_MOD | F_SHUFFLE;
+#if CONFIG_CODEC == SWCODEC
+    /* preset pitch and speed to 100% in case bookmark doesn't have info */
+    bm.pitch = sound_get_pitch();
+    bm.speed = dsp_get_timestretch();
+#endif
     
-    if (parse_bookmark(bookmark, flags))
+    if (parse_bookmark(bookmark, true))
     {
         global_settings.repeat_mode = bm.repeat_mode;
         global_settings.playlist_shuffle = bm.shuffle;
+#if CONFIG_CODEC == SWCODEC
+        sound_set_pitch(bm.pitch);
+        dsp_set_timestretch(bm.speed);
+#endif
         return bookmark_play(global_temp_buffer, bm.resume_index,
             bm.resume_offset, bm.resume_seed, global_filename);
     }
@@ -926,56 +942,58 @@ static const char* skip_token(const char* s)
     return s;
 }
 
-static const char* int_token(const char* s, bool parse, int* dest)
-{
-    if (parse)
-    {
-        *dest = atoi(s);
-    }
-    
-    return skip_token(s);
-}
+static const char* int_token(const char* s, int* dest) 	 
+{ 	 
+    *dest = atoi(s);
+    return skip_token(s); 	 
+} 	 
 
-static const char* long_token(const char* s, bool parse, long* dest)
-{
-    if (parse)
-    {
-        *dest = atoi(s);    /* Should be atol, but we don't have it. */
-    }
-
-    return skip_token(s);
-}
-
-static const char* bool_token(const char* s, bool parse, bool* dest)
-{
-    if (parse)
-    {
-        *dest = atoi(s) != 0;
-    }
-
-    return skip_token(s);
-}
+static const char* long_token(const char* s, long* dest) 	 
+{ 	 
+    *dest = atoi(s);    /* Should be atol, but we don't have it. */
+    return skip_token(s); 	 
+} 	 
 
 /* ----------------------------------------------------------------------- */
 /* This function takes a bookmark and parses it.  This function also       */
-/* validates the bookmark.  Flags are set to indicate which bookmark       */
-/* tokens are to be processed.                                             */
+/* validates the bookmark.  The parse_filenames flag indicates whether     */
+/* the filename tokens are to be extracted.                                */
 /* ----------------------------------------------------------------------- */
-static bool parse_bookmark(const char *bookmark, const int flags)
+static bool parse_bookmark(const char *bookmark, const bool parse_filenames)
 {
     const char* s = bookmark;
     const char* end;
     
-#define FLAG(a) (flags & a)
+#define GET_INT_TOKEN(var)  s = int_token(s, &var)
+#define GET_LONG_TOKEN(var)  s = long_token(s, &var)
+#define GET_BOOL_TOKEN(var) var = (atoi(s)!=0); s = skip_token(s)
     
-    s =  int_token(s, FLAG(F_RES_IND), &bm.resume_index);
-    s =  int_token(s, FLAG(F_RES_OFF), &bm.resume_offset);
-    s =  int_token(s, FLAG(F_RES_SED), &bm.resume_seed);
-    s =  int_token(s, FLAG(F_RES_1ST), &bm.resume_first_index);
-    s = long_token(s, FLAG(F_RES_TIM), &bm.resume_time);
-    s =  int_token(s, FLAG(F_REP_MOD), &bm.repeat_mode);
-    s = bool_token(s, FLAG(F_SHUFFLE), &bm.shuffle);
-
+    /* if new format bookmark, extract the optional content flags,
+       otherwise treat as an original format bookmark */
+    int opt_flags = 0;
+    bool new_format = (strchr(s, '>') == s);
+    if (new_format)
+    {
+        s++;
+        GET_INT_TOKEN(opt_flags);
+    }
+    
+    /* extract all original bookmark tokens */
+    GET_INT_TOKEN(bm.resume_index);
+    GET_LONG_TOKEN(bm.resume_offset);
+    GET_INT_TOKEN(bm.resume_seed);
+    if (!new_format)    /* skip deprecated token */
+        s = skip_token(s);
+    GET_LONG_TOKEN(bm.resume_time);
+    GET_INT_TOKEN(bm.repeat_mode);
+    GET_BOOL_TOKEN(bm.shuffle);
+    
+    /* extract all optional bookmark tokens */
+    if (opt_flags & BM_PITCH)
+        GET_INT_TOKEN(bm.pitch);
+    if (opt_flags & BM_SPEED)
+        GET_INT_TOKEN(bm.speed);
+    
     if (*s == 0)
     {
         return false;
@@ -984,7 +1002,7 @@ static bool parse_bookmark(const char *bookmark, const int flags)
     end = strchr(s, ';');
 
     /* extract file names */
-    if (FLAG(F_BMFILES))
+    if (parse_filenames)
     {
         size_t len = (end == NULL) ? strlen(s) : (size_t) (end - s);
         len = MIN(TEMP_BUF_SIZE - 1, len);

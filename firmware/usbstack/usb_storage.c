@@ -63,6 +63,8 @@
 #define READ_BUFFER_SIZE (1024*64)
 #endif
 
+#define MAX_CBW_SIZE 1024
+
 #ifdef USB_WRITE_BUFFER_SIZE
 #define WRITE_BUFFER_SIZE USB_WRITE_BUFFER_SIZE
 #else
@@ -307,7 +309,8 @@ static enum {
     SENDING_FAILED_RESULT,
     RECEIVING_BLOCKS,
     RECEIVING_TIME,
-    SENDING_CSW
+    WAITING_FOR_CSW_COMPLETION_OR_COMMAND,
+    WAITING_FOR_CSW_COMPLETION
 } state = WAITING_FOR_COMMAND;
 
 static void yearday_to_daymonth(int yd, int y, int *d, int *m)
@@ -452,7 +455,7 @@ void usb_storage_init_connection(void)
 
 #if CONFIG_CPU == IMX31L || defined(CPU_TCC77X) || defined(CPU_TCC780X) || \
     defined(BOOTLOADER) || CONFIG_CPU == DM320
-    static unsigned char _cbw_buffer[ALLOCATE_BUFFER_SIZE]
+    static unsigned char _cbw_buffer[MAX_CBW_SIZE]
         USB_DEVBSS_ATTR __attribute__((aligned(32)));
     cbw_buffer = (void *)_cbw_buffer;
 
@@ -474,20 +477,19 @@ void usb_storage_init_connection(void)
 #else
     cbw_buffer = (void *)((unsigned int)(audio_buffer+31) & 0xffffffe0);
 #endif
-    tb.transfer_buffer = cbw_buffer + 1024;
+    tb.transfer_buffer = cbw_buffer + MAX_CBW_SIZE;
     cpucache_invalidate();
 #ifdef USB_USE_RAMDISK
     ramdisk_buffer = tb.transfer_buffer + ALLOCATE_BUFFER_SIZE;
 #endif
 #endif
-    
     /* keep coherent with definition of ep_bulk_slots */
     usb_drv_select_endpoint_mode(ep_out, USB_DRV_ENDPOINT_MODE_QUEUE);
     usb_drv_allocate_slots(ep_out, 8, ep_bulk_slots[0]);
     usb_drv_select_endpoint_mode(ep_in, USB_DRV_ENDPOINT_MODE_QUEUE);
     usb_drv_allocate_slots(ep_in, 8, ep_bulk_slots[1]);
 
-    usb_drv_recv_nonblocking(ep_out, cbw_buffer, 1024);
+    usb_drv_recv_nonblocking(ep_out, cbw_buffer, MAX_CBW_SIZE);
 
     int i;
     for(i=0;i<storage_num_drives();i++) {
@@ -582,27 +584,31 @@ void usb_storage_transfer_complete(int ep,int dir,int status,int length, void *b
                 cur_sense_data.ascq=0;
             }
             break;
+        case WAITING_FOR_CSW_COMPLETION_OR_COMMAND:
+            if(dir==USB_DIR_IN) {
+                /* This was the CSW */
+                state = WAITING_FOR_COMMAND;
+            }
+            else {
+                /* This was the command */
+                state = WAITING_FOR_CSW_COMPLETION;
+                /* We now have the CBW, but we won't execute it yet to avoid
+                 * issues with the still-pending CSW */
+            }
+            break;
         case WAITING_FOR_COMMAND:
             if(dir==USB_DIR_IN) {
                 logf("IN received in WAITING_FOR_COMMAND");
             }
-            //logf("command received");
-            if(letoh32(cbw->signature) == CBW_SIGNATURE) {
-                handle_scsi(cbw);
-            }
-            else {
-                usb_drv_stall(ep_in, true,true);
-                usb_drv_stall(ep_out, true,false);
-            }
+            handle_scsi(cbw);
             break;
-        case SENDING_CSW:
+        case WAITING_FOR_CSW_COMPLETION:
             if(dir==USB_DIR_OUT) {
-                logf("OUT received in SENDING_CSW");
+                logf("OUT received in WAITING_FOR_CSW_COMPLETION");
             }
-            //logf("csw sent, now go back to idle");
-            state = WAITING_FOR_COMMAND;
-            /* Already start waiting for the next command */
-            usb_drv_recv_nonblocking(ep_out, cbw_buffer, 1024);
+            handle_scsi(cbw);
+            break;
+
 #if 0
             if(cur_cmd.cur_cmd == SCSI_WRITE_10)
             {
@@ -761,6 +767,17 @@ static void handle_scsi(struct command_block_wrapper* cbw)
     bool lun_present=true;
     unsigned char lun = cbw->lun;
     unsigned int block_size_mult = 1;
+
+    if(letoh32(cbw->signature) != CBW_SIGNATURE) {
+        usb_drv_stall(ep_in, true,true);
+        usb_drv_stall(ep_out, true,false);
+        return;
+    }
+    /* Clear the signature to prevent possible bugs elsewhere
+     * to trigger a second execution of the same command with
+     * bogus data */
+    cbw->signature=0;
+
 #ifdef HIDE_FIRST_DRIVE
     lun++;
 #endif
@@ -1200,8 +1217,12 @@ static void send_csw(int status)
 
     usb_drv_send_nonblocking(ep_in, tb.csw,
             sizeof(struct command_status_wrapper));
-    state = SENDING_CSW;
+    state = WAITING_FOR_CSW_COMPLETION_OR_COMMAND;
     //logf("CSW: %X",status);
+    /* Already start waiting for the next command */
+    usb_drv_recv(ep_out, cbw_buffer, MAX_CBW_SIZE);
+    /* The next completed transfer will be either the CSW one
+     * or the new command */
 
     if(status == UMS_STATUS_GOOD) {
         cur_sense_data.sense_key=0;

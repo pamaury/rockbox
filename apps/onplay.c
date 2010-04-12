@@ -1199,21 +1199,12 @@ static bool open_with(void)
 extern const struct menu_item_ex *selected_menu_item;
 extern bool hotkey_settable_menu;
 
-#define HOT_MASK    0x0FF
-#define HOT_WPS     0x100
-#define HOT_TREE    0x200
-
-struct hotkey_assignment {
-    int item;
-    struct menu_func func;
-    int return_code;
-    const struct menu_item_ex *menu_addr;
-};
-
-#define HOTKEY_FUNC(func, param) {{(void *)func}, param}
+#define HOTKEY_ACTION_MASK 0x0FF /* Mask to apply to get the action (enum)           */
+#define HOTKEY_CTX_WPS     0x100 /* Mask to apply to check whether it's for WPS      */
+#define HOTKEY_CTX_TREE    0x200 /* Mask to apply to check whether it's for the tree */
 
 /* Any desired hotkey functions go here... */
-enum hotkey_settings {
+enum hotkey_action {
     HOTKEY_OFF = 0,
     HOTKEY_VIEW_PLAYLIST = 1,
     HOTKEY_SHOW_TRACK_INFO,
@@ -1223,41 +1214,63 @@ enum hotkey_settings {
     HOTKEY_INSERT,
 };
 
+struct hotkey_assignment {
+    int item;               /* Bit or'd hotkey_action and HOTKEY_CTX_x   */
+    struct menu_func func;  /* Function to run if this entry is selected */
+    int return_code;        /* What to return after the function is run  */
+    const struct menu_item_ex *menu_addr; /* Must be a MENUITEM_FUNCTION */
+};
+
+#define HOTKEY_FUNC(func, param) {{(void *)func}, param}
+
 /* ... and here.  Order is not important. */
 static struct hotkey_assignment hotkey_items[] = {
-    { HOTKEY_VIEW_PLAYLIST  | HOT_WPS,
+    { HOTKEY_VIEW_PLAYLIST  | HOTKEY_CTX_WPS,
             HOTKEY_FUNC(NULL, NULL),
             ONPLAY_PLAYLIST,    &view_cur_playlist },
-    { HOTKEY_SHOW_TRACK_INFO| HOT_WPS,
+    { HOTKEY_SHOW_TRACK_INFO| HOTKEY_CTX_WPS,
             HOTKEY_FUNC(browse_id3, NULL),
             ONPLAY_RELOAD_DIR,  &browse_id3_item },
 #ifdef HAVE_PITCHSCREEN
-    { HOTKEY_PITCHSCREEN    | HOT_WPS,
+    { HOTKEY_PITCHSCREEN    | HOTKEY_CTX_WPS,
             HOTKEY_FUNC(gui_syncpitchscreen_run, NULL),
             ONPLAY_RELOAD_DIR,  &pitch_screen_item },
 #endif
-    { HOTKEY_OPEN_WITH      | HOT_WPS | HOT_TREE,
+    { HOTKEY_OPEN_WITH      | HOTKEY_CTX_WPS | HOTKEY_CTX_TREE,
             HOTKEY_FUNC(open_with, NULL),
             ONPLAY_RELOAD_DIR,  &list_viewers_item },
-    { HOTKEY_DELETE         | HOT_WPS | HOT_TREE,
+    { HOTKEY_DELETE         | HOTKEY_CTX_WPS | HOTKEY_CTX_TREE,
             HOTKEY_FUNC(delete_item, NULL),
             ONPLAY_RELOAD_DIR,  &delete_file_item },
-    { HOTKEY_DELETE         | HOT_TREE,
+    { HOTKEY_DELETE         | HOTKEY_CTX_TREE,
             HOTKEY_FUNC(delete_item, NULL),
             ONPLAY_RELOAD_DIR,  &delete_dir_item },
-    { HOTKEY_INSERT         | HOT_TREE,
+    { HOTKEY_INSERT         | HOTKEY_CTX_TREE,
             HOTKEY_FUNC(playlist_insert_func, (intptr_t*)PLAYLIST_INSERT),
             ONPLAY_START_PLAY,  &i_pl_item },
 };
 
 static const int num_hotkey_items = sizeof(hotkey_items) / sizeof(hotkey_items[0]);
 
+/* Return the language ID for the input function */
+char* get_hotkey_desc(int hk_func)
+{
+    int i;
+    for (i = 0; i < num_hotkey_items; i++)
+    {
+        if ((hotkey_items[i].item & HOTKEY_ACTION_MASK) == hk_func)
+            return P2STR(hotkey_items[i].menu_addr->callback_and_desc->desc);
+    }
+    
+    return str(LANG_HOTKEY_NOT_SET);
+}
+
 /* Execute the hotkey function, if listed for this screen */
 static int execute_hotkey(bool is_wps)
 {
     int i;
     struct hotkey_assignment *this_item;
-    const int context = is_wps ? HOT_WPS : HOT_TREE;
+    const int context = is_wps ? HOTKEY_CTX_WPS : HOTKEY_CTX_TREE;
     const int this_hotkey = (is_wps ? global_settings.hotkey_wps :
         global_settings.hotkey_tree);
     
@@ -1265,17 +1278,17 @@ static int execute_hotkey(bool is_wps)
     for (i = 0; i < num_hotkey_items; i++)
     {
         this_item = &hotkey_items[i];
-        if ((this_item->item & context) && 
-            ((this_item->item & HOT_MASK) == this_hotkey))
+        if ((this_item->item & context) &&
+            ((this_item->item & HOTKEY_ACTION_MASK) == this_hotkey))
         {
             /* run the associated function (with optional param), if any */
             const struct menu_func func = this_item->func;
             if (func.function != NULL)
             {
                 if (func.param != NULL)
-                    (*(func.function_w_param))(func.param);
+                    (*func.function_w_param)(func.param);
                 else
-                    (*(func.function))();
+                    (*func.function)();
             }
             /* return with the associated code */
             return this_item->return_code;
@@ -1292,24 +1305,22 @@ static void set_hotkey(bool is_wps)
 {
     int i;
     struct hotkey_assignment *this_item;
-    const int context = is_wps ? HOT_WPS : HOT_TREE;
+    const int context = is_wps ? HOTKEY_CTX_WPS : HOTKEY_CTX_TREE;
     int *hk_func = is_wps ? &global_settings.hotkey_wps :
-                            &global_settings.hotkey_tree,
-        *hk_desc = is_wps ? &global_settings.hotkey_wps_desc_id :
-                            &global_settings.hotkey_tree_desc_id;
-    int this_hk,
-        this_id;
+                            &global_settings.hotkey_tree;
+    int this_hk;
+    char *this_desc;
     bool match_found = false;
     
     /* search assignment struct for a function that matches the current menu item */
     for (i = 0; i < num_hotkey_items; i++)
     {
         this_item = &hotkey_items[i];
-        if ((this_item->item & context) && 
+        if ((this_item->item & context) &&
             (this_item->menu_addr == selected_menu_item))
         {
-            this_hk = this_item->item & HOT_MASK;
-            this_id = P2ID((selected_menu_item->callback_and_desc)->desc);
+            this_hk = this_item->item & HOTKEY_ACTION_MASK;
+            this_desc = P2STR((selected_menu_item->callback_and_desc)->desc);
             match_found = true;
             break;
         }
@@ -1318,26 +1329,23 @@ static void set_hotkey(bool is_wps)
     /* ignore the hotkey if no match found or no change to setting */
     if (!match_found || (this_hk == *hk_func)) return;
     
-    char line1_buf[100];
-    char line2_buf[100];
-    char *line1 = line1_buf;
-    char *line2 = line2_buf;
-    char **line1_ptr = &line1;
-    char **line2_ptr = &line2;
+    char   line1_buf[100],
+           line2_buf[100];
+    char  *line1 = line1_buf,
+          *line2 = line2_buf;
+    char **line1_ptr = &line1,
+         **line2_ptr = &line2;
     const struct text_message     message={(const char **)line1_ptr, 1};
     const struct text_message yes_message={(const char **)line2_ptr, 1};
-    char *func_name = str(this_id);
 
-    snprintf(line1, sizeof(line1_buf), str(LANG_SET_HOTKEY_QUESTION), func_name);
-    snprintf(line2, sizeof(line2_buf), str(LANG_HOTKEY_ASSIGNED), func_name);
+    snprintf(line1, sizeof(line1_buf), str(LANG_SET_HOTKEY_QUESTION), this_desc);
+    snprintf(line2, sizeof(line2_buf), str(LANG_HOTKEY_ASSIGNED), this_desc);
 
     /* confirm the hotkey setting change */
     if(gui_syncyesno_run(&message, &yes_message, NULL)==YESNO_YES)
     {                    
         /* store the hotkey settings */
         *hk_func = this_hk;
-        *hk_desc = this_id;
-        
         settings_save();
     }
 }
@@ -1350,6 +1358,7 @@ int onplay(char* file, int attr, int from, bool hotkey)
     context = from;
     selected_file = file;
     selected_file_attr = attr;
+    int menu_selection;
 #ifdef HAVE_HOTKEY
     if (hotkey)
         return execute_hotkey(context == CONTEXT_WPS);
@@ -1361,13 +1370,17 @@ int onplay(char* file, int attr, int from, bool hotkey)
         menu = &wps_onplay_menu;
     else
         menu = &tree_onplay_menu;
-    switch (do_menu(menu, NULL, NULL, false))
-    {
+    menu_selection = do_menu(menu, NULL, NULL, false);
 #ifdef HAVE_HOTKEY
-        hotkey_settable_menu = false;
+    hotkey_settable_menu = false;
+    switch (menu_selection)
+    {
         case MENU_SELECTED_HOTKEY:
             set_hotkey(context == CONTEXT_WPS);
             return ONPLAY_RELOAD_DIR;
+#else
+    switch (menu_selection)
+    {
 #endif
         case GO_TO_WPS:
             return ONPLAY_START_PLAY;
