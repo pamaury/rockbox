@@ -37,6 +37,7 @@
 //#define USB_AUDIO_OUTPUT_TO_FILE
 #define USB_AUDIO_OUTPUT_TO_AUDIO
 #define USB_AUDIO_USE_INTERMEDIATE_BUFFER
+//#define USB_AUDIO_ANON_CONTROLS
 
 /* Strings */
 enum
@@ -84,30 +85,25 @@ static const struct usb_string_descriptor __attribute__((aligned(2)))
 static const struct usb_string_descriptor __attribute__((aligned(2)))
     usb_string_input_terminal =
 {
-    2 + 2 * 22,
+    2 + 2 * 3,
     USB_DT_STRING,
-    {'R', 'o', 'c', 'k', 'b', 'o', 'x', ' ',
-     'U', 'S', 'B', ' ',
-     'C', 'o', 'n', 't', 'r', 'o', 'l', 'l', 'e', 'r'}
+    {'U', 'S', 'B'}
 };
 
 static const struct usb_string_descriptor __attribute__((aligned(2)))
     usb_string_output_terminal =
 {
-    2 + 2 * 16,
+    2 + 2 * 8,
     USB_DT_STRING,
-    {'R', 'o', 'c', 'k', 'b', 'o', 'x', ' ',
-     'L', 'i', 'n', 'e', '-', 'O', 'u', 't'}
+    {'L', 'i', 'n', 'e', '-', 'O', 'u', 't'}
 };
 
 static const struct usb_string_descriptor __attribute__((aligned(2)))
     usb_string_feature_unit =
 {
-    2 + 2 * 25,
+    2 + 2 * 3,
     USB_DT_STRING,
-    {'R', 'o', 'c', 'k', 'b', 'o', 'x', ' ',
-     'M', 'a', 's', 't', 'e', 'r', ' ',
-     'C', 'o', 'n', 't', 'r', 'o', 'l', 'l', 'e', 'r'}
+    {'P', 'C', 'M'}
 };
 
 static const struct usb_string_descriptor* const usb_strings_list[]=
@@ -460,9 +456,11 @@ int usb_audio_set_first_string_index(int string_index)
     ac_interface.iInterface = string_index + USB_AUDIO_CONTROL_STRING;
     as_interface_alt_0.iInterface = string_index + USB_AUDIO_STREAMING_STRING_1;
     as_interface_alt_1.iInterface = string_index + USB_AUDIO_STREAMING_STRING_2;
+    #ifndef USB_AUDIO_ANON_CONTROLS
     ac_input.iTerminal = string_index + USB_INPUT_TERMINAL_STRING;
     ac_output.iTerminal = string_index + USB_OUTPUT_TERMINAL_STRING;
     ac_feature.iFeature = string_index + USB_FEATURE_UNIT_STRING;
+    #endif /* USB_AUDIO_ANON_CONTROLS */
 
     return string_index + USB_STRINGS_LIST_SIZE;
 }
@@ -705,51 +703,50 @@ static int usb_audio_volume_to_db(int vol)
     return ((signed short)(unsigned short)vol)/256;
 }
 
+#if defined(LOGF_ENABLE) && defined(ROCKBOX_HAS_LOGF)
+static const char *usb_audio_ac_ctl_req_str(uint8_t cmd)
+{
+    switch(cmd)
+    {
+        case USB_AC_CUR_REQ: return "CUR";
+        case USB_AC_MIN_REQ: return "MIN";
+        case USB_AC_MAX_REQ: return "MAX";
+        case USB_AC_RES_REQ: return "RES";
+        case USB_AC_MEM_REQ: return "MEM";
+        default: return "<unknown>";
+    }
+}
+#endif
+
 static bool feature_unit_set_volume(int value, uint8_t cmd)
 {
     if(cmd != USB_AC_CUR_REQ)
     {
-        logf("usbaudio: feature unit VOLUME control only support setting CUR");
+        logf("usbaudio: feature unit VOLUME doesn't support %s setting", usb_audio_ac_ctl_req_str(cmd));
         return false;
     }
 
-    logf("usbaudio: set cur volume=%d dB)", usb_audio_volume_to_db(value));
+    logf("usbaudio: set volume=%d dB)", usb_audio_volume_to_db(value));
+    
     sound_set_volume(usb_audio_volume_to_db(value));
     return true;
 }
 
 static bool feature_unit_get_volume(int *value, uint8_t cmd)
 {
-    if(cmd == USB_AC_CUR_REQ)
+    switch(cmd)
     {
-        logf("usbaudio: get cur volume=%d dB", sound_get_volume());
-        *value = db_to_usb_audio_volume(sound_get_volume());
-        return true;
+        case USB_AC_CUR_REQ: *value = db_to_usb_audio_volume(sound_get_volume()); break;
+        case USB_AC_MIN_REQ: *value = db_to_usb_audio_volume(sound_min(SOUND_VOLUME)); break;
+        case USB_AC_MAX_REQ: *value = db_to_usb_audio_volume(sound_max(SOUND_VOLUME)); break;
+        case USB_AC_RES_REQ: *value = db_to_usb_audio_volume(sound_steps(SOUND_VOLUME)); break;
+        default:
+            logf("usbaudio: feature unit VOLUME doesn't support %s setting", usb_audio_ac_ctl_req_str(cmd));
+            return false;
     }
-    else if(cmd == USB_AC_MIN_REQ)
-    {
-        logf("usbaudio: get min volume=%d dB", sound_min(SOUND_VOLUME));
-        *value = db_to_usb_audio_volume(sound_min(SOUND_VOLUME));
-        return true;
-    }
-    else if(cmd == USB_AC_MAX_REQ)
-    {
-        logf("usbaudio: get max volume=%d dB", sound_max(SOUND_VOLUME));
-        *value = db_to_usb_audio_volume(sound_max(SOUND_VOLUME));
-        return true;
-    }
-    else if(cmd == USB_AC_RES_REQ)
-    {
-        logf("usbaudio: get res volume=%d dB", sound_steps(SOUND_VOLUME));
-        /* don't round and set minimum resolution even if it's unsupported */
-        *value = 1;
-        return true;
-    }
-    else
-    {
-        logf("usbaudio: feature unit VOLUME control doesn't support getting %d", cmd);
-        return false;
-    }
+    
+    logf("usbaudio: get %s volume=%d dB)", usb_audio_ac_ctl_req_str(cmd), usb_audio_volume_to_db(*value));
+    return true;
 }
 
 static bool usb_audio_set_get_feature_unit(struct usb_ctrlrequest* req)
@@ -787,7 +784,10 @@ static bool usb_audio_set_get_feature_unit(struct usb_ctrlrequest* req)
         }
 
         if(!handled)
+        {
+            logf("usbaudio: unhandled get control 0x%x selector 0x%x of feature unit", cmd, selector);
             return false;
+        }
         
         if(req->wLength == 0 || req->wLength > 4)
         {
@@ -831,7 +831,10 @@ static bool usb_audio_set_get_feature_unit(struct usb_ctrlrequest* req)
         }
 
         if(!handled)
+        {
+            logf("usbaudio: unhandled set control 0x%x selector 0x%x of feature unit", cmd, selector);
             return false;
+        }
 
         /* ack */
         usb_drv_send_blocking(EP_CONTROL, NULL, 0);
