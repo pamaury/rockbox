@@ -574,32 +574,27 @@ static void control_request_handler_drivers(struct usb_ctrlrequest* req)
         if(drivers[i].enabled &&
                 drivers[i].control_request &&
                 drivers[i].first_interface <= interface &&
-                drivers[i].last_interface > interface)
-        {
+                drivers[i].last_interface > interface) {
             /* Check for SET_INTERFACE and GET_INTERFACE */
             if((req->bRequestType & USB_RECIP_MASK) == USB_RECIP_INTERFACE &&
-                    (req->bRequestType & USB_TYPE_MASK) == USB_TYPE_STANDARD)
-            {
-                if(req->bRequest == USB_REQ_SET_INTERFACE)
-                {
+                    (req->bRequestType & USB_TYPE_MASK) == USB_TYPE_STANDARD) {
+            
+                if(req->bRequest == USB_REQ_SET_INTERFACE) {
                     logf("usb_core: SET INTERFACE 0x%x 0x%x", req->wValue, req->wIndex);
-                    if(drivers[i].set_interface && drivers[i].set_interface(req->wIndex, req->wValue) >= 0)
-                    {
+                    if(drivers[i].set_interface && drivers[i].set_interface(req->wIndex, req->wValue) >= 0) {
                         usb_drv_send_blocking(EP_CONTROL, NULL, 0); /* ack */
                         handled = true;
                     }
                     break;
                 }
-                else if(req->bRequest == USB_REQ_GET_INTERFACE)
-                {
+                else if(req->bRequest == USB_REQ_GET_INTERFACE) {
                     int alt = -1;
                     logf("usb_core: GET INTERFACE 0x%x", req->wIndex);
                     
                     if(drivers[i].get_interface)
                         alt = drivers[i].get_interface(req->wIndex);
 
-                    if(alt >= 0 && alt < 255)
-                    {
+                    if(alt >= 0 && alt < 255) {
                         response_data[0] = alt;
                         usb_drv_send_blocking(EP_CONTROL, response_data, 1);
                         usb_drv_recv_blocking(EP_CONTROL, NULL, 0); /* ack */
@@ -682,14 +677,12 @@ static void request_handler_device_get_descriptor(struct usb_ctrlrequest* req)
                             index < drivers[i].last_string_index)
                         desc = drivers[i].get_string_descriptor(index);
 
-                if(desc == NULL)
-                {
+                if(desc == NULL) {
                     logf("bad string id %d",index);
-                    usb_drv_stall(EP_CONTROL,true,true);
+                    usb_drv_stall(EP_CONTROL, true, true);
                     return;
                 }
-                else
-                {
+                else {
                     size = desc->bLength;
                     ptr = desc;
                 }
@@ -853,14 +846,14 @@ static void request_handler_endpoint_standard(struct usb_ctrlrequest* req)
     switch (req->bRequest) {
         case USB_REQ_CLEAR_FEATURE:
             logf("usb_core: CLEAR EP FEATURE 0x%x 0x%x", req->wValue, req->wIndex);
-            if(req->wValue==USB_ENDPOINT_HALT)
+            if(req->wValue == USB_ENDPOINT_HALT)
                 usb_drv_stall(EP_NUM(req->wIndex), false, EP_DIR(req->wIndex));
             
             usb_drv_send_blocking(EP_CONTROL, NULL, 0); /* ack */
             break;
         case USB_REQ_SET_FEATURE:
             logf("usb_core: SET EP FEATURE 0x%x 0x%x", req->wValue, req->wIndex);
-            if (req->wValue==USB_ENDPOINT_HALT)
+            if (req->wValue == USB_ENDPOINT_HALT)
                usb_drv_stall(EP_NUM(req->wIndex), true, EP_DIR(req->wIndex));
             
             usb_drv_send_blocking(EP_CONTROL, NULL, 0); /* ack */
@@ -870,7 +863,7 @@ static void request_handler_endpoint_standard(struct usb_ctrlrequest* req)
             response_data[1] = 0;
             logf("usb_core: GET EP STATUS");
             if(req->wIndex > 0)
-                response_data[0] = usb_drv_stalled(EP_NUM(req->wIndex),EP_DIR(req->wIndex));
+                response_data[0] = usb_drv_stalled(EP_NUM(req->wIndex), EP_DIR(req->wIndex));
             
             usb_drv_send_blocking(EP_CONTROL, response_data, 2);
             usb_drv_recv_blocking(EP_CONTROL, NULL, 0); /* ack */
