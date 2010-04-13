@@ -614,7 +614,6 @@ static bool mac_text;
 static long file_pos; /* Position of the top of the buffer in the file */
 static long last_file_pos;
 static unsigned char *buffer_end; /*Set to BUFFER_END() when file_pos changes*/
-static int max_line_len;
 static int max_width;
 static int max_columns;
 static int cline = 1;
@@ -1269,6 +1268,11 @@ static void viewer_scroll_down(bool autoscroll)
 
     if (prefs.scroll_mode == LINE || autoscroll)
         increment_current_line();
+    cline++;
+    if (cline > display_lines) {
+        cline = 1;
+        cpage++;
+    }
 }
 
 static void viewer_scroll_to_top_line(void)
@@ -1352,7 +1356,6 @@ static void viewer_draw(int col)
 #endif
         rb->lcd_clear_display();
     }
-    max_line_len = 0;
     line_begin = line_end = screen_top_ptr;
 
     for (i = 0; i < display_lines; i++) {
@@ -1562,8 +1565,9 @@ static void viewer_draw(int col)
         /* display on screen the displayed part of the line */
         if (col != -1)
         {
-            int dpage = (cline+i <= display_lines)?cpage:cpage+1;
-            int dline = cline+i - ((cline+i <= display_lines)?0:display_lines);
+            bool in_page = (cline+i <= display_lines);
+            int dpage = cpage + (in_page ? 0 : 1);
+            int dline = cline + i - (in_page ? 0 : display_lines);
             bool bflag = (viewer_find_bookmark(dpage, dline) >= 0);
 #ifdef HAVE_LCD_BITMAP
             int dy = i * pf->height + header_height;
@@ -1585,8 +1589,6 @@ static void viewer_draw(int col)
             rb->lcd_puts(left_col+1, i, utf8_buffer);
 #endif
         }
-        if (line_width > max_line_len)
-            max_line_len = line_width;
 
         if (i == 0)
             next_line_ptr = line_end;
@@ -2593,6 +2595,7 @@ static void calc_page(void)
     fill_buffer(file_pos, buffer, buffer_size);
     line_end = line_begin = buffer;
 
+    /* update page and line of all bookmark */
     for (i = 0; i < bookmark_count; i++)
     {
         sfp = bookmarks[i].file_position;
@@ -3247,17 +3250,17 @@ enum plugin_status plugin_start(const void* file)
                     if (idx < 0)
                     {
                         if (bookmark_count >= MAX_BOOKMARKS-1)
-                            rb->splash(HZ/2, "No more add bookmark.");
+                            rb->splash(HZ/2, "No more bookmarks");
                         else
                         {
                             viewer_add_bookmark();
-                            rb->splash(HZ/2, "Bookmark add.");
+                            rb->splash(HZ/2, "Bookmark added");
                         }
                     }
                     else
                     {
                         viewer_remove_bookmark(idx);
-                        rb->splash(HZ/2, "Bookmark remove.");
+                        rb->splash(HZ/2, "Bookmark removed");
                     }
                     viewer_draw(col);
                 }
