@@ -1220,7 +1220,7 @@ static void send_csw(int status)
     state = WAITING_FOR_CSW_COMPLETION_OR_COMMAND;
     //logf("CSW: %X",status);
     /* Already start waiting for the next command */
-    usb_drv_recv(ep_out, cbw_buffer, MAX_CBW_SIZE);
+    usb_drv_recv_nonblocking(ep_out, cbw_buffer, MAX_CBW_SIZE);
     /* The next completed transfer will be either the CSW one
      * or the new command */
 
