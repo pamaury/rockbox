@@ -33,90 +33,50 @@
 #define LOGF_ENABLE
 #include "logf.h"
 
-//#define USB_AUDIO_USE_FEEDBACK_EP
-//#define USB_AUDIO_OUTPUT_TO_FILE
-#define USB_AUDIO_OUTPUT_TO_AUDIO
 #define USB_AUDIO_USE_INTERMEDIATE_BUFFER
-//#define USB_AUDIO_ANON_CONTROLS
 
 /* Strings */
 enum
 {
     USB_AUDIO_CONTROL_STRING = 0,
-    USB_AUDIO_STREAMING_STRING_1,
-    USB_AUDIO_STREAMING_STRING_2,
-    USB_INPUT_TERMINAL_STRING,
-    USB_OUTPUT_TERMINAL_STRING,
-    USB_FEATURE_UNIT_STRING
+    USB_AUDIO_STREAMING_STRING_IDLE_PLAYBACK,
+    USB_AUDIO_STREAMING_STRING_PLAYBACK,
 };
 
 static const struct usb_string_descriptor __attribute__((aligned(2)))
     usb_string_audio_control =
 {
-    2 + 2 * 21,
+    2 + 2 * 13,
     USB_DT_STRING,
-    {'R', 'o', 'c', 'k', 'b', 'o', 'x', ' ',
-     'A', 'u', 'd', 'i', 'o', ' ',
+    {'A', 'u', 'd', 'i', 'o', ' ',
      'C', 'o', 'n', 't', 'r', 'o', 'l'}
 };
 
 static const struct usb_string_descriptor __attribute__((aligned(2)))
-    usb_string_audio_streaming_1 =
+    usb_string_audio_streaming_idle_playback =
 {
-    2 + 2 * 29,
+    2 + 2 * 13,
     USB_DT_STRING,
-    {'R', 'o', 'c', 'k', 'b', 'o', 'x', ' ',
-     'D', 'u', 'm', 'm', 'y', ' ',
-     'A', 'u', 'd', 'i', 'o', ' ',
-     'S', 't', 'r', 'e', 'a', 'm', 'i', 'n', 'g'}
+    {'I', 'd', 'l', 'e', ' ',
+     'P', 'l' ,'a', 'y', 'b', 'a', 'c', 'k'}
 };
 
 static const struct usb_string_descriptor __attribute__((aligned(2)))
-    usb_string_audio_streaming_2 =
-{
-    2 + 2 * 30,
-    USB_DT_STRING,
-    {'R', 'o', 'c', 'k', 'b', 'o', 'x', ' ',
-     'A', 'u', 'd', 'i', 'o', ' ',
-     'S', 't', 'r', 'e', 'a', 'm', 'i', 'n', 'g', ' ',
-     'O', 'u', 't', 'p', 'u', 't'}
-};
-
-static const struct usb_string_descriptor __attribute__((aligned(2)))
-    usb_string_input_terminal =
-{
-    2 + 2 * 3,
-    USB_DT_STRING,
-    {'U', 'S', 'B'}
-};
-
-static const struct usb_string_descriptor __attribute__((aligned(2)))
-    usb_string_output_terminal =
+    usb_string_audio_streaming_playback =
 {
     2 + 2 * 8,
     USB_DT_STRING,
-    {'L', 'i', 'n', 'e', '-', 'O', 'u', 't'}
-};
-
-static const struct usb_string_descriptor __attribute__((aligned(2)))
-    usb_string_feature_unit =
-{
-    2 + 2 * 3,
-    USB_DT_STRING,
-    {'P', 'C', 'M'}
+    {'P', 'l' ,'a', 'y', 'b', 'a', 'c', 'k'}
 };
 
 static const struct usb_string_descriptor* const usb_strings_list[]=
 {
     [USB_AUDIO_CONTROL_STRING] = &usb_string_audio_control,
-    [USB_AUDIO_STREAMING_STRING_1] = &usb_string_audio_streaming_1,
-    [USB_AUDIO_STREAMING_STRING_2] = &usb_string_audio_streaming_2,
-    [USB_INPUT_TERMINAL_STRING] = &usb_string_input_terminal,
-    [USB_OUTPUT_TERMINAL_STRING] = &usb_string_output_terminal,
-    [USB_FEATURE_UNIT_STRING] = &usb_string_feature_unit
+    [USB_AUDIO_STREAMING_STRING_IDLE_PLAYBACK] = &usb_string_audio_streaming_idle_playback,
+    [USB_AUDIO_STREAMING_STRING_PLAYBACK] = &usb_string_audio_streaming_playback,
 };
 
-#define USB_STRINGS_LIST_SIZE   (sizeof(usb_strings_list)/sizeof(struct usb_string_descriptor *))
+#define USB_STRINGS_LIST_SIZE   (sizeof(usb_strings_list) / sizeof(struct usb_string_descriptor *))
 
 /* Audio Control Interface */
 static struct usb_interface_descriptor
@@ -147,17 +107,17 @@ static struct usb_ac_header ac_header =
 
 enum
 {
-    AC_INPUT_TERMINAL_ID = 1,
-    AC_OUTPUT_TERMINAL_ID = 2,
-    AC_FEATURE_ID = 3
+    AC_PLAYBACK_INPUT_TERMINAL_ID = 1,
+    AC_PLAYBACK_OUTPUT_TERMINAL_ID = 2,
+    AC_PLAYBACK_FEATURE_ID = 3
 };
 
-static struct usb_ac_input_terminal ac_input =
+static struct usb_ac_input_terminal ac_playback_input =
 {
     .bLength            = sizeof(struct usb_ac_input_terminal),
     .bDescriptorType    = USB_DT_CS_INTERFACE,
     .bDescriptorSubType = USB_AC_INPUT_TERMINAL,
-    .bTerminalId        = AC_INPUT_TERMINAL_ID,
+    .bTerminalId        = AC_PLAYBACK_INPUT_TERMINAL_ID,
     .wTerminalType      = USB_AC_TERMINAL_STREAMING,
     .bAssocTerminal     = 0,
     .bNrChannels        = 2,
@@ -166,28 +126,28 @@ static struct usb_ac_input_terminal ac_input =
     .iTerminal          = 0,
 };
 
-static struct usb_ac_output_terminal ac_output =
+static struct usb_ac_output_terminal ac_playback_output =
 {
     .bLength            = sizeof(struct usb_ac_output_terminal),
     .bDescriptorType    = USB_DT_CS_INTERFACE,
     .bDescriptorSubType = USB_AC_OUTPUT_TERMINAL,
-    .bTerminalId        = AC_OUTPUT_TERMINAL_ID,
+    .bTerminalId        = AC_PLAYBACK_OUTPUT_TERMINAL_ID,
     .wTerminalType      = USB_AC_OUTPUT_TERMINAL_HEADPHONES,
     .bAssocTerminal     = 0,
-    .bSourceId          = AC_FEATURE_ID,
+    .bSourceId          = AC_PLAYBACK_FEATURE_ID,
     .iTerminal          = 0,
 };
 
 /* Feature Unit with 0 logical channel (only master) and 2 bytes(16 bits) per control (the minimum) */
 DEFINE_USB_AC_FEATURE_UNIT(16, 0)
 
-static struct usb_ac_feature_unit_16_0 ac_feature =
+static struct usb_ac_feature_unit_16_0 ac_playback_feature =
 {
     .bLength            = sizeof(struct usb_ac_feature_unit_16_0),
     .bDescriptorType    = USB_DT_CS_INTERFACE,
     .bDescriptorSubType = USB_AC_FEATURE_UNIT,
-    .bUnitId            = AC_FEATURE_ID,
-    .bSourceId          = AC_INPUT_TERMINAL_ID,
+    .bUnitId            = AC_PLAYBACK_FEATURE_ID,
+    .bSourceId          = AC_PLAYBACK_INPUT_TERMINAL_ID,
     .bControlSize       = 2, /* by definition */
     .bmaControls        = {
         [0] = USB_AC_FU_MUTE | USB_AC_FU_VOLUME
@@ -196,9 +156,9 @@ static struct usb_ac_feature_unit_16_0 ac_feature =
 };
 
 /* Audio Streaming Interface */
-/* Alternative 0: no streaming */
+/* Alternative: no streaming */
 static struct usb_interface_descriptor
-    as_interface_alt_0 =
+    as_interface_alt_idle_playback =
 {
     .bLength            = sizeof(struct usb_interface_descriptor),
     .bDescriptorType    = USB_DT_INTERFACE,
@@ -211,19 +171,15 @@ static struct usb_interface_descriptor
     .iInterface         = 0
 };
 
-/* Alternative 1: output streaming */
+/* Alternative: output streaming */
 static struct usb_interface_descriptor
-    as_interface_alt_1 =
+    as_interface_alt_playback =
 {
     .bLength            = sizeof(struct usb_interface_descriptor),
     .bDescriptorType    = USB_DT_INTERFACE,
     .bInterfaceNumber   = 0,
     .bAlternateSetting  = 1,
-#ifdef USB_AUDIO_USE_FEEDBACK_EP
-    .bNumEndpoints      = 2,
-#else
     .bNumEndpoints      = 1,
-#endif
     .bInterfaceClass    = USB_CLASS_AUDIO,
     .bInterfaceSubClass = USB_SUBCLASS_AUDIO_STREAMING,
     .bInterfaceProtocol = 0,
@@ -232,18 +188,18 @@ static struct usb_interface_descriptor
 
 /* Class Specific Audio Streaming Interface */
 static struct usb_as_interface
-    as_cs_interface =
+    as_playback_cs_interface =
 {
     .bLength            = sizeof(struct usb_as_interface),
     .bDescriptorType    = USB_DT_CS_INTERFACE,
     .bDescriptorSubType = USB_AS_GENERAL,
-    .bTerminalLink      = AC_INPUT_TERMINAL_ID,
+    .bTerminalLink      = AC_PLAYBACK_INPUT_TERMINAL_ID,
     .bDelay             = 1,
     .wFormatTag         = USB_AS_FORMAT_TYPE_I_PCM
 };
 
 static struct usb_as_format_type_i_discrete
-    as_format_type_i =
+    as_playback_format_type_i =
 {
     .bLength            = USB_AS_SIZEOF_FORMAT_TYPE_I_DISCRETE(HW_NUM_FREQ),
     .bDescriptorType    = USB_DT_CS_INTERFACE,
@@ -282,27 +238,12 @@ static struct usb_as_iso_endpoint
     .wLockDelay         = 1 /* the minimum ! */
 };
 
-#ifdef USB_AUDIO_USE_FEEDBACK_EP
-static struct usb_iso_audio_endpoint_descriptor
-    out_iso_sync_ep =
-{
-    .bLength          = sizeof(struct usb_iso_audio_endpoint_descriptor),
-    .bDescriptorType  = USB_DT_ENDPOINT,
-    .bEndpointAddress = USB_DIR_IN, /* filled later */
-    .bmAttributes     = USB_ENDPOINT_XFER_ISOC,
-    .wMaxPacketSize   = 0, /* filled later */
-    .bInterval        = 1,
-    .bRefresh         = 1, /* minimum: 2ms */
-    .bSynchAddress    = 0
-};
-#endif
-
 static const struct usb_descriptor_header* const ac_cs_descriptors_list[] =
 {
     (struct usb_descriptor_header *) &ac_header,
-    (struct usb_descriptor_header *) &ac_input,
-    (struct usb_descriptor_header *) &ac_output,
-    (struct usb_descriptor_header *) &ac_feature,
+    (struct usb_descriptor_header *) &ac_playback_input,
+    (struct usb_descriptor_header *) &ac_playback_output,
+    (struct usb_descriptor_header *) &ac_playback_feature
 };
 
 #define AC_CS_DESCRIPTORS_LIST_SIZE (sizeof(ac_cs_descriptors_list)/sizeof(ac_cs_descriptors_list[0]))
@@ -312,55 +253,52 @@ static const struct usb_descriptor_header* const usb_descriptors_list[] =
     /* Audio Control */
     (struct usb_descriptor_header *) &ac_interface,
     (struct usb_descriptor_header *) &ac_header,
-    (struct usb_descriptor_header *) &ac_input,
-    (struct usb_descriptor_header *) &ac_output,
-    (struct usb_descriptor_header *) &ac_feature,
+    (struct usb_descriptor_header *) &ac_playback_input,
+    (struct usb_descriptor_header *) &ac_playback_output,
+    (struct usb_descriptor_header *) &ac_playback_feature,
     /* Audio Streaming */
-    (struct usb_descriptor_header *) &as_interface_alt_0,
-    (struct usb_descriptor_header *) &as_interface_alt_1,
-    (struct usb_descriptor_header *) &as_cs_interface,
-    (struct usb_descriptor_header *) &as_format_type_i,
+    /*   Idle Playback */
+    (struct usb_descriptor_header *) &as_interface_alt_idle_playback,
+    /*   Playback */
+    (struct usb_descriptor_header *) &as_interface_alt_playback,
+    (struct usb_descriptor_header *) &as_playback_cs_interface,
+    (struct usb_descriptor_header *) &as_playback_format_type_i,
     (struct usb_descriptor_header *) &out_iso_ep,
     (struct usb_descriptor_header *) &as_out_iso_ep,
-#ifdef USB_AUDIO_USE_FEEDBACK_EP
-    (struct usb_descriptor_header *) &out_iso_sync_ep,
-#endif
 };
 
 #define USB_DESCRIPTORS_LIST_SIZE (sizeof(usb_descriptors_list)/sizeof(usb_descriptors_list[0]))
 
 static int usb_interface; /* first interface */
 static int usb_string_index; /* first string index */
-static int usb_as_intf_alt; /* streaming interface alternate setting */
+static int usb_as_playback_intf_alt; /* playback streaming interface alternate setting */
 
-static int as_freq_idx; /* audio streaming frequency index (in hw_freq_sampr) */
+static int as_playback_freq_idx; /* audio playback streaming frequency index (in hw_freq_sampr) */
 
 static int out_iso_ep_adr; /* output isochronous endpoint */
 static int in_iso_ep_adr; /* input isochronous endpoint */
 
-#ifdef USB_AUDIO_OUTPUT_TO_FILE
-static int raw_fd;
-#endif
-
 static unsigned char usb_buffer[128] USB_DEVBSS_ATTR;
 
-#define USB_AUDIO_BUFFER_SIZE   1024*1000
+#ifdef USB_AUDIO_USE_INTERMEDIATE_BUFFER
+/* Size of the intermediate audio buffer used for playback */
+#define PLAYBACK_AUDIO_BUFFER_SIZE      40 * 1024
+/* When playback start, the code doesn't start pcm output directly to avoid early overflow.
+ * This setting control the amount of data that is initial buffered before playback starts. */
+#define PLAYBACK_INITIAL_BUFFERING_SIZE 1024
+#endif
 
 #ifdef USB_AUDIO_USE_INTERMEDIATE_BUFFER
-static unsigned char *usb_audio_buffer;
-static int usb_audio_buffer_start;
-static int usb_audio_buffer_end;
-static bool usb_audio_underflow;
+static unsigned char *playback_audio_buffer;
+static int playback_audio_buffer_start;
+static int playback_audio_buffer_end;
+static bool playback_audio_underflow;
 #endif
 
 #define USB_AUDIO_NB_SLOTS          16
 #define USB_AUDIO_SLOT_SIZE         1024
 static unsigned char *usb_audio_slot_buffers[USB_AUDIO_NB_SLOTS];
 static unsigned char usb_audio_ep_slots[2][USB_AUDIO_NB_SLOTS * USB_DRV_SLOT_SIZE] USB_DRV_SLOT_ATTR;
-
-#ifdef USB_AUDIO_USE_FEEDBACK_EP
-static unsigned char usb_audio_feedback_buffer[4] USB_DEVBSS_ATTR;
-#endif
 
 static void encode3(uint8_t arr[3], unsigned long freq)
 {
@@ -376,7 +314,7 @@ static unsigned long decode3(uint8_t arr[3])
     return arr[0] | (arr[1] << 8) | (arr[2] << 16);
 }
 
-static void set_sampling_frequency(unsigned long f)
+static void set_playback_sampling_frequency(unsigned long f)
 {
     int i = 0;
 
@@ -385,14 +323,14 @@ static void set_sampling_frequency(unsigned long f)
 
     if((i + 1) < HW_NUM_FREQ && (hw_freq_sampr[i + 1] - f) < (f - hw_freq_sampr[i]))
         i++;
-    as_freq_idx = i;
+    as_playback_freq_idx = i;
     
-    logf("usbaudio: set sampling frequency to %lu Hz, best match is %lu Hz", f, hw_freq_sampr[as_freq_idx]);
+    logf("usbaudio: set playback sampling frequency to %lu Hz", hw_freq_sampr[as_playback_freq_idx]);
 }
 
-static unsigned long get_sampling_frequency(void)
+static unsigned long get_playback_sampling_frequency(void)
 {
-    return hw_freq_sampr[as_freq_idx];
+    return hw_freq_sampr[as_playback_freq_idx];
 }
 
 void usb_audio_init(void)
@@ -400,9 +338,9 @@ void usb_audio_init(void)
     unsigned int i;
     /* initialized tSamFreq array */
     for(i = 0; i < HW_NUM_FREQ; i++)
-        encode3(as_format_type_i.tSamFreq[i], hw_freq_sampr[i]);
+        encode3(as_playback_format_type_i.tSamFreq[i], hw_freq_sampr[i]);
 
-    unsigned char * audio_buffer;
+    unsigned char *audio_buffer;
     size_t bufsize;
     
     audio_buffer = audio_get_buffer(false, &bufsize);
@@ -414,10 +352,15 @@ void usb_audio_init(void)
     cpucache_invalidate();
     
 #ifdef USB_AUDIO_USE_INTERMEDIATE_BUFFER
-    usb_audio_buffer = audio_buffer;
-    for(i = 0; i < USB_AUDIO_NB_SLOTS; i++)
-        usb_audio_slot_buffers[i] = audio_buffer + USB_AUDIO_BUFFER_SIZE + i * USB_AUDIO_SLOT_SIZE;
+    playback_audio_buffer = audio_buffer;
+    audio_buffer += PLAYBACK_AUDIO_BUFFER_SIZE;
 #endif
+
+    for(i = 0; i < USB_AUDIO_NB_SLOTS; i++)
+    {
+        usb_audio_slot_buffers[i] = audio_buffer;
+        audio_buffer += USB_AUDIO_SLOT_SIZE;
+    }
 }
 
 int usb_audio_request_endpoints(struct usb_class_driver *drv)
@@ -437,14 +380,10 @@ int usb_audio_request_endpoints(struct usb_class_driver *drv)
         return -1;
     }
 
-    logf("usbaudio: iso ep is 0x%x, sync ep is 0x%x", out_iso_ep_adr, in_iso_ep_adr);
+    logf("usbaudio: iso out ep is 0x%x, in ep is 0x%x", out_iso_ep_adr, in_iso_ep_adr);
 
     out_iso_ep.bEndpointAddress = out_iso_ep_adr;
     out_iso_ep.bSynchAddress = in_iso_ep_adr;
-
-#ifdef USB_AUDIO_USE_FEEDBACK_EP
-    out_iso_sync_ep.bEndpointAddress = in_iso_ep_adr;
-#endif
     
     return 0;
 }
@@ -454,13 +393,8 @@ int usb_audio_set_first_string_index(int string_index)
     usb_string_index = string_index;
 
     ac_interface.iInterface = string_index + USB_AUDIO_CONTROL_STRING;
-    as_interface_alt_0.iInterface = string_index + USB_AUDIO_STREAMING_STRING_1;
-    as_interface_alt_1.iInterface = string_index + USB_AUDIO_STREAMING_STRING_2;
-    #ifndef USB_AUDIO_ANON_CONTROLS
-    ac_input.iTerminal = string_index + USB_INPUT_TERMINAL_STRING;
-    ac_output.iTerminal = string_index + USB_OUTPUT_TERMINAL_STRING;
-    ac_feature.iFeature = string_index + USB_FEATURE_UNIT_STRING;
-    #endif /* USB_AUDIO_ANON_CONTROLS */
+    as_interface_alt_idle_playback.iInterface = string_index + USB_AUDIO_STREAMING_STRING_IDLE_PLAYBACK;
+    as_interface_alt_playback.iInterface = string_index + USB_AUDIO_STREAMING_STRING_PLAYBACK;
 
     return string_index + USB_STRINGS_LIST_SIZE;
 }
@@ -501,17 +435,13 @@ int usb_audio_get_config_descriptor(unsigned char *dest, int max_packet_size)
         ac_header.wTotalLength += ac_cs_descriptors_list[i]->bLength;
 
     /* audio streaming */
-    as_interface_alt_0.bInterfaceNumber = usb_interface + 1;
-    as_interface_alt_1.bInterfaceNumber = usb_interface + 1;
+    as_interface_alt_idle_playback.bInterfaceNumber = usb_interface + 1;
+    as_interface_alt_playback.bInterfaceNumber = usb_interface + 1;
 
     /* endpoints */
     out_iso_ep.wMaxPacketSize = usb_drv_max_endpoint_packet_size(out_iso_ep_adr) | 0 << 11;
-#ifdef USB_AUDIO_USE_FEEDBACK_EP
-    out_iso_sync_ep.wMaxPacketSize = usb_drv_max_endpoint_packet_size(out_iso_sync_ep_adr);
-#endif
 
     /** Packing */
-
     for(i = 0; i < USB_DESCRIPTORS_LIST_SIZE; i++)
     {
         memcpy(dest, usb_descriptors_list[i], usb_descriptors_list[i]->bLength);
@@ -521,13 +451,13 @@ int usb_audio_get_config_descriptor(unsigned char *dest, int max_packet_size)
     return dest - orig_dest;
 }
 
-static void usb_audio_pcm_get_more(unsigned char **start, size_t *size)
+static void playback_audio_pcm_get_more(unsigned char **start, size_t *size)
 {
-    #if defined(USB_AUDIO_USE_INTERMEDIATE_BUFFER) && defined(USB_AUDIO_OUTPUT_TO_AUDIO)
+    #ifdef USB_AUDIO_USE_INTERMEDIATE_BUFFER
     /* copy start and end to avoid any modification at the same time */
     /* NOTE: the filler can only change the end pointer */
-    int buf_start = usb_audio_buffer_start;
-    int buf_end = usb_audio_buffer_end;
+    int buf_start = playback_audio_buffer_start;
+    int buf_end = playback_audio_buffer_end;
     
     *start = NULL;
     *size = 0;
@@ -541,22 +471,22 @@ static void usb_audio_pcm_get_more(unsigned char **start, size_t *size)
     {
         /* when audio underflow, the callback is not called anymore
          * so it needs to be restarted */
-        usb_audio_underflow = true;
+        playback_audio_underflow = true;
         logf("UNDERFLOW UNDERFLOW");
         return;
     }
     
     if(buf_start <= buf_end)
     {
-        *start = usb_audio_buffer + buf_start;
+        *start = playback_audio_buffer + buf_start;
         *size = buf_end - buf_start;
-        usb_audio_buffer_start = buf_end;
+        playback_audio_buffer_start = buf_end;
     }
     else
     {
-        *start = usb_audio_buffer + buf_start;
-        *size = USB_AUDIO_BUFFER_SIZE - buf_start;
-        usb_audio_buffer_start = 0;
+        *start = playback_audio_buffer + buf_start;
+        *size = PLAYBACK_AUDIO_BUFFER_SIZE - buf_start;
+        playback_audio_buffer_start = 0;
     }
 
     /*
@@ -565,51 +495,78 @@ static void usb_audio_pcm_get_more(unsigned char **start, size_t *size)
     #endif
 }
 
-static void usb_audio_start(void)
+static void usb_audio_start_playback(void)
 {
-    usb_audio_buffer_start = 0;
-    usb_audio_buffer_end = 0;
+    playback_audio_buffer_start = 0;
+    playback_audio_buffer_end = 0;
     
-    #ifdef USB_AUDIO_OUTPUT_TO_AUDIO
     audio_set_input_source(AUDIO_SRC_PLAYBACK, SRCF_PLAYBACK);
     audio_set_output_source(AUDIO_SRC_PLAYBACK);
-    pcm_set_frequency(hw_freq_sampr[as_freq_idx]);
-    pcm_play_data(&usb_audio_pcm_get_more, NULL, 0);
+    pcm_set_frequency(hw_freq_sampr[as_playback_freq_idx]);
+    pcm_play_data(&playback_audio_pcm_get_more, NULL, 0);
     if(!pcm_is_playing())
         pcm_play_stop();
-    #endif
 }
 
-static void usb_audio_stop(void)
+static void usb_audio_stop_playback(void)
 {
-    #ifdef USB_AUDIO_OUTPUT_TO_AUDIO
     if(pcm_is_playing())
         pcm_play_stop();
-    #endif
 }
 
 int usb_audio_set_interface(int intf, int alt)
 {
-    logf("usbaudio: use AS interface alternate %d", alt);
-    if(intf != (usb_interface + 1) || alt < 0 || alt > 1)
-        return -1;
-    usb_as_intf_alt = alt;
+    if(intf == usb_interface)
+    {
+        if(alt != 0)
+        {
+            logf("usbaudio: control interface has no alternate %d", alt);
+            return -1;
+        }
 
-    if(usb_as_intf_alt == 1)
-        usb_audio_start();
+        return 0;
+    }
+    if(intf == (usb_interface + 1))
+    {
+        if(alt < 0 || alt > 1)
+        {
+            logf("usbaudio: playback interface has no alternate %d", alt);
+            return -1;
+        }
+        usb_as_playback_intf_alt = alt;
+
+        if(usb_as_playback_intf_alt == 1)
+            usb_audio_start_playback();
+        else
+            usb_audio_stop_playback();
+        logf("usbaudio: use playback alternate %d", alt);
+
+        return 0;
+    }
     else
-        usb_audio_stop();
-
-    return 0;
+    {
+        logf("usbaudio: interface %d has no alternate", intf);
+        return -1;
+    }
 }
 
 int usb_audio_get_interface(int intf)
 {
-    logf("usbaudio: get AS interface alternate: %d", usb_as_intf_alt);
-    if(intf != (usb_interface + 1))
-        return -1;
+    if(intf == usb_interface)
+    {
+        logf("usbaudio: control interface alternate is 0");
+        return 0;
+    }
+    else if(intf == (usb_interface + 1))
+    {
+        logf("usbaudio: playback interface alternate  is %d", usb_as_playback_intf_alt);
+        return usb_as_playback_intf_alt;
+    }
     else
-        return usb_as_intf_alt;
+    {
+        logf("usbaudio: unknown interface %d", intf);
+        return -1;
+    }
 }
 
 static bool usb_audio_endpoint_request(struct usb_ctrlrequest* req)
@@ -633,7 +590,7 @@ static bool usb_audio_endpoint_request(struct usb_ctrlrequest* req)
             logf("usbaudio: SET_CUR sampling freq");
             usb_drv_recv_blocking(EP_CONTROL, usb_buffer, req->wLength);
             /* FIXME: do we have to wait for completion or it works out of the box here ? */
-            set_sampling_frequency(decode3(usb_buffer));
+            set_playback_sampling_frequency(decode3(usb_buffer));
             usb_drv_send_blocking(EP_CONTROL, NULL, 0); /* ack */
             handled = true;
             break;
@@ -644,7 +601,7 @@ static bool usb_audio_endpoint_request(struct usb_ctrlrequest* req)
                 break;
             }
             logf("usbaudio: GET_CUR sampling freq");
-            encode3(usb_buffer, get_sampling_frequency());
+            encode3(usb_buffer, get_playback_sampling_frequency());
             usb_drv_send_blocking(EP_CONTROL, usb_buffer, req->wLength);
             usb_drv_recv_blocking(EP_CONTROL, NULL, 0); /* ack */
             handled = true;
@@ -846,7 +803,7 @@ static bool usb_audio_set_get_request(struct usb_ctrlrequest* req)
 {
     switch(req->wIndex >> 8)
     {
-        case AC_FEATURE_ID:
+        case AC_PLAYBACK_FEATURE_ID:
             return usb_audio_set_get_feature_unit(req);
         default:
             logf("usbaudio: unhandled set/get on entity %d", req->wIndex >> 8);
@@ -888,16 +845,10 @@ void usb_audio_init_connection(void)
     
     logf("usbaudio: init connection");
     
-    usb_as_intf_alt = 0;
-    set_sampling_frequency(HW_SAMPR_DEFAULT);
+    usb_as_playback_intf_alt = 0;
+    set_playback_sampling_frequency(HW_SAMPR_DEFAULT);
 
     cpu_boost(true);
-
-    #ifdef USB_AUDIO_OUTPUT_TO_FILE
-    raw_fd = open("/usb_audio.raw", O_RDWR | O_CREAT | O_TRUNC);
-    if(raw_fd < 0)
-        logf("usbaudio: cannot open file for recording");
-    #endif
     
     usb_drv_select_endpoint_mode(out_iso_ep_adr, USB_DRV_ENDPOINT_MODE_REPEAT);
     usb_drv_allocate_slots(out_iso_ep_adr, sizeof(usb_audio_ep_slots[0]), usb_audio_ep_slots[0]);
@@ -909,12 +860,8 @@ void usb_audio_init_connection(void)
 void usb_audio_disconnect(void)
 {
     logf("usbaudio: disconnect");
-    #ifdef USB_AUDIO_OUTPUT_TO_FILE
-    if(raw_fd >= 0)
-        close(raw_fd);
-    #endif
     
-    usb_audio_stop();
+    usb_audio_stop_playback();
 
     cpu_boost(false);
 }
@@ -929,47 +876,37 @@ void usb_audio_transfer_complete(int ep, int dir, int status, int length, void *
     logf("usbaudio: %d bytes transfered", length);
     */
 
-    if(ep == out_iso_ep_adr && usb_as_intf_alt == 1)
+    if(ep == out_iso_ep_adr && usb_as_playback_intf_alt == 1)
     {
         if(status == 0)
         {
+            #ifdef USB_AUDIO_USE_INTERMEDIATE_BUFFER
             //logf("usbaudio: start=%d end=%d length=%d", usb_audio_buffer_start, usb_audio_buffer_end, length);
             while(length > 0)
             {
-                actual_length = MIN(length, USB_AUDIO_BUFFER_SIZE - usb_audio_buffer_end);
-                memcpy(usb_audio_buffer + usb_audio_buffer_end, buffer, actual_length);
+                actual_length = MIN(length, PLAYBACK_AUDIO_BUFFER_SIZE - playback_audio_buffer_end);
+                memcpy(playback_audio_buffer + playback_audio_buffer_end, buffer, actual_length);
 
-                usb_audio_buffer_end += actual_length;
+                playback_audio_buffer_end += actual_length;
                 buffer = (unsigned char *)buffer + actual_length;
-                if(usb_audio_buffer_end >= USB_AUDIO_BUFFER_SIZE)
-                    usb_audio_buffer_end = 0;
+                if(playback_audio_buffer_end >= PLAYBACK_AUDIO_BUFFER_SIZE)
+                    playback_audio_buffer_end = 0;
                 length -= actual_length;
             }
             //logf("=> start=%d end=%d", usb_audio_buffer_start, usb_audio_buffer_end);
-            
-            #if defined(USB_AUDIO_OUTPUT_TO_FILE)
-            if(raw_fd >= 0 && usb_audio_buffer_start < usb_audio_buffer_end && 
-                    (usb_audio_buffer_end - usb_audio_buffer_start) >= USB_AUDIO_BUFFER_SIZE/2)
-            {
-                if(write(raw_fd, usb_audio_buffer + usb_audio_buffer_start, usb_audio_buffer_end - usb_audio_buffer_start) < 0)
-                    logf("usbaudio: write failed");
-                usb_audio_buffer_start = usb_audio_buffer_end = 0;
-            }
-            #endif
 
-            #ifdef USB_AUDIO_OUTPUT_TO_AUDIO
             /* only start playback if there is sufficient data (to avoid repeated underflow) */
-            if(usb_audio_underflow)
+            if(playback_audio_underflow)
             {
-                if(usb_audio_buffer_start <= usb_audio_buffer_end)
-                    actual_length = usb_audio_buffer_end - usb_audio_buffer_start;
+                if(playback_audio_buffer_start <= playback_audio_buffer_end)
+                    actual_length = playback_audio_buffer_end - playback_audio_buffer_start;
                 else
-                    actual_length = usb_audio_buffer_end + USB_AUDIO_BUFFER_SIZE - usb_audio_buffer_start;
+                    actual_length = playback_audio_buffer_end + PLAYBACK_AUDIO_BUFFER_SIZE - playback_audio_buffer_start;
 
-                if(actual_length >= 200*1024)
+                if(actual_length >= PLAYBACK_INITIAL_BUFFERING_SIZE)
                 {
-                    pcm_play_data(&usb_audio_pcm_get_more, NULL, 0);
-                    usb_audio_underflow = false;
+                    pcm_play_data(&playback_audio_pcm_get_more, NULL, 0);
+                    playback_audio_underflow = false;
                 }
             }
             #endif
