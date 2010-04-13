@@ -44,6 +44,7 @@ int usb_drv_request_endpoint(int type, int dir);
 void usb_drv_release_endpoint(int ep);
 
 /* old api */
+/* these are internal routed to the usb_drv_queue_* functions */
 int usb_drv_send_blocking(int endpoint, void* ptr, int length);
 int usb_drv_send_nonblocking(int endpoint, void* ptr, int length);
 int usb_drv_recv_blocking(int endpoint, void* ptr, int length);
@@ -54,7 +55,8 @@ int usb_drv_recv_nonblocking(int endpoint, void* ptr, int length);
 /* Returns the maximum packet size of an endpoint. */
 int usb_drv_max_endpoint_packet_size(int ep);
 /* Allocate slots to be used for transfers an endpoint. The buffer must have USB_DRV_SLOT_ATTR
- * attribute and must be of size at least N * USB_DRV_SLOT_SIZE to be sure to allocate N slots.
+ * attribute. The driver will use exactly floor(buffer_size / USB_DRV_SLOT_SIZE) slots. So the buffer
+ * should be of size N * USB_DRV_SLOT_SIZE to have exactly N slots.
  * The USB driver will use slots until there are explicitely released or the endpoint is released.
  * Returns 0 on success and <0 on error. */
 int usb_drv_allocate_slots(int ep, int buffer_size, void *buffer);
@@ -82,8 +84,7 @@ int usb_drv_nb_endpoint_slots(int ep);
  * mode, one starts by filling each slot with parameters using usb_drv_fill_repeat_slot. Then, the transfers
  * are started using usb_drv_start_repeat and are stopped using usb_drv_stop_repeat. In this mode, no attention
  * is paid to data corruption: if the completion handlers are not fast enough, a buffer can be reused and the 
- * data overwritten. In this mode, the transfer size of a slot cannot exceed the maximum packet size. This mode
- * shoud only be used for isochronous endpoints. */
+ * data overwritten. This mode shoud only be used for isochronous endpoints. */
 #define USB_DRV_ENDPOINT_MODE_REPEAT    2
 
 /* Select endpoint mode.
