@@ -598,7 +598,7 @@ void usb_hid_init_connection(void)
     logf("hid: init connection");
     
     usb_drv_select_endpoint_mode(ep_in, USB_DRV_ENDPOINT_MODE_QUEUE);
-    usb_drv_allocate_slots(ep_in, 1, ep_int_slot);
+    usb_drv_allocate_slots(ep_in, sizeof(ep_int_slot), ep_int_slot);
 
     active = true;
     currently_sending = false;

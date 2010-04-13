@@ -700,13 +700,13 @@ int usb_drv_max_endpoint_packet_size(int ep)
     return endpoints[EP_NUM(ep)].max_pkt_size[EP_DIR(ep)];
 }
 
-int usb_drv_allocate_slots(int ep, int nb_slots, void *buffer)
+int usb_drv_allocate_slots(int ep, int buffer_size, void *buffer)
 {
     int ep_num = EP_NUM(ep);
     int ep_dir = EP_DIR(ep);
     
     endpoints[ep_num].tds[ep_dir] = (struct transfer_descriptor *)buffer;
-    endpoints[ep_num].nb_tds[ep_dir] = nb_slots;
+    endpoints[ep_num].nb_tds[ep_dir] = buffer_size / USB_DRV_SLOT_SIZE;
     
     return 0;
 }

@@ -131,9 +131,9 @@ bool usb_serial_control_request(struct usb_ctrlrequest* req, unsigned char* dest
 void usb_serial_init_connection(void)
 {
     usb_drv_select_endpoint_mode(ep_out, USB_DRV_ENDPOINT_MODE_QUEUE);
-    usb_drv_allocate_slots(ep_out, 1, ep_bulk_slots[0]);
+    usb_drv_allocate_slots(ep_out, sizeof(ep_bulk_slots[0]), ep_bulk_slots[0]);
     usb_drv_select_endpoint_mode(ep_in, USB_DRV_ENDPOINT_MODE_QUEUE);
-    usb_drv_allocate_slots(ep_in, 1, ep_bulk_slots[1]);
+    usb_drv_allocate_slots(ep_in, sizeof(ep_bulk_slots[1]), ep_bulk_slots[1]);
     /* prime rx endpoint */
     usb_drv_recv_nonblocking(ep_out, receive_buffer, sizeof receive_buffer);
 

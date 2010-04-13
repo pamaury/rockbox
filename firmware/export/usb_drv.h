@@ -51,18 +51,18 @@ int usb_drv_recv_nonblocking(int endpoint, void* ptr, int length);
 
 /* new api */
 
-/* Returns the maximum packet size of the endpoint [ep]. */
+/* Returns the maximum packet size of an endpoint. */
 int usb_drv_max_endpoint_packet_size(int ep);
-/* Allocate slots to be used for transfers on endpoint [ep]. The buffer must have USB_DRV_SLOT_ATTR
- * attribute and be of size at least [nb_slots]*USB_DRV_SLOT_SIZE.
+/* Allocate slots to be used for transfers an endpoint. The buffer must have USB_DRV_SLOT_ATTR
+ * attribute and must be of size at least N * USB_DRV_SLOT_SIZE to be sure to allocate N slots.
  * The USB driver will use slots until there are explicitely released or the endpoint is released.
  * Returns 0 on success and <0 on error. */
-int usb_drv_allocate_slots(int ep, int nb_slots, void *buffer);
+int usb_drv_allocate_slots(int ep, int buffer_size, void *buffer);
 /* Release the slots previously allocated.
  * Returns 0 on success and <0 on error. */
 int usb_drv_release_slots(int ep);
 /* Returns the number of allocated slots for the endpoint
- * Returns the actual valud on success and <0 on error. */
+ * Returns the actual value on success and <0 on error. */
 int usb_drv_nb_endpoint_slots(int ep);
 
 /* Void mode (default mode):

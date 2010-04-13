@@ -485,9 +485,9 @@ void usb_storage_init_connection(void)
 #endif
     /* keep coherent with definition of ep_bulk_slots */
     usb_drv_select_endpoint_mode(ep_out, USB_DRV_ENDPOINT_MODE_QUEUE);
-    usb_drv_allocate_slots(ep_out, 8, ep_bulk_slots[0]);
+    usb_drv_allocate_slots(ep_out, sizeof(ep_bulk_slots[0]), ep_bulk_slots[0]);
     usb_drv_select_endpoint_mode(ep_in, USB_DRV_ENDPOINT_MODE_QUEUE);
-    usb_drv_allocate_slots(ep_in, 8, ep_bulk_slots[1]);
+    usb_drv_allocate_slots(ep_in, sizeof(ep_bulk_slots[1]), ep_bulk_slots[1]);
 
     usb_drv_recv_nonblocking(ep_out, cbw_buffer, MAX_CBW_SIZE);
 

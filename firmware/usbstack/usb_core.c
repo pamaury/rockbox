@@ -409,9 +409,9 @@ void usb_core_init(void)
     usb_drv_init();
     
     usb_drv_select_endpoint_mode(EP_CONTROL | USB_DIR_OUT, USB_DRV_ENDPOINT_MODE_QUEUE);
-    usb_drv_allocate_slots(EP_CONTROL | USB_DIR_OUT, 1, ep0_slots[0]);
+    usb_drv_allocate_slots(EP_CONTROL | USB_DIR_OUT, sizeof(ep0_slots[0]), ep0_slots[0]);
     usb_drv_select_endpoint_mode(EP_CONTROL | USB_DIR_IN, USB_DRV_ENDPOINT_MODE_QUEUE);
-    usb_drv_allocate_slots(EP_CONTROL | USB_DIR_IN, 1, ep0_slots[1]);
+    usb_drv_allocate_slots(EP_CONTROL | USB_DIR_IN, sizeof(ep0_slots[1]), ep0_slots[1]);
 
     /* class driver init functions should be safe to call even if the driver
      * won't be used. This simplifies other logic (i.e. we don't need to know

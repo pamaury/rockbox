@@ -900,7 +900,7 @@ void usb_audio_init_connection(void)
     #endif
     
     usb_drv_select_endpoint_mode(out_iso_ep_adr, USB_DRV_ENDPOINT_MODE_REPEAT);
-    usb_drv_allocate_slots(out_iso_ep_adr, USB_AUDIO_NB_SLOTS, usb_audio_ep_slots);
+    usb_drv_allocate_slots(out_iso_ep_adr, sizeof(usb_audio_ep_slots[0]), usb_audio_ep_slots[0]);
     for(i = 0; i < USB_AUDIO_NB_SLOTS; i++)
         usb_drv_fill_repeat_slot(out_iso_ep_adr, i, usb_audio_slot_buffers[i], USB_AUDIO_SLOT_SIZE);
     usb_drv_start_repeat(out_iso_ep_adr);
