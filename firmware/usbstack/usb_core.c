@@ -701,7 +701,7 @@ static void request_handler_device_get_descriptor(struct usb_ctrlrequest* req)
     }
 
     if(ptr) {
-        logf("data %d (%d)", size, length);
+        /*logf("data %d (%d)", size, length);*/
         length = MIN(size, length);
 
         if (ptr != response_data)
