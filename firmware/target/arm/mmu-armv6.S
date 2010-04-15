@@ -25,6 +25,8 @@
 
 /** Cache coherency **/
 
+#if 0 /* unused */
+
 /*
  * Invalidate DCache for this range
  * will do write back
@@ -44,6 +46,8 @@ invalidate_dcache_range:
     mcrhi   p15, 0, r2, c7, c10, 4  @ Data synchronization barrier
     bx      lr                      @
     .size   invalidate_dcache_range, .-invalidate_dcache_range
+
+#endif /* unused function */
 
 /*
  * clean DCache for this range
@@ -137,7 +141,7 @@ invalidate_dcache:
  * will do writeback
  * void invalidate_idcache(void);
  */
-    .section   .text, "ax", %progbits
+    .section   .icode, "ax", %progbits
     .align      2
     .global     invalidate_idcache
     .type       invalidate_idcache, %function

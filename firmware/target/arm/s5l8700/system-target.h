@@ -22,14 +22,13 @@
 #define SYSTEM_TARGET_H
 
 #include "system-arm.h"
-#include "mmu-target.h"
+#include "mmu-arm.h"
 
 #define CPUFREQ_SLEEP      32768
 #define CPUFREQ_DEFAULT 47923200
 #define CPUFREQ_NORMAL  47923200
 #define CPUFREQ_MAX    191692800
 
-#define CACHEALIGN_BITS (4) /* 2^4 = 16 bytes */
 #define WANTS_STORAGE_ALIGN
 
 #define inl(a) (*(volatile unsigned long *) (a))

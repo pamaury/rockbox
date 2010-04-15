@@ -442,7 +442,8 @@ void usb_core_exit(void)
     logf("usb_core_exit() finished");
 }
 
-void usb_core_handle_transfer_completion(struct usb_transfer_completion_event_data* event)
+void usb_core_handle_transfer_completion(
+    struct usb_transfer_completion_event_data* event)
 {
     completion_handler_t handler;
     int ep = event->endpoint;
@@ -829,7 +830,8 @@ static void request_handler_endoint_drivers(struct usb_ctrlrequest* req)
     control_handler_t control_handler = NULL;
 
     if(EP_NUM(req->wIndex) < USB_NUM_ENDPOINTS)
-        control_handler = ep_data[EP_NUM(req->wIndex)].control_handler[EP_DIR(req->wIndex)];
+        control_handler =
+            ep_data[EP_NUM(req->wIndex)].control_handler[EP_DIR(req->wIndex)];
     
     if(control_handler)
         handled = control_handler(req, response_data);
@@ -863,7 +865,8 @@ static void request_handler_endpoint_standard(struct usb_ctrlrequest* req)
             response_data[1] = 0;
             logf("usb_core: GET EP STATUS");
             if(req->wIndex > 0)
-                response_data[0] = usb_drv_stalled(EP_NUM(req->wIndex), EP_DIR(req->wIndex));
+                response_data[0] = usb_drv_stalled(EP_NUM(req->wIndex),
+                                                    EP_DIR(req->wIndex));
             
             usb_drv_send_blocking(EP_CONTROL, response_data, 2);
             usb_drv_recv_blocking(EP_CONTROL, NULL, 0); /* ack */
