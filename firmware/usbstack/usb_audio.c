@@ -34,6 +34,7 @@
 #include "logf.h"
 
 #define USB_AUDIO_USE_INTERMEDIATE_BUFFER
+//#define USE_AUDIO_INTF_HAVE_NAMES
 
 /* Strings */
 enum
@@ -43,6 +44,7 @@ enum
     USB_AUDIO_STREAMING_STRING_PLAYBACK,
 };
 
+#ifdef USE_AUDIO_INTF_HAVE_NAMES
 static const struct usb_string_descriptor __attribute__((aligned(2)))
     usb_string_audio_control =
 {
@@ -68,12 +70,15 @@ static const struct usb_string_descriptor __attribute__((aligned(2)))
     USB_DT_STRING,
     {'P', 'l' ,'a', 'y', 'b', 'a', 'c', 'k'}
 };
+#endif
 
 static const struct usb_string_descriptor* const usb_strings_list[]=
 {
+    #ifdef USE_AUDIO_INTF_HAVE_NAMES
     [USB_AUDIO_CONTROL_STRING] = &usb_string_audio_control,
     [USB_AUDIO_STREAMING_STRING_IDLE_PLAYBACK] = &usb_string_audio_streaming_idle_playback,
     [USB_AUDIO_STREAMING_STRING_PLAYBACK] = &usb_string_audio_streaming_playback,
+    #endif
 };
 
 #define USB_STRINGS_LIST_SIZE   (sizeof(usb_strings_list) / sizeof(struct usb_string_descriptor *))
@@ -96,20 +101,20 @@ static struct usb_interface_descriptor
 /* Audio Control Terminals/Units*/
 static struct usb_ac_header ac_header =
 {
-    .bLength            = USB_AC_SIZEOF_HEADER(2), /* two interfaces */
+    .bLength            = USB_AC_SIZEOF_HEADER(1), /* one interface */
     .bDescriptorType    = USB_DT_CS_INTERFACE,
     .bDescriptorSubType = USB_AC_HEADER,
     .bcdADC             = 0x0100,
     .wTotalLength       = 0, /* fill later */
-    .bInCollection      = 2, /* two interfaces */
-    .baInterfaceNr      = {0, 0}, /* fill later */
+    .bInCollection      = 1, /* one interface */
+    .baInterfaceNr      = {0}, /* fill later */
 };
 
 enum
 {
     AC_PLAYBACK_INPUT_TERMINAL_ID = 1,
-    AC_PLAYBACK_OUTPUT_TERMINAL_ID = 2,
-    AC_PLAYBACK_FEATURE_ID = 3
+    AC_PLAYBACK_FEATURE_ID,
+    AC_PLAYBACK_OUTPUT_TERMINAL_ID,
 };
 
 static struct usb_ac_input_terminal ac_playback_input =
@@ -138,19 +143,21 @@ static struct usb_ac_output_terminal ac_playback_output =
     .iTerminal          = 0,
 };
 
-/* Feature Unit with 0 logical channel (only master) and 2 bytes(16 bits) per control (the minimum) */
-DEFINE_USB_AC_FEATURE_UNIT(16, 0)
+/* Feature Unit with 2 logical channels and 1 byte(8 bits) per control */
+DEFINE_USB_AC_FEATURE_UNIT(8, 2)
 
-static struct usb_ac_feature_unit_16_0 ac_playback_feature =
+static struct usb_ac_feature_unit_8_2 ac_playback_feature =
 {
-    .bLength            = sizeof(struct usb_ac_feature_unit_16_0),
+    .bLength            = sizeof(struct usb_ac_feature_unit_8_2),
     .bDescriptorType    = USB_DT_CS_INTERFACE,
     .bDescriptorSubType = USB_AC_FEATURE_UNIT,
     .bUnitId            = AC_PLAYBACK_FEATURE_ID,
     .bSourceId          = AC_PLAYBACK_INPUT_TERMINAL_ID,
-    .bControlSize       = 2, /* by definition */
+    .bControlSize       = 1, /* by definition */
     .bmaControls        = {
-        [0] = USB_AC_FU_MUTE | USB_AC_FU_VOLUME
+        [0] = USB_AC_FU_MUTE | USB_AC_FU_VOLUME,
+        [1] = 0,
+        [2] = 0
     },
     .iFeature = 0
 };
@@ -220,7 +227,7 @@ static struct usb_iso_audio_endpoint_descriptor
     .bLength          = sizeof(struct usb_iso_audio_endpoint_descriptor),
     .bDescriptorType  = USB_DT_ENDPOINT,
     .bEndpointAddress = USB_DIR_OUT, /* filled later */
-    .bmAttributes     = USB_ENDPOINT_XFER_ISOC | USB_ENDPOINT_SYNC_ASYNC,
+    .bmAttributes     = USB_ENDPOINT_XFER_ISOC | USB_ENDPOINT_SYNC_ADAPTIVE,
     .wMaxPacketSize   = 0, /* filled later */
     .bInterval        = 1, /* the spec says it must be 1 */
     .bRefresh         = 0,
@@ -234,8 +241,8 @@ static struct usb_as_iso_endpoint
     .bDescriptorType    = USB_DT_CS_ENDPOINT,
     .bDescriptorSubType = USB_AS_EP_GENERAL,
     .bmAttributes       = USB_AS_EP_CS_SAMPLING_FREQ_CTL,
-    .bLockDelayUnits    = 1, /* milliseconds */
-    .wLockDelay         = 1 /* the minimum ! */
+    .bLockDelayUnits    = 0, /* undefined */
+    .wLockDelay         = 0 /* undefined */
 };
 
 static const struct usb_descriptor_header* const ac_cs_descriptors_list[] =
@@ -254,8 +261,8 @@ static const struct usb_descriptor_header* const usb_descriptors_list[] =
     (struct usb_descriptor_header *) &ac_interface,
     (struct usb_descriptor_header *) &ac_header,
     (struct usb_descriptor_header *) &ac_playback_input,
-    (struct usb_descriptor_header *) &ac_playback_output,
     (struct usb_descriptor_header *) &ac_playback_feature,
+    (struct usb_descriptor_header *) &ac_playback_output,
     /* Audio Streaming */
     /*   Idle Playback */
     (struct usb_descriptor_header *) &as_interface_alt_idle_playback,
@@ -383,7 +390,7 @@ int usb_audio_request_endpoints(struct usb_class_driver *drv)
     logf("usbaudio: iso out ep is 0x%x, in ep is 0x%x", out_iso_ep_adr, in_iso_ep_adr);
 
     out_iso_ep.bEndpointAddress = out_iso_ep_adr;
-    out_iso_ep.bSynchAddress = in_iso_ep_adr;
+    out_iso_ep.bSynchAddress = 0;
     
     return 0;
 }
@@ -392,10 +399,13 @@ int usb_audio_set_first_string_index(int string_index)
 {
     usb_string_index = string_index;
 
+    return string_index;
+    #ifdef USE_AUDIO_INTF_HAVE_NAMES
     ac_interface.iInterface = string_index + USB_AUDIO_CONTROL_STRING;
     as_interface_alt_idle_playback.iInterface = string_index + USB_AUDIO_STREAMING_STRING_IDLE_PLAYBACK;
     as_interface_alt_playback.iInterface = string_index + USB_AUDIO_STREAMING_STRING_PLAYBACK;
-
+    #endif
+    
     return string_index + USB_STRINGS_LIST_SIZE;
 }
 
@@ -424,13 +434,13 @@ int usb_audio_get_config_descriptor(unsigned char *dest, int max_packet_size)
     /** Configuration */
     
     /* header */
-    ac_header.baInterfaceNr[0] = usb_interface;
-    ac_header.baInterfaceNr[1] = usb_interface + 1;
+    ac_header.baInterfaceNr[0] = usb_interface + 1;
 
     /* audio control interface */
     ac_interface.bInterfaceNumber = usb_interface;
 
     /* compute total size of AC headers*/
+    ac_header.wTotalLength = 0;
     for(i = 0; i < AC_CS_DESCRIPTORS_LIST_SIZE; i++)
         ac_header.wTotalLength += ac_cs_descriptors_list[i]->bLength;
 
@@ -439,7 +449,7 @@ int usb_audio_get_config_descriptor(unsigned char *dest, int max_packet_size)
     as_interface_alt_playback.bInterfaceNumber = usb_interface + 1;
 
     /* endpoints */
-    out_iso_ep.wMaxPacketSize = usb_drv_max_endpoint_packet_size(out_iso_ep_adr) | 0 << 11;
+    out_iso_ep.wMaxPacketSize = MIN(usb_drv_max_endpoint_packet_size(out_iso_ep_adr), 512) | (0 << 11);
 
     /** Packing */
     for(i = 0; i < USB_DESCRIPTORS_LIST_SIZE; i++)
@@ -871,6 +881,7 @@ void usb_audio_transfer_complete(int ep, int dir, int status, int length, void *
     (void) dir;
     int actual_length;
 
+    logf("iso: l=%d s=%d", length, status);
     /*
     logf("usbaudio: xfer %s", status < 0 ? "failure" : "completed");
     logf("usbaudio: %d bytes transfered", length);

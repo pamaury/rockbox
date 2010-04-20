@@ -904,10 +904,10 @@ static void usb_core_control_request_handler(struct usb_ctrlrequest* req)
         allocate_interfaces_and_endpoints();
     }
 
-    /*
+    
     logf("control start: t=0x%x r=0x%x v=0x%x i=0x%x l=0x%x", req->bRequestType, req->bRequest,
         req->wValue, req->wIndex, req->wLength);
-    */
+    
     switch(req->bRequestType & USB_RECIP_MASK) {
         case USB_RECIP_DEVICE:
             request_handler_device(req);
@@ -923,6 +923,8 @@ static void usb_core_control_request_handler(struct usb_ctrlrequest* req)
             usb_drv_stall(EP_CONTROL, true, true);
             break;
     }
+
+    logf("control end");
 }
 
 /* called by usb_drv_int() */
