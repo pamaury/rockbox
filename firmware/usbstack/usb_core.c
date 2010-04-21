@@ -47,6 +47,7 @@
 #include "usb_hid.h"
 #endif
 
+#ifdef HAVE_NEW_USB_API
 #ifdef USB_ENABLE_AUDIO
 #include "usb_audio.h"
 #endif
@@ -54,6 +55,7 @@
 #ifdef USB_ENABLE_TEST
 #include "usb_test.h"
 #endif
+#endif /* HAVE_NEW_USB_API */
 
 /* TODO: Move target-specific stuff somewhere else (serial number reading) */
 
@@ -178,7 +180,11 @@ static enum { DEFAULT, ADDRESS, CONFIGURED } usb_state;
 
 static int usb_core_num_interfaces;
 
+#ifdef HAVE_NEW_USB_API
 typedef void (*completion_handler_t)(int ep, int dir, int status, int length, void *buf);
+#else
+typedef void (*completion_handler_t)(int ep, int dir, int status, int length);
+#endif
 typedef bool (*control_handler_t)(struct usb_ctrlrequest* req, unsigned char* dest);
 
 static struct
@@ -266,6 +272,7 @@ static struct usb_class_driver drivers[USB_NUM_DRIVERS] =
 #endif
     },
 #endif
+#ifdef HAVE_NEW_USB_API
 #ifdef USB_ENABLE_AUDIO
     [USB_DRIVER_AUDIO] = {
         .enabled = false,
@@ -312,14 +319,16 @@ static struct usb_class_driver drivers[USB_NUM_DRIVERS] =
         .get_string_descriptor = usb_test_get_string_descriptor,
     },
 #endif
+#endif /* HAVE_NEW_USB_API */
 };
 
 static void usb_core_control_request_handler(struct usb_ctrlrequest* req);
 
 static unsigned char response_data[256] USB_DEVBSS_ATTR;
 
-
+#ifdef HAVE_NEW_USB_API
 static unsigned char ep0_slots[2][USB_DRV_SLOT_SIZE] USB_DRV_SLOT_ATTR;
+#endif /* HAVE_NEW_USB_API */
 
 static short hex[16] = {'0', '1', '2', '3', '4', '5', '6', '7',
                         '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
@@ -407,11 +416,13 @@ void usb_core_init(void)
     if (initialized)
         return;
     usb_drv_init();
-    
+
+#ifdef HAVE_NEW_USB_API
     usb_drv_select_endpoint_mode(EP_CONTROL | USB_DIR_OUT, USB_DRV_ENDPOINT_MODE_QUEUE);
     usb_drv_allocate_slots(EP_CONTROL | USB_DIR_OUT, sizeof(ep0_slots[0]), ep0_slots[0]);
     usb_drv_select_endpoint_mode(EP_CONTROL | USB_DIR_IN, USB_DRV_ENDPOINT_MODE_QUEUE);
     usb_drv_allocate_slots(EP_CONTROL | USB_DIR_IN, sizeof(ep0_slots[1]), ep0_slots[1]);
+#endif /* HAVE_NEW_USB_API */
 
     /* class driver init functions should be safe to call even if the driver
      * won't be used. This simplifies other logic (i.e. we don't need to know
@@ -455,7 +466,11 @@ void usb_core_handle_transfer_completion(
         default:
             handler = ep_data[ep].completion_handler[EP_DIR(event->dir)];
             if(handler != NULL)
+            #ifdef HAVE_NEW_USB_API
                 handler(ep, event->dir, event->status, event->length, event->data);
+            #else
+                handler(ep, event->dir, event->status, event->length);
+            #endif
             break;
     }
 }
@@ -935,7 +950,11 @@ void usb_core_bus_reset(void)
 }
 
 /* called by usb_drv_transfer_completed() */
+#ifdef HAVE_NEW_USB_API
 void usb_core_transfer_complete(int endpoint, int dir, int status, int length, void *buf)
+#else
+void usb_core_transfer_complete(int endpoint, int dir, int status, int length)
+#endif
 {
     struct usb_transfer_completion_event_data *completion_event;
 
@@ -949,7 +968,9 @@ void usb_core_transfer_complete(int endpoint, int dir, int status, int length, v
 
             completion_event->endpoint = endpoint;
             completion_event->dir = dir;
+            #ifdef HAVE_NEW_USB_API
             completion_event->data = buf;
+            #endif
             completion_event->status = status;
             completion_event->length = length;
             /* All other endoints. Let the thread deal with it */
@@ -958,12 +979,14 @@ void usb_core_transfer_complete(int endpoint, int dir, int status, int length, v
     }
 }
 
+#ifdef HAVE_NEW_USB_API
 void usb_core_fast_transfer_complete(int ep,int dir,int status,int length,void *buf)
 {
     completion_handler_t handler = ep_data[ep].completion_handler[EP_DIR(dir)];
     if(handler != NULL)
         handler(ep,dir,status,length,buf);
 }
+#endif /* HAVE_NEW_USB_API */
 
 /* called by usb_drv_int() */
 void usb_core_control_request(struct usb_ctrlrequest* req)
@@ -983,5 +1006,22 @@ void usb_core_control_request(struct usb_ctrlrequest* req)
 unsigned short usb_allowed_current()
 {
     return (usb_state == CONFIGURED) ? MAX(USB_MAX_CURRENT, 100) : 100;
+}
+#endif
+
+#ifndef HAVE_NEW_USB_API
+int usb_drv_send_blocking(int endpoint, void* ptr, int length)
+{
+    return usb_drv_send(endpoint, ptr, length);
+}
+
+int usb_drv_recv_blocking(int endpoint, void* ptr, int length)
+{
+    return usb_drv_recv(endpoint, ptr, length);
+}
+
+int usb_drv_recv_nonblocking(int endpoint, void* ptr, int length)
+{
+    return usb_drv_recv(endpoint, ptr, length);
 }
 #endif

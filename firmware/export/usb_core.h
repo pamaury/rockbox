@@ -44,8 +44,11 @@ struct usb_class_driver;
 void usb_core_init(void);
 void usb_core_exit(void);
 void usb_core_control_request(struct usb_ctrlrequest* req);
+#ifdef HAVE_NEW_USB_API
 void usb_core_fast_transfer_complete(int endpoint,int dir,int status,int length,void *buf);
 void usb_core_transfer_complete(int endpoint,int dir,int status,int length,void *buf);
+#else
+#endif
 void usb_core_bus_reset(void);
 bool usb_core_any_exclusive_storage(void);
 void usb_core_enable_driver(int driver,bool enabled);

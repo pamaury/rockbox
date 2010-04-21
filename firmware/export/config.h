@@ -885,15 +885,11 @@ Lyre prototype 1 */
 #endif /* CONFIG_USBOTG */
 
 #if CONFIG_USBOTG == USBOTG_ARC
-#define USB_HAS_ISOCHRONOUS
-#endif
-
-#if CONFIG_USBOTG == USBOTG_ARC
 /* keep coherent with usb-arc.c */
 #define USB_DRV_SLOT_ATTR   __attribute__ ((aligned(32))) USB_DEVBSS_ATTR
 #define USB_DRV_SLOT_SIZE   /* sizeof(struct transfer_descriptor) */32
-#else
-#error No usb controller defined
+#define HAVE_NEW_USB_API
+#define USB_HAS_ISOCHRONOUS
 #endif
 
 /* define the class drivers to enable */

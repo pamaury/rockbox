@@ -71,7 +71,11 @@ struct usb_class_driver {
     /* Tells the driver that a usb transfer has been completed. Note that "dir"
        is relative to the host
        Optional function */
+#ifdef HAVE_NEW_USB_API
     void (*transfer_complete)(int ep,int dir, int status, int length, void *buffer);
+#else
+    void (*transfer_complete)(int ep,int dir, int status, int length);
+#endif
 
     /* Tells the driver that a control request has come in. If the driver is
        able to handle it, it should ack the request, and return true. Otherwise

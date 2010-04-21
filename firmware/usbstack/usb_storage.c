@@ -75,10 +75,12 @@
 #endif
 #endif
 
+#ifdef HAVE_NEW_USB_API
 /* FIXME: this should probably depend on the usb driver because one slot
  * can send/receive a limited amount of data. On the ARC controller, a
  * slot is a TD and can carry up to 16kiB, so use 4 slots per direction */
 static unsigned char ep_bulk_slots[2][USB_DRV_SLOT_SIZE * 8] USB_DRV_SLOT_ATTR;
+#endif
 
 #define ALLOCATE_BUFFER_SIZE (2*MAX(READ_BUFFER_SIZE,WRITE_BUFFER_SIZE))
 
@@ -484,10 +486,12 @@ void usb_storage_init_connection(void)
 #endif
 #endif
     /* keep coherent with definition of ep_bulk_slots */
+    #ifdef HAVE_NEW_USB_API
     usb_drv_select_endpoint_mode(ep_out, USB_DRV_ENDPOINT_MODE_QUEUE);
     usb_drv_allocate_slots(ep_out, sizeof(ep_bulk_slots[0]), ep_bulk_slots[0]);
     usb_drv_select_endpoint_mode(ep_in, USB_DRV_ENDPOINT_MODE_QUEUE);
     usb_drv_allocate_slots(ep_in, sizeof(ep_bulk_slots[1]), ep_bulk_slots[1]);
+    #endif
 
     usb_drv_recv_nonblocking(ep_out, cbw_buffer, MAX_CBW_SIZE);
 
@@ -512,10 +516,16 @@ void usb_storage_disconnect(void)
 }
 
 /* called by usb_core_transfer_complete() */
+#ifdef HAVE_NEW_USB_API
 void usb_storage_transfer_complete(int ep,int dir,int status,int length, void *buffer)
+#else
+void usb_storage_transfer_complete(int ep,int dir,int status,int length)
+#endif
 {
     (void)ep;
+    #ifdef HAVE_NEW_USB_API
     (void)buffer;
+    #endif
     struct command_block_wrapper* cbw = (void*)cbw_buffer;
     struct tm tm;
 

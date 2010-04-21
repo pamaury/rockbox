@@ -44,14 +44,20 @@ int usb_drv_request_endpoint(int type, int dir);
 void usb_drv_release_endpoint(int ep);
 
 /* old api */
-/* these are internal routed to the usb_drv_queue_* functions */
+#ifndef HAVE_NEW_USB_API
+int usb_drv_send(int endpoint, void* ptr, int length);
+int usb_drv_recv(int endpoint, void* ptr, int length);
+#endif
+/* mid api */
+/* these are internal routed to the usb_drv_queue_* functions for the new api
+ * and to usb_drv_{send, recv} for the old api */
 int usb_drv_send_blocking(int endpoint, void* ptr, int length);
 int usb_drv_send_nonblocking(int endpoint, void* ptr, int length);
 int usb_drv_recv_blocking(int endpoint, void* ptr, int length);
 int usb_drv_recv_nonblocking(int endpoint, void* ptr, int length);
 
 /* new api */
-
+#ifdef HAVE_NEW_USB_API
 /* Returns the maximum packet size of an endpoint. */
 int usb_drv_max_endpoint_packet_size(int ep);
 /* Allocate slots to be used for transfers an endpoint. The buffer must have USB_DRV_SLOT_ATTR
@@ -84,7 +90,9 @@ int usb_drv_nb_endpoint_slots(int ep);
  * mode, one starts by filling each slot with parameters using usb_drv_fill_repeat_slot. Then, the transfers
  * are started using usb_drv_start_repeat and are stopped using usb_drv_stop_repeat. In this mode, no attention
  * is paid to data corruption: if the completion handlers are not fast enough, a buffer can be reused and the 
- * data overwritten. This mode shoud only be used for isochronous endpoints. */
+ * data overwritten. This mode shoud only be used for isochronous endpoints.
+ * WARNING: for speed reasons, in this mode, the completion handler might me called from the interrupt handler,
+ *          special care must be taken about the action done is this completion handler ! */
 #define USB_DRV_ENDPOINT_MODE_REPEAT    2
 
 /* Select endpoint mode.
@@ -106,5 +114,6 @@ int usb_drv_fill_repeat_slot(int ep, int slot, void *ptr, int length);
  * Returns 0 on success and <0 on error */
 int usb_drv_start_repeat(int ep);
 int usb_drv_stop_repeat(int ep);
+#endif /* HAVE_NEW_USB_API */
 
 #endif /* _USB_DRV_H */

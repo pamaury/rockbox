@@ -217,7 +217,11 @@ void usb_serial_send(const unsigned char *data,int length)
 }
 
 /* called by usb_core_transfer_complete() */
+#ifdef HAVE_NEW_USB_API
 void usb_serial_transfer_complete(int ep,int dir, int status, int length, void *buffer)
+#else
+void usb_serial_transfer_complete(int ep,int dir, int status, int length)
+#endif
 {
     (void)ep;
     (void)length;
