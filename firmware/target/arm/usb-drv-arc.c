@@ -1153,6 +1153,8 @@ static void transfer_completed(void)
     unsigned int mask = REG_ENDPTCOMPLETE;
     REG_ENDPTCOMPLETE = mask;
 
+    _logf("xfer");
+
     for (ep=0; ep<USB_NUM_ENDPOINTS; ep++) {
         int dir;
         for (dir=0; dir<2; dir++) {

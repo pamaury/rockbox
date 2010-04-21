@@ -155,7 +155,7 @@ static struct usb_ac_feature_unit_8_2 ac_playback_feature =
     .bSourceId          = AC_PLAYBACK_INPUT_TERMINAL_ID,
     .bControlSize       = 1, /* by definition */
     .bmaControls        = {
-        [0] = USB_AC_FU_MUTE | USB_AC_FU_VOLUME,
+        [0] = /*USB_AC_FU_MUTE |*/ USB_AC_FU_VOLUME,
         [1] = 0,
         [2] = 0
     },
@@ -422,6 +422,7 @@ const struct usb_string_descriptor *usb_audio_get_string_descriptor(int string_i
 int usb_audio_set_first_interface(int interface)
 {
     usb_interface = interface;
+    logf("usbaudio: usb_interface=%d", usb_interface);
     return interface + 2; /* Audio Control and Audio Streaming */
 }
 
@@ -579,7 +580,7 @@ int usb_audio_get_interface(int intf)
     }
 }
 
-static bool usb_audio_endpoint_request(struct usb_ctrlrequest* req)
+static bool usb_audio_as_playback_endpoint_request(struct usb_ctrlrequest* req)
 {
     bool handled = false;
     /* only support sampling frequency */
@@ -621,6 +622,19 @@ static bool usb_audio_endpoint_request(struct usb_ctrlrequest* req)
     }
     
     return handled;
+}
+
+static bool usb_audio_endpoint_request(struct usb_ctrlrequest* req)
+{
+    int ep = req->wIndex & 0xff;
+
+    if(ep == out_iso_ep_adr)
+        return usb_audio_as_playback_endpoint_request(req);
+    else
+    {
+        logf("usbaudio: unhandled ep req (ep=%d)", ep);
+        return false;
+    }
 }
 
 static bool feature_unit_set_mute(int value, uint8_t cmd)
@@ -725,6 +739,7 @@ static bool usb_audio_set_get_feature_unit(struct usb_ctrlrequest* req)
     int i;
     bool handled;
 
+    
     /* master channel only */
     if(channel != 0)
     {
@@ -809,7 +824,7 @@ static bool usb_audio_set_get_feature_unit(struct usb_ctrlrequest* req)
     }
 }
 
-static bool usb_audio_set_get_request(struct usb_ctrlrequest* req)
+static bool usb_audio_ac_set_get_request(struct usb_ctrlrequest* req)
 {
     switch(req->wIndex >> 8)
     {
@@ -823,15 +838,25 @@ static bool usb_audio_set_get_request(struct usb_ctrlrequest* req)
 
 static bool usb_audio_interface_request(struct usb_ctrlrequest* req)
 {
-    switch(req->bRequest)
+    int intf = req->wIndex & 0xff;
+
+    if(intf == usb_interface)
     {
-        case USB_AC_SET_CUR: case USB_AC_SET_MIN: case USB_AC_SET_MAX: case USB_AC_SET_RES:
-        case USB_AC_SET_MEM: case USB_AC_GET_CUR: case USB_AC_GET_MIN: case USB_AC_GET_MAX:
-        case USB_AC_GET_RES: case USB_AC_GET_MEM:
-            return usb_audio_set_get_request(req);
-        default:
-            logf("usbaudio: unhandled intf req 0x%x", req->bRequest);
-            return false;
+        switch(req->bRequest)
+        {
+            case USB_AC_SET_CUR: case USB_AC_SET_MIN: case USB_AC_SET_MAX: case USB_AC_SET_RES:
+            case USB_AC_SET_MEM: case USB_AC_GET_CUR: case USB_AC_GET_MIN: case USB_AC_GET_MAX:
+            case USB_AC_GET_RES: case USB_AC_GET_MEM:
+                return usb_audio_ac_set_get_request(req);
+            default:
+                logf("usbaudio: unhandled ac intf req 0x%x", req->bRequest);
+                return false;
+        }
+    }
+    else
+    {
+        logf("usbaudio: unhandled intf req (intf=%d)", intf);
+        return false;
     }
 }
 
