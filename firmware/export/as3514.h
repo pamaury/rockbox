@@ -22,6 +22,8 @@
 #ifndef _AS3514_H
 #define _AS3514_H
 
+#include "config.h"
+
 extern int tenthdb2master(int db);
 
 extern void audiohw_set_master_vol(int vol_l, int vol_r);
@@ -36,21 +38,33 @@ extern void audiohw_set_lineout_vol(int vol_l, int vol_r);
 #define AS3514_LSP_OUT_L  0x05
 #define AS3514_MIC1_R     0x06
 #define AS3514_MIC1_L     0x07
+#ifndef HAVE_AS3543
 #define AS3514_MIC2_R     0x08
 #define AS3514_MIC2_L     0x09
+#endif
 #define AS3514_LINE_IN1_R 0x0a
 #define AS3514_LINE_IN1_L 0x0b
+#ifndef HAVE_AS3543
 #define AS3514_LINE_IN2_R 0x0c
 #define AS3514_LINE_IN2_L 0x0d
+#endif
 #define AS3514_DAC_R      0x0e
 #define AS3514_DAC_L      0x0f
 #define AS3514_ADC_R      0x10
 #define AS3514_ADC_L      0x11
-#define AS3543_DAC_IF     0x12  /* only in as3543 */
+#ifdef HAVE_AS3543
+#define AS3543_DAC_IF     0x12
+#endif
 #define AS3514_AUDIOSET1  0x14
 #define AS3514_AUDIOSET2  0x15
 #define AS3514_AUDIOSET3  0x16
 #define AS3517_USB_UTIL   0x17  /* only in as3517+ */
+
+#ifdef HAVE_AS3543
+#define AS3543_BACKLIGHT  0x1b
+#define AS3543_PMU_ENABLE 0x1c
+#endif
+
 #define AS3514_PLLMODE    0x1d
 
 #define AS3514_SYSTEM     0x20
@@ -98,10 +112,17 @@ extern void audiohw_set_lineout_vol(int vol_l, int vol_r);
 
 /* HPH_OUT_R (0x02) */
 #define HPH_OUT_R_HP_OVC_TO     (0x3 << 6)
+    /* AS3514/AS3517 */
     #define HPH_OUT_R_HP_OVC_TO_0MS     (0x3 << 6)
     #define HPH_OUT_R_HP_OVC_TO_128MS   (0x1 << 6)
     #define HPH_OUT_R_HP_OVC_TO_256MS   (0x0 << 6)
     #define HPH_OUT_R_HP_OVC_TO_512MS   (0x2 << 6)
+    /* AS3543 */
+    #define HPH_OUT_R_HP_OUT_SUM        (0x0 << 5)
+    #define HPH_OUT_R_HP_OUT_DAC        (0x1 << 5)
+    #define HPH_OUT_R_HP_OUT_LINE       (0x2 << 5)
+    #define HPH_OUT_R_HP_OUT_MIC        (0x3 << 5)
+    #define HPH_OUT_R_HP_OUT_MASK       (0x3 << 5)
 /* Use AS3514_VOL_MASK */
 
 /* HPH_OUT_L (0x03) */
@@ -150,6 +171,9 @@ extern void audiohw_set_lineout_vol(int vol_l, int vol_r);
 /* Use AS3514_VOL_MASK */
 
 /* LINE_IN1_R (0Ah) */
+#ifdef HAVE_AS3543
+#define LINE_IN_R_LINE_SELECT       (0x1 << 6)
+#endif
 #define LINE_IN1_R_LI1R_MUTE_off    (0x1 << 5)
 /* Use AS3514_VOL_MASK */
 
@@ -190,8 +214,12 @@ extern void audiohw_set_lineout_vol(int vol_l, int vol_r);
 /* Use AS3514_VOL_MASK */
 
 /* ADC_L (11h) */
+#ifdef HAVE_AS3543
+#define ADC_L_ADC_MUTE_off      (0x1 << 5)
+#else
 #define ADC_L_FS_2              (0x1 << 7)
 #define ADC_L_ADC_MUTE_off      (0x1 << 6)
+#endif
 /* Use AS3514_VOL_MASK */
 
 /* AUDIOSET1 (14h)*/

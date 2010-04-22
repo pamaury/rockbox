@@ -1660,6 +1660,29 @@ const struct settings_list settings[] = {
 #ifdef HAVE_MORSE_INPUT
     OFFON_SETTING(0, morse_input, LANG_MORSE_INPUT, false, "morse input", NULL),
 #endif
+
+#ifdef HAVE_HOTKEY
+    CHOICE_SETTING(0, hotkey_wps, -1, 1, "hotkey wps",
+        "off,view playlist,show track info,pitchscreen,open with,delete,insert",
+        NULL, 7, ID2P(LANG_OFF),
+        ID2P(LANG_VIEW_DYNAMIC_PLAYLIST), ID2P(LANG_MENU_SHOW_ID3_INFO),
+#ifdef HAVE_PITCHSCREEN
+        ID2P(LANG_PITCH),
+#else
+        NULL,
+#endif
+        ID2P(LANG_ONPLAY_OPEN_WITH), ID2P(LANG_DELETE), ID2P(LANG_INSERT)),
+    CHOICE_SETTING(0, hotkey_tree, -1, 0, "hotkey tree",
+        "off,view playlist,show track info,pitchscreen,open with,delete,insert",
+        NULL, 7, ID2P(LANG_OFF),
+        ID2P(LANG_VIEW_DYNAMIC_PLAYLIST), ID2P(LANG_MENU_SHOW_ID3_INFO),
+#ifdef HAVE_PITCHSCREEN
+        ID2P(LANG_PITCH),
+#else
+        NULL,
+#endif
+        ID2P(LANG_ONPLAY_OPEN_WITH), ID2P(LANG_DELETE), ID2P(LANG_INSERT)),
+#endif
 };
 
 const int nb_settings = sizeof(settings)/sizeof(*settings);

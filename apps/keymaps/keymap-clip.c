@@ -82,7 +82,11 @@ static const struct button_mapping button_context_wps[]  = {
 
     { ACTION_WPS_PITCHSCREEN,   BUTTON_SELECT|BUTTON_UP,        BUTTON_SELECT },
     { ACTION_WPS_ID3SCREEN,     BUTTON_SELECT|BUTTON_DOWN,      BUTTON_SELECT },
+#ifdef HAVE_HOTKEY
+    { ACTION_WPS_HOTKEY,        BUTTON_DOWN|BUTTON_REPEAT,      BUTTON_NONE }, 
+#else
     { ACTION_WPS_VIEW_PLAYLIST, BUTTON_DOWN|BUTTON_REPEAT,      BUTTON_NONE }, 
+#endif
 
 #ifndef HAS_BUTTON_HOLD /* Clip+ */
     { ACTION_STD_KEYLOCK,       BUTTON_HOME|BUTTON_SELECT,      BUTTON_NONE },
@@ -131,6 +135,9 @@ static const struct button_mapping button_context_list[]  = {
 static const struct button_mapping button_context_tree[]  = {
     { ACTION_TREE_WPS,    BUTTON_HOME|BUTTON_SELECT,    BUTTON_HOME },
     { ACTION_TREE_STOP,   BUTTON_POWER|BUTTON_REL,      BUTTON_POWER },
+#ifdef HAVE_HOTKEY
+//    { ACTION_TREE_HOTKEY, BUTTON_NONE,                  BUTTON_NONE },
+#endif
 
     LAST_ITEM_IN_LIST__NEXTLIST(CONTEXT_LIST),
 }; /* button_context_tree */
@@ -209,22 +216,22 @@ static const struct button_mapping button_context_pitchscreen[]  = {
     LAST_ITEM_IN_LIST__NEXTLIST(CONTEXT_STD),
 }; /* button_context_pitchscreen */
 
-#if 0
+#ifdef HAVE_RECORDING
 /** Recording Screen **/
 static const struct button_mapping button_context_recscreen[]  = {
-    { ACTION_REC_PAUSE,          BUTTON_UP|BUTTON_REL,             BUTTON_UP },
-    { ACTION_STD_CANCEL,         BUTTON_POWER|BUTTON_REL,          BUTTON_POWER },
-    { ACTION_REC_NEWFILE,        BUTTON_HOME|BUTTON_REL,            BUTTON_HOME },
-    { ACTION_STD_MENU,           BUTTON_SELECT|BUTTON_REPEAT,      BUTTON_SELECT},
-    { ACTION_SETTINGS_INC,       BUTTON_RIGHT,                     BUTTON_NONE },
-    { ACTION_SETTINGS_INCREPEAT, BUTTON_RIGHT|BUTTON_REPEAT,       BUTTON_NONE },
-    { ACTION_SETTINGS_DEC,       BUTTON_LEFT,                      BUTTON_NONE },
-    { ACTION_SETTINGS_DECREPEAT, BUTTON_LEFT|BUTTON_REPEAT,        BUTTON_NONE },
-    { ACTION_STD_PREV,           BUTTON_LEFT,               BUTTON_NONE },
-    { ACTION_STD_PREV,           BUTTON_LEFT|BUTTON_REPEAT, BUTTON_NONE },
-    { ACTION_STD_NEXT,           BUTTON_RIGHT,                BUTTON_NONE },
-    { ACTION_STD_NEXT,           BUTTON_RIGHT|BUTTON_REPEAT,  BUTTON_NONE },
-    { ACTION_NONE,               BUTTON_DOWN|BUTTON_REL,           BUTTON_DOWN },
+    { ACTION_REC_PAUSE,          BUTTON_UP|BUTTON_REL,          BUTTON_UP },
+    { ACTION_STD_CANCEL,         BUTTON_POWER|BUTTON_REL,       BUTTON_POWER },
+    { ACTION_REC_NEWFILE,        BUTTON_HOME|BUTTON_REL,        BUTTON_HOME },
+    { ACTION_STD_MENU,           BUTTON_SELECT|BUTTON_REPEAT,   BUTTON_SELECT},
+    { ACTION_SETTINGS_INC,       BUTTON_RIGHT,                  BUTTON_NONE },
+    { ACTION_SETTINGS_INCREPEAT, BUTTON_RIGHT|BUTTON_REPEAT,    BUTTON_NONE },
+    { ACTION_SETTINGS_DEC,       BUTTON_LEFT,                   BUTTON_NONE },
+    { ACTION_SETTINGS_DECREPEAT, BUTTON_LEFT|BUTTON_REPEAT,     BUTTON_NONE },
+    { ACTION_STD_PREV,           BUTTON_LEFT,                   BUTTON_NONE },
+    { ACTION_STD_PREV,           BUTTON_LEFT|BUTTON_REPEAT,     BUTTON_NONE },
+    { ACTION_STD_NEXT,           BUTTON_RIGHT,                  BUTTON_NONE },
+    { ACTION_STD_NEXT,           BUTTON_RIGHT|BUTTON_REPEAT,    BUTTON_NONE },
+    { ACTION_NONE,               BUTTON_DOWN|BUTTON_REL,        BUTTON_DOWN },
     LAST_ITEM_IN_LIST__NEXTLIST(CONTEXT_STD)
 }; /* button_context_recscreen */
 #endif
@@ -422,7 +429,7 @@ const struct button_mapping* get_context_mapping(int context)
             return button_context_quickscreen;
         case CONTEXT_PITCHSCREEN:
             return button_context_pitchscreen;
-#if 0
+#ifdef HAVE_RECORDING
         case CONTEXT_RECSCREEN:
             return button_context_recscreen;
 #endif

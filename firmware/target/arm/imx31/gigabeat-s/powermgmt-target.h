@@ -59,7 +59,21 @@
 #define BATT_USB_VSTOP              4140 /* When to "stop" when USB only */
 #define BATT_TOO_LOW                2400 /* No battery? Short? Can't
                                              read below 2400mV. */
+#define BATT_TOO_HIGH               4220 /* Extra care. Don't totally
+                                            rely upon battery protection
+                                            circutry. Stop it early if too
+                                            high. */
 #define CHARGER_TOTAL_TIMER          300 /* minutes */
+
+/* Temperature readings - w/hysteresis */
+
+/* Temperature range before beginning charging */
+#define BATTERY_CHARGE_MIN          0
+#define BATTERY_CHARGE_MAX          50
+/* Temperature range after out-of-range detected - charging will
+ * self-resume */
+#define BATTERY_CHARGE_RESTART_MIN  5
+#define BATTERY_CHARGE_RESTART_MAX  45
 
 /* .316 ohms is closest standard value as measured in 1% tolerance - adjust
  * relative to .100 ohm which is what the PMIC is "tuned" for. */

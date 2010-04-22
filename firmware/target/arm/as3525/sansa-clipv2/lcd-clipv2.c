@@ -22,6 +22,7 @@
 #include "config.h"
 
 #include "lcd.h"
+#include "lcd-clip.h"
 #include "system.h"
 #include "cpu.h"
 
@@ -51,8 +52,7 @@ void lcd_write_command(int byte)
     DBOP_TIMPOL_23 = 0xE0370036;
 
     /* Write command */
-    /* Only bits 15:12 and 3:0 of DBOP_DOUT are meaningful */
-    DBOP_DOUT = (byte << 8) | byte;
+    DBOP_DOUT8 = byte;
 
     /* While push fifo is not empty */
     while ((DBOP_STAT & (1<<10)) == 0)
@@ -72,8 +72,7 @@ void lcd_write_data(const fb_data* p_bytes, int count)
     while (count--)
     {
         /* Write pixels */
-        /* Only bits 15:12 and 3:0 of DBOP_DOUT are meaningful */
-        DBOP_DOUT = (*p_bytes << 8) | *p_bytes;
+        DBOP_DOUT8 = *p_bytes;
 
         p_bytes++; /* next packed pixels */
 

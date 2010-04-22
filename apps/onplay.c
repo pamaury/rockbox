@@ -528,7 +528,7 @@ static int remove_dir(char* dirname, int len)
 
 
 /* share code for file and directory deletion, saves space */
-static bool delete_handler(bool is_dir)
+static bool delete_file_dir(void)
 {
     char file_to_delete[MAX_PATH];
     strcpy(file_to_delete, selected_file);
@@ -551,7 +551,7 @@ static bool delete_handler(bool is_dir)
     splash(0, str(LANG_DELETING));
 
     int res;
-    if (is_dir)
+    if (selected_file_attr & ATTR_DIRECTORY) /* true if directory */
     {
         char pathname[MAX_PATH]; /* space to go deep */
         cpu_boost(true);
@@ -566,16 +566,6 @@ static bool delete_handler(bool is_dir)
         onplay_result = ONPLAY_RELOAD_DIR;
 
     return (res == 0);
-}
-
-static bool delete_file(void)
-{
-    return delete_handler(false);
-}
-
-static bool delete_dir(void)
-{
-    return delete_handler(true);
 }
 
 static bool rename_file(void)
@@ -988,9 +978,9 @@ MENUITEM_FUNCTION(clipboard_copy_item, 0, ID2P(LANG_COPY),
 MENUITEM_FUNCTION(clipboard_paste_item, 0, ID2P(LANG_PASTE),
                   clipboard_paste, NULL, clipboard_callback, Icon_NOICON);
 MENUITEM_FUNCTION(delete_file_item, 0, ID2P(LANG_DELETE),
-                  delete_file, NULL, clipboard_callback, Icon_NOICON);
+                  delete_file_dir, NULL, clipboard_callback, Icon_NOICON);
 MENUITEM_FUNCTION(delete_dir_item, 0, ID2P(LANG_DELETE_DIR),
-                  delete_dir, NULL, clipboard_callback, Icon_NOICON);
+                  delete_file_dir, NULL, clipboard_callback, Icon_NOICON);
 MENUITEM_FUNCTION(create_dir_item, 0, ID2P(LANG_CREATE_DIR),
                   create_dir, NULL, clipboard_callback, Icon_NOICON);
 
@@ -1180,19 +1170,220 @@ static int onplaymenu_callback(int action,const struct menu_item_ex *this_item)
     }
     return action;
 }
-int onplay(char* file, int attr, int from)
+
+#ifdef HAVE_HOTKEY
+/* direct function calls, no need for menu callbacks */
+static bool delete_item(void)
+{
+#ifdef HAVE_MULTIVOLUME
+    /* no delete for volumes */
+    if ((selected_file_attr & FAT_ATTR_VOLUME) ||
+        (selected_file_attr & ATTR_VOLUME))
+        return false;
+#endif
+    return delete_file_dir();
+}
+
+static bool open_with(void)
+{
+    /* only open files */
+    if (selected_file_attr & ATTR_DIRECTORY)
+        return false;
+#ifdef HAVE_MULTIVOLUME
+    if (selected_file_attr & ATTR_VOLUME)
+        return false;
+#endif
+    return list_viewers();
+}
+
+extern const struct menu_item_ex *selected_menu_item;
+extern bool hotkey_settable_menu;
+
+#define HOTKEY_ACTION_MASK 0x0FF /* Mask to apply to get the action (enum)           */
+#define HOTKEY_CTX_WPS     0x100 /* Mask to apply to check whether it's for WPS      */
+#define HOTKEY_CTX_TREE    0x200 /* Mask to apply to check whether it's for the tree */
+
+/* Any desired hotkey functions go here... */
+enum hotkey_action {
+    HOTKEY_OFF = 0,
+    HOTKEY_VIEW_PLAYLIST = 1,
+    HOTKEY_SHOW_TRACK_INFO,
+    HOTKEY_PITCHSCREEN,
+    HOTKEY_OPEN_WITH,
+    HOTKEY_DELETE,
+    HOTKEY_INSERT,
+};
+
+struct hotkey_assignment {
+    int item;               /* Bit or'd hotkey_action and HOTKEY_CTX_x   */
+    struct menu_func func;  /* Function to run if this entry is selected */
+    int return_code;        /* What to return after the function is run  */
+    const struct menu_item_ex *menu_addr; /* Must have non-dynamic text, */
+        /* i.e. have the flag MENU_HAS_DESC. E.g. be a MENUITEM_FUNCTION */
+        /* For all possibilities see menu.h.                             */
+};
+
+#define HOTKEY_FUNC(func, param) {{(void *)func}, param}
+
+/* ... and here.  Order is not important. */
+static struct hotkey_assignment hotkey_items[] = {
+    { HOTKEY_VIEW_PLAYLIST  | HOTKEY_CTX_WPS,
+            HOTKEY_FUNC(NULL, NULL),
+            ONPLAY_PLAYLIST,    &view_cur_playlist },
+    { HOTKEY_SHOW_TRACK_INFO| HOTKEY_CTX_WPS,
+            HOTKEY_FUNC(browse_id3, NULL),
+            ONPLAY_RELOAD_DIR,  &browse_id3_item },
+#ifdef HAVE_PITCHSCREEN
+    { HOTKEY_PITCHSCREEN    | HOTKEY_CTX_WPS,
+            HOTKEY_FUNC(gui_syncpitchscreen_run, NULL),
+            ONPLAY_RELOAD_DIR,  &pitch_screen_item },
+#endif
+    { HOTKEY_OPEN_WITH      | HOTKEY_CTX_WPS | HOTKEY_CTX_TREE,
+            HOTKEY_FUNC(open_with, NULL),
+            ONPLAY_RELOAD_DIR,  &list_viewers_item },
+    { HOTKEY_DELETE         | HOTKEY_CTX_WPS | HOTKEY_CTX_TREE,
+            HOTKEY_FUNC(delete_item, NULL),
+            ONPLAY_RELOAD_DIR,  &delete_file_item },
+    { HOTKEY_DELETE         | HOTKEY_CTX_TREE,
+            HOTKEY_FUNC(delete_item, NULL),
+            ONPLAY_RELOAD_DIR,  &delete_dir_item },
+    { HOTKEY_INSERT         | HOTKEY_CTX_TREE,
+            HOTKEY_FUNC(playlist_insert_func, (intptr_t*)PLAYLIST_INSERT),
+            ONPLAY_START_PLAY,  &i_pl_item },
+};
+
+static const int num_hotkey_items = sizeof(hotkey_items) / sizeof(hotkey_items[0]);
+
+/* Return the language ID for the input function */
+const char* get_hotkey_desc(int hk_func)
+{
+    int i;
+    for (i = 0; i < num_hotkey_items; i++)
+    {
+        if ((hotkey_items[i].item & HOTKEY_ACTION_MASK) == hk_func)
+            return P2STR(hotkey_items[i].menu_addr->callback_and_desc->desc);
+    }
+    
+    return str(LANG_HOTKEY_NOT_SET);
+}
+
+/* Execute the hotkey function, if listed for this screen */
+static int execute_hotkey(bool is_wps)
+{
+    int i;
+    struct hotkey_assignment *this_item;
+    const int context = is_wps ? HOTKEY_CTX_WPS : HOTKEY_CTX_TREE;
+    const int this_hotkey = (is_wps ? global_settings.hotkey_wps :
+        global_settings.hotkey_tree);
+    
+    /* search assignment struct for a match for the hotkey setting */
+    for (i = 0; i < num_hotkey_items; i++)
+    {
+        this_item = &hotkey_items[i];
+        if ((this_item->item & context) &&
+            ((this_item->item & HOTKEY_ACTION_MASK) == this_hotkey))
+        {
+            /* run the associated function (with optional param), if any */
+            const struct menu_func func = this_item->func;
+            if (func.function != NULL)
+            {
+                if (func.param != NULL)
+                    (*func.function_w_param)(func.param);
+                else
+                    (*func.function)();
+            }
+            /* return with the associated code */
+            return this_item->return_code;
+        }
+    }
+    
+    /* no valid hotkey set */
+    splash(HZ, ID2P(LANG_HOTKEY_NOT_SET));
+    return ONPLAY_RELOAD_DIR;
+}
+
+/* Set the hotkey to the current context menu function, if listed */
+static void set_hotkey(bool is_wps)
+{
+    int i;
+    struct hotkey_assignment *this_item;
+    const int context = is_wps ? HOTKEY_CTX_WPS : HOTKEY_CTX_TREE;
+    int *hk_func = is_wps ? &global_settings.hotkey_wps :
+                            &global_settings.hotkey_tree;
+    int this_hk;
+    char *this_desc;
+    bool match_found = false;
+    
+    /* search assignment struct for a function that matches the current menu item */
+    for (i = 0; i < num_hotkey_items; i++)
+    {
+        this_item = &hotkey_items[i];
+        if ((this_item->item & context) &&
+            (this_item->menu_addr == selected_menu_item))
+        {
+            this_hk = this_item->item & HOTKEY_ACTION_MASK;
+            this_desc = P2STR((selected_menu_item->callback_and_desc)->desc);
+            match_found = true;
+            break;
+        }
+    }
+    
+    /* ignore the hotkey if no match found or no change to setting */
+    if (!match_found || (this_hk == *hk_func)) return;
+    
+    char   line1_buf[100],
+           line2_buf[100];
+    char  *line1 = line1_buf,
+          *line2 = line2_buf;
+    char **line1_ptr = &line1,
+         **line2_ptr = &line2;
+    const struct text_message     message={(const char **)line1_ptr, 1};
+    const struct text_message yes_message={(const char **)line2_ptr, 1};
+
+    snprintf(line1, sizeof(line1_buf), str(LANG_SET_HOTKEY_QUESTION), this_desc);
+    snprintf(line2, sizeof(line2_buf), str(LANG_HOTKEY_ASSIGNED), this_desc);
+
+    /* confirm the hotkey setting change */
+    if(gui_syncyesno_run(&message, &yes_message, NULL)==YESNO_YES)
+    {                    
+        /* store the hotkey settings */
+        *hk_func = this_hk;
+        settings_save();
+    }
+}
+#endif /* HOTKEY */
+
+int onplay(char* file, int attr, int from, bool hotkey)
 {
     const struct menu_item_ex *menu;
     onplay_result = ONPLAY_OK;
     context = from;
     selected_file = file;
     selected_file_attr = attr;
+    int menu_selection;
+#ifdef HAVE_HOTKEY
+    if (hotkey)
+        return execute_hotkey(context == CONTEXT_WPS);
+    hotkey_settable_menu = true;
+#else
+    (void)hotkey;
+#endif
     if (context == CONTEXT_WPS)
         menu = &wps_onplay_menu;
     else
         menu = &tree_onplay_menu;
-    switch (do_menu(menu, NULL, NULL, false))
+    menu_selection = do_menu(menu, NULL, NULL, false);
+#ifdef HAVE_HOTKEY
+    hotkey_settable_menu = false;
+    switch (menu_selection)
     {
+        case MENU_SELECTED_HOTKEY:
+            set_hotkey(context == CONTEXT_WPS);
+            return ONPLAY_RELOAD_DIR;
+#else
+    switch (menu_selection)
+    {
+#endif
         case GO_TO_WPS:
             return ONPLAY_START_PLAY;
         case GO_TO_ROOT:

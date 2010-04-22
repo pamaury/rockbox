@@ -664,6 +664,7 @@ Lyre prototype 1 */
 #else /* !BOOTLOADER */
 
 #define HAVE_EXTENDED_MESSAGING_AND_NAME
+#define HAVE_WAKEUP_EXT_CB
 
 #ifndef SIMULATOR
 #define HAVE_PRIORITY_SCHEDULING
@@ -719,8 +720,8 @@ Lyre prototype 1 */
     defined(CPU_COLDFIRE) || /* Coldfire: core, plugins, codecs */ \
     defined(CPU_PP) ||  /* PortalPlayer: core, plugins, codecs */ \
     (CONFIG_CPU == AS3525 && MEMORYSIZE > 2) || /* AS3525 +2MB: core, plugins, codecs */ \
-    (CONFIG_CPU == AS3525v2) || /* AS3525v2: core, plugins, codecs */ \
-    (CONFIG_CPU == AS3525 && MEMORYSIZE <= 2 && !defined(PLUGIN) && !defined(CODEC)) || /* AS3525 2MB:core only */ \
+    (CONFIG_CPU == AS3525 && MEMORYSIZE <= 2 && !defined(PLUGIN) && !defined(CODEC)) || /* AS3525 2MB: core only */ \
+    (CONFIG_CPU == AS3525v2 && !defined(PLUGIN) && !defined(CODEC)) || /* AS3525v2: core only */ \
     (CONFIG_CPU == PNX0101) || \
     defined(CPU_S5L870X)) || /* Samsung S5L8700: core, plugins, codecs */ \
     (CONFIG_CPU == JZ4732 && !defined(PLUGIN) && !defined(CODEC)) /* Jz4740: core only */
@@ -729,7 +730,8 @@ Lyre prototype 1 */
 #define IDATA_ATTR      __attribute__ ((section(".idata")))
 #define IBSS_ATTR       __attribute__ ((section(".ibss")))
 #define USE_IRAM
-#if CONFIG_CPU != SH7034 && (CONFIG_CPU != AS3525 || MEMORYSIZE > 2) && CONFIG_CPU != JZ4732
+#if CONFIG_CPU != SH7034 && (CONFIG_CPU != AS3525 || MEMORYSIZE > 2) \
+    && CONFIG_CPU != JZ4732
 #define PLUGIN_USE_IRAM
 #endif
 #if defined(CPU_ARM)
@@ -747,7 +749,8 @@ Lyre prototype 1 */
 #define IBSS_ATTR
 #define STATICIRAM static
 #endif
-#if (defined(CPU_PP) || (CONFIG_CPU == AS3525)) && !defined(SIMULATOR) && !defined(BOOTLOADER)
+#if (defined(CPU_PP) || (CONFIG_CPU == AS3525)) \
+    && !defined(SIMULATOR) && !defined(BOOTLOADER)
 /* Functions that have INIT_ATTR attached are NOT guaranteed to survive after
  * root_menu() has been called. Their code may be overwritten by other data or
  * code in order to save RAM, and references to them might point into
@@ -921,6 +924,10 @@ Lyre prototype 1 */
  * will display an error message if the plugin leaked some file handles */
 #ifndef SIMULATOR
 #define HAVE_PLUGIN_CHECK_OPEN_CLOSE
+#endif
+
+#if defined(HAVE_DIRCACHE) && !defined(SIMULATOR)
+#define HAVE_IO_PRIORITY
 #endif
 
 #endif /* __CONFIG_H__ */

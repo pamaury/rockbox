@@ -20,6 +20,8 @@
 #ifndef __AS3525_H__
 #define __AS3525_H__
 
+#define CACHEALIGN_BITS (5)
+
 #define UART_CHANNELS 1
 
 
@@ -115,6 +117,7 @@
 #define DBOP_CTRL         (*(volatile unsigned long *)(DBOP_BASE + 0x08))
 #define DBOP_STAT         (*(volatile unsigned long *)(DBOP_BASE + 0x0C))
 /* default is 16bit, but we switch to 32bit for some targets for better speed */
+#define DBOP_DOUT8        (*(volatile unsigned  char*)(DBOP_BASE + 0x10))
 #define DBOP_DOUT         (*(volatile unsigned short*)(DBOP_BASE + 0x10))
 #define DBOP_DOUT16       (*(volatile unsigned short*)(DBOP_BASE + 0x10))
 #define DBOP_DOUT32       (*(volatile unsigned long *)(DBOP_BASE + 0x10))

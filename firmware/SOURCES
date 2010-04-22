@@ -97,7 +97,7 @@ drivers/lcd-16bit-vert.c
 drivers/lcd-16bit.c
 #endif
 #endif /* LCD_DEPTH */
-drivers/diacritic.c
+common/diacritic.c
 #endif /* HAVE_LCD_BITMAP */
 
 #ifdef HAVE_REMOTE_LCD
@@ -152,9 +152,7 @@ drivers/sd.c
 #if (CONFIG_STORAGE & STORAGE_RAMDISK)
 drivers/ramdisk.c
 #endif
-#ifdef CONFIG_STORAGE_MULTI
 storage.c
-#endif
 drivers/fat.c
 #if (CONFIG_STORAGE & STORAGE_MMC) || (CONFIG_STORAGE & STORAGE_SD)
 hotswap.c
@@ -416,6 +414,9 @@ target/arm/pnx0101/timer-pnx0101.c
 target/arm/as3525/system-as3525.c
 target/arm/as3525/kernel-as3525.c
 target/arm/as3525/timer-as3525.c
+#ifdef HAVE_SCROLLWHEEL
+target/arm/as3525/scrollwheel-as3525.c
+#endif
 #if CONFIG_CPU == AS3525
 target/arm/as3525/sd-as3525.c
 #else /* AS3535v2 */
@@ -877,36 +878,37 @@ target/arm/s3c2440/gigabeat-fx/wmcodec-meg-fx.c
 #ifndef SIMULATOR
 target/arm/lcd-as-memframe.S
 target/arm/mmu-armv6.S
+target/arm/imx31/ata-imx31.c
+target/arm/imx31/avic-imx31.c
 target/arm/imx31/ccm-imx31.c
 target/arm/imx31/debug-imx31.c
+target/arm/imx31/dvfs_dptc-imx31.c
+target/arm/imx31/gpio-imx31.c
+target/arm/imx31/i2c-imx31.c
+target/arm/imx31/mc13783-imx31.c
+target/arm/imx31/mmu-imx31.c
 target/arm/imx31/rolo_restart.S
 target/arm/imx31/sdma-imx31.c
-target/arm/imx31/gigabeat-s/adc-imx31.c
-target/arm/imx31/gigabeat-s/ata-imx31.c
-target/arm/imx31/gigabeat-s/avic-imx31.c
-target/arm/imx31/gigabeat-s/backlight-imx31.c
-target/arm/imx31/gigabeat-s/button-imx31.c
+target/arm/imx31/spi-imx31.c
+target/arm/imx31/gigabeat-s/adc-gigabeat-s.c
+target/arm/imx31/gigabeat-s/backlight-gigabeat-s.c
+target/arm/imx31/gigabeat-s/button-gigabeat-s.c
 target/arm/imx31/gigabeat-s/gpio-gigabeat-s.c
-target/arm/imx31/gigabeat-s/gpio-imx31.c
-target/arm/imx31/gigabeat-s/kernel-imx31.c
-target/arm/imx31/gigabeat-s/i2c-imx31.c
-target/arm/imx31/gigabeat-s/i2s-imx31.c
-target/arm/imx31/gigabeat-s/lcd-imx31.c
+target/arm/imx31/gigabeat-s/kernel-gigabeat-s.c
+target/arm/imx31/gigabeat-s/i2s-gigabeat-s.c
+target/arm/imx31/gigabeat-s/lcd-gigabeat-s.c
 target/arm/imx31/gigabeat-s/mc13783-gigabeat-s.c
-target/arm/imx31/gigabeat-s/mc13783-imx31.c
-target/arm/imx31/gigabeat-s/mmu-imx31.c
-target/arm/imx31/gigabeat-s/power-imx31.c
-target/arm/imx31/gigabeat-s/powermgmt-imx31.c
-target/arm/imx31/gigabeat-s/spi-imx31.c
-target/arm/imx31/gigabeat-s/system-imx31.c
-target/arm/imx31/gigabeat-s/usb-imx31.c
-target/arm/imx31/gigabeat-s/wmcodec-imx31.c
+target/arm/imx31/gigabeat-s/power-gigabeat-s.c
+target/arm/imx31/gigabeat-s/powermgmt-gigabeat-s.c
+target/arm/imx31/gigabeat-s/system-gigabeat-s.c
+target/arm/imx31/gigabeat-s/usb-gigabeat-s.c
+target/arm/imx31/gigabeat-s/wmcodec-gigabeat-s.c
 #ifndef BOOTLOADER
 target/arm/imx31/gigabeat-s/audio-gigabeat-s.c
 target/arm/imx31/gigabeat-s/fmradio-i2c-gigabeat-s.c
 target/arm/imx31/gigabeat-s/headphone-gigabeat-s.c
-target/arm/imx31/gigabeat-s/pcm-imx31.c
-target/arm/imx31/gigabeat-s/timer-imx31.c
+target/arm/imx31/gigabeat-s/pcm-gigabeat-s.c
+target/arm/imx31/gigabeat-s/timer-gigabeat-s.c
 #endif
 #endif /* SIMULATOR */
 #endif /* GIGABEAT_S */
@@ -1218,12 +1220,12 @@ target/arm/tcc77x/c100/audio-c100.c
 #ifndef SIMULATOR
 target/arm/as3525/lcd-ssd1303.c
 target/arm/as3525/sansa-clipplus/lcd-clip-plus.c
-target/arm/as3525/sansa-clipplus/lcd-as-clip-plus.S
 target/arm/as3525/sansa-clipplus/button-clip.c
 target/arm/as3525/sansa-clipplus/backlight-clip.c
 #ifndef BOOTLOADER
 target/arm/powermgmt-ascodec.c
 target/arm/as3525/sansa-clip/powermgmt-clip.c
+target/arm/as3525/sansa-clipplus/lcd-as-clip-plus.S
 #endif /* !BOOTLOADER */
 #endif /* !SIMULATOR */
 #endif /* SANSA_CLIPPLUS */
@@ -1232,12 +1234,12 @@ target/arm/as3525/sansa-clip/powermgmt-clip.c
 #ifndef SIMULATOR
 target/arm/as3525/lcd-ssd1303.c
 target/arm/as3525/sansa-clipv2/lcd-clipv2.c
-target/arm/as3525/sansa-clip/lcd-as-clip.S  /* TODO for clipv2 */
 target/arm/as3525/sansa-clipv2/button-clip.c
-target/arm/as3525/sansa-clipv2/backlight-clip.c
+target/arm/as3525/sansa-clipv2/backlight-clipv2.c
 #ifndef BOOTLOADER
 target/arm/powermgmt-ascodec.c
 target/arm/as3525/sansa-clip/powermgmt-clip.c
+target/arm/as3525/sansa-clipv2/lcd-as-clipv2.S
 #endif /* !BOOTLOADER */
 #endif /* !SIMULATOR */
 #endif /* SANSA_CLIPV2 */
@@ -1246,12 +1248,12 @@ target/arm/as3525/sansa-clip/powermgmt-clip.c
 #ifndef SIMULATOR
 target/arm/as3525/lcd-ssd1303.c
 target/arm/as3525/sansa-clip/lcd-clip.c
-target/arm/as3525/sansa-clip/lcd-as-clip.S
 target/arm/as3525/sansa-clip/button-clip.c
 target/arm/as3525/sansa-clip/backlight-clip.c
 #ifndef BOOTLOADER
 target/arm/powermgmt-ascodec.c
 target/arm/as3525/sansa-clip/powermgmt-clip.c
+target/arm/as3525/sansa-clip/lcd-as-clip.S
 #endif /* !BOOTLOADER */
 #endif /* !SIMULATOR */
 #endif /* SANSA_CLIP */
@@ -1259,13 +1261,13 @@ target/arm/as3525/sansa-clip/powermgmt-clip.c
 #ifdef SANSA_E200V2
 #ifndef SIMULATOR
 target/arm/as3525/sansa-e200v2/lcd-e200v2.c
-target/arm/as3525/lcd-as-e200v2-fuze.S
 target/arm/as3525/button-e200v2-fuze.c
 target/arm/as3525/backlight-e200v2-fuze.c
 target/arm/as3525/dbop-as3525.c
 #ifndef BOOTLOADER
 target/arm/powermgmt-ascodec.c
 target/arm/as3525/sansa-e200v2/powermgmt-e200v2.c
+target/arm/as3525/lcd-as-e200v2-fuze-fuzev2.S
 #endif /* !BOOTLOADER */
 #endif /* !SIMULATOR */
 #endif /* SANSA_E200V2 */
@@ -1297,12 +1299,12 @@ target/arm/as3525/sansa-m200v4/powermgmt-m200v4.c
 #ifndef SIMULATOR
 target/arm/as3525/button-e200v2-fuze.c
 target/arm/as3525/sansa-fuze/lcd-fuze.c
-target/arm/as3525/lcd-as-e200v2-fuze.S
 target/arm/as3525/backlight-e200v2-fuze.c
 target/arm/as3525/dbop-as3525.c
 #ifndef BOOTLOADER
 target/arm/powermgmt-ascodec.c
 target/arm/as3525/sansa-fuze/powermgmt-fuze.c
+target/arm/as3525/lcd-as-e200v2-fuze-fuzev2.S
 #endif /* !BOOTLOADER */
 #endif /* !SIMULATOR */
 #endif /* SANSA_FUZE */
@@ -1310,12 +1312,13 @@ target/arm/as3525/sansa-fuze/powermgmt-fuze.c
 #ifdef SANSA_FUZEV2
 #ifndef SIMULATOR
 target/arm/as3525/sansa-fuzev2/lcd-fuzev2.c
-target/arm/as3525/lcd-as-e200v2-fuze.S
 target/arm/as3525/sansa-fuzev2/backlight-fuzev2.c
 target/arm/as3525/sansa-fuzev2/button-fuzev2.c
+target/arm/as3525/dbop-as3525.c
 #ifndef BOOTLOADER
 target/arm/powermgmt-ascodec.c
 target/arm/as3525/sansa-fuzev2/powermgmt-fuzev2.c
+target/arm/as3525/lcd-as-e200v2-fuze-fuzev2.S
 #endif /* !BOOTLOADER */
 #endif /* !SIMULATOR */
 #endif /* SANSA_FUZEV2 */
@@ -1374,7 +1377,7 @@ target/arm/tcc780x/cowond2/audio-cowond2.c
 
 #ifdef CPU_S5L870X
 target/arm/s5l8700/system-s5l8700.c
-target/arm/s5l8700/mmu-s5l8700.S
+target/arm/mmu-arm.S
 #ifndef SIMULATOR
 #ifndef BOOTLOADER
 target/arm/s5l8700/timer-s5l8700.c

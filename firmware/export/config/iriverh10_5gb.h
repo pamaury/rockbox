@@ -11,6 +11,9 @@
 /* define this if you use an ATA controller */
 #define CONFIG_STORAGE STORAGE_ATA
 
+/*define this if the ATA controller and method of USB access support LBA48 */
+#define HAVE_LBA48
+
 /* define this if you have recording possibility */
 #define HAVE_RECORDING
 /* Define bitmask of input sources - recordable bitmask can be defined
@@ -179,3 +182,6 @@
  * writes appear to be ~25% slower.
  */
 #define HAVE_ATA_DMA
+
+/* Define this if a programmable hotkey is mapped */
+#define HAVE_HOTKEY

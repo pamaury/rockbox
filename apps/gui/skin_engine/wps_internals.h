@@ -91,6 +91,8 @@ struct gui_img {
 
 
 struct progressbar {
+    enum wps_token_type type;
+    struct viewport *vp;
     /* regular pb */
     short x;
     /* >=0: explicitly set in the tag -> y-coord within the viewport
@@ -103,6 +105,8 @@ struct progressbar {
     /*progressbar image*/
     struct bitmap bm;
     bool have_bitmap_pb;
+    
+    bool draw;
 };
 #endif
 
@@ -202,7 +206,6 @@ struct skin_line {
 #define VP_INFO_LABEL       '_'
 struct skin_viewport {
     struct viewport vp;   /* The LCD viewport struct */
-    struct progressbar *pb;
     struct skin_line *lines;
     char hidden_flags;
     char label;

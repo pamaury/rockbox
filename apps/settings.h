@@ -816,6 +816,13 @@ struct user_settings
     bool morse_input; /* text input method setting */
 #endif
 
+#ifdef HAVE_HOTKEY
+    /* hotkey assignments - acceptable values are in
+       hotkey_settings enum in onplay.c */
+    int hotkey_wps;
+    int hotkey_tree;
+#endif
+
 };
 
 /** global variables **/

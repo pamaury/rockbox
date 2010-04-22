@@ -8,11 +8,18 @@
 
 #define MODEL_NAME "Toshiba Gigabeat S"
 
+/* System source clock frequencies (Hz) */
+#define CONFIG_CKIL_FREQ    32768       /* RTC Crystal, Tuner */
+#define CONFIG_CKIH_FREQ    27000000    /* PLL Reference */
+
 /* For Rolo and boot loader */
 #define MODEL_NUMBER 21
 
 /* define this if you use an ATA controller */
 #define CONFIG_STORAGE STORAGE_ATA
+
+/*define this if the ATA controller and method of USB access support LBA48 */
+#define HAVE_LBA48
 
 /* define this if you have a bitmap LCD display */
 #define HAVE_LCD_BITMAP
@@ -82,6 +89,9 @@
 
 /* Define this if you have the WM8978 audio codec */
 #define HAVE_WM8978
+
+/* Tone controls for WM8978 have not been implemented yet */
+#define HAVE_SW_TONE_CONTROLS
 
 /* Define bitmask of input sources - recordable bitmask can be defined
    explicitly if different */
@@ -214,3 +224,5 @@
 #define BOOTFILE "rockbox." BOOTFILE_EXT
 #define BOOTDIR "/.rockbox"
 
+/* Define this if a programmable hotkey is mapped */
+#define HAVE_HOTKEY

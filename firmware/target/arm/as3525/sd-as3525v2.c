@@ -39,6 +39,7 @@
 #include "stdbool.h"
 #include "ata_idle_notify.h"
 #include "sd.h"
+#include "usb.h"
 
 #ifdef HAVE_HOTSWAP
 #include "disk.h"
@@ -608,7 +609,7 @@ static void sd_thread(void)
                 }
             }
             break;
-#if 0
+
         case SYS_USB_CONNECTED:
             usb_acknowledge(SYS_USB_CONNECTED_ACK);
             /* Wait until the USB cable is extracted again */
@@ -618,7 +619,6 @@ static void sd_thread(void)
         case SYS_USB_DISCONNECTED:
             usb_acknowledge(SYS_USB_DISCONNECTED_ACK);
             break;
-#endif
         }
     }
 }
@@ -628,39 +628,40 @@ static void init_controller(void)
     int hcon_numcards = ((MCI_HCON>>1) & 0x1F) + 1;
     int card_mask = (1 << hcon_numcards) - 1;
 
-    MCI_PWREN &= ~card_mask;               /*  power off all cards  */
+    MCI_PWREN &= ~card_mask;            /*  power off all cards  */
 
-    MCI_CLKSRC = 0x00;                     /* All CLK_SRC_CRD set to 0*/
-    MCI_CLKDIV = 0x00;                     /* CLK_DIV_0 : bits 7:0  */
+    MCI_CLKSRC = 0x00;                  /* All CLK_SRC_CRD set to 0*/
+    MCI_CLKDIV = 0x00;                  /* CLK_DIV_0 : bits 7:0  */
 
-    MCI_PWREN |= card_mask;                /*  power up cards  */
+    MCI_PWREN |= card_mask;             /*  power up cards  */
     mci_delay();
 
     MCI_CTRL |= CTRL_RESET;
     while(MCI_CTRL & CTRL_RESET)
         ;
 
-    MCI_RAW_STATUS = 0xffffffff;
+    MCI_RAW_STATUS = 0xffffffff;        /* Clear all MCI Interrupts  */
 
     MCI_TMOUT = 0xffffffff;             /*  data b31:8, response b7:0 */
 
     MCI_CTYPE = 0x0;                    /*  all cards 1 bit bus for now */
 
-    MCI_CLKENA = card_mask;
+    MCI_CLKENA = card_mask;             /*  Enables card clocks  */
 
     MCI_ARGUMENT = 0;
     MCI_COMMAND = CMD_DONE_BIT|CMD_SEND_CLK_ONLY|CMD_WAIT_PRV_DAT_BIT;
     while(MCI_COMMAND & CMD_DONE_BIT)
         ;
 
-    MCI_DEBNCE = 0xfffff;   /* default value */
+    MCI_DEBNCE = 0xfffff;               /* default value */
 
-    MCI_FIFOTH &= MCI_FIFOTH_MASK;
-    MCI_FIFOTH |= 0x503f0080;
+    /* Rx watermark = 63(sd reads)  Tx watermark = 128 (sd writes) */
+    MCI_FIFOTH = (MCI_FIFOTH & MCI_FIFOTH_MASK) | 0x503f0080;
 
-    MCI_MASK = 0xffff & ~(MCI_INT_ACD|MCI_INT_CRDDET|MCI_INT_RXDR|MCI_INT_TXDR);
+    GPIOB_DIR |= (1<<5);                 /* Set pin B5 to output  */
 
-    GPIOB_DIR |= (1<<5);         /* Pin B5 output  */
+    /* Mask all MCI Interrupts initially  */
+    MCI_MASK = 0;
 
     MCI_CTRL |= INT_ENABLE;
 }
@@ -694,6 +695,8 @@ int sd_init(void)
     GPIOA_IS &= ~(1<<2);
     /* detect both raising and falling edges */
     GPIOA_IBE |= (1<<2);
+    /* Configure XPD for SD-MCI interface */
+    CCU_IO |= (1<<2);
 #endif
 
     VIC_INT_ENABLE = INTERRUPT_NAND;
@@ -818,9 +821,6 @@ static int sd_transfer_sectors(IF_MD2(int drive,) unsigned long start,
         MCI_MASK |= (MCI_DATA_ERROR | MCI_INT_DTO);
         MCI_CTRL |= DMA_ENABLE;
 
-        MCI_FIFOTH &= MCI_FIFOTH_MASK;
-        MCI_FIFOTH |= 0x503f0080;
-
         int arg = start;
         if(!(card_info[drive].ocr & (1<<30))) /* not SDHC */
             arg *= SD_BLOCK_SIZE;
@@ -896,8 +896,7 @@ int sd_read_sectors(IF_MD2(int drive,) unsigned long start, int count,
 int sd_write_sectors(IF_MD2(int drive,) unsigned long start, int count,
                      const void* buf)
 {
-#if 1 /* disabled until stable*/ \
-    || defined(BOOTLOADER) /* we don't need write support in bootloader */
+#if defined(BOOTLOADER) /* we don't need write support in bootloader */
 #ifdef HAVE_MULTIDRIVE
     (void) drive;
 #endif
@@ -906,8 +905,15 @@ int sd_write_sectors(IF_MD2(int drive,) unsigned long start, int count,
     (void) buf;
     return -1;
 #else
-    return sd_transfer_sectors(IF_MD2(drive,) start, count, (void*)buf, true);
+    //return sd_transfer_sectors(IF_MD2(drive,) start, count, (void*)buf, true);
+#ifdef HAVE_MULTIDRIVE
+    (void)drive;
 #endif
+    (void)start;
+    (void)count;
+    (void)buf;
+    return -1; /* not working, seems to cause FIFO overruns */
+#endif /* defined(BOOTLOADER) */
 }
 
 #ifndef BOOTLOADER
@@ -919,11 +925,7 @@ long sd_last_disk_activity(void)
 void sd_enable(bool on)
 {
     /* TODO */
-    if(on)
-        CCU_IO |= (1<<2);              /* XPD is SD-MCI interface (b3:2 = 01) */
-    else
-        CCU_IO &= ~(1<<2);             /* XPD is general purpose IO (b3:2 = 00) */
-    return;
+    (void) on;
 }
 
 tCardInfo *card_get_info_target(int card_no)

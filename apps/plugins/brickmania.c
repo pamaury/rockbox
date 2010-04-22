@@ -284,6 +284,9 @@ CONFIG_KEYPAD == SANSA_M200_PAD
 #endif
 
 
+#define NUM_BRICKS_ROWS 8
+#define NUM_BRICKS_COLS 10
+
 /*
  *
  * Geometric dimensions
@@ -311,7 +314,7 @@ CONFIG_KEYPAD == SANSA_M200_PAD
 #define LONG_PAD_WIDTH   FIXED3(BMPWIDTH_brickmania_long_pads)
 #define BRICK_HEIGHT     FIXED3(BMPHEIGHT_brickmania_bricks/7)
 #define BRICK_WIDTH      FIXED3(BMPWIDTH_brickmania_bricks)
-#define LEFTMARGIN       ((GAMESCREEN_WIDTH-10*BRICK_WIDTH)/2)
+#define LEFTMARGIN       ((GAMESCREEN_WIDTH-NUM_BRICKS_COLS*BRICK_WIDTH)/2)
 #define POWERUP_WIDTH    FIXED3(BMPWIDTH_brickmania_powerups)
 #define BALL             FIXED3(BMPHEIGHT_brickmania_ball)
 #define HALFBALL         (BALL / 2)
@@ -324,7 +327,6 @@ CONFIG_KEYPAD == SANSA_M200_PAD
 #define TOPMARGIN           MAX(BRICK_HEIGHT, FIXED3(8))
 
 #define STRINGPOS_FINISH    (GAMESCREEN_HEIGHT - (GAMESCREEN_HEIGHT / 6))
-#define STRINGPOS_CONGRATS  (STRINGPOS_FINISH - 20)
 #define STRINGPOS_NAVI      (STRINGPOS_FINISH - 10)
 #define STRINGPOS_FLIP      (STRINGPOS_FINISH - 10)
 
@@ -434,9 +436,6 @@ CONFIG_KEYPAD == SANSA_M200_PAD
  * Game levels
  *
  */
-
-#define NUM_BRICKS_ROWS 8
-#define NUM_BRICKS_COLS 10
 
 /* change to however many levels there are, i.e. how many arrays there are total */
 #define NUM_LEVELS 40
@@ -969,16 +968,16 @@ struct rect
  *
  */
 
-static enum game_state game_state = ST_READY;
+static enum game_state game_state;
 static int pad_pos_x;
 static int life;
-static int score=0,vscore=0;
-static bool flip_sides=false;
-static int level=0;
-static int brick_on_board=0;
-static int used_balls=1;
-static int used_fires=0;
-static int used_powers=0;
+static int score,vscore;
+static bool flip_sides;
+static int level;
+static int brick_on_board;
+static int used_balls;
+static int used_fires;
+static int used_powers;
 static int difficulty = NORMAL;
 static int pad_width;
 static int flip_sides_delay;
@@ -1516,7 +1515,7 @@ static void brick_hit(int i, int j)
 static int brickmania_game_loop(void)
 {
     int j,i,k;
-    int sw;
+    int sw, sh;
     char s[30];
     int sec_count=0;
     int end;
@@ -1554,7 +1553,7 @@ static int brickmania_game_loop(void)
                 if (TIME_AFTER(*rb->current_tick, sec_count))
                 {
                     sec_count=*rb->current_tick+HZ;
-                    if (flip_sides_delay!=0)
+                    if (flip_sides_delay > 1)
                         flip_sides_delay--;
                     else
                         flip_sides=false;
@@ -1632,7 +1631,8 @@ static int brickmania_game_loop(void)
                         j = (fire[k].x_pos - LEFTMARGIN) / BRICK_WIDTH;
                         for (i=NUM_BRICKS_ROWS-1;i>=0;i--)
                         {
-
+                            if (TOPMARGIN + i*BRICK_HEIGHT<=fire[k].top)
+                                break;
                             if (brick[i][j].used)
                             {
                                 score += SCORE_FIRE_HIT_BRICK;
@@ -1643,8 +1643,6 @@ static int brickmania_game_loop(void)
                                 k--;
                                 break;
                             }
-                            if (TOPMARGIN + i*BRICK_HEIGHT<=fire[k].top)
-                                break;
                         }
                     }
                 }
@@ -2032,7 +2030,7 @@ static int brickmania_game_loop(void)
                         if (check_lines(&misc_line, &screen_edge, &pt_hit))
                         {
                             /* Reverse direction */
-                            ball[k].speedx = -ball[k].speedx;
+                            ball[k].speedx = abs(ball[k].speedx);
 
                             /* Re-position ball in gameboard */
                             ball[k].tempy = pt_hit.y;
@@ -2048,7 +2046,7 @@ static int brickmania_game_loop(void)
                         if (check_lines(&misc_line, &screen_edge, &pt_hit))
                         {
                             /* Reverse direction */
-                            ball[k].speedx = -ball[k].speedx;
+                            ball[k].speedx = -abs(ball[k].speedx);
 
                             /* Re-position ball in gameboard */
                             ball[k].tempy = pt_hit.y;
@@ -2180,8 +2178,8 @@ static int brickmania_game_loop(void)
                 }
                 else
                 {
-                    rb->lcd_getstringsize("Congratulations!", &sw, NULL);
-                    rb->lcd_putsxy(LCD_WIDTH/2-sw/2, INT3(STRINGPOS_CONGRATS),
+                    rb->lcd_getstringsize("Congratulations!", &sw, &sh);
+                    rb->lcd_putsxy(LCD_WIDTH/2-sw/2, INT3(STRINGPOS_FINISH) - 2 * sh,
                                    "Congratulations!");
 #if (LCD_WIDTH == 112) && (LCD_HEIGHT == 64)
                     rb->lcd_getstringsize("No more levels", &sw, NULL);

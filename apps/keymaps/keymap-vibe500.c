@@ -66,6 +66,7 @@ static const struct button_mapping button_context_wps[]  = {
     { ACTION_WPS_VOLUP,     BUTTON_UP,                      BUTTON_NONE },
     { ACTION_WPS_BROWSE,    BUTTON_OK|BUTTON_REL,             BUTTON_OK },
     { ACTION_WPS_CONTEXT,   BUTTON_MENU|BUTTON_REPEAT,      BUTTON_MENU },
+    { ACTION_WPS_HOTKEY,    BUTTON_REC|BUTTON_REL,          BUTTON_REC  },
     { ACTION_WPS_VIEW_PLAYLIST, BUTTON_CANCEL,              BUTTON_NONE },
     { ACTION_WPS_MENU,          BUTTON_MENU|BUTTON_REL,     BUTTON_MENU },
     { ACTION_WPS_QUICKSCREEN,   BUTTON_OK|BUTTON_REPEAT,      BUTTON_OK },
@@ -76,6 +77,7 @@ static const struct button_mapping button_context_wps[]  = {
 static const struct button_mapping button_context_tree[]  = {
     { ACTION_TREE_WPS,          BUTTON_PLAY|BUTTON_REL,      BUTTON_PLAY },
     { ACTION_TREE_STOP,         BUTTON_PLAY|BUTTON_REPEAT,   BUTTON_PLAY },
+    { ACTION_TREE_HOTKEY,       BUTTON_REC|BUTTON_REL,       BUTTON_REC },
 
     LAST_ITEM_IN_LIST__NEXTLIST(CONTEXT_STD)
 }; /* button_context_tree */
@@ -115,7 +117,7 @@ static const struct button_mapping button_context_yesno[]  = {
 }; /* button_context_yesno */
 
 static const struct button_mapping button_context_bmark[]  = {
-    { ACTION_BMS_DELETE,          BUTTON_MENU|BUTTON_REPEAT,       BUTTON_MENU },
+    { ACTION_BMS_DELETE,          BUTTON_CANCEL|BUTTON_REPEAT,       BUTTON_CANCEL },
     LAST_ITEM_IN_LIST__NEXTLIST(CONTEXT_LIST),
 }; /* button_context_bmark */
 

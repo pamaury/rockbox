@@ -119,7 +119,7 @@
 /* Cast to the the machine pointer size, whose size could be < 4 or > 32
  * (someday :). */
 #define DEADBEEF ((uintptr_t)0xdeadbeefdeadbeefull)
-struct core_entry cores[NUM_CORES] IBSS_ATTR;
+static struct core_entry cores[NUM_CORES] IBSS_ATTR;
 struct thread_entry threads[MAXTHREADS] IBSS_ATTR;
 
 static const char main_thread_name[] = "main";
@@ -2062,16 +2062,23 @@ void switch_thread(void)
 
                 /* This ridiculously simple method of aging seems to work
                  * suspiciously well. It does tend to reward CPU hogs (under
-                 * yielding) but that's generally not desirable at all. On the
-                 * plus side, it, relatively to other threads, penalizes excess
-                 * yielding which is good if some high priority thread is
-                 * performing no useful work such as polling for a device to be
-                 * ready. Of course, aging is only employed when higher and lower
-                 * priority threads are runnable. The highest priority runnable
-                 * thread(s) are never skipped. */
+                 * yielding) but that's generally not desirable at all. On
+                 * the plus side, it, relatively to other threads, penalizes
+                 * excess yielding which is good if some high priority thread
+                 * is performing no useful work such as polling for a device
+                 * to be ready. Of course, aging is only employed when higher
+                 * and lower priority threads are runnable. The highest
+                 * priority runnable thread(s) are never skipped unless a
+                 * lower-priority process has aged sufficiently. Priorities
+                 * of REALTIME class are run strictly according to priority
+                 * thus are not subject to switchout due to lower-priority
+                 * processes aging; they must give up the processor by going
+                 * off the run list. */
                 if (LIKELY(priority <= max) ||
                     IF_NO_SKIP_YIELD( thread->skip_count == -1 || )
-                    (diff = priority - max, ++thread->skip_count > diff*diff))
+                    (priority > PRIORITY_REALTIME &&
+                     (diff = priority - max,
+                         ++thread->skip_count > diff*diff)))
                 {
                     cores[core].running = thread;
                     break;
@@ -2226,12 +2233,13 @@ unsigned int wakeup_thread(struct thread_entry **list)
             current = bl->wakeup_protocol(thread);
         }
 
-        if (current != NULL && thread->priority < current->priority
-            IF_COP( && thread->core == current->core ))
+        if (current != NULL &&
+            find_first_set_bit(cores[IF_COP_CORE(current->core)].rtr.mask)
+                < current->priority)
         {
-            /* Woken thread is higher priority and exists on the same CPU core;
-             * recommend a task switch. Knowing if this is an interrupt call
-             * would be helpful here. */
+            /* There is a thread ready to run of higher or same priority on
+             * the same core as the current one; recommend a task switch.
+             * Knowing if this is an interrupt call would be helpful here. */
             result |= THREAD_SWITCH;
         }
 #endif /* HAVE_PRIORITY_SCHEDULING */
@@ -2411,6 +2419,11 @@ unsigned int create_thread(void (*function)(void),
     thread->priority = priority;
     thread->skip_count = priority;
     prio_add_entry(&thread->pdist, priority);
+#endif
+
+#ifdef HAVE_IO_PRIORITY
+    /* Default to high (foreground) priority */
+    thread->io_priority = IO_PRIORITY_IMMEDIATE;
 #endif
 
 #if NUM_CORES > 1
@@ -2917,6 +2930,20 @@ int thread_get_priority(unsigned int thread_id)
     return base_priority;
 }
 #endif /* HAVE_PRIORITY_SCHEDULING */
+
+#ifdef HAVE_IO_PRIORITY
+int thread_get_io_priority(unsigned int thread_id)
+{
+    struct thread_entry *thread = thread_id_entry(thread_id);
+    return thread->io_priority;
+}
+
+void thread_set_io_priority(unsigned int thread_id,int io_priority)
+{
+    struct thread_entry *thread = thread_id_entry(thread_id);
+    thread->io_priority = io_priority;
+}
+#endif
 
 /*---------------------------------------------------------------------------
  * Starts a frozen thread - similar semantics to wakeup_thread except that

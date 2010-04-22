@@ -40,6 +40,7 @@
 #include "file.h"
 #include "buffer.h"
 #include "dir.h"
+#include "storage.h"
 #if CONFIG_RTC
 #include "time.h"
 #include "timefuncs.h"
@@ -73,7 +74,7 @@ static unsigned int  cache_build_ticks = 0;
 static unsigned long appflags = 0;
 
 static struct event_queue dircache_queue;
-static long dircache_stack[(DEFAULT_STACK_SIZE + 0x200)/sizeof(long)];
+static long dircache_stack[(DEFAULT_STACK_SIZE + 0x400)/sizeof(long)];
 static const char dircache_thread_name[] = "dircache";
 
 static struct fdbind_queue fdbind_cache[MAX_PENDING_BINDINGS];
@@ -760,6 +761,7 @@ void* dircache_steal_buffer(long *size)
 void dircache_init(void)
 {
     int i;
+    int thread_id;
     
     dircache_initialized = false;
     dircache_initializing = false;
@@ -771,10 +773,14 @@ void dircache_init(void)
     }
     
     queue_init(&dircache_queue, true);
-    create_thread(dircache_thread, dircache_stack,
+    thread_id = create_thread(dircache_thread, dircache_stack,
                 sizeof(dircache_stack), 0, dircache_thread_name
                 IF_PRIO(, PRIORITY_BACKGROUND)
                 IF_COP(, CPU));
+#ifdef HAVE_IO_PRIORITY
+    thread_set_io_priority(thread_id,IO_PRIORITY_BACKGROUND);
+#endif
+
 }
 
 /**

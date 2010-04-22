@@ -16,19 +16,12 @@
 #define HAVE_HOTSWAP
 #endif
 
-
-#if 0 /* disabled since there is no driver (yet) */
-
-#define HW_SAMPR_CAPS       (SAMPR_CAP_44)
+#define HW_SAMPR_CAPS       SAMPR_CAP_ALL
 
 /* define this if you have recording possibility */
 #define HAVE_RECORDING
 
-#define REC_SAMPR_CAPS      (SAMPR_CAP_22)
-#define REC_FREQ_DEFAULT    REC_FREQ_22 /* Default is not 44.1kHz */
-#define REC_SAMPR_DEFAULT   SAMPR_22
-
-#endif
+#define REC_SAMPR_CAPS      SAMPR_CAP_ALL
 
 /* Define bitmask of input sources - recordable bitmask can be defined
    explicitly if different */
@@ -104,9 +97,9 @@
 /* There is no hardware tone control */
 #define HAVE_SW_TONE_CONTROLS
 
-/* We're working on the assumption that the AS3525 has something
-   similar to the AS3514 for audio codec etc */
+/* AS3514 or newer */
 #define HAVE_AS3514
+#define HAVE_AS3543
 
 /* define this if you have a real-time clock */
 #ifndef BOOTLOADER
@@ -119,7 +112,7 @@
 #define HAVE_FAT16SUPPORT
 
 /* The number of bytes reserved for loadable codecs */
-#define CODEC_SIZE 0x100000
+#define CODEC_SIZE (0x100000-0x8000)
 
 /* The number of bytes reserved for loadable plugins */
 #define PLUGIN_BUFFER_SIZE 0x80000
@@ -168,7 +161,7 @@
 #define ROM_START 0x00000000
 
 /* Define this to the CPU frequency */
-#define CPU_FREQ      250000000
+#define CPU_FREQ      240000000
 
 /* Type of LCD */
 #define CONFIG_LCD LCD_SSD1303
@@ -195,7 +188,7 @@
 #define CONFIG_LED LED_VIRTUAL
 
 /* Define this if you have adjustable CPU frequency */
-//#define HAVE_ADJUSTABLE_CPU_FREQ
+#define HAVE_ADJUSTABLE_CPU_FREQ
 
 #define BOOTFILE_EXT    "sansa"
 #define BOOTFILE        "rockbox." BOOTFILE_EXT
@@ -218,3 +211,6 @@
 #define DEFAULT_REC_MIC_GAIN    23
 #define DEFAULT_REC_LEFT_GAIN   23
 #define DEFAULT_REC_RIGHT_GAIN  23
+
+/* Define this if a programmable hotkey is mapped */
+//#define HAVE_HOTKEY

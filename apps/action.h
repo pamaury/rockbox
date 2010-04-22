@@ -136,6 +136,7 @@ enum {
     ACTION_WPS_ABSETA_PREVDIR, /* these should be safe to put together seen as */
     ACTION_WPS_ABSETB_NEXTDIR, /* you shouldnt want to change dir in ab-mode */
     ACTION_WPS_ABRESET,
+    ACTION_WPS_HOTKEY,
     
     /* list and tree page up/down */    
     ACTION_LISTTREE_PGUP,/* optional */
@@ -151,6 +152,7 @@ enum {
     ACTION_TREE_PGRIGHT,/* optional */
     ACTION_TREE_STOP,
     ACTION_TREE_WPS,
+    ACTION_TREE_HOTKEY,
     
     /* radio */
     ACTION_FM_MENU,
@@ -354,7 +356,7 @@ intptr_t get_action_data(void);
 /* return BUTTON_NONE               on error
  *        BUTTON_REPEAT             if repeated press
  *        BUTTON_REPEAT|BUTTON_REL  if release after repeated press
- *        BUTTON_REL                if its a short press = release after press
+ *        BUTTON_REL                if it's a short press = release after press
  *        BUTTON_TOUCHSCREEN        if press
  */
 int action_get_touchscreen_press(short *x, short *y);

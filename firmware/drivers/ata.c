@@ -478,6 +478,7 @@ static int ata_transfer_sectors(unsigned long start,
                 int sectors;
                 int wordcount;
                 int status;
+                int error;
 
                 if (!wait_for_start_of_transfer()) {
                     /* We have timed out waiting for RDY and/or DRQ, possibly
@@ -502,6 +503,7 @@ static int ata_transfer_sectors(unsigned long start,
 
                 /* read the status register exactly once per loop */
                 status = ATA_STATUS;
+                error = ATA_ERROR;
 
                 if (count >= multisectors )
                     sectors = multisectors;
@@ -526,6 +528,9 @@ static int ata_transfer_sectors(unsigned long start,
                 if ( status & (STATUS_BSY | STATUS_ERR | STATUS_DF) ) {
                     perform_soft_reset();
                     ret = -6;
+                    /* no point retrying IDNF, sector no. was invalid */
+                    if (error & ERROR_IDNF)
+                        break;
                     goto retry;
                 }
 
@@ -537,8 +542,14 @@ static int ata_transfer_sectors(unsigned long start,
         }
 
         if(!ret && !wait_for_end_of_transfer()) {
+            int error;
+
+            error = ATA_ERROR;
             perform_soft_reset();
             ret = -4;
+            /* no point retrying IDNF, sector no. was invalid */
+            if (error & ERROR_IDNF)
+                break;
             goto retry;
         }
         break;
@@ -1340,20 +1351,6 @@ int ata_init(void)
 
         DEBUGF("ata: %d sectors per ata request\n",multisectors);
 
-#ifdef MAX_PHYS_SECTOR_SIZE
-        /* Find out the physical sector size */
-        if((identify_info[106] & 0xe000) == 0x6000)
-            phys_sector_mult = BIT_N(identify_info[106] & 0x000f);
-        else
-            phys_sector_mult = 1;
-
-        DEBUGF("ata: %d logical sectors per phys sector", phys_sector_mult);
-
-        if (phys_sector_mult > (MAX_PHYS_SECTOR_SIZE/SECTOR_SIZE))
-            panicf("Unsupported physical sector size: %d",
-                   phys_sector_mult * SECTOR_SIZE);
-#endif
-
         total_sectors = identify_info[60] | (identify_info[61] << 16);
 
 #ifdef HAVE_LBA48
@@ -1375,6 +1372,32 @@ int ata_init(void)
         rc = set_features();
         if (rc)
             return -60 + rc;
+
+#ifdef MAX_PHYS_SECTOR_SIZE
+        /* Find out the physical sector size */
+        if((identify_info[106] & 0xe000) == 0x6000)
+            phys_sector_mult = BIT_N(identify_info[106] & 0x000f);
+        else
+            phys_sector_mult = 1;
+
+        DEBUGF("ata: %d logical sectors per phys sector", phys_sector_mult);
+
+        if (phys_sector_mult > 1)
+        {
+            /* Check if drive really needs emulation  - if we can access
+             * sector 1 then assume the drive will handle it better than
+             * us, and ignore the large physical sectors.
+             */
+            char throwaway[SECTOR_SIZE];
+            rc = ata_transfer_sectors(1, 1, &throwaway, false);
+            if (rc == 0)
+                phys_sector_mult = 1;
+        }
+ 
+        if (phys_sector_mult > (MAX_PHYS_SECTOR_SIZE/SECTOR_SIZE))
+            panicf("Unsupported physical sector size: %d",
+                   phys_sector_mult * SECTOR_SIZE);
+#endif
 
         mutex_lock(&ata_mtx); /* Balance unlock below */
 

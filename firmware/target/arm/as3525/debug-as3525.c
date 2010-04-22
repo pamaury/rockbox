@@ -123,9 +123,11 @@ static int calc_freq(int clk)
             return 0;
 #endif
         case CLK_PROC:
+#if CONFIG_CPU == AS3525 /* not in arm926-ejs */
             if (!(read_cp15()>>30))                 /* fastbus */
                 return calc_freq(CLK_PCLK);
             else                                    /* Synch or Asynch bus*/
+#endif /* CONFIG_CPU == AS3525 */
                 return calc_freq(CLK_FCLK);
         case CLK_FCLK:
             switch(CGU_PROC & 3) {
@@ -141,7 +143,12 @@ static int calc_freq(int clk)
                     return 0;
             }
         case CLK_EXTMEM:
+#if CONFIG_CPU == AS3525
             switch(CGU_PERI & 3) {
+#else
+            /* bits 1:0 of CGU_PERI always read as 0 and source = FCLK */
+            switch(3) {
+#endif
                 case 0:
                     return CLK_MAIN/(((CGU_PERI>>2)& 0xf)+1);
                 case 1:
@@ -149,9 +156,8 @@ static int calc_freq(int clk)
                 case 2:
                     return calc_freq(CLK_PLLB)/(((CGU_PERI>>2)& 0xf)+1);
                 case 3:
-                    return calc_freq(CLK_FCLK)/(((CGU_PERI>>2)& 0xf)+1);
                 default:
-                    return 0;
+                    return calc_freq(CLK_FCLK)/(((CGU_PERI>>2)& 0xf)+1);
             }
         case CLK_PCLK:
             return calc_freq(CLK_EXTMEM)/(((CGU_PERI>>6)& 0x1)+1);
@@ -211,20 +217,20 @@ static int calc_freq(int clk)
         case CLK_USB:
             switch(CGU_USB & 3) {     /* 0-> div=1  other->div=1/(2*n)  */
                 case 0:
-                    if (!((CGU_USB>>2) & 0xf))
+                    if (!((CGU_USB>>2) & 0x7))
                         return CLK_MAIN;
                     else
-                        return CLK_MAIN/(2*((CGU_USB>>2) & 0xf));
+                        return CLK_MAIN/(2*((CGU_USB>>2) & 0x7));
                 case 1:
-                    if (!((CGU_USB>>2) & 0xf))
+                    if (!((CGU_USB>>2) & 0x7))
                         return calc_freq(CLK_PLLA);
                     else
-                        return calc_freq(CLK_PLLA)/(2*((CGU_USB>>2) & 0xf));
+                        return calc_freq(CLK_PLLA)/(2*((CGU_USB>>2) & 0x7));
                 case 2:
-                    if (!((CGU_USB>>2) & 0xf))
+                    if (!((CGU_USB>>2) & 0x7))
                         return calc_freq(CLK_PLLB);
                     else
-                        return calc_freq(CLK_PLLB)/(2*((CGU_USB>>2) & 0xf));
+                        return calc_freq(CLK_PLLB)/(2*((CGU_USB>>2) & 0x7));
                 default:
                     return 0;
             }
@@ -250,17 +256,43 @@ bool __dbg_hw_info(void)
     {
         while(1)
         {
+#ifdef SANSA_C200V2
+        extern int dbop_denoise_accept;
+        extern int dbop_denoise_reject;
+
+        lcd_clear_display();
+        line = 0;
+        lcd_puts(0, line++, "[Submodel:]");
+        lcd_putsf(0, line++, "C200v2 variant %d", c200v2_variant);
+        if (dbop_denoise_accept) {
+            lcd_putsf(0, line++, "DBOP noise: %d%%",
+                      (100*dbop_denoise_reject)/dbop_denoise_accept);
+        } else {
+            lcd_puts(0, line++, "DBOP noise: oo");
+        }
+        lcd_putsf(0, line++, "reject: %d", dbop_denoise_reject);
+        lcd_putsf(0, line++, "accept: %d", dbop_denoise_accept);
+        lcd_update();
+        int btn = button_get_w_tmo(HZ/10);
+        if(btn == (DEBUG_CANCEL|BUTTON_REL))
+            goto end;
+        else if(btn == (BUTTON_DOWN|BUTTON_REL))
+            break;
+        }
+        while(1)
+        {
+#endif
         lcd_clear_display();
         line = 0;
         lcd_puts(0, line++, "[Clock Frequencies:]");
         lcd_puts(0, line++, "     SET       ACTUAL");
 #if CONFIG_CPU == AS3525
         lcd_putsf(0, line++, "922T:%s     %3dMHz",
-#else
-        lcd_putsf(0, line++, "926ejs:%s   %3dMHz",
-#endif
                                         (!(read_cp15()>>30)) ? "FAST " :
                                         (read_cp15()>>31) ? "ASYNC" : "SYNC ",
+#else
+        lcd_putsf(0, line++, "926ejs:        %3dMHz",
+#endif
                                          calc_freq(CLK_PROC)/1000000);
         lcd_putsf(0, line++, "PLLA:%3dMHz    %3dMHz", AS3525_PLLA_FREQ/1000000,
                                                    calc_freq(CLK_PLLA)/1000000);

@@ -87,7 +87,7 @@ show the information for the next song to be played.
            Ogg Vorbis (OGG), FLAC, MPC, AC3, WavPack (WV), ALAC, AAC,
            Shorten (SHN), SID, ADX, NSF, Speex, SPC, APE, WMA, MOD, SAP.\\
     \config{\%ff} & File Frequency (in Hz)\\
-    \config{\%fk} & File Frequency (in KHz)\\
+    \config{\%fk} & File Frequency (in kHz)\\
     \config{\%fm} & File Name\\
     \config{\%fn} & File Name (without extension)\\
     \config{\%fp} & File Path\\
@@ -164,7 +164,7 @@ produce the information for the next file to be played.
   \opt{swcodec}{
     \config{\%xf} & Crossfade setting, in the order: Off, Auto Skip, Man Skip,
            Shuffle, Shuffle and Man Skip, Always\\
-    \config{\%rg} & ReplayGain value in use (x.y dB). If used as a conditional,
+    \config{\%rg} & ReplayGain value in use (x.y~dB). If used as a conditional,
            Replaygain type in use: \config{\%?rg{\textless}Off{\textbar}Track%
            {\textbar}Album{\textbar}TrackShuffle{\textbar}AlbumShuffle%
            {\textbar}No tag{\textgreater}}\\
@@ -197,8 +197,7 @@ produce the information for the next file to be played.
 
 \section{Repeat Mode}
   \begin{tagmap}
-    \config{\%mm} & Repeat mode, 0-4, in the order: Off, All, One, Shuffle
-           \opt{player,recorder,recorderv2fm}{, A-B}\\
+    \config{\%mm} & Repeat mode, 0-4, in the order: Off, All, One, Shuffle, A-B\\
   \end{tagmap}
 Example: \config{\%?mm{\textless}Off{\textbar}All{\textbar}One{\textbar}Shuffle%
 {\textbar}A-B{\textgreater}}
@@ -206,10 +205,12 @@ Example: \config{\%?mm{\textless}Off{\textbar}All{\textbar}One{\textbar}Shuffle%
 \section{Playback Mode}
   \begin{tagmap}
     \config{\%mp} & Play status, 0-4, in the order: Stop, Play, Pause, 
-           Fast Forward, Rewind\\
+           Fast Forward, Rewind, Recording, Recording paused, FM Radio playing,
+           FM Radio muted\\
   \end{tagmap}
 Example: \config{\%?mp{\textless}Stop{\textbar}Play{\textbar}Pause{\textbar}%
-Ffwd{\textbar}Rew{\textgreater}}
+Ffwd{\textbar}Rew{\textbar}Rec{\textbar}Rec pause{\textbar}FM{\textbar}%
+FM pause{\textgreater}}
 
 \section{Current Screen}
   \begin{tagmap}
@@ -254,7 +255,7 @@ when used with conditional viewports.
 Example: \config{\%?mv2.5{\textless}Volume changing{\textbar}\%pv{\textgreater}}
 
 The example above will display the text ``Volume changing'' if the volume is
-being changed and 2.5 secs after the volume button has been released. After
+being changed and 2.5 seconds after the volume button has been released. After
 that, it will display the volume value.
 
 \section{Settings}

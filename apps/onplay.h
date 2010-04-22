@@ -21,7 +21,7 @@
 #ifndef _ONPLAY_H_
 #define _ONPLAY_H_
 
-int onplay(char* file, int attr, int from_screen);
+int onplay(char* file, int attr, int from_screen, bool hotkey);
 
 enum {
     ONPLAY_MAINMENU = -1,
@@ -30,5 +30,9 @@ enum {
     ONPLAY_START_PLAY,
     ONPLAY_PLAYLIST,
 };
+
+#ifdef HAVE_HOTKEY
+const char* get_hotkey_desc(int hk_func);
+#endif
 
 #endif

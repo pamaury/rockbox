@@ -58,6 +58,9 @@
 #define NUM_PRIORITIES           32
 #define PRIORITY_IDLE            32  /* Priority representative of no tasks */
 
+#define IO_PRIORITY_IMMEDIATE    0
+#define IO_PRIORITY_BACKGROUND   32
+
 #if CONFIG_CODEC == SWCODEC
 
 #ifdef HAVE_RECORDING
@@ -250,11 +253,13 @@ struct thread_entry
 #if NUM_CORES > 1
     struct corelock *obj_cl;   /* Object corelock where thead is blocked -
                                   states: STATE_BLOCKED/STATE_BLOCKED_W_TMO */
+    struct corelock waiter_cl; /* Corelock for thread_wait */
+    struct corelock slot_cl;   /* Corelock to lock thread slot */
+    unsigned char core;        /* The core to which thread belongs */
 #endif
     struct thread_entry *queue; /* List of threads waiting for thread to be
                                   removed */
-#ifdef HAVE_EXTENDED_MESSAGING_AND_NAME
-    #define HAVE_WAKEUP_EXT_CB
+#ifdef HAVE_WAKEUP_EXT_CB
     void (*wakeup_ext_cb)(struct thread_entry *thread); /* Callback that
                                   performs special steps needed when being
                                   forced off of an object's wait queue that
@@ -276,23 +281,19 @@ struct thread_entry
                                   base priority */
     int skip_count;            /* Number of times skipped if higher priority
                                   thread was running */
-#endif
-    uint16_t id;               /* Current slot id */
-    unsigned short stack_size; /* Size of stack in bytes */
-#ifdef HAVE_PRIORITY_SCHEDULING
     unsigned char base_priority; /* Base priority (set explicitly during
                                   creation or thread_set_priority) */
     unsigned char priority;    /* Scheduled priority (higher of base or
                                   all threads blocked by this one) */
 #endif
+    uint16_t id;               /* Current slot id */
+    unsigned short stack_size; /* Size of stack in bytes */
     unsigned char state;       /* Thread slot state (STATE_*) */
 #ifdef HAVE_SCHEDULER_BOOSTCTRL
     unsigned char cpu_boost;   /* CPU frequency boost flag */
 #endif
-#if NUM_CORES > 1
-    unsigned char core;        /* The core to which thread belongs */
-    struct corelock waiter_cl; /* Corelock for thread_wait */
-    struct corelock slot_cl;   /* Corelock to lock thread slot */
+#ifdef HAVE_IO_PRIORITY
+    unsigned char io_priority;
 #endif
 };
 
@@ -539,6 +540,10 @@ unsigned int wakeup_thread(struct thread_entry **list);
 int thread_set_priority(unsigned int thread_id, int priority);
 int thread_get_priority(unsigned int thread_id);
 #endif /* HAVE_PRIORITY_SCHEDULING */
+#ifdef HAVE_IO_PRIORITY
+void thread_set_io_priority(unsigned int thread_id, int io_priority);
+int thread_get_io_priority(unsigned int thread_id);
+#endif /* HAVE_IO_PRIORITY */
 #if NUM_CORES > 1
 unsigned int switch_core(unsigned int new_core);
 #endif

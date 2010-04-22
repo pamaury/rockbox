@@ -757,12 +757,14 @@ static int dirbrowse()
 #endif
 
             case ACTION_STD_CONTEXT:
+            case ACTION_TREE_HOTKEY:
             {
+                bool hotkey = button == ACTION_TREE_HOTKEY;
                 int onplay_result;
                 int attr = 0;
 
                 if(!numentries)
-                    onplay_result = onplay(NULL, 0, curr_context);
+                    onplay_result = onplay(NULL, 0, curr_context, hotkey);
                 else {
 #ifdef HAVE_TAGCACHE
                     if (id3db)
@@ -788,7 +790,7 @@ static int dirbrowse()
                             snprintf(buf, sizeof buf, "/%s",
                                      dircache[tc.selected_item].name);
                     }
-                    onplay_result = onplay(buf, attr, curr_context);
+                    onplay_result = onplay(buf, attr, curr_context, hotkey);
                 }
                 switch (onplay_result)
                 {
@@ -1077,7 +1079,13 @@ bool bookmark_play(char *resume_file, int index, int offset, int seed,
             peek_filename = playlist_peek(index);
             
             if (peek_filename == NULL)
-                return false;
+            {
+                /* playlist has shrunk, search from the top */
+                index = 0;
+                peek_filename = playlist_peek(index);
+                if (peek_filename == NULL)
+                    return false;
+            }
                 
             if (strcmp(strrchr(peek_filename, '/') + 1, filename))
             {

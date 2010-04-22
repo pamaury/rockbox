@@ -1,5 +1,5 @@
 /*
- * This config file is for the Sandisk Sansa Fuze
+ * This config file is for the Sandisk Sansa Fuze v2
  */
 #define TARGET_TREE /* this target is using the target tree system */
 
@@ -10,9 +10,9 @@
 #define HW_SAMPR_CAPS       SAMPR_CAP_ALL
 
 /* define this if you have recording possibility */
-//#define HAVE_RECORDING
+#define HAVE_RECORDING
 
-//#define REC_SAMPR_CAPS      SAMPR_CAP_ALL
+#define REC_SAMPR_CAPS      SAMPR_CAP_ALL
 
 /* Default recording levels */
 #define DEFAULT_REC_MIC_GAIN    23
@@ -21,7 +21,7 @@
 
 /* Define bitmask of input sources - recordable bitmask can be defined
    explicitly if different */
-#define INPUT_SRC_CAPS (SRC_CAP_MIC | SRC_CAP_FMRADIO)
+#define INPUT_SRC_CAPS (SRC_CAP_MIC /*| SRC_CAP_FMRADIO*/)
 
 /* define this if you have a bitmap LCD display */
 #define HAVE_LCD_BITMAP
@@ -86,12 +86,12 @@
 #define LCD_WIDTH  220
 #define LCD_HEIGHT 176
 #define LCD_DEPTH  16   /* 65536 colours */
-#define LCD_PIXELFORMAT RGB565 /* rgb565 */
+#define LCD_PIXELFORMAT RGB565SWAPPED /* rgb565 swapped */
 
 
-/* We're working on the assumption that the AS3525 has something
-   similar to the AS3514 for audio codec etc */
+/* AS3514 or newer */
 #define HAVE_AS3514
+#define HAVE_AS3543
 
 /* Define this if you have a software controlled poweroff */
 #define HAVE_SW_POWEROFF
@@ -100,7 +100,7 @@
 #define HAVE_FAT16SUPPORT
 
 /* The number of bytes reserved for loadable codecs */
-#define CODEC_SIZE 0x100000
+#define CODEC_SIZE (0x100000-0x8000)
 
 /* The number of bytes reserved for loadable plugins */
 #define PLUGIN_BUFFER_SIZE 0x80000
@@ -117,23 +117,23 @@
 
 /* Main LCD backlight brightness range and defaults */
 #define MIN_BRIGHTNESS_SETTING      1
-#define MAX_BRIGHTNESS_SETTING     12
+#define MAX_BRIGHTNESS_SETTING     25
 #define DEFAULT_BRIGHTNESS_SETTING  6
 
 /* define this if you have a light associated with the buttons */
 #define HAVE_BUTTON_LIGHT
 
 /* Which backlight fading type? */
-//#define CONFIG_BACKLIGHT_FADING BACKLIGHT_FADING_SW_SETTING
+#define CONFIG_BACKLIGHT_FADING BACKLIGHT_FADING_SW_SETTING
 
 /* define this if the unit uses a scrollwheel for navigation */
-//#define HAVE_SCROLLWHEEL
+#define HAVE_SCROLLWHEEL
 /* define to activate advanced wheel acceleration code */
-//#define HAVE_WHEEL_ACCELERATION
+#define HAVE_WHEEL_ACCELERATION
 /* define from which rotation speed [degree/sec] on the acceleration starts */
-//#define WHEEL_ACCEL_START 540
+#define WHEEL_ACCEL_START 540
 /* define type of acceleration (1 = ^2, 2 = ^3, 3 = ^4) */
-//#define WHEEL_ACCELERATION 1
+#define WHEEL_ACCELERATION 1
 
 /* define this if you have a flash memory storage */
 #define HAVE_FLASH_STORAGE
@@ -165,7 +165,7 @@
 #define CURRENT_RECORD     CURRENT_NORMAL
 
 /* Define this to the CPU frequency */
-#define CPU_FREQ      250000000
+#define CPU_FREQ      240000000
 
 /* Type of LCD */
 #define CONFIG_LCD LCD_FUZE
@@ -196,7 +196,7 @@
 #endif /* !BOOTLOADER */
 
 /* Define this if you have adjustable CPU frequency */
-//#define HAVE_ADJUSTABLE_CPU_FREQ
+#define HAVE_ADJUSTABLE_CPU_FREQ
 
 #define BOOTFILE_EXT    "sansa"
 #define BOOTFILE        "rockbox." BOOTFILE_EXT
@@ -206,3 +206,5 @@
 
 #define INCLUDE_TIMEOUT_API
 
+/* Define this if a programmable hotkey is mapped */
+#define HAVE_HOTKEY

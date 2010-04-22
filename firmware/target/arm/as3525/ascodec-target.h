@@ -30,6 +30,7 @@
 #include "as3514.h"
 #include "kernel.h"       /* for struct wakeup */
 #include "clock-target.h" /* for AS3525_I2C_PRESCALER */
+#include "system-arm.h"
 
 /*  Charge Pump and Power management Settings  */
 #define AS314_CP_DCDC3_SETTING    \
@@ -72,6 +73,19 @@ struct ascodec_request {
 void ascodec_init(void);
 
 int ascodec_write(unsigned int index, unsigned int value);
+
+#if CONFIG_CPU == AS3525v2
+static inline void ascodec_write_pmu(unsigned int index, unsigned int subreg,
+                                     unsigned int value)
+{
+    /* we disable interrupts to make sure no operation happen on the i2c bus
+     * between selecting the sub register and writing to it */
+    int oldstatus = disable_irq_save();
+    ascodec_write(AS3543_PMU_ENABLE, 8|subreg);
+    ascodec_write(index, value);
+    restore_irq(oldstatus);
+}
+#endif
 
 int ascodec_read(unsigned int index);
 

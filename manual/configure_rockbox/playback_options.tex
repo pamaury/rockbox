@@ -43,7 +43,7 @@ you to configure settings related to audio playback.
         Setting the End Point (B) is done accordingly using
         \ActionWpsAbSetBNextDir{}.  To reset the markers press \ActionWpsAbReset{}.
     }%
-    \opt{ipod,IAUDIO_X5_PAD,ONDIO_PAD,PLAYER_PAD}{%
+    \opt{ipod,IAUDIO_X5_PAD,ONDIO_PAD,PLAYER_PAD,PBELL_VIBE500_PAD}{%
         To set the Start Point (A) press \ActionWpsBrowse{}. The following
         press of \ActionWpsBrowse{} will set the End Point (B), and a third
         successive \ActionWpsBrowse{} will reset the markers.
@@ -62,7 +62,7 @@ you to configure settings related to audio playback.
   The setting \setting{FF/RW Min Step} controls the initial speed and \setting{FF/RW Accel} controls the acceleration.
 
 \opt{disk_storage}{
-  \section{Anti-Skip Buffer}
+  \section{\label{ref:AntiSkipBuf}Anti-Skip Buffer}
     This setting controls how early Rockbox starts refilling the music buffer
     from the hard drive when playing. A longer Anti-Skip Buffer helps prevent
     skips in music playback if Rockbox has trouble reading from the disk.
@@ -153,7 +153,7 @@ you to configure settings related to audio playback.
          \includegraphics[width=14cm]{configure_rockbox/images/crossfade_graphic.png}
     }%\opt{crossfade}
     
-  \section{Replaygain}
+  \section{\label{ref:ReplayGain}Replaygain}
     This allows you to control the replaygain function.
     The purpose of replaygain is to adjust the volume of the music played
     so that all songs (or albums, depending on your settings) have the
@@ -194,7 +194,7 @@ you to configure settings related to audio playback.
         much, so here you can compensate for that. Please note that a
         (large) positive pre-amp setting can cause clipping, unless
         prevent clipping is enabled.  The pre-amp can be set to any
-        decibel (dB) value between -12dB and +12dB, in increments of 0.1{}dB.
+        decibel (dB) value between -12~dB and +12~dB, in increments of 0.5~dB.
       \end{description}
 
   \section{Track Skip Beep}
@@ -204,7 +204,7 @@ you to configure settings related to audio playback.
 }%\opt{swcodec}
 
 \opt{spdif_power}{
-  \section{Optical Output}
+  \section{\label{ref:SPDIF_OnOff}Optical Output}
     Enables or disables the optical S/PDIF output to 
     allow a digital connection to a suitable external decoder.  To enable
     optical output, set to \setting{Yes}

@@ -61,9 +61,8 @@ static const struct button_mapping button_context_wps[]  = {
     { ACTION_WPS_BROWSE,    BUTTON_ON|BUTTON_REL,       BUTTON_ON },
     { ACTION_WPS_MENU,      BUTTON_MENU|BUTTON_REL,     BUTTON_MENU },
     { ACTION_WPS_CONTEXT,   BUTTON_PLAY|BUTTON_REPEAT,  BUTTON_PLAY },
-    { ACTION_WPS_ID3SCREEN, BUTTON_MENU|BUTTON_ON,      BUTTON_NONE },
     { ACTION_STD_KEYLOCK,   BUTTON_MENU|BUTTON_STOP,    BUTTON_NONE },
-    { ACTION_WPS_VIEW_PLAYLIST,BUTTON_MENU|BUTTON_ON,   BUTTON_NONE },
+    { ACTION_WPS_HOTKEY,    BUTTON_MENU|BUTTON_ON,      BUTTON_NONE },
 
     LAST_ITEM_IN_LIST
 };
@@ -79,6 +78,7 @@ static const struct button_mapping button_context_settings[] = {
 
 static const struct button_mapping button_context_tree[]  = {
     { ACTION_TREE_WPS,      BUTTON_ON,     BUTTON_NONE },
+    { ACTION_TREE_HOTKEY,   BUTTON_MENU|BUTTON_ON,  BUTTON_NONE },
     
     LAST_ITEM_IN_LIST__NEXTLIST(CONTEXT_STD)
 }; /* button_context_listtree */
