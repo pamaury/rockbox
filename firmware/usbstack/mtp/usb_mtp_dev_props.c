@@ -18,7 +18,7 @@
  *
  ****************************************************************************/
 #include "usb_mtp_internal.h"
-#define LOGF_ENABLE
+/*#define LOGF_ENABLE*/
 #include "logf.h"
 
 #if 1
