@@ -438,6 +438,17 @@ static int mtp_tag_num;
 static struct tagcache_search tcs;
 static struct tagcache_search_clause clause;
 
+bool audio_info(struct mp3entry* id3, const char* trackname)
+{
+    int fd = open(trackname, O_RDONLY);
+    if(fd < 0)
+        return false;
+
+    bool res = get_metadata(id3, fd, trackname);
+    close(fd);
+    return res;
+}
+
 static bool tagcache_copy_tag(char *filename, int tag, bool numeric)
 {
     return false;
@@ -486,8 +497,7 @@ static bool tagcache_copy_tag(char *filename, int tag, bool numeric)
     if(tagcache_copy_tag(mtp_path, tagname, false)) \
         result = mtp_tag_str; \
     /* Try metadata */ \
-    /* NOTE: mtp3info returns false on success oO */ \
-    else if(!mp3info(&mtp_id3, mtp_path)) \
+    else if(audio_info(&mtp_id3, mtp_path)) \
         result = mtp_id3.id3name; \
     /* Failure */ \
     else \
@@ -531,8 +541,7 @@ static bool tagcache_copy_tag(char *filename, int tag, bool numeric)
     if(tagcache_copy_tag(mtp_path, tagname, false)) \
         result = mtp_tag_num; \
     /* Try metadata */ \
-    /* NOTE: mtp3info returns false on success oO */ \
-    else if(!mp3info(&mtp_id3, mtp_path)) \
+    else if(audio_info(&mtp_id3, mtp_path)) \
         result = mtp_id3.id3name; \
     /* Failure */ \
     else \

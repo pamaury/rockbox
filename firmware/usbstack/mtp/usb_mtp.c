@@ -794,15 +794,33 @@ int usb_mtp_get_ms_descriptor(uint16_t wValue, uint16_t wIndex, unsigned char *d
         {
             PACK_DATA(dest, compat_id_header);
             PACK_DATA(dest, compat_id_mtp_function);
-        
+
             return compat_id_header.dwLength;
         }
     }
     else
     {
+        #if 0
         logf("mtp: invalid request (probably from libmtp)");
         usb_ack_control();
         usb_drv_stall(EP_CONTROL, true, true);
+        #else
+        logf("mtp: invalid request (probably from libmtp), answer the same as compat ID");
+        compat_id_header.bCount = 1; /* One function */
+        compat_id_header.dwLength = sizeof(struct usb_ms_compat_id_descriptor_header) + 
+            compat_id_header.bCount * sizeof(struct usb_ms_compat_id_descriptor_function);
+        
+        compat_id_mtp_function.bRESERVED1 = 0x1; /* written in the spec */
+        compat_id_mtp_function.bFirstInterfaceNumber = usb_interface;
+        
+        if((int)compat_id_header.dwLength <= max_length)
+        {
+            PACK_DATA(dest, compat_id_header);
+            PACK_DATA(dest, compat_id_mtp_function);
+
+            return compat_id_header.dwLength;
+        }
+        #endif
     }
     
     return 0;

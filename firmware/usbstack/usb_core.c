@@ -398,6 +398,14 @@ void usb_core_init(void)
         if(drivers[i].init != NULL)
             drivers[i].init();
 
+    /* Select PID/VID pair based on MTP driver state and USB_PRODUCT_ID_MTP definition */
+    #if defined(USB_PRODUCT_ID_MTP) && defined(USB_ENABLE_MTP)
+    if(drivers[USB_DRIVER_MTP].enabled)
+        device_descriptor.idProduct = USB_PRODUCT_ID_MTP;
+    else
+        device_descriptor.idProduct = USB_PRODUCT_ID;
+    #endif
+
     initialized = true;
     usb_state = DEFAULT;
     logf("usb_core_init() finished");
