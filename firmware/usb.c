@@ -5,7 +5,7 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id: usb.c 21208 2009-06-08 00:19:16Z kkurbjun $
+ * $Id$
  *
  * Copyright (C) 2002 by Linus Nielsen Feltzing
  *
