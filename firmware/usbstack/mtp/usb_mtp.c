@@ -415,7 +415,9 @@ static void continue_recv_split_data(int length)
 void receive_split_data(recv_split_routine rct, finish_recv_split_routine frst, void *user)
 {
     if(rct == NULL || frst == NULL)
+    {
         logf("mtp: error: receive_split_data called with a NULL function ptr, your DAP will soon explode");
+    }
     
     mtp_state.rem_bytes = 0;
     mtp_state.recv_split = rct;
@@ -443,7 +445,9 @@ static void continue_send_split_data(void)
 void send_split_data(uint32_t nb_bytes, send_split_routine fn, finish_send_split_routine fsst, void *user)
 {
     if(fn == NULL || fsst == NULL)
+    {
         logf("mtp: error: send_split_data called with a NULL function ptr, your DAP will soon explode");
+    }
     
     mtp_state.send_split = fn,
     mtp_state.finish_send_split = fsst;
@@ -777,6 +781,7 @@ static int usb_ack_control(void)
 #ifdef USB_ENABLE_MS_DESCRIPTOR
 int usb_mtp_get_ms_descriptor(uint16_t wValue, uint16_t wIndex, unsigned char *dest, int max_length)
 {
+    (void) wValue;
     logf("mtp: get_ms_descriptor(%d,%d)", wValue, wIndex);
     
     if(wIndex == USB_MS_DT_COMPAT_ID)
@@ -968,7 +973,9 @@ void usb_mtp_transfer_complete(int ep,int dir, int status, int length)
                 break;
             }
             if(status != 0)
+            {
                 logf("mtp: response transfer error");
+            }
             /* wait for next command */
             state = WAITING_FOR_COMMAND;
             usb_drv_recv(ep_bulk_out, recv_buffer, 1024);
