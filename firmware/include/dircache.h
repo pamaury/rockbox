@@ -132,7 +132,6 @@ void dircache_disable(void);
  */
 const struct dircache_entry* dircache_get_entry_ptr_ex(const char *path, bool go_down);
 const struct dircache_entry *dircache_get_entry_ptr(const char *filename);
-const struct dircache_entry *dircache_get_root_entry_ptr(void);
 bool dircache_is_valid_ptr(const struct dircache_entry *entry);
 void dircache_copy_path(const struct dircache_entry *entry, char *buf, int size);
 

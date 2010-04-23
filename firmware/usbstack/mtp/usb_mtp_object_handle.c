@@ -199,53 +199,6 @@ const char *get_object_filename(uint32_t handle)
     return mtp_handle_to_dircache_entry(handle, false)->d_name;
 }
 
-#if 0
-static const struct dircache_entry* my_dircache_get_entry_ptr(const char *path)
-{
-    const struct dircache_entry *cache_entry;
-    char namecopy[MAX_PATH*2];
-    char* part;
-    char* end;
-    bool at_root = true;
-
-    strlcpy(namecopy, path, sizeof(namecopy));
-    cache_entry = dircache_get_root_entry_ptr();
-    
-    for ( part = strtok_r(namecopy, "/", &end); part;
-          part = strtok_r(NULL, "/", &end))
-    {
-        if(!at_root)
-        {
-            if(cache_entry->down == NULL)
-                return NULL;
-            cache_entry = cache_entry->down;
-        }
-        else
-            at_root = false;
-        /* scan dir for name */
-        while (1)
-        {
-            if(cache_entry == NULL)
-            {
-                return NULL;
-            }
-            else if (cache_entry->name_len == 0)
-            {
-                cache_entry = cache_entry->next;
-                continue;
-            }
-
-            if (!strcasecmp(part, cache_entry->d_name))
-                break;
-
-            cache_entry = cache_entry->next;
-        }
-    }
-
-    return cache_entry;
-}
-#endif
-
 uint32_t get_object_handle_by_name(const char *ptr)
 {
     /* don't accept root */
