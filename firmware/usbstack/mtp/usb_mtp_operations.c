@@ -545,19 +545,30 @@ static void send_object_info_split_routine(unsigned char *data, int length, uint
     }
  
     /* if file size is nonzero, add a pending OI (except if there is one) */
-    if(oi.object_format != OBJ_FMT_ASSOCIATION && oi.compressed_size != 0)
+    /* FIXME: the host is allowed to "send an object" of size 0 but is not required to. This means that
+     * there could be a pending object of size 0 at any point because the host never sent the object */
+    if(oi.object_format != OBJ_FMT_ASSOCIATION /*&& oi.compressed_size != 0*/)
     {
+        /* if there is a pending object, check that it is of size 0 */
         if(mtp_state.has_pending_oi)
         {
-            logf("mtp: oops, there is a pending object info");
-            return fail_op_with_ex(ERROR_GENERAL_ERROR, NO_DATA_PHASE, "there is a pending object info");
+            if(mtp_state.pending_oi.size != 0)
+            {
+                logf("mtp: oops, there is a pending object info of size > 0");
+                return fail_op_with_ex(ERROR_GENERAL_ERROR, NO_DATA_PHASE, "there is a pending object info of size > 0");
+            }
+            else
+            {
+                logf("mtp: there is a pending object of size 0, complete it before");
+                mtp_state.has_pending_oi = false;
+            }
         }
         mtp_state.pending_oi.handle = this_handle;
         mtp_state.pending_oi.size = oi.compressed_size;
         mtp_state.has_pending_oi = true;
         logf("mtp: pending OI created");
     }
- 
+
     mtp_cur_resp.code = ERROR_OK;
     mtp_cur_resp.nb_parameters = 3;
     mtp_cur_resp.param[0] = st->stor_id;
@@ -625,7 +636,8 @@ static void send_object_split_routine(unsigned char *data, int length, uint32_t 
         
         st->first_xfer = false;
     }
-    
+
+    logf("write %d bytes", length);
     if(write(st->fd, data, length) < 0)
     {
         logf("mtp: write error: errno=%d", errno);
@@ -706,11 +718,11 @@ bool recursive_delete(uint32_t handle)
     
     if(is_directory_object(handle))
     {
-        bool bret;
+        bool bret = true; /* in case the directory is empty */
         uint16_t err = generic_list_files(0x0, handle, &lff_delete, (void *)&bret);
         if(err != ERROR_OK)
         {
-            logf("mtp: oops, something went wrong with generic_list_file !");
+            errorf("mtp: oops, something went wrong with generic_list_file !");
             return false;
         }
         if(!bret)
@@ -718,25 +730,29 @@ bool recursive_delete(uint32_t handle)
         
         copy_object_path(handle, path, MAX_PATH);
         logf("mtp: delete dir '%s'", path);
-        /*
+
+        #if 1
         int ret = rmdir(path);
         if(ret != 0)
-            logf("mtp: error: rmdir ret=%d", ret);
+            errorf("mtp: error: rmdir ret=%d", ret);
         return ret == 0;
-        */
-        return true;
+        #else
+        return false;
+        #endif
     }
     else
     {
         copy_object_path(handle, path, MAX_PATH);
         logf("mtp: delete file '%s'", path);
-        /*
+
+        #if 1
         int ret = remove(path);
         if(ret != 0)
-            logf("mtp: error: remove ret=%d", ret);
+            errorf("mtp: error: remove ret=%d", ret);
         return ret == 0;
-        */
-        return true;
+        #else
+        return false;
+        #endif
     }
 }
 
