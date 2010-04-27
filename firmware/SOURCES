@@ -258,7 +258,8 @@ drivers/mas.c
 #if !defined(SIMULATOR) && !defined(BOOTLOADER)
 #if defined(HAVE_UDA1380)
 drivers/audio/uda1380.c
-#elif defined(HAVE_WM8751)
+#elif defined(HAVE_WM8751) \
+   || defined(HAVE_WM8750)
 drivers/audio/wm8751.c
 #elif defined(HAVE_WM8978)
 drivers/audio/wm8978.c
@@ -414,11 +415,11 @@ target/arm/pnx0101/timer-pnx0101.c
 target/arm/as3525/system-as3525.c
 target/arm/as3525/kernel-as3525.c
 target/arm/as3525/timer-as3525.c
-#ifdef HAVE_SCROLLWHEEL
-target/arm/as3525/scrollwheel-as3525.c
-#endif
 #if CONFIG_CPU == AS3525
 target/arm/as3525/sd-as3525.c
+#ifdef HAVE_SCROLLWHEEL
+target/arm/as3525/scrollwheel-as3525.c
+#endif /* HAVE_SCROLLWHEEL */
 #else /* AS3535v2 */
 target/arm/as3525/sd-as3525v2.c
 #endif
@@ -885,9 +886,10 @@ target/arm/imx31/debug-imx31.c
 target/arm/imx31/dvfs_dptc-imx31.c
 target/arm/imx31/gpio-imx31.c
 target/arm/imx31/i2c-imx31.c
+target/arm/imx31/iomuxc-imx31.c
 target/arm/imx31/mc13783-imx31.c
 target/arm/imx31/mmu-imx31.c
-target/arm/imx31/rolo_restart.S
+target/arm/imx31/rolo_restart_firmware.S
 target/arm/imx31/sdma-imx31.c
 target/arm/imx31/spi-imx31.c
 target/arm/imx31/gigabeat-s/adc-gigabeat-s.c
@@ -1616,3 +1618,24 @@ target/arm/usb-fw-pp502x.c
 #endif /* SIMULATOR */
 #endif
 
+#ifdef MPIO_HD200
+#ifndef SIMULATOR
+/* TODO: currently including all files */
+target/coldfire/mpio/hd200/adc-hd200.c
+target/coldfire/mpio/hd200/button-hd200.c
+target/coldfire/mpio/hd200/lcd-hd200.c
+target/coldfire/mpio/hd200/lcd-as-hd200.S
+target/coldfire/mpio/hd200/power-hd200.c
+target/coldfire/mpio/hd200/powermgmt-hd200.c
+target/coldfire/mpio/hd200/backlight-hd200.c
+target/coldfire/mpio/hd200/system-hd200.c
+target/coldfire/mpio/hd200/usb-hd200.c
+target/coldfire/mpio/fmradio_i2c-mpio.c
+target/coldfire/mpio/ata-mpio.c
+target/coldfire/mpio/ata-as-mpio.S
+#ifndef BOOTLOADER
+target/coldfire/mpio/audio-mpio.c
+target/coldfire/wmcodec-coldfire.c
+#endif /* BOOTLOADER */
+#endif /* SIMULATOR */
+#endif

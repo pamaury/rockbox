@@ -38,7 +38,7 @@
 #include "uda1380.h"
 #elif defined(HAVE_UDA1341)
 #include "uda1341.h"
-#elif defined(HAVE_WM8751)
+#elif defined(HAVE_WM8750) || defined(HAVE_WM8751)
 #include "wm8751.h"
 #elif defined(HAVE_WM8978)
 #include "wm8978.h"
@@ -64,6 +64,20 @@
 #elif defined(HAVE_AK4537)
 #include "ak4537.h"
 #endif
+
+
+
+#define ONE_DB 10
+
+#if !defined(VOLUME_MIN) && !defined(VOLUME_MAX)
+#warning define for VOLUME_MIN and VOLUME_MAX is missing
+#define VOLUME_MIN -700
+#define VOLUME_MAX  0
+#endif
+
+/* volume/balance/treble/bass interdependency main part */
+#define VOLUME_RANGE (VOLUME_MAX - VOLUME_MIN)
+
 
 /* convert caps into defines */
 #ifdef AUDIOHW_CAPS
@@ -207,12 +221,6 @@ void audiohw_set_prescaler(int val);
  */
 void audiohw_set_balance(int val);
 #endif
-
-/**
- * Mute or enable sound.
- * @param mute true or false.
- */
-void audiohw_mute(bool mute);
 
 #ifdef AUDIOHW_HAVE_TREBLE
 /**

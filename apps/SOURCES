@@ -158,6 +158,9 @@ dsp_cf.S
 eq_cf.S	 	
 #elif defined(CPU_ARM)
 dsp_arm.S
+#if ARM_ARCH >= 6
+dsp_arm_v6.S
+#endif
 eq_arm.S
 #endif
 #endif
@@ -276,4 +279,6 @@ keymaps/keymap-yh8xx_yh9xx.c
 keymaps/keymap-mini2440.c
 #elif CONFIG_KEYPAD == PBELL_VIBE500_PAD
 keymaps/keymap-vibe500.c
+#elif CONFIG_KEYPAD == MPIO_HD200_PAD
+keymaps/keymap-mpio-hd200.c
 #endif

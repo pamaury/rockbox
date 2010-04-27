@@ -131,6 +131,7 @@ bool sd_enabled = false;
 
 #if defined(HAVE_MULTIDRIVE)
 static bool hs_card = false;
+#define EXT_SD_BITS (1<<2)
 #endif
 
 static struct wakeup transfer_completion_signal;
@@ -141,13 +142,8 @@ static volatile unsigned int transfer_error[NUM_VOLUMES];
 static unsigned char aligned_buffer[UNALIGNED_NUM_SECTORS* SD_BLOCK_SIZE] __attribute__((aligned(32)));   /* align on cache line size */
 static unsigned char *uncached_buffer = UNCACHED_ADDR(&aligned_buffer[0]);
 
-static inline void mci_delay(void)
-{
-    int i = 0xffff;
-    do {
-        asm volatile("nop\n");
-    } while (--i);
-}
+
+static inline void mci_delay(void) { udelay(1000) ; }
 
 
 static inline bool card_detect_target(void)
@@ -158,6 +154,7 @@ static inline bool card_detect_target(void)
     return false;
 #endif
 }
+
 
 #ifdef HAVE_HOTSWAP
 static int sd1_oneshot_callback(struct timeout *tmo)
@@ -176,12 +173,13 @@ static int sd1_oneshot_callback(struct timeout *tmo)
     return 0;
 }
 
-void INT_GPIOA(void)
+void sd_gpioa_isr(void)
 {
     static struct timeout sd1_oneshot;
+    if (GPIOA_MIS & EXT_SD_BITS)
+        timeout_register(&sd1_oneshot, sd1_oneshot_callback, (3*HZ/10), 0);
     /* acknowledge interrupt */
-    GPIOA_IC = (1<<2);
-    timeout_register(&sd1_oneshot, sd1_oneshot_callback, (3*HZ/10), 0);
+    GPIOA_IC = EXT_SD_BITS;
 }
 #endif  /* HAVE_HOTSWAP */
 
@@ -483,15 +481,12 @@ static void init_pl180_controller(const int drive)
 #ifdef HAVE_MULTIDRIVE
     VIC_INT_ENABLE =
         (drive == INTERNAL_AS3525) ? INTERRUPT_NAND : INTERRUPT_MCI0;
-
-    /* setup isr for microsd monitoring */
-    VIC_INT_ENABLE = (INTERRUPT_GPIOA);
     /* clear previous irq */
-    GPIOA_IC = (1<<2);
+    GPIOA_IC = EXT_SD_BITS;
     /* enable edge detecting */
-    GPIOA_IS &= ~(1<<2);
+    GPIOA_IS &= ~EXT_SD_BITS;
     /* detect both raising and falling edges */
-    GPIOA_IBE |= (1<<2);
+    GPIOA_IBE |= EXT_SD_BITS;
 
 #else
     VIC_INT_ENABLE = INTERRUPT_NAND;
@@ -914,9 +909,9 @@ tCardInfo *card_get_info_target(int card_no)
 void card_enable_monitoring_target(bool on)
 {
     if (on) /* enable interrupt */
-        GPIOA_IE |= (1<<2);
+        GPIOA_IE |= EXT_SD_BITS;
     else    /* disable interrupt */
-        GPIOA_IE &= ~(1<<2);
+        GPIOA_IE &= ~EXT_SD_BITS;
 }
 #endif /* HAVE_HOTSWAP */
 
