@@ -629,9 +629,11 @@ uint32_t audio_format_to_object_format(unsigned int type)
     switch(type)
     {
         case AFMT_MPA_L1:       /* MPEG Audio layer 1 */
+            return OBJ_FMT_UNDEF_AUDIO;
         case AFMT_MPA_L2:       /* MPEG Audio layer 2 */
+            return OBJ_FMT_MP2;
         case AFMT_MPA_L3:       /* MPEG Audio layer 3 */
-            return OBJ_FMT_MPEG;
+            return OBJ_FMT_MP3;
 #if CONFIG_CODEC == SWCODEC
         case AFMT_AIFF:         /* Audio Interchange File Format */
             return OBJ_FMT_AIFF;

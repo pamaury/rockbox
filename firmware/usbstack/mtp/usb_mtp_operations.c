@@ -35,7 +35,7 @@ static const struct mtp_string mtp_ext =
 
 static const struct mtp_array_uint16_t mtp_op_supported =
 {
-    23,
+    22,
     {MTP_OP_GET_DEV_INFO,
      MTP_OP_OPEN_SESSION,
      MTP_OP_CLOSE_SESSION,
@@ -52,7 +52,7 @@ static const struct mtp_array_uint16_t mtp_op_supported =
      MTP_OP_GET_DEV_PROP_VALUE,
      MTP_OP_SET_DEV_PROP_VALUE,
      MTP_OP_RESET_DEV_PROP_VALUE,
-     MTP_OP_MOVE_OBJECT,
+     //MTP_OP_MOVE_OBJECT,
      MTP_OP_COPY_OBJECT,
      MTP_OP_GET_PARTIAL_OBJECT,
      MTP_OP_GET_OBJ_PROPS_SUPPORTED,

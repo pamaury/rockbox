@@ -342,6 +342,7 @@ struct device_info
 #define OBJ_FMT_OGG         0xB902
 #define OBJ_FMT_AAC         0xB903
 #define OBJ_FMT_FLAC        0xB906
+#define OBJ_FMT_MP2         0xB983
 
 /*
  * Association Types
@@ -401,9 +402,10 @@ struct device_info
 /* List of all supported (by the firmware) audio formats */
 #define ALL_MTP_AUDIO_FORMATS \
     OBJ_FMT_AIFF, OBJ_FMT_WAV, OBJ_FMT_MP3, OBJ_FMT_MPEG, OBJ_FMT_ASF, \
-    OBJ_FMT_UNDEF_AUDIO, OBJ_FMT_WMA, OBJ_FMT_OGG, OBJ_FMT_AAC, OBJ_FMT_FLAC
+    OBJ_FMT_UNDEF_AUDIO, OBJ_FMT_WMA, OBJ_FMT_OGG, OBJ_FMT_AAC, OBJ_FMT_FLAC, \
+    OBJ_FMT_MP2
 
-#define NB_MTP_AUDIO_FORMATS 10
+#define NB_MTP_AUDIO_FORMATS 11
 
 enum data_phase_type
 {
@@ -542,8 +544,8 @@ uint32_t volume_to_storage_id(int volume);
 const char *get_storage_description(uint32_t stor_id);
 const char *get_volume_identifier(uint32_t stor_id);
 const char *get_storage_id_mount_point(uint32_t stor_id);
-uint32_t get_storage_size(uint32_t stor_id);
-uint32_t get_storage_free_space(uint32_t stor_id);
+uint64_t get_storage_size(uint32_t stor_id);
+uint64_t get_storage_free_space(uint32_t stor_id);
 
 /*
  *
