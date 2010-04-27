@@ -30,6 +30,12 @@
 #include "errno.h"
 #include "string.h"
 
+#if 1
+#define errorf  _logf
+#else
+#define errorf  logf
+#endif
+
 #define USB_MTP_SUBCLASS    0x1
 #define USB_MTP_PROTO       0x1
 
@@ -461,8 +467,13 @@ extern struct mtp_response mtp_cur_resp;
 
 void unsafe_copy_mtp_string(struct mtp_string *to, const struct mtp_string *from);
 
-void fail_with(uint16_t error_code);
-void fail_op_with(uint16_t error_code, enum data_phase_type dht);
+void fail_with_ex(uint16_t error_code, const char *debug_message);
+void fail_op_with_ex(uint16_t error_code, enum data_phase_type dht, const char *debug_message);
+
+#define _STR(a) #a
+#define STR(a)  _STR(a)
+#define fail_with(code) fail_with_ex(code, __FILE__ ":" STR(__LINE__))
+#define fail_op_with(code, phase) fail_op_with_ex(code, phase, __FILE__ ":" STR(__LINE__))
 
 #define define_pack_array(type) \
     void pack_data_block_array_##type(const struct mtp_array_##type *arr);

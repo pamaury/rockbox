@@ -44,7 +44,7 @@ static struct usb_interface_descriptor __attribute__((aligned(2)))
     .bInterfaceNumber   = 0,
     .bAlternateSetting  = 0,
     .bNumEndpoints      = 3, /* three endpoints: interrupt and bulk*2 */
-    #if 0
+    #if 1
     .bInterfaceClass    = USB_CLASS_STILL_IMAGE,
     .bInterfaceSubClass = USB_MTP_SUBCLASS,
     .bInterfaceProtocol = USB_MTP_PROTO,
@@ -143,9 +143,9 @@ static uint32_t max_usb_recv_xfer_size(void)
     return 1024; 
 }
 
-void fail_with(uint16_t error_code)
+void fail_with_ex(uint16_t error_code, const char *debug_message)
 {
-    logf("mtp: fail with error code 0x%x", error_code);
+    errorf("mtp: fail with error code 0x%x (%s)", error_code, debug_message);
     mtp_state.error = error_code;
     usb_drv_stall(ep_bulk_in, true, true);
     usb_drv_stall(ep_bulk_out, true, false);
@@ -260,7 +260,7 @@ uint32_t get_type_size(uint16_t type)
         case TYPE_UINT64:case TYPE_INT64: return 8;
         case TYPE_UINT128:case TYPE_INT128: return 16;
         default:
-            logf("mtp: error: get_type_size called with an unknown type(%hu)", type);
+            errorf("mtp: error: get_type_size called with an unknown type(%hu)", type);
             return 0;
     }
 }
@@ -383,13 +383,13 @@ static void continue_recv_split_data(int length)
         mtp_state.rem_bytes = cont->length - sizeof(struct generic_container);
         logf("mtp: header: length=%d cont: length=%lu", length, cont->length);
         if(length > (int) cont->length)
-            return fail_with(ERROR_INVALID_DATASET);
+            return fail_with_ex(ERROR_INVALID_DATASET, "received length is greater than length specified by the header");
         if(cont->type != CONTAINER_DATA_BLOCK)
-            return fail_with(ERROR_INVALID_DATASET);
+            return fail_with_ex(ERROR_INVALID_DATASET, "received block is not a data block");
         if(cont->code != mtp_cur_cmd.code)
-            return fail_with(ERROR_INVALID_DATASET);
+            return fail_with_ex(ERROR_INVALID_DATASET, "received block command doesn't match current command");
         if(cont->transaction_id != mtp_cur_cmd.transaction_id)
-            return fail_with(ERROR_INVALID_DATASET);
+            return fail_with_ex(ERROR_INVALID_DATASET, "received block transaction id doesn't match current transaction id");
         
         mtp_state.rem_bytes -= length - sizeof(struct generic_container);
         mtp_state.recv_split(recv_buffer + sizeof(struct generic_container),
@@ -398,7 +398,7 @@ static void continue_recv_split_data(int length)
     else
     {
         if((uint32_t)length > mtp_state.rem_bytes)
-            return fail_op_with(ERROR_INVALID_DATASET, NO_DATA_PHASE);
+            return fail_op_with_ex(ERROR_INVALID_DATASET, NO_DATA_PHASE, "received length is greater than announced");
 
         mtp_state.rem_bytes -= length;
         mtp_state.recv_split(recv_buffer, length, mtp_state.rem_bytes, mtp_state.user);
@@ -416,7 +416,7 @@ void receive_split_data(recv_split_routine rct, finish_recv_split_routine frst, 
 {
     if(rct == NULL || frst == NULL)
     {
-        logf("mtp: error: receive_split_data called with a NULL function ptr, your DAP will soon explode");
+        errorf("mtp: error: receive_split_data called with a NULL function ptr, your DAP will soon explode");
     }
     
     mtp_state.rem_bytes = 0;
@@ -446,7 +446,7 @@ void send_split_data(uint32_t nb_bytes, send_split_routine fn, finish_send_split
 {
     if(fn == NULL || fsst == NULL)
     {
-        logf("mtp: error: send_split_data called with a NULL function ptr, your DAP will soon explode");
+        errorf("mtp: error: send_split_data called with a NULL function ptr, your DAP will soon explode");
     }
     
     mtp_state.send_split = fn,
@@ -523,9 +523,9 @@ static void fail_op_with_finish_recv_split_routine(bool error, void *user)
     send_response();
 }
 
-void fail_op_with(uint16_t error_code, enum data_phase_type dht)
+void fail_op_with_ex(uint16_t error_code, enum data_phase_type dht, const char *debug_msg)
 {
-    logf("mtp: fail operation with error code 0x%x", error_code);
+    errorf("mtp: fail operation with error code 0x%x (%s)", error_code, debug_msg);
     mtp_cur_resp.code = error_code;
     mtp_cur_resp.nb_parameters = 0;
     
@@ -548,7 +548,7 @@ void fail_op_with(uint16_t error_code, enum data_phase_type dht)
             receive_split_data(&fail_op_with_recv_split_routine, &fail_op_with_finish_recv_split_routine, NULL);
             break;
         default:
-            logf("mtp: oops in fail_op_with");
+            errorf("mtp: oops in fail_op_with");
             /* send immediate response */
             state = SENDING_RESPONSE;
             mtp_state.error = error_code;
@@ -564,11 +564,14 @@ void fail_op_with(uint16_t error_code, enum data_phase_type dht)
 void handle_command2(void)
 {
     #define want_nb_params(p, data_phase) \
-        if(mtp_cur_cmd.nb_parameters != p) return fail_op_with(ERROR_INVALID_DATASET, data_phase);
+        if(mtp_cur_cmd.nb_parameters != p) \
+            return fail_op_with_ex(ERROR_INVALID_DATASET, data_phase, "wrong number of command parameters");
     #define want_nb_params_range(pi, pa, data_phase) \
-        if(mtp_cur_cmd.nb_parameters < pi || mtp_cur_cmd.nb_parameters > pa) return fail_op_with(ERROR_INVALID_DATASET, data_phase);
+        if(mtp_cur_cmd.nb_parameters < pi || mtp_cur_cmd.nb_parameters > pa) \
+            return fail_op_with_ex(ERROR_INVALID_DATASET, data_phase, "wrong number of command parameters (range)");
     #define want_session(data_phase) \
-        if(mtp_state.session_id == 0x00000000) return fail_op_with(ERROR_SESSION_NOT_OPEN, data_phase);
+        if(mtp_state.session_id == 0x00000000) \
+            return fail_op_with_ex(ERROR_SESSION_NOT_OPEN, data_phase, "session not open");
     
     switch(mtp_cur_cmd.code)
     {
@@ -669,9 +672,9 @@ void handle_command2(void)
             want_session(SEND_DATA_PHASE)
             return get_object_references(mtp_cur_cmd.param[0]);
         default:
-            logf("mtp: unknown command code 0x%x", mtp_cur_cmd.code);
+            errorf("mtp: unknown command code 0x%x", mtp_cur_cmd.code);
             /* assume no data phase */
-            return fail_op_with(ERROR_OP_NOT_SUPPORTED, NO_DATA_PHASE);
+            return fail_op_with_ex(ERROR_OP_NOT_SUPPORTED, NO_DATA_PHASE, "unknown command code");
     }
     
     #undef want_nb_params
@@ -684,16 +687,16 @@ static void handle_command(int length)
     struct generic_container * cont = (struct generic_container *) recv_buffer;
     
     if(length != (int)cont->length)
-        return fail_with(ERROR_INVALID_DATASET);
+        return fail_with_ex(ERROR_INVALID_DATASET, "received block length doesn't match header announced length");
     if(cont->type != CONTAINER_COMMAND_BLOCK)
-        return fail_with(ERROR_INVALID_DATASET);
+        return fail_with_ex(ERROR_INVALID_DATASET, "received block is not a command block");
     
     mtp_cur_cmd.code = cont->code;
     mtp_cur_cmd.transaction_id = cont->transaction_id;
     mtp_cur_cmd.nb_parameters = cont->length - sizeof(struct generic_container);
     
     if((mtp_cur_cmd.nb_parameters % 4) != 0)
-        return fail_with(ERROR_INVALID_DATASET);
+        return fail_with_ex(ERROR_INVALID_DATASET, "received block size is invalid");
     else
         mtp_cur_cmd.nb_parameters /= 4;
     
@@ -716,14 +719,14 @@ int usb_mtp_request_endpoints(struct usb_class_driver *drv)
     ep_bulk_in=usb_core_request_endpoint(USB_ENDPOINT_XFER_BULK,USB_DIR_IN,drv);
     if(ep_bulk_in<0)
     {
-        logf("mtp: unable to request bulk in endpoint");
+        errorf("mtp: unable to request bulk in endpoint");
         return -1;
     }
 
     ep_bulk_out=usb_core_request_endpoint(USB_ENDPOINT_XFER_BULK,USB_DIR_OUT,drv);
     if(ep_bulk_out<0)
     {
-        logf("mtp: unable to request bulk out endpoint");
+        errorf("mtp: unable to request bulk out endpoint");
         usb_core_release_endpoint(ep_bulk_in);
         return -1;
     }
@@ -732,7 +735,7 @@ int usb_mtp_request_endpoints(struct usb_class_driver *drv)
     ep_int=usb_core_request_endpoint(USB_ENDPOINT_XFER_INT,USB_DIR_IN,drv);
     if(ep_int<0)
     {
-        logf("mtp: unable to request interrupt endpoint");
+        errorf("mtp: unable to request interrupt endpoint");
         usb_core_release_endpoint(ep_bulk_in);
         usb_core_release_endpoint(ep_bulk_out);
         return -1;
@@ -844,11 +847,12 @@ bool usb_mtp_control_request(struct usb_ctrlrequest* req, unsigned char* dest)
     switch(req->bRequest)
     {
         case USB_CTRL_CANCEL_REQUEST:
-            logf("mtp: cancel request: unimplemented");
-            fail_with(ERROR_DEV_BUSY);
+            errorf("mtp: cancel request: unimplemented");
+            fail_with_ex(ERROR_DEV_BUSY, "cancel request unimplemented");
             break;
         case USB_CTRL_GET_EXT_EVT_DATA:
-            fail_with(ERROR_OP_NOT_SUPPORTED);
+            errorf("mtp: get extended event data request: unsupported");
+            fail_with_ex(ERROR_OP_NOT_SUPPORTED, "get extended event data unsupported");
             break;
         case USB_CTRL_DEV_RESET_REQUEST:
             logf("mtp: reset");
@@ -868,7 +872,7 @@ bool usb_mtp_control_request(struct usb_ctrlrequest* req, unsigned char* dest)
             
             if(req->wLength < sizeof(struct device_status))
             {
-                fail_with(ERROR_INVALID_DATASET);
+                fail_with_ex(ERROR_INVALID_DATASET, "get status with a too small buffer length");
                 break;
             }
             
@@ -887,7 +891,7 @@ bool usb_mtp_control_request(struct usb_ctrlrequest* req, unsigned char* dest)
             break;
         }
         default:
-            logf("mtp: unhandeld req: bRequestType=%x bRequest=%x wValue=%x wIndex=%x wLength=%x",
+            errorf("mtp: unhandeld req: bRequestType=%x bRequest=%x wValue=%x wIndex=%x wLength=%x",
                 req->bRequestType,req->bRequest,req->wValue,req->wIndex,req->wLength);
     }
     
@@ -908,7 +912,7 @@ void usb_mtp_init_connection(void)
         dircache_init();
         dircache_build(/*dircache_get_cache_size()*/0);
         if(!dircache_is_enabled())
-            fail_with(ERROR_GENERAL_ERROR);
+            fail_with_ex(ERROR_GENERAL_ERROR, "dircache is not enabled");
     }
     
     probe_storages();
@@ -961,7 +965,7 @@ void usb_mtp_transfer_complete(int ep,int dir, int status, int length)
         case WAITING_FOR_COMMAND:
             if(dir == USB_DIR_IN)
             {
-                logf("mtp: IN received in WAITING_FOR_COMMAND");
+                errorf("mtp: IN received in WAITING_FOR_COMMAND");
                 break;
             }
             handle_command(length);
@@ -969,12 +973,12 @@ void usb_mtp_transfer_complete(int ep,int dir, int status, int length)
         case SENDING_RESPONSE:
             if(dir == USB_DIR_OUT)
             {
-                logf("mtp: OUT received in SENDING_RESULT");
+                errorf("mtp: OUT received in SENDING_RESULT");
                 break;
             }
             if(status != 0)
             {
-                logf("mtp: response transfer error");
+                errorf("mtp: response transfer error");
             }
             /* wait for next command */
             state = WAITING_FOR_COMMAND;
@@ -983,12 +987,12 @@ void usb_mtp_transfer_complete(int ep,int dir, int status, int length)
         case SENDING_DATA_BLOCK:
             if(dir == USB_DIR_OUT)
             {
-                logf("mtp: OUT received in SENDING_DATA_BLOCK");
+                errorf("mtp: OUT received in SENDING_DATA_BLOCK");
                 break;
             }
             if(status != 0)
             {
-                logf("mtp: send data transfer error");
+                errorf("mtp: send data transfer error");
                 mtp_state.finish_send_split(true, mtp_state.user);
                 break;
             }
@@ -999,12 +1003,12 @@ void usb_mtp_transfer_complete(int ep,int dir, int status, int length)
         case RECEIVING_DATA_BLOCK:
             if(dir == USB_DIR_IN)
             {
-                logf("mtp: IN received in RECEIVING_DATA_BLOCK");
+                errorf("mtp: IN received in RECEIVING_DATA_BLOCK");
                 break;
             }
             if(status != 0)
             {
-                logf("mtp: receive data transfer error");
+                errorf("mtp: receive data transfer error");
                 mtp_state.finish_recv_split(true, mtp_state.user);
                 break;
             }
@@ -1015,7 +1019,7 @@ void usb_mtp_transfer_complete(int ep,int dir, int status, int length)
                 
             break;
         default:
-            logf("mtp: unhandeld transfer complete ep=%d dir=%d status=%d length=%d",ep,dir,status,length);
+            errorf("mtp: unhandeld transfer complete ep=%d dir=%d status=%d length=%d",ep,dir,status,length);
             break;
     }
 }

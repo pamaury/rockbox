@@ -79,7 +79,7 @@ void get_device_prop_desc(uint32_t device_prop)
         if(mtp_dev_prop_desc[i].dev_prop_code == device_prop)
             goto Lok;
     
-    return fail_op_with(ERROR_DEV_PROP_UNSUPPORTED, SEND_DATA_PHASE);
+    return fail_op_with_ex(ERROR_DEV_PROP_UNSUPPORTED, SEND_DATA_PHASE, "device prop unsupported");
     
     Lok:
     start_pack_data_block();
@@ -120,7 +120,7 @@ void get_device_prop_desc(uint32_t device_prop)
     if(err_code == ERROR_OK)
         send_data_block();
     else
-        fail_op_with(err_code, SEND_DATA_PHASE);
+        fail_op_with_ex(err_code, SEND_DATA_PHASE, "device prop desc error");
 }
 
 void get_device_prop_value(uint32_t device_prop)
@@ -132,7 +132,7 @@ void get_device_prop_value(uint32_t device_prop)
         if(mtp_dev_prop_desc[i].dev_prop_code == device_prop)
             goto Lok;
     
-    return fail_op_with(ERROR_DEV_PROP_UNSUPPORTED, SEND_DATA_PHASE);
+    return fail_op_with_ex(ERROR_DEV_PROP_UNSUPPORTED, SEND_DATA_PHASE, "device prop unsupported");
     
     Lok:
     start_pack_data_block();
@@ -145,7 +145,7 @@ void get_device_prop_value(uint32_t device_prop)
     if(err_code == ERROR_OK)
         send_data_block();
     else
-        fail_op_with(err_code, SEND_DATA_PHASE);
+        fail_op_with_ex(err_code, SEND_DATA_PHASE, "device prop get error");
 }
 
 struct set_dev_prop_value_st
@@ -159,14 +159,16 @@ static void set_dev_prop_value_split_routine(unsigned char *data, int length, ui
     uint16_t err_code;
     /* If the transfer spans several packets, abort */
     if(rem_bytes != 0)
-        return fail_op_with(ERROR_INVALID_DATASET, RECV_DATA_PHASE); /* continue reception and throw data */
+        /* continue reception and throw data */
+        return fail_op_with_ex(ERROR_INVALID_DATASET, RECV_DATA_PHASE, "setting device prop doesn't handle split transfers");
     
     start_unpack_data_block(data, length);
     
     /* set function is supposed to call finish_unpack_data_block() to check exact length */
     err_code = mtp_dev_prop_desc[st->dev_prop_idx].set();
     if(err_code != ERROR_OK)
-        return fail_op_with(err_code, NO_DATA_PHASE); /* no more receive data phase */
+        /* no more receive data phase */
+        return fail_op_with_ex(err_code, NO_DATA_PHASE, "setting device prop failed"); 
 }
 
 static void set_dev_prop_value_finish_routine(bool error, void *user)
@@ -183,11 +185,11 @@ void set_device_prop_value(uint32_t device_prop)
         if(mtp_dev_prop_desc[i].dev_prop_code == device_prop)
             goto Lok;
     
-    return fail_op_with(ERROR_DEV_PROP_UNSUPPORTED, SEND_DATA_PHASE);
+    return fail_op_with_ex(ERROR_DEV_PROP_UNSUPPORTED, SEND_DATA_PHASE, "device prop unsupported");
     
     Lok:
     if(mtp_dev_prop_desc[i].set == NULL)
-        return fail_op_with(ERROR_ACCESS_DENIED, RECV_DATA_PHASE);
+        return fail_op_with_ex(ERROR_ACCESS_DENIED, RECV_DATA_PHASE, "device prop cannot be set");
     
     st.dev_prop_idx = i;
     
@@ -202,7 +204,7 @@ void reset_device_prop_value(uint32_t device_prop)
         if(mtp_dev_prop_desc[i].dev_prop_code == device_prop)
             goto Lok;
     
-    return fail_op_with(ERROR_DEV_PROP_UNSUPPORTED, NO_DATA_PHASE);
+    return fail_op_with_ex(ERROR_DEV_PROP_UNSUPPORTED, NO_DATA_PHASE, "device prop unsupported");
     
     Lok:
     mtp_cur_resp.code = mtp_dev_prop_desc[i].reset();

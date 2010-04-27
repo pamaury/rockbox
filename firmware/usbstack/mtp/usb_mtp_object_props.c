@@ -236,7 +236,7 @@ void get_object_prop_desc(uint32_t obj_prop, uint32_t obj_fmt)
                 if(mtp_obj_prop_desc[i].obj_fmt->data[j] == obj_fmt)
                     goto Lok;
             
-    return fail_op_with(ERROR_OBJ_PROP_UNSUPPORTED, SEND_DATA_PHASE);
+    return fail_op_with_ex(ERROR_OBJ_PROP_UNSUPPORTED, SEND_DATA_PHASE, "object prop unsupported");
     
     Lok:
     start_pack_data_block();
@@ -293,7 +293,7 @@ void get_object_prop_value(uint32_t handle, uint32_t obj_prop)
     logf("mtp: get object props value: handle=0x%lx prop=0x%lx", handle, obj_prop);
     
     if(!is_valid_object_handle(handle, false))
-        return fail_op_with(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE);
+        return fail_op_with_ex(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE, "invalid object handle");
     
     uint16_t obj_fmt = get_object_format(handle);
     uint32_t i, j;
@@ -302,7 +302,7 @@ void get_object_prop_value(uint32_t handle, uint32_t obj_prop)
             for(j = 0; j < mtp_obj_prop_desc[i].obj_fmt->length; j++)
                 if(mtp_obj_prop_desc[i].obj_fmt->data[j] == obj_fmt)
                     goto Lok;
-    return fail_op_with(ERROR_OBJ_PROP_UNSUPPORTED, SEND_DATA_PHASE);
+    return fail_op_with_ex(ERROR_OBJ_PROP_UNSUPPORTED, SEND_DATA_PHASE, "object prop unsupported");
     
     Lok:
     start_pack_data_block();
@@ -315,7 +315,7 @@ void get_object_prop_value(uint32_t handle, uint32_t obj_prop)
     if(err_code == ERROR_OK)
         send_data_block();
     else
-        fail_op_with(err_code, SEND_DATA_PHASE);
+        fail_op_with_ex(err_code, SEND_DATA_PHASE, "object prop get error");
 }
 
 #if 0

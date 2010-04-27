@@ -134,7 +134,7 @@ void open_session(uint32_t session_id)
     logf("mtp: open session %lu", session_id);
     
     if(mtp_state.session_id != 0x00000000)
-        return fail_op_with(ERROR_SESSION_ALREADY_OPEN, NO_DATA_PHASE);
+        return fail_op_with_ex(ERROR_SESSION_ALREADY_OPEN, NO_DATA_PHASE, "session already open");
     
     mtp_state.session_id = session_id;
     mtp_cur_resp.code = ERROR_OK;
@@ -145,7 +145,7 @@ void open_session(uint32_t session_id)
 void close_session(bool send_resp)
 {
     if(mtp_state.session_id == 0x00000000)
-        return fail_op_with(ERROR_SESSION_NOT_OPEN, NO_DATA_PHASE);
+        return fail_op_with_ex(ERROR_SESSION_NOT_OPEN, NO_DATA_PHASE, "no session open");
     logf("mtp: close session %lu", mtp_state.session_id);
     
     mtp_state.session_id = 0x00000000;
@@ -221,7 +221,7 @@ void get_storage_info(uint32_t stor_id)
 {
     logf("mtp: get storage info: stor_id=0x%lx", stor_id);
     if(!is_valid_storage_id(stor_id))
-        return fail_op_with(ERROR_INVALID_STORAGE_ID, SEND_DATA_PHASE);
+        return fail_op_with_ex(ERROR_INVALID_STORAGE_ID, SEND_DATA_PHASE, "invalid storage id");
     
     start_pack_data_block();
     pack_data_block_uint16_t(STOR_TYPE_FIXED_RAM); /* Storage Type */
@@ -271,7 +271,7 @@ static void list_and_pack_files(uint32_t stor_id, uint32_t obj_handle, bool recu
     
     /* if an error occured, restart packing to have a zero size overhead */
     if(err != ERROR_OK)
-        return fail_op_with(err, SEND_DATA_PHASE);
+        return fail_op_with_ex(err, SEND_DATA_PHASE, "directory listing failure");
 
     mtp_cur_resp.code = err;
     mtp_cur_resp.nb_parameters = 0;
@@ -285,7 +285,7 @@ void get_num_objects(int nb_params, uint32_t stor_id, uint32_t obj_fmt, uint32_t
     (void) stor_id;
     (void) obj_fmt;
     (void) obj_handle_parent;
-    return fail_op_with(ERROR_OP_NOT_SUPPORTED, SEND_DATA_PHASE);
+    return fail_op_with_ex(ERROR_OP_NOT_SUPPORTED, SEND_DATA_PHASE, "get num object unsupported");
 }
 
 void get_object_handles(int nb_params, uint32_t stor_id, uint32_t obj_fmt, uint32_t obj_handle_parent)
@@ -300,11 +300,11 @@ void get_object_handles(int nb_params, uint32_t stor_id, uint32_t obj_fmt, uint3
     if(nb_params >= 2)
     {
         if(obj_fmt != 0x00000000)
-            return fail_op_with(ERROR_SPEC_BY_FMT_UNSUPPORTED, SEND_DATA_PHASE);
+            return fail_op_with_ex(ERROR_SPEC_BY_FMT_UNSUPPORTED, SEND_DATA_PHASE, "get object type filter unsupported");
     }
     
     if(stor_id != 0xffffffff && !is_valid_storage_id(stor_id))
-        return fail_op_with(ERROR_INVALID_STORAGE_ID, SEND_DATA_PHASE);
+        return fail_op_with_ex(ERROR_INVALID_STORAGE_ID, SEND_DATA_PHASE, "invalid storage id and not a special placeholder");
     
     /* parent_handle=0x00000000 means all objects*/
     if(obj_handle_parent == 0x00000000)
@@ -312,7 +312,7 @@ void get_object_handles(int nb_params, uint32_t stor_id, uint32_t obj_fmt, uint3
     else
     {
         if(!is_valid_object_handle(obj_handle_parent, true)) /* handle root */
-            return fail_op_with(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE);
+            return fail_op_with_ex(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE, "invalid parent handle");
         else
             list_and_pack_files(stor_id, obj_handle_parent, false); /* not recursive, at entry */
     }
@@ -321,7 +321,7 @@ void get_object_handles(int nb_params, uint32_t stor_id, uint32_t obj_fmt, uint3
 void get_object_info(uint32_t handle)
 {
     if(!is_valid_object_handle(handle, false))
-        return fail_op_with(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE);
+        return fail_op_with_ex(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE, "invalid object handle");
     
     struct tm filetm;
     logf("mtp: get object info: 0x%lx(%s) --> 0x%x", handle, get_object_filename(handle),
@@ -402,7 +402,7 @@ void get_object(uint32_t handle)
     
     /* can't be invalid handle, can't be root, can't be a directory */
     if(!is_valid_object_handle(handle, false) || is_directory_object(handle))
-        return fail_op_with(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE);
+        return fail_op_with_ex(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE, "invalid object handle");
     
     logf("mtp: get object: %s size=%lu", get_object_filename(handle), get_object_size(handle));
     
@@ -413,7 +413,7 @@ void get_object(uint32_t handle)
     st.size = get_object_size(handle);
     st.fd = open(buffer, O_RDONLY);
     if(st.fd < 0)
-        return fail_op_with(ERROR_GENERAL_ERROR, SEND_DATA_PHASE);
+        return fail_op_with_ex(ERROR_GENERAL_ERROR, SEND_DATA_PHASE, "open file failure");
     
     mtp_cur_resp.code = ERROR_OK;
     mtp_cur_resp.nb_parameters = 0;
@@ -428,14 +428,14 @@ void get_partial_object(uint32_t handle,uint32_t offset,uint32_t max_size)
     
     /* can't be invalid handle, can't be root, can't be a directory */
     if(!is_valid_object_handle(handle, false) || is_directory_object(handle))
-        return fail_op_with(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE);
+        return fail_op_with_ex(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE, "invalid object handle");
     
     logf("mtp: get partial object: %s size=%lu off=%lu max_size=%lu", get_object_filename(handle), 
         get_object_size(handle), offset, max_size);
     
     /* offset can't be beyond end of file */
     if(offset > get_object_size(handle))
-        return fail_op_with(ERROR_INVALID_PARAMETER, SEND_DATA_PHASE);
+        return fail_op_with_ex(ERROR_INVALID_PARAMETER, SEND_DATA_PHASE, "offset is greater than file size");
     
     copy_object_path(handle, buffer, MAX_PATH);
     /*logf("mtp: get partial object: path=\"%s\"", buffer);*/
@@ -444,7 +444,7 @@ void get_partial_object(uint32_t handle,uint32_t offset,uint32_t max_size)
     st.size = MIN(get_object_size(handle) - offset, max_size);
     st.fd = open(buffer, O_RDONLY);
     if(st.fd < 0)
-        return fail_op_with(ERROR_GENERAL_ERROR, SEND_DATA_PHASE);
+        return fail_op_with_ex(ERROR_GENERAL_ERROR, SEND_DATA_PHASE, "open file failure");
     
     mtp_cur_resp.code = ERROR_OK;
     mtp_cur_resp.nb_parameters = 1;
@@ -485,21 +485,22 @@ static void send_object_info_split_routine(unsigned char *data, int length, uint
     }
 
     if(rem_bytes != 0) /* Does the ObjectInfo span multiple packets? (unhandled case) */
-        return fail_op_with(ERROR_INVALID_DATASET, RECV_DATA_PHASE); /* NOTE continue reception and throw data */
+        /* NOTE continue reception and throw data */
+        return fail_op_with_ex(ERROR_INVALID_DATASET, RECV_DATA_PHASE, "send object info doesn't support split transfers"); 
 
     start_unpack_data_block(data, length);
     if(!unpack_data_block_ptr(&oi, sizeof(oi)))
-        return fail_op_with(ERROR_INVALID_DATASET, NO_DATA_PHASE);
+        return fail_op_with_ex(ERROR_INVALID_DATASET, NO_DATA_PHASE, "cannot unpack object info");
     if(!unpack_data_block_string_charz(filename, sizeof(filename))) /* Filename */
-        return fail_op_with(ERROR_INVALID_DATASET, NO_DATA_PHASE);
+        return fail_op_with_ex(ERROR_INVALID_DATASET, NO_DATA_PHASE, "cannot unpack filename");
     if(!unpack_data_block_string_charz(NULL, 0)) /* Date Created */
-        return fail_op_with(ERROR_INVALID_DATASET, NO_DATA_PHASE);
+        return fail_op_with_ex(ERROR_INVALID_DATASET, NO_DATA_PHASE, "cannot unpack date created");
     if(!unpack_data_block_string_charz(NULL, 0)) /* Date Modified */
-        return fail_op_with(ERROR_INVALID_DATASET, NO_DATA_PHASE);
+        return fail_op_with_ex(ERROR_INVALID_DATASET, NO_DATA_PHASE, "cannot unpack data modified");
     if(!unpack_data_block_string_charz(NULL, 0)) /* Keywords */
-        return fail_op_with(ERROR_INVALID_DATASET, NO_DATA_PHASE);
+        return fail_op_with_ex(ERROR_INVALID_DATASET, NO_DATA_PHASE, "cannot unpack keywords");
     if(!finish_unpack_data_block())
-        return fail_op_with(ERROR_INVALID_DATASET, NO_DATA_PHASE);
+        return fail_op_with_ex(ERROR_INVALID_DATASET, NO_DATA_PHASE, "extra data at end of object info");
 
     logf("mtp: successfully unpacked");
 
@@ -507,7 +508,7 @@ static void send_object_info_split_routine(unsigned char *data, int length, uint
     if((path_len + filename_len) < MAX_PATH-1)
         strlcpy(path + path_len, filename, MAX_PATH-path_len);
     else
-        return fail_op_with(ERROR_GENERAL_ERROR, NO_DATA_PHASE);
+        return fail_op_with_ex(ERROR_GENERAL_ERROR, NO_DATA_PHASE, "path is too long");
 
     logf("mtp: path = %s", path);
 
@@ -520,7 +521,7 @@ static void send_object_info_split_routine(unsigned char *data, int length, uint
         */
         /* create directory */
         if(mkdir(path) < 0)
-            return fail_op_with(ERROR_GENERAL_ERROR, NO_DATA_PHASE);
+            return fail_op_with_ex(ERROR_GENERAL_ERROR, NO_DATA_PHASE, "directory creation failure");
     }
     else
     {
@@ -529,7 +530,7 @@ static void send_object_info_split_routine(unsigned char *data, int length, uint
         if(fd < 0)
         {
             logf("mtp: oops, couldn't create file");
-            return fail_op_with(ERROR_GENERAL_ERROR, NO_DATA_PHASE);
+            return fail_op_with_ex(ERROR_GENERAL_ERROR, NO_DATA_PHASE, "file creation failure");
         }
         close(fd);
     }
@@ -540,7 +541,7 @@ static void send_object_info_split_routine(unsigned char *data, int length, uint
     if(this_handle == 0x00000000)
     {
         logf("mtp: oops, file was no created ?");
-        return fail_op_with(ERROR_GENERAL_ERROR, NO_DATA_PHASE);
+        return fail_op_with_ex(ERROR_GENERAL_ERROR, NO_DATA_PHASE, "cannot retrieve file handle by name");
     }
  
     /* if file size is nonzero, add a pending OI (except if there is one) */
@@ -549,7 +550,7 @@ static void send_object_info_split_routine(unsigned char *data, int length, uint
         if(mtp_state.has_pending_oi)
         {
             logf("mtp: oops, there is a pending object info");
-            return fail_op_with(ERROR_GENERAL_ERROR, NO_DATA_PHASE);
+            return fail_op_with_ex(ERROR_GENERAL_ERROR, NO_DATA_PHASE, "there is a pending object info");
         }
         mtp_state.pending_oi.handle = this_handle;
         mtp_state.pending_oi.size = oi.compressed_size;
@@ -580,7 +581,7 @@ void send_object_info(int nb_params, uint32_t stor_id, uint32_t obj_handle_paren
         stor_id = get_first_storage_id();
 
     if(!is_valid_storage_id(stor_id))
-        return fail_op_with(ERROR_INVALID_STORAGE_ID, RECV_DATA_PHASE);
+        return fail_op_with_ex(ERROR_INVALID_STORAGE_ID, RECV_DATA_PHASE, "invalid storage id");
 
     /* default parent if root */
     if(nb_params < 2 || obj_handle_parent == 0x00000000)
@@ -590,10 +591,10 @@ void send_object_info(int nb_params, uint32_t stor_id, uint32_t obj_handle_paren
     if(obj_handle_parent != 0xffffffff)
     {
         if(!is_valid_object_handle(obj_handle_parent, false))
-            return fail_op_with(ERROR_INVALID_OBJ_HANDLE, RECV_DATA_PHASE);
+            return fail_op_with_ex(ERROR_INVALID_OBJ_HANDLE, RECV_DATA_PHASE, "invalid parent handle");
 
         if(!is_directory_object(obj_handle_parent))
-            return fail_op_with(ERROR_INVALID_PARENT_OBJ, RECV_DATA_PHASE);
+            return fail_op_with_ex(ERROR_INVALID_PARENT_OBJ, RECV_DATA_PHASE, "parent handle is not a directory");
     }
 
     st.stor_id = stor_id;
@@ -620,7 +621,7 @@ static void send_object_split_routine(unsigned char *data, int length, uint32_t 
         uint32_t total_size=length + rem_bytes;
         /* check it's equal to expected size */
         if(total_size != mtp_state.pending_oi.size)
-            return fail_op_with(ERROR_INCOMPLETE_TRANSFER, RECV_DATA_PHASE);
+            return fail_op_with_ex(ERROR_INCOMPLETE_TRANSFER, RECV_DATA_PHASE, "object transfer size doesn't match announced file size");
         
         st->first_xfer = false;
     }
@@ -628,7 +629,7 @@ static void send_object_split_routine(unsigned char *data, int length, uint32_t 
     if(write(st->fd, data, length) < 0)
     {
         logf("mtp: write error: errno=%d", errno);
-        return fail_op_with(ERROR_GENERAL_ERROR, RECV_DATA_PHASE);
+        return fail_op_with_ex(ERROR_GENERAL_ERROR, RECV_DATA_PHASE, "write failure");
     }
 }
 
@@ -656,7 +657,7 @@ void send_object(void)
     if(!mtp_state.has_pending_oi)
     {
         logf("mtp: oops, no pending object info !");
-        return fail_op_with(ERROR_NO_VALID_OBJECTINFO, RECV_DATA_PHASE);
+        return fail_op_with_ex(ERROR_NO_VALID_OBJECTINFO, RECV_DATA_PHASE, "no pending object info");
     }
     
     logf("mtp: send object: associated objectinfo=0x%lx", mtp_state.pending_oi.handle);
@@ -665,7 +666,7 @@ void send_object(void)
     if(!is_valid_object_handle(mtp_state.pending_oi.handle, false))
     {
         logf("mtp: oops, pending oi handle is not valid !");
-        return fail_op_with(ERROR_NO_VALID_OBJECTINFO, RECV_DATA_PHASE);
+        return fail_op_with_ex(ERROR_NO_VALID_OBJECTINFO, RECV_DATA_PHASE, "pending object info is invalid");
     }
     copy_object_path(mtp_state.pending_oi.handle, path, sizeof(path));
     logf("mtp: path=%s", path);
@@ -674,7 +675,7 @@ void send_object(void)
     if(st.fd < 0)
     {
         logf("mtp: oops, couldn't open pending object !(errno=%d)", errno);
-        return fail_op_with(ERROR_NO_VALID_OBJECTINFO, RECV_DATA_PHASE);
+        return fail_op_with_ex(ERROR_NO_VALID_OBJECTINFO, RECV_DATA_PHASE, "file creation failure");
     }
     st.first_xfer = true;
     /* wait data */
@@ -743,11 +744,11 @@ void delete_object(int nb_params, uint32_t obj_handle, uint32_t obj_format)
 {
     /* deletion of files of a certain kind is unsupported for now */
     if(nb_params == 2 && obj_format != 0x00000000)
-        return fail_op_with(ERROR_SPEC_BY_FMT_UNSUPPORTED, NO_DATA_PHASE);
+        return fail_op_with_ex(ERROR_SPEC_BY_FMT_UNSUPPORTED, NO_DATA_PHASE, "deletion by type is unsupported");
     
     /* don't allow to delete root */
     if(!is_valid_object_handle(obj_handle,false))
-        return fail_op_with(ERROR_INVALID_OBJ_HANDLE, NO_DATA_PHASE);
+        return fail_op_with_ex(ERROR_INVALID_OBJ_HANDLE, NO_DATA_PHASE, "you can't delete root object");
     
     logf("mtp: delete object(0x%lx, %s)", obj_handle, get_object_filename(obj_handle));
     
@@ -768,19 +769,19 @@ void copy_object(int nb_params, uint32_t obj_handle, uint32_t stor_id, uint32_t 
     
     /* don't allow root */
     if(!is_valid_object_handle(obj_handle, false))
-        return fail_op_with(ERROR_INVALID_OBJ_HANDLE, NO_DATA_PHASE);
+        return fail_op_with_ex(ERROR_INVALID_OBJ_HANDLE, NO_DATA_PHASE, "invalid object handle");
     if(!is_valid_storage_id(stor_id))
-        return fail_op_with(ERROR_INVALID_STORAGE_ID, NO_DATA_PHASE);
+        return fail_op_with_ex(ERROR_INVALID_STORAGE_ID, NO_DATA_PHASE, "invalid storage id");
     /* allow root on any storage */
     if(!is_valid_object_handle(obj_parent_handle, true))
-        return fail_op_with(ERROR_INVALID_PARENT_OBJ, NO_DATA_PHASE);
+        return fail_op_with_ex(ERROR_INVALID_PARENT_OBJ, NO_DATA_PHASE, "invalid parent handle");
     if(!is_directory_object(obj_parent_handle))
-        return fail_op_with(ERROR_INVALID_PARENT_OBJ, NO_DATA_PHASE);
+        return fail_op_with_ex(ERROR_INVALID_PARENT_OBJ, NO_DATA_PHASE, "parent object is not a directory");
     
     logf("mtp: copy object(0x%lx, %s) to storage 0x%lx under object 0x%lx", obj_handle,
         get_object_filename(obj_handle), stor_id, obj_parent_handle);
     
-    return fail_op_with(ERROR_GENERAL_ERROR, NO_DATA_PHASE);
+    return fail_op_with_ex(ERROR_GENERAL_ERROR, NO_DATA_PHASE, "copy is unimplemented");
 }
 
 #if 0
@@ -824,7 +825,7 @@ void get_object_references(uint32_t object_handle)
 {
     /* can't be root it seems */
     if(!is_valid_object_handle(object_handle, false))
-        return fail_op_with(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE);
+        return fail_op_with_ex(ERROR_INVALID_OBJ_HANDLE, SEND_DATA_PHASE, "invalid object handle");
     
     logf("mtp: get object references: handle=0x%lx (\"%s\")", object_handle, get_object_filename(object_handle));
     
