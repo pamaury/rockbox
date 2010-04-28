@@ -172,7 +172,10 @@ uint16_t generic_list_files(uint32_t stor_id, uint32_t obj_handle, list_file_fun
 
 uint32_t get_object_storage_id(uint32_t handle)
 {
+    #ifdef HAVE_MULTIVOLUME
     const struct dircache_entry *entry = mtp_handle_to_dircache_entry(handle, false);
+
+    
     /* FIXME ugly but efficient */
     while(entry->up)
     {
@@ -180,6 +183,9 @@ uint32_t get_object_storage_id(uint32_t handle)
         if(entry->d_name[0] == '<')
             return volume_to_storage_id(entry->d_name[VOL_ENUM_POS] - '0');
     }
+    #else
+    (void) handle;
+    #endif
     
     return volume_to_storage_id(0);
 }

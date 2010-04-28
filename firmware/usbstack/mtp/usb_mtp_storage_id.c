@@ -183,6 +183,7 @@ const char *get_storage_id_mount_point(uint32_t stor_id)
 uint64_t get_storage_size(uint32_t stor_id)
 {
     unsigned long size;
+    (void) stor_id;
     
     fat_size(IF_MV2(storage_id_to_volume(stor_id),) &size, NULL);
     return (uint64_t)size * 1024; /* size is reported in Kib */
@@ -191,6 +192,7 @@ uint64_t get_storage_size(uint32_t stor_id)
 uint64_t get_storage_free_space(uint32_t stor_id)
 {
     unsigned long free;
+    (void) stor_id;
     
     fat_size(IF_MV2(storage_id_to_volume(stor_id),) NULL, &free);
     return (uint64_t)free * 1024; /* size is reported in Kib */
