@@ -230,16 +230,20 @@ int button_read_device(void)
     int delay = 30;
     while(delay--) nop;
 
+    bool ccu_io_bit12 = CCU_IO & (1<<12);
     CCU_IO &= ~(1<<12);
 
+    /* B1 is shared with FM i2c */
+    bool gpiob_pin0_dir = GPIOB_DIR & (1<<1);
+    GPIOB_DIR &= ~(1<<1);
+
     GPIOB_PIN(0) = 1<<0;
-    udelay(1);
+    udelay(4);
 
     gpiod6 = GPIOD_PIN(6);
 
     GPIOB_PIN(0) = 0;
-
-    udelay(1);
+    udelay(2);
 
     if (GPIOC_PIN(1) & 1<<1)
         btn |= BUTTON_DOWN;
@@ -267,7 +271,11 @@ int button_read_device(void)
         }
     }
 
-    CCU_IO |= 1<<12;
+    if(gpiob_pin0_dir)
+        GPIOB_DIR |= 1<<1;
+
+    if(ccu_io_bit12)
+        CCU_IO |= 1<<12;
 
 #ifdef HAS_BUTTON_HOLD
 #ifndef BOOTLOADER

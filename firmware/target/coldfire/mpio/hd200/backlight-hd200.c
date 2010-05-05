@@ -27,13 +27,15 @@
 #include "backlight-target.h"
 #include "lcd.h"
 
-static bool _backlight_on = false;
+static bool _backlight_on = true;
 static int _brightness = DEFAULT_BRIGHTNESS_SETTING;
 
 /* Returns the current state of the backlight (true=ON, false=OFF). */
 bool _backlight_init(void)
 {
+#ifdef BOOTLOADER
     and_l(~(1<<28),&GPIO_OUT);
+#endif
     or_l((1<<28),&GPIO_FUNCTION);
     or_l((1<<28),&GPIO_ENABLE);
     return true;
@@ -41,9 +43,10 @@ bool _backlight_init(void)
 
 void _backlight_hw_on(void)
 {
-
+#ifndef BOOTLOADER
     if (_backlight_on)
         return;
+#endif
    
     _backlight_set_brightness(_brightness);
     _backlight_on = true;
@@ -60,6 +63,11 @@ void _backlight_hw_off(void)
 void _backlight_set_brightness(int val)
 {
     unsigned char i;
+
+#ifndef BOOTLOADER
+    if( _brightness == val && _backlight_on == true )
+        return;
+#endif
 
     and_l(~(1<<28),&GPIO_OUT);
     sleep(4);
