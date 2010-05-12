@@ -171,5 +171,6 @@ void usb_firewire_connect_event(void);
 #ifdef USB_ENABLE_HID
 void usb_set_hid(bool enable);
 #endif
+void usb_allow_connection(void);
 
 #endif

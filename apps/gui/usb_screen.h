@@ -25,6 +25,7 @@
 static inline void gui_usb_screen_run(void) {}
 #else
 extern void gui_usb_screen_run(void);
+void usb_connection_gui(void);
 #endif
 
 #endif

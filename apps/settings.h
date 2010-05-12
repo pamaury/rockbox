@@ -109,6 +109,26 @@ enum
     TRIG_TYPE_NEW_FILE
 };
 
+#ifdef HAVE_USBSTACK
+enum {
+    USB_SCREENSHOT = 0,
+    USB_MENU,
+#ifdef USB_ENABLE_STORAGE
+    USB_MSC,
+#endif
+#ifdef USB_ENABLE_MTP
+    USB_MTP,
+#endif
+#ifdef USB_ENABLE_HID
+    USB_HID,
+#endif
+#ifdef USB_ENABLE_CHARGING_ONLY
+    USB_BATTERYONLY,
+#endif
+    USB_NUM_OPTIONS
+};
+#endif
+
 #ifdef HAVE_CROSSFADE
 enum {
     CROSSFADE_ENABLE_OFF = 0,
@@ -138,7 +158,6 @@ enum
 #endif
     NUM_REPEAT_MODES
 };
-
 
 /* dir filter options */
 /* Note: Any new filter modes need to be added before NUM_FILTER_MODES.

@@ -30,6 +30,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #else
+#include "usb.h"
 #include "sprintf.h"
 #include "lang.h"
 #include "dir.h"
@@ -531,6 +532,9 @@ long default_event_handler_ex(long event, void (*callback)(void *), void *parame
                          VOICE_PAUSE);
                 talk_force_enqueue_next();
             }
+            break;
+        case SYS_USB_ATTACHED:
+            usb_connection_gui();
             break;
         case SYS_USB_CONNECTED:
             if (callback != NULL)

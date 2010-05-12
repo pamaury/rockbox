@@ -37,7 +37,8 @@
 #include "led.h"
 #include "appevents.h"
 #include "usb_screen.h"
-
+#include "icon.h"
+#include "list.h"
 #ifdef HAVE_LCD_BITMAP
 #include "bitmaps/usblogo.h"
 #endif
@@ -326,3 +327,108 @@ void gui_usb_screen_run(void)
 
 }
 
+struct usbmenuitem {
+    bool enabled;
+    char *text;
+};
+
+static struct usbmenuitem items[] = {
+    [0] = { false, "Connect" },
+    [1] = { true,  " -- Storage Drivers -- " },
+    [2] = { false,  "Mass Storage" },
+    [3] = { true,  "MTP" },
+    [4] = { false, "None" },
+    [5] = { true,  "-- HID Driver -- " },
+    [6] = { false, "Enabled" },
+    [7] = { true,  "Disabled" },
+};
+const char * usblist_get_name(int selected_item, void * data,
+                              char * buffer, size_t buffer_len)
+{
+    (void) data;
+    (void) buffer;
+    (void) buffer_len;
+    return items[selected_item].text;
+}
+enum themable_icons usblist_get_icon(int selected_item, void * data)
+{
+    (void) data;
+    switch (selected_item)
+    {
+        /* no icons ever */
+        case 1:
+        case 5:
+            return Icon_Submenu;
+        default:
+            return items[selected_item].enabled ? Icon_Cursor : Icon_NOICON;
+    }
+}
+void usb_connection_gui(void)
+{
+    bool done = false;
+    struct gui_synclist lists;
+    int i, action, selection;
+    FOR_NB_SCREENS(i)
+        viewportmanager_theme_enable(i, true, NULL);
+        
+        
+    gui_synclist_init(&lists, usblist_get_name,  NULL, 
+                      false, 1, NULL);
+    gui_synclist_set_title(&lists, "Usb Connection Menu", Icon_Rockbox);
+    gui_synclist_set_icon_callback(&lists, usblist_get_icon);
+    gui_synclist_set_nb_items(&lists, sizeof(items) / sizeof(items[0]));
+
+    
+    while (!done)
+    {
+        gui_synclist_draw(&lists);
+        list_do_action(CONTEXT_STD, HZ,
+                       &lists, &action, LIST_WRAP_UNLESS_HELD);
+        switch (action)
+        {
+            case ACTION_STD_OK:        
+                /* fix the toggles or run the screen */
+                selection = gui_synclist_get_sel_pos(&lists);
+                switch (selection)
+                {
+                    case 0: /* run! */
+                        done = true;
+                        break;
+                    case 1: /* headers, do nothing */
+                    case 5: 
+                        break;
+                    case 2: /* storage modes */
+                    case 3:
+                    case 4:
+                        for(i = 2; i <= 4; i++)
+                            items[i].enabled = false;
+                        items[selection].enabled = true;
+                        break;
+                    case 6: /* HID modes */
+                    case 7:
+                        for(i = 6; i <= 7; i++)
+                            items[i].enabled = false;
+                        items[selection].enabled = true;
+                        break;
+                } /* switch() */
+                break;
+        } /* switch(action) */
+    }
+#ifdef USB_ENABLE_STORAGE
+    usb_core_enable_driver(USB_DRIVER_MASS_STORAGE, items[2].enabled);
+#endif
+#ifdef USB_ENABLE_HID
+    usb_core_enable_driver(USB_DRIVER_HID, items[6].enabled);
+#endif
+#ifdef USB_ENABLE_CHARGING_ONLY
+    usb_core_enable_driver(USB_DRIVER_CHARGING_ONLY, items[4].enabled);
+#endif
+#ifdef USB_ENABLE_MTP
+    usb_core_enable_driver(USB_DRIVER_MTP, items[3].enabled);
+#endif
+    
+    FOR_NB_SCREENS(i)
+        viewportmanager_theme_undo(i, true);   
+    /* allow connection */
+    usb_allow_connection();
+}

@@ -221,6 +221,12 @@ static inline bool usb_reboot_button(void)
 #ifdef USB_ENABLE_HID
 static bool usb_hid = true;
 #endif
+void usb_allow_connection(void)
+{
+    queue_post(&usb_queue, SYS_USB_ATTACHED_ACK, 0);
+}
+
+extern struct event_queue button_queue;
 
 static void usb_thread(void)
 {
@@ -263,43 +269,14 @@ static void usb_thread(void)
                 break;
 #endif /* USB_DETECT_BY_DRV */
             case USB_INSERTED:
-#ifdef HAVE_LCD_BITMAP
-                if(do_screendump_instead_of_usb)
-                {
-                    usb_state = USB_SCREENDUMP;
-                    screen_dump();
-#ifdef HAVE_REMOTE_LCD
-                    remote_screen_dump();
-#endif
-                    break;
-                }
-#endif
-#ifdef HAVE_USB_POWER
-                if(usb_power_button())
-                {
-                    /* Only charging is desired */
-                    usb_state = USB_POWERED;
-                }
-                else
-#endif /* HAVE_USB_POWER */
-#ifdef HAVE_USBSTACK
-                {
-#ifdef HAVE_USB_POWER
-                /* Set the state to USB_POWERED for now. If permission to connect
-                 * by threads and storage is granted it will be changed to
-                 * USB_CONNECTED. */
+                /* inject an event into the button queue so the main thread
+                 * will run the USB-UI code and return after the desired
+                 * drivers are enabled */
+                queue_send(&button_queue, SYS_USB_ATTACHED, 0);
                 usb_state = USB_POWERED;
-#endif
-#ifdef USB_ENABLE_STORAGE
-                usb_core_enable_driver(USB_DRIVER_MASS_STORAGE, true);
-#endif
-#ifdef USB_ENABLE_HID
-                usb_core_enable_driver(USB_DRIVER_HID, usb_hid);
-#endif
-#ifdef USB_ENABLE_CHARGING_ONLY
-                usb_core_enable_driver(USB_DRIVER_CHARGING_ONLY, false);
-#endif
-                }
+                break;
+            case SYS_USB_ATTACHED_ACK:
+#ifdef HAVE_USBSTACK
                 /* Check any drivers enabled at this point for exclusive storage
                  * access requirements. */
                 exclusive_storage_access = usb_core_any_exclusive_storage();
