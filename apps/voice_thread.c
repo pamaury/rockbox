@@ -18,6 +18,7 @@
  * KIND, either express or implied.
  *
  ****************************************************************************/
+#include <sys/types.h>
 #include "system.h"
 #include "thread.h"
 #include "voice_thread.h"
@@ -255,7 +256,7 @@ static void voice_message(struct voice_thread_data *td)
             return;
 
         case Q_VOICE_STOP:
-            LOGFQUEUE("voice < Q_VOICE_STOP: %d", ev.data);
+            LOGFQUEUE("voice < Q_VOICE_STOP: %ld", td->ev.data);
 
             if (td->ev.data != 0 && !playback_is_playing())
             {

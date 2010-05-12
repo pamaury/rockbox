@@ -203,7 +203,7 @@ struct skin_line {
 #define VP_NEVER_VISIBLE    0x8
 #define VP_DEFAULT_LABEL    '|'
 #define VP_NO_LABEL         '-'
-#define VP_INFO_LABEL       '_'
+#define VP_INFO_LABEL       0x80
 struct skin_viewport {
     struct viewport vp;   /* The LCD viewport struct */
     struct skin_line *lines;
@@ -241,6 +241,9 @@ struct playlistviewer {
     struct viewport *vp;
     bool show_icons;
     int start_offset;
+#ifdef HAVE_TC_RAMCACHE
+    struct mp3entry tempid3;
+#endif
     struct {
         enum wps_token_type tokens[MAX_PLAYLISTLINE_TOKENS];
         char strings[MAX_PLAYLISTLINE_STRINGS][MAX_PLAYLISTLINE_STRLEN];
@@ -368,7 +371,10 @@ const char *get_token_value(struct gui_wps *gwps,
 
 const char *get_id3_token(struct wps_token *token, struct mp3entry *id3,
                           char *buf, int buf_size, int limit, int *intval);
-
+#if CONFIG_TUNER
+const char *get_radio_token(struct wps_token *token, int preset_offset,
+                            char *buf, int buf_size, int limit, int *intval);
+#endif
 
 struct gui_img* find_image(char label, struct wps_data *data);
 struct skin_viewport* find_viewport(char label, struct wps_data *data);

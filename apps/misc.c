@@ -20,16 +20,15 @@
  ****************************************************************************/
 #include <stdlib.h>
 #include <ctype.h>
-#include <string.h>
+#include <stdio.h>
+#include <stdarg.h>
 #include <errno.h>
+#include "string-extra.h"
 #include "config.h"
 #include "misc.h"
 #include "lcd.h"
 #include "file.h"
-#ifdef __PCTOOL__
-#include <stdarg.h>
-#include <stdio.h>
-#else
+#ifndef __PCTOOL__
 #include "usb.h"
 #include "sprintf.h"
 #include "lang.h"

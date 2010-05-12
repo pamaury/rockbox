@@ -23,8 +23,8 @@ Audioscrobbler spec at:
 http://www.audioscrobbler.net/wiki/Portable_Player_Logging
 */
 
+#include <stdio.h>
 #include "file.h"
-#include "sprintf.h"
 #include "logf.h"
 #include "metadata.h"
 #include "kernel.h"
@@ -86,7 +86,7 @@ static void write_cache(void)
     Check at each write since file may be deleted at any time */
     if(!file_exists(SCROBBLER_FILE))
     {
-        fd = open(SCROBBLER_FILE, O_RDWR | O_CREAT);
+        fd = open(SCROBBLER_FILE, O_RDWR | O_CREAT, 0666);
         if(fd >= 0)
         {
             fdprintf(fd, "#AUDIOSCROBBLER/" SCROBBLER_VERSION "\n"

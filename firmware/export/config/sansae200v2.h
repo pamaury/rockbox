@@ -158,7 +158,7 @@
 #define CONFIG_I2C I2C_AS3525
 
 /* define current usage levels (based on battery bench) */
-#define CURRENT_NORMAL     65
+#define CURRENT_NORMAL     45
 #define CURRENT_BACKLIGHT  30
 #define CURRENT_RECORD     CURRENT_NORMAL
 
@@ -166,7 +166,7 @@
 #define ROM_START 0x00000000
 
 /* Define this to the CPU frequency */
-#define CPU_FREQ      75000000
+#define CPU_FREQ      248000000
 
 /* Type of LCD TODO: hopefully the same as the x5 but check this*/
 #define CONFIG_LCD LCD_X5

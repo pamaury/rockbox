@@ -14,11 +14,8 @@ extern "C" {
 #include "_ansi.h"
 
 #define __need_size_t
+#define __need_NULL
 #include <stddef.h>
-
-#ifndef NULL
-#define NULL ((void*)0)
-#endif
 
 _PTR     _EXFUN(memchr,(const _PTR, int, size_t));
 int      _EXFUN(memcmp,(const _PTR, const _PTR, size_t));

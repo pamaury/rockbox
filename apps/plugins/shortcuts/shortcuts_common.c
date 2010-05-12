@@ -35,7 +35,7 @@
 
 /* Memory (will be used for entries) */
 void *memory_buf;
-long memory_bufsize; /* Size of memory_buf in bytes */
+size_t memory_bufsize; /* Size of memory_buf in bytes */
 
 
 /* The file we're processing */
@@ -54,7 +54,7 @@ void write_int_instruction_to_file(int fd, char *instr, int value);
 void allocate_memory(void **buf, size_t *bufsize)
 {
     *buf = rb->plugin_get_buffer(bufsize);
-    DEBUGF("Got %ld bytes of memory\n", *bufsize);
+    DEBUGF("Got %zud bytes of memory\n", *bufsize);
 }
 
 
@@ -85,7 +85,7 @@ bool load_sc_file(sc_file_t *file, char *filename, bool must_exist,
         /* The file didn't exist on disk */
         if (!must_exist) {
             DEBUGF("Trying to create link file '%s'...\n", filename);
-            fd = rb->creat(filename);
+            fd = rb->creat(filename, 0666);
             if (fd < 0){
                 /* For some reason we couldn't create the file,
                  * so return an error message and exit */

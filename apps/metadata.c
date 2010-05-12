@@ -19,10 +19,9 @@
  *
  ****************************************************************************/
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
-#include <inttypes.h>
+#include "string-extra.h"
 
 #include "debug.h"
 #include "logf.h"
@@ -108,6 +107,9 @@ const struct afmt_entry audio_formats[AFMT_NUM_CODECS] =
     /* WMA (WMAV1/V2 in ASF) */
     [AFMT_WMA] =
         AFMT_ENTRY("WMA",  "wma",     NULL,          "wma\0wmv\0asf\0"   ),
+    /* WMA Professional in ASF */
+    [AFMT_WMAPRO] =
+        AFMT_ENTRY("WMAPro",  "wmapro",     NULL,    "wma\0wmv\0asf\0"   ),
     /* Amiga MOD File */
     [AFMT_MOD] =
         AFMT_ENTRY("MOD",  "mod",     NULL,          "mod\0"      ),

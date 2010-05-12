@@ -22,7 +22,6 @@
 
 #ifdef ROCKBOX_HAS_LOGF
 #include <file.h>
-#include <sprintf.h>
 #include <timefuncs.h>
 #include <string.h>
 #include <kernel.h>
@@ -233,7 +232,7 @@ bool logfdump(void)
         /* nothing is logged just yet */
         return false;
     
-    fd = open(ROCKBOX_DIR "/logf.txt", O_CREAT|O_WRONLY|O_TRUNC);
+    fd = open(ROCKBOX_DIR "/logf.txt", O_CREAT|O_WRONLY|O_TRUNC, 0666);
     if(-1 != fd) {
         int i;
         

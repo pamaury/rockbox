@@ -60,6 +60,7 @@ struct debug_token_table tokens[] = {
     { X(TOKEN_MARKER_PLAYLIST) },
     { X(TOKEN_MARKER_MISC) },
     { X(TOKEN_MARKER_RECORDING) },
+    { X(TOKEN_MARKER_TUNER) },
     { X(TOKEN_MARKER_END) },
 };
 #undef X
@@ -490,7 +491,9 @@ static char *get_token_desc(struct wps_token *token, char *buf,
             break;
 #endif
         case WPS_VIEWPORT_ENABLE:
-            snprintf(buf, bufsize, "enable VP: %c",
+        case WPS_TOKEN_UIVIEWPORT_ENABLE:
+            snprintf(buf, bufsize, "enable %sVP: %c",
+                     token->type == WPS_TOKEN_UIVIEWPORT_ENABLE ? "UI " : "",
                      (char)token->value.i);
             break;
         case WPS_TOKEN_BUTTON_VOLUME:

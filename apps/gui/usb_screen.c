@@ -19,6 +19,8 @@
  *
  ****************************************************************************/
 
+#include <stdio.h>
+#include <stdbool.h>
 #include "action.h"
 #include "font.h"
 #ifdef HAVE_REMOTE_LCD
@@ -30,7 +32,6 @@
 #include "usb_core.h"
 #ifdef USB_ENABLE_HID
 #include "usb_keymaps.h"
-#include "sprintf.h"
 #endif
 #endif
 #include "settings.h"

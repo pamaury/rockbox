@@ -710,12 +710,12 @@ ssize_t disk_buf_prepare_streaming(off_t pos, size_t len)
     else if (pos > disk_buf.filesize)
         pos = disk_buf.filesize;
 
-    DEBUGF("prepare streaming:\n  pos:%ld len:%lu\n", pos, len);
+    DEBUGF("prepare streaming:\n  pos:%ld len:%zu\n", pos, len);
 
     pos = disk_buf_lseek(pos, SEEK_SET);
     disk_buf_probe(pos, len, NULL, &len);
 
-    DEBUGF("  probe done: pos:%ld len:%lu\n", pos, len);
+    DEBUGF("  probe done: pos:%ld len:%zu\n", pos, len);
 
     len = disk_buf_send_msg(STREAM_RESET, pos);
 
@@ -855,7 +855,7 @@ bool disk_buf_init(void)
     disk_buf.pos_last = 0;
     disk_buf.low_wm = DISK_BUF_LOW_WATERMARK;
 
-    disk_buf.start = mpeg_malloc_all(&disk_buf.size, MPEG_ALLOC_DISKBUF);
+    disk_buf.start = mpeg_malloc_all((size_t*)&disk_buf.size, MPEG_ALLOC_DISKBUF);
     if (disk_buf.start == NULL)
         return false;
 

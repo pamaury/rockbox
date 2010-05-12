@@ -31,8 +31,10 @@
 #define MEM 2
 #endif
 
+#include <_ansi.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include "strlcpy.h"
 #include "config.h"
 #include "system.h"
 #include "metadata.h"
@@ -222,7 +224,7 @@ struct codec_api {
     size_t          (*enc_unget_pcm_data)(size_t size);
 
     /* file */
-    int (*open)(const char* pathname, int flags);
+    int (*open)(const char* pathname, int flags, ...);
     int (*close)(int fd);
     ssize_t (*read)(int fd, void* buf, size_t count);
     off_t (*lseek)(int fd, off_t offset, int whence);

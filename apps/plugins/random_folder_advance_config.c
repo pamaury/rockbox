@@ -23,7 +23,7 @@
 
 PLUGIN_HEADER
 
-static bool abort;
+static bool cancel;
 static int fd;
 static int dirs_count;
 static int lasttick;
@@ -33,7 +33,7 @@ static int lasttick;
 #define MAX_REMOVED_DIRS 10
 
 char *buffer = NULL;
-ssize_t buffer_size;
+size_t buffer_size;
 int num_replaced_dirs = 0;
 char removed_dirs[MAX_REMOVED_DIRS][MAX_PATH];
 struct file_format {
@@ -70,7 +70,7 @@ void traversedir(char* location, char* name)
     if (dir) {
         entry = rb->readdir(dir);
         while (entry) {
-            if (abort)
+            if (cancel)
                 break;
             /* Skip .. and . */
             if (entry->d_name[0] == '.')
@@ -113,7 +113,7 @@ void traversedir(char* location, char* name)
                 lasttick = *rb->current_tick;
                 if (rb->action_userabort(TIMEOUT_NOBLOCK))
                 {
-                    abort = true;
+                    cancel = true;
                     break;
                 }
             }
@@ -213,8 +213,8 @@ bool custom_dir(void)
 void generate(void)
 {
     dirs_count = 0;
-    abort = false;
-    fd = rb->open(RFA_FILE,O_CREAT|O_WRONLY);
+    cancel = false;
+    fd = rb->open(RFA_FILE,O_CREAT|O_WRONLY, 0666);
     rb->write(fd,&dirs_count,sizeof(int));
     if (fd < 0)
     {
@@ -248,7 +248,7 @@ int load_list(void)
     int myfd = rb->open(RFA_FILE,O_RDONLY);
     if (myfd < 0)
         return -1;
-    buffer = rb->plugin_get_audio_buffer((size_t *)&buffer_size);
+    buffer = rb->plugin_get_audio_buffer(&buffer_size);
     if (!buffer)
     {
         return -2;
@@ -263,7 +263,7 @@ int load_list(void)
 
 int save_list(void)
 {
-    int myfd = rb->creat(RFA_FILE);
+    int myfd = rb->creat(RFA_FILE, 0666);
     if (myfd < 0)
     {
         rb->splash(HZ, "Could Not Open " RFA_FILE);
@@ -388,7 +388,7 @@ int export_list_to_file_text(void)
     }
         
     /* create and open the file */
-    int myfd = rb->creat(RFA_FILE_TEXT);
+    int myfd = rb->creat(RFA_FILE_TEXT, 0666);
     if (myfd < 0)
     {
         rb->splashf(HZ*4, "failed to open: fd = %d, file = %s", 
@@ -414,7 +414,7 @@ int import_list_from_file_text(void)
 {
     char line[MAX_PATH];
     
-    buffer = rb->plugin_get_audio_buffer((size_t *)&buffer_size);
+    buffer = rb->plugin_get_audio_buffer(&buffer_size);
     if (buffer == NULL)
     {
         rb->splash(HZ*2, "failed to get audio buffer");
@@ -621,7 +621,7 @@ enum plugin_status plugin_start(const void* parameter)
 {
     (void)parameter;
 
-    abort = false;
+    cancel = false;
     
     return main_menu();
 }

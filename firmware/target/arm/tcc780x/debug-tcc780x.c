@@ -19,14 +19,14 @@
  *
  ****************************************************************************/
 
+#include <stdbool.h>
+#include <stdio.h>
 #include "config.h"
 #include "cpu.h"
 #include "system.h"
 #include "string.h"
-#include <stdbool.h>
 #include "button.h"
 #include "lcd.h"
-#include "sprintf.h"
 #include "font.h"
 #include "debug-target.h"
 #include "adc.h"

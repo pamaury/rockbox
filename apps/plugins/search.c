@@ -20,7 +20,7 @@
  *
  ****************************************************************************/
 #include "plugin.h"
-#include "ctype.h"
+#include <ctype.h>
 
 PLUGIN_HEADER
 
@@ -123,7 +123,7 @@ static bool search_init(const char* file){
         if (bomsize)
             fdw = rb->open_utf8(resultfile, O_WRONLY|O_CREAT|O_TRUNC);
         else
-            fdw = rb->open(resultfile, O_WRONLY|O_CREAT|O_TRUNC);
+            fdw = rb->open(resultfile, O_WRONLY|O_CREAT|O_TRUNC, 0666);
 
         if (fdw < 0) {
 #ifdef HAVE_LCD_BITMAP

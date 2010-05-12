@@ -698,7 +698,7 @@ void rec_set_source(int source, unsigned flags)
 
     /* Set peakmeters for recording or reset to playback */
     peak_meter_playback((flags & SRCF_RECORDING) == 0);
-    peak_meter_enabled = true;
+    peak_meter_enable(true);
 }
 #endif /* CONFIG_CODEC == SWCODEC && !defined (SIMULATOR) */
 
@@ -976,7 +976,7 @@ static const char* reclist_get_name(int selected_item, void * data,
 #if CONFIG_CODEC == SWCODEC
 #ifdef HAVE_SPDIF_REC
         case ITEM_SAMPLERATE_D:
-            snprintf(buffer, buffer_len, "%s: %d",
+            snprintf(buffer, buffer_len, "%s: %lu",
                      str(LANG_RECORDING_FREQUENCY),
                      pcm_rec_sample_rate());
             break;
@@ -1099,7 +1099,7 @@ bool recording_screen(bool no_source)
        buffer */
 #else
     /* Yes, we use the D/A for monitoring */
-    peak_meter_enabled = true;
+    peak_meter_enable(true);
     peak_meter_playback(true);
 #endif
 
@@ -1549,7 +1549,7 @@ bool recording_screen(bool no_source)
                 {
 #if CONFIG_CODEC != SWCODEC
                     peak_meter_playback(true);
-                    peak_meter_enabled = false;
+                    peak_meter_enable(false);
 #endif
                     done = 1;
                 }
@@ -1762,7 +1762,7 @@ bool recording_screen(bool no_source)
                    draw attention */
                 /* Don't use language string unless agreed upon to make this
                    method permanent - could do something in the statusbar */
-                snprintf(buf, sizeof(buf), "Warning: %08X",
+                snprintf(buf, sizeof(buf), "Warning: %08lX",
                          pcm_rec_get_warnings());
             }
             else
@@ -1771,7 +1771,7 @@ bool recording_screen(bool no_source)
                 (global_settings.rec_split_method))
             {
                 dmb = dsize/1024/1024;
-                snprintf(buf, sizeof(buf), "%s %dMB",
+                snprintf(buf, sizeof(buf), "%s %luMB",
                          str(LANG_SPLIT_SIZE), dmb);
             }
             else

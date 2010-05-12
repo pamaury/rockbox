@@ -32,11 +32,13 @@
 #endif
 
 #include <stdbool.h>
+#include <inttypes.h>
 #include <sys/types.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "string-extra.h"
 
 char* strncpy(char *, const char *, size_t);
 void* plugin_get_buffer(size_t *buffer_size);
@@ -110,6 +112,11 @@ void* plugin_get_buffer(size_t *buffer_size);
 #ifdef USB_ENABLE_HID
 #include "usbstack/usb_hid_usage_tables.h"
 #endif
+
+
+/* on some platforms strcmp() seems to be a tricky define which
+ * breaks if we write down strcmp's prototype */
+#undef strcmp
 
 #ifdef PLUGIN
 
@@ -397,11 +404,11 @@ struct plugin_api {
 
     /* file */
     int (*open_utf8)(const char* pathname, int flags);
-    int (*open)(const char* pathname, int flags);
+    int (*open)(const char* pathname, int flags, ...);
     int (*close)(int fd);
     ssize_t (*read)(int fd, void* buf, size_t count);
     off_t (*lseek)(int fd, off_t offset, int whence);
-    int (*creat)(const char *pathname);
+    int (*creat)(const char *pathname, mode_t mode);
     ssize_t (*write)(int fd, const void* buf, size_t count);
     int (*remove)(const char* pathname);
     int (*rename)(const char* path, const char* newname);
@@ -529,7 +536,7 @@ struct plugin_api {
     /* strings and memory */
     int (*snprintf)(char *buf, size_t size, const char *fmt, ...)
                     ATTRIBUTE_PRINTF(3, 4);
-    int (*vsnprintf)(char *buf, int size, const char *fmt, va_list ap);
+    int (*vsnprintf)(char *buf, size_t size, const char *fmt, va_list ap);
     char* (*strcpy)(char *dst, const char *src);
     size_t (*strlcpy)(char *dst, const char *src, size_t length);
     size_t (*strlen)(const char *str);

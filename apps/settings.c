@@ -33,7 +33,8 @@
 #include "backlight.h"
 #include "audio.h"
 #include "talk.h"
-#include "string.h"
+#include "strlcpy.h"
+#include "strcasestr.h"
 #include "rtc.h"
 #include "power.h"
 #include "ata_idle_notify.h"
@@ -52,7 +53,6 @@
 #include "lang.h"
 #include "language.h"
 #include "powermgmt.h"
-#include "sprintf.h"
 #include "keyboard.h"
 #include "version.h"
 #include "sound.h"
@@ -193,7 +193,7 @@ static bool write_nvram_data(char* buf, int max_len)
                     max_len-NVRAM_DATA_START-1,0xffffffff);
     memcpy(&buf[4],&crc32,4);
 #ifndef HAVE_RTC_RAM
-    fd = open(NVRAM_FILE,O_CREAT|O_TRUNC|O_WRONLY);
+    fd = open(NVRAM_FILE,O_CREAT|O_TRUNC|O_WRONLY, 0666);
     if (fd >= 0)
     {
         int len = write(fd,buf,max_len);
@@ -532,7 +532,7 @@ static bool settings_write_config(const char* filename, int options)
     int i;
     int fd;
     char value[MAX_PATH];
-    fd = open(filename,O_CREAT|O_TRUNC|O_WRONLY);
+    fd = open(filename,O_CREAT|O_TRUNC|O_WRONLY, 0666);
     if (fd < 0)
         return false;
     fdprintf(fd, "# .cfg file created by rockbox %s - "

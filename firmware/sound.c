@@ -189,8 +189,7 @@ static void set_prescaled_volume(void)
  */
 #if defined(HAVE_SW_TONE_CONTROLS) || !(defined(HAVE_WM8975) \
     || defined(HAVE_WM8711) || defined(HAVE_WM8721) || defined(HAVE_WM8731) \
-    || defined(HAVE_WM8751) || defined(HAVE_WM8758) || defined(HAVE_WM8985) \
-    || defined(HAVE_UDA1341))
+    || defined(HAVE_WM8758) || defined(HAVE_WM8985) || defined(HAVE_UDA1341))
 
     prescale = MAX(current_bass, current_treble);
     if (prescale < 0)

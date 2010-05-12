@@ -19,6 +19,7 @@
  *
  ****************************************************************************/
 #include <sys/types.h>
+#include "inttypes.h"
 
 #include "config.h"
 #include "cpu.h"

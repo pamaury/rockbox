@@ -32,12 +32,12 @@ short bp_offs[4][2] = {{1,1},{-1,1},{1,-1},{-1,-1}};
 
 /* global vars for pl_malloc() */
 void *bufptr = NULL;
-ssize_t bufleft;
+size_t bufleft;
 
 /* simple function to "allocate" memory in pluginbuffer.
  * (borrowed from dict.c)
  */
-void *pl_malloc(ssize_t size)
+void *pl_malloc(size_t size)
 {
     void *ptr;
     ptr = bufptr;
@@ -57,7 +57,7 @@ void *pl_malloc(ssize_t size)
 /* init function for pl_malloc() */
 void pl_malloc_init(void)
 {
-    bufptr = rb->plugin_get_buffer((size_t *)&bufleft);
+    bufptr = rb->plugin_get_buffer(&bufleft);
 }
 
 void process_tag(struct pgn_game_node* game, char* buffer){
@@ -670,7 +670,7 @@ void pgn_parse_game(const char* filename,
         rb->read_line(fhandler, line_buffer, sizeof line_buffer);
     }
 
-    loghandler = rb->open(LOG_FILE, O_WRONLY | O_CREAT);
+    loghandler = rb->open(LOG_FILE, O_WRONLY | O_CREAT, 0666);
 
     GNUChess_Initialize();
 
@@ -829,7 +829,7 @@ void pgn_store_game(struct pgn_game_node* game){
         ply_count++;
     }
 
-    fhandler = rb->open(PGN_FILE, O_WRONLY|O_CREAT|O_APPEND);
+    fhandler = rb->open(PGN_FILE, O_WRONLY|O_CREAT|O_APPEND, 0666);
 
 
     /* the first 7 tags are mandatory according to the PGN specification so we

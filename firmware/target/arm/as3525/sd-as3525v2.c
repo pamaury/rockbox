@@ -507,9 +507,6 @@ static int sd_init_card(const int drive)
 #endif
     /*  End of Card Identification Mode   ************************************/
 
-    /*  Card back to full speed  */
-    MCI_CLKDIV &= ~(0xFF);    /* CLK_DIV_0 : bits 7:0 = 0x00 */
-
     /* Attempt to switch cards to HS timings, non HS cards just ignore this */
     /*  CMD7 w/rca: Select card to put it in TRAN state */
     if(!send_cmd(drive, SD_SELECT_CARD, card_info[drive].rca, MCI_NO_RESP, NULL))
@@ -521,6 +518,7 @@ static int sd_init_card(const int drive)
     /* CMD6 */
     if(!send_cmd(drive, SD_SWITCH_FUNC, 0x80fffff1, MCI_NO_RESP, NULL))
         return -9;
+    mci_delay();
 
     /*  We need to go back to STBY state now so we can read csd */
     /*  CMD7 w/rca=0:  Deselect card to put it in STBY state */
@@ -534,6 +532,9 @@ static int sd_init_card(const int drive)
 
     sd_parse_csd(&card_info[drive]);
 
+    /*  Card back to full speed  */
+    MCI_CLKDIV &= ~(0xFF);    /* CLK_DIV_0 : bits 7:0 = 0x00 */
+
     /*  CMD7 w/rca: Select card to put it in TRAN state */
     if(!send_cmd(drive, SD_SELECT_CARD, card_info[drive].rca, MCI_NO_RESP, NULL))
         return -12;
@@ -542,15 +543,15 @@ static int sd_init_card(const int drive)
     /*  Switch to to 4 bit widebus mode  */
     if(sd_wait_for_state(drive, SD_TRAN) < 0)
         return -13;
-    /* CMD55 */
-    if(!send_cmd(drive, SD_APP_CMD, card_info[drive].rca, MCI_NO_RESP, NULL))
+    /* CMD55 */              /*  Response is requested due to timing issue  */
+    if(!send_cmd(drive, SD_APP_CMD, card_info[drive].rca, MCI_RESP, &response))
         return -14;
     /* ACMD6  */
     if(!send_cmd(drive, SD_SET_BUS_WIDTH, 2, MCI_NO_RESP, NULL))
         return -15;
     mci_delay();
-    /* CMD55 */
-    if(!send_cmd(drive, SD_APP_CMD, card_info[drive].rca, MCI_NO_RESP, NULL))
+    /* CMD55 */             /*  Response is requested due to timing issue  */
+    if(!send_cmd(drive, SD_APP_CMD, card_info[drive].rca, MCI_RESP, &response))
         return -16;
     /* ACMD42  */
     if(!send_cmd(drive, SD_SET_CLR_CARD_DETECT, 0, MCI_NO_RESP, NULL))
@@ -560,6 +561,8 @@ static int sd_init_card(const int drive)
 #endif
 
     card_info[drive].initialized = 1;
+
+    MCI_CLKENA |= 1<<(drive + 16);      /*  Set low power mode  */
 
     return 0;
 }
@@ -840,8 +843,6 @@ static int sd_transfer_sectors(IF_MD2(int drive,) unsigned long start,
             goto sd_transfer_error;
         }
 
-        MCI_MASK |= (MCI_DATA_ERROR | MCI_INT_DTO);
-
         int arg = start;
         if(!(card_info[drive].ocr & (1<<30))) /* not SDHC */
             arg *= SD_BLOCK_SIZE;
@@ -853,6 +854,7 @@ static int sd_transfer_sectors(IF_MD2(int drive,) unsigned long start,
             dma_enable_channel(0, MCI_FIFO, dma_buf, DMA_PERI_SD,
                 DMAC_FLOWCTRL_PERI_PERI_TO_MEM, false, true, 0, DMA_S8, NULL);
 
+        MCI_MASK |= (MCI_DATA_ERROR | MCI_INT_DTO);
         MCI_CTRL |= DMA_ENABLE;
 
         unsigned long dummy; /* if we don't ask for a response, writing fails */

@@ -154,12 +154,12 @@
 /* #define HAVE_POWEROFF_WHILE_CHARGING */
 
 /* define current usage levels (based on battery bench) */
-#define CURRENT_NORMAL     50
+#define CURRENT_NORMAL     45
 #define CURRENT_BACKLIGHT  14
 #define CURRENT_RECORD     CURRENT_NORMAL
 
 /* Define this to the CPU frequency */
-#define CPU_FREQ      250000000
+#define CPU_FREQ      248000000
 
 /* Type of LCD */
 #define CONFIG_LCD LCD_SSD1303

@@ -68,15 +68,14 @@
  */
 
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
+#include <stdlib.h>      
+#include <ctype.h>                      
+#include "string-extra.h"
 #include "playlist.h"
 #include "ata_idle_notify.h"
 #include "file.h"
 #include "action.h"
 #include "dir.h"
-#include "sprintf.h"
 #include "debug.h"
 #include "audio.h"
 #include "lcd.h"
@@ -336,7 +335,7 @@ static void new_playlist(struct playlist_info* playlist, const char *dir,
 static void create_control(struct playlist_info* playlist)
 {
     playlist->control_fd = open(playlist->control_filename,
-                                O_CREAT|O_RDWR|O_TRUNC);
+                                O_CREAT|O_RDWR|O_TRUNC, 0666);
     if (playlist->control_fd < 0)
     {
         if (check_rockboxdir())
@@ -414,7 +413,7 @@ static int recreate_control(struct playlist_info* playlist)
             return -1;
 
         playlist->control_fd = open(playlist->control_filename,
-            O_CREAT|O_RDWR|O_TRUNC);
+            O_CREAT|O_RDWR|O_TRUNC, 0666);
         if (playlist->control_fd < 0)
             return -1;
 
@@ -2451,7 +2450,7 @@ bool playlist_check(int steps)
 
 /* get trackname of track that is "steps" away from current playing track.
    NULL is used to identify end of playlist */
-char* playlist_peek(int steps)
+const char* playlist_peek(int steps)
 {
     struct playlist_info* playlist = &current_playlist;
     int seek;
@@ -3375,7 +3374,7 @@ int playlist_save(struct playlist_info* playlist, char *filename)
     else
     {
         /* some applications require a BOM to read the file properly */
-        fd = open(path, O_CREAT|O_WRONLY|O_TRUNC);
+        fd = open(path, O_CREAT|O_WRONLY|O_TRUNC, 0666);
     }
     if (fd < 0)
     {

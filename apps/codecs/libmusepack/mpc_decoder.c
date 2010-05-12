@@ -122,6 +122,98 @@ void mpc_decoder_read_bitstream_sv7(mpc_decoder * d, mpc_bits_reader * r)
 void mpc_decoder_read_bitstream_sv8(mpc_decoder * d, mpc_bits_reader * r,
                                     mpc_bool_t is_key_frame);
 
+//------------------------------------------------------------------------------
+// macros
+//------------------------------------------------------------------------------
+#define REQUANT_M1_S1_SAMPLES(IDX) \
+    *(YL+=IDX) = (templ = MPC_MULTIPLY_FLOAT_INT(facL,*L++))+(tempr = MPC_MULTIPLY_FLOAT_INT(facR,*R++)); \
+    *(YR+=IDX) = templ - tempr;
+
+#define REQUANT_M1_S1(SUBFRAME) \
+    facL = MPC_MULTIPLY_SCF( Cc[d->Res_L[Band]] , d->SCF_Index_L[Band][SUBFRAME] & 0xFF); \
+    facR = MPC_MULTIPLY_SCF( Cc[d->Res_R[Band]] , d->SCF_Index_R[Band][SUBFRAME] & 0xFF); \
+    for (n = 0; n < 12; n+=4, YL += 32, YR += 32) { \
+        REQUANT_M1_S1_SAMPLES( 0); \
+        REQUANT_M1_S1_SAMPLES(32); \
+        REQUANT_M1_S1_SAMPLES(32); \
+        REQUANT_M1_S1_SAMPLES(32); \
+    }
+
+#define REQUANT_M1_S0_SAMPLES(IDX) \
+    *(YR+=IDX) = *(YL+=IDX) = MPC_MULTIPLY_FLOAT_INT(facL,*L++);
+
+#define REQUANT_M1_S0(SUBFRAME) \
+    facL = MPC_MULTIPLY_SCF( Cc[d->Res_L[Band]] , d->SCF_Index_L[Band][SUBFRAME] & 0xFF); \
+    for (n = 0; n < 12; n+=4, YL += 32, YR += 32) { \
+        REQUANT_M1_S0_SAMPLES( 0); \
+        REQUANT_M1_S0_SAMPLES(32); \
+        REQUANT_M1_S0_SAMPLES(32); \
+        REQUANT_M1_S0_SAMPLES(32); \
+    }
+
+#define REQUANT_M0_S1_SAMPLES(IDX) \
+    *(YR+=IDX) = -(*(YL+=IDX) = MPC_MULTIPLY_FLOAT_INT(facR,*R++));
+
+#define REQUANT_M0_S1(SUBFRAME) \
+    facR = MPC_MULTIPLY_SCF( Cc[d->Res_R[Band]] , d->SCF_Index_R[Band][SUBFRAME] & 0xFF); \
+    for (n = 0; n < 12; n+=4, YL += 32, YR += 32) { \
+        REQUANT_M0_S1_SAMPLES( 0); \
+        REQUANT_M0_S1_SAMPLES(32); \
+        REQUANT_M0_S1_SAMPLES(32); \
+        REQUANT_M0_S1_SAMPLES(32); \
+    }
+
+#define REQUANT_L1_R1_SAMPLES(IDX) \
+    *(YL+=IDX) = MPC_MULTIPLY_FLOAT_INT(facL,*L++); \
+    *(YR+=IDX) = MPC_MULTIPLY_FLOAT_INT(facR,*R++);
+
+#define REQUANT_L1_R1(SUBFRAME) \
+    facL = MPC_MULTIPLY_SCF( Cc[d->Res_L[Band]] , d->SCF_Index_L[Band][SUBFRAME] & 0xFF); \
+    facR = MPC_MULTIPLY_SCF( Cc[d->Res_R[Band]] , d->SCF_Index_R[Band][SUBFRAME] & 0xFF); \
+    for (n = 0; n < 12; n+=4, YL += 32, YR += 32) { \
+        REQUANT_L1_R1_SAMPLES( 0); \
+        REQUANT_L1_R1_SAMPLES(32); \
+        REQUANT_L1_R1_SAMPLES(32); \
+        REQUANT_L1_R1_SAMPLES(32); \
+    }
+
+#define REQUANT_L1_R0_SAMPLES(IDX) \
+    *(YL+=IDX) = MPC_MULTIPLY_FLOAT_INT(facL,*L++); \
+    *(YR+=IDX) = 0;
+
+#define REQUANT_L1_R0(SUBFRAME) \
+    facL = MPC_MULTIPLY_SCF( Cc[d->Res_L[Band]] , d->SCF_Index_L[Band][SUBFRAME] & 0xFF); \
+    for (n = 0; n < 12; n+=4, YL += 32, YR += 32) { \
+        REQUANT_L1_R0_SAMPLES( 0); \
+        REQUANT_L1_R0_SAMPLES(32); \
+        REQUANT_L1_R0_SAMPLES(32); \
+        REQUANT_L1_R0_SAMPLES(32); \
+    }
+
+#define REQUANT_L0_R1_SAMPLES(IDX) \
+    *(YL+=IDX) = 0; \
+    *(YR+=IDX) = MPC_MULTIPLY_FLOAT_INT(facR,*R++);
+
+#define REQUANT_L0_R1(SUBFRAME) \
+    facR = MPC_MULTIPLY_SCF( Cc[d->Res_R[Band]] , d->SCF_Index_R[Band][SUBFRAME] & 0xFF); \
+    for (n = 0; n < 12; n+=4, YL += 32, YR += 32) { \
+        REQUANT_L0_R1_SAMPLES( 0); \
+        REQUANT_L0_R1_SAMPLES(32); \
+        REQUANT_L0_R1_SAMPLES(32); \
+        REQUANT_L0_R1_SAMPLES(32); \
+    }
+
+#define REQUANT_SILENCE_SAMPLES(IDX) \
+    *(YR+=IDX) = *(YL+=IDX) = 0;
+
+#define REQUANT_SILENCE \
+    for (n = 0; n < 12; n+=4, YL += 32, YR += 32) { \
+        REQUANT_SILENCE_SAMPLES( 0); \
+        REQUANT_SILENCE_SAMPLES(32); \
+        REQUANT_SILENCE_SAMPLES(32); \
+        REQUANT_SILENCE_SAMPLES(32); \
+    }
+
 /**
  * set the scf indexes for seeking use
  * needed only for sv7 seeking
@@ -280,57 +372,22 @@ mpc_decoder_requantisierung(mpc_decoder *d)
         if ( d->MS_Flag [Band] ) {
             if ( d->Res_L [Band] ) {
                 if ( d->Res_R [Band] ) {    // M!=0, S!=0
-                    facL = MPC_MULTIPLY_SCF( Cc[d->Res_L[Band]] , d->SCF_Index_L[Band][0] & 0xFF);
-                    facR = MPC_MULTIPLY_SCF( Cc[d->Res_R[Band]] , d->SCF_Index_R[Band][0] & 0xFF);
-                    for ( n = 0; n < 12; n++, YL += 32, YR += 32 ) {
-                        *YL   = (templ = MPC_MULTIPLY_FLOAT_INT(facL,*L++))+(tempr = MPC_MULTIPLY_FLOAT_INT(facR,*R++));
-                        *YR   = templ - tempr;
-                    }
-                    facL = MPC_MULTIPLY_SCF( Cc[d->Res_L[Band]] , d->SCF_Index_L[Band][1] & 0xFF);
-                    facR = MPC_MULTIPLY_SCF( Cc[d->Res_R[Band]] , d->SCF_Index_R[Band][1] & 0xFF);
-                    for ( ; n < 24; n++, YL += 32, YR += 32 ) {
-                        *YL   = (templ = MPC_MULTIPLY_FLOAT_INT(facL,*L++))+(tempr = MPC_MULTIPLY_FLOAT_INT(facR,*R++));
-                        *YR   = templ - tempr;
-                    }
-                    facL = MPC_MULTIPLY_SCF( Cc[d->Res_L[Band]] , d->SCF_Index_L[Band][2] & 0xFF);
-                    facR = MPC_MULTIPLY_SCF( Cc[d->Res_R[Band]] , d->SCF_Index_R[Band][2] & 0xFF);
-                    for ( ; n < 36; n++, YL += 32, YR += 32 ) {
-                        *YL   = (templ = MPC_MULTIPLY_FLOAT_INT(facL,*L++))+(tempr = MPC_MULTIPLY_FLOAT_INT(facR,*R++));
-                        *YR   = templ - tempr;
-                    }
-                } else {    // M!=0, S==0
-                    facL = MPC_MULTIPLY_SCF( Cc[d->Res_L[Band]] , d->SCF_Index_L[Band][0] & 0xFF);
-                    for ( n = 0; n < 12; n++, YL += 32, YR += 32 ) {
-                        *YR = *YL = MPC_MULTIPLY_FLOAT_INT(facL,*L++);
-                    }
-                    facL = MPC_MULTIPLY_SCF( Cc[d->Res_L[Band]] , d->SCF_Index_L[Band][1] & 0xFF);
-                    for ( ; n < 24; n++, YL += 32, YR += 32 ) {
-                        *YR = *YL = MPC_MULTIPLY_FLOAT_INT(facL,*L++);
-                    }
-                    facL = MPC_MULTIPLY_SCF( Cc[d->Res_L[Band]] , d->SCF_Index_L[Band][2] & 0xFF);
-                    for ( ; n < 36; n++, YL += 32, YR += 32 ) {
-                        *YR = *YL = MPC_MULTIPLY_FLOAT_INT(facL,*L++);
-                    }
+                    REQUANT_M1_S1(0);
+                    REQUANT_M1_S1(1);
+                    REQUANT_M1_S1(2);
+                } else {                    // M!=0, S==0
+                    REQUANT_M1_S0(0);
+                    REQUANT_M1_S0(1);
+                    REQUANT_M1_S0(2);
                 }
             } else {
-                if (d->Res_R[Band])    // M==0, S!=0
+                if ( d->Res_R[Band] )       // M==0, S!=0
                 {
-                    facR = MPC_MULTIPLY_SCF( Cc[d->Res_R[Band]] , d->SCF_Index_R[Band][0] & 0xFF);
-                    for ( n = 0; n < 12; n++, YL += 32, YR += 32 ) {
-                        *YR = - (*YL = MPC_MULTIPLY_FLOAT_INT(facR,*(R++)));
-                    }
-                    facR = MPC_MULTIPLY_SCF( Cc[d->Res_R[Band]] , d->SCF_Index_R[Band][1] & 0xFF);
-                    for ( ; n < 24; n++, YL += 32, YR += 32 ) {
-                        *YR = - (*YL = MPC_MULTIPLY_FLOAT_INT(facR,*(R++)));
-                    }
-                    facR = MPC_MULTIPLY_SCF( Cc[d->Res_R[Band]] , d->SCF_Index_R[Band][2] & 0xFF);
-                    for ( ; n < 36; n++, YL += 32, YR += 32 ) {
-                        *YR = - (*YL = MPC_MULTIPLY_FLOAT_INT(facR,*(R++)));
-                    }
-                } else {    // M==0, S==0
-                    for ( n = 0; n < 36; n++, YL += 32, YR += 32 ) {
-                        *YR = *YL = 0;
-                    }
+                    REQUANT_M0_S1(0);
+                    REQUANT_M0_S1(1);
+                    REQUANT_M0_S1(2);
+                } else {                    // M==0, S==0
+                    REQUANT_SILENCE;
                 }
             }
         }
@@ -338,63 +395,22 @@ mpc_decoder_requantisierung(mpc_decoder *d)
         else {
             if ( d->Res_L [Band] ) {
                 if ( d->Res_R [Band] ) {    // L!=0, R!=0
-                    facL = MPC_MULTIPLY_SCF( Cc[d->Res_L[Band]] , d->SCF_Index_L[Band][0] & 0xFF);
-                    facR = MPC_MULTIPLY_SCF( Cc[d->Res_R[Band]] , d->SCF_Index_R[Band][0] & 0xFF);
-                    for (n = 0; n < 12; n++, YL += 32, YR += 32 ) {
-                        *YL = MPC_MULTIPLY_FLOAT_INT(facL,*L++);
-                        *YR = MPC_MULTIPLY_FLOAT_INT(facR,*R++);
-                    }
-                    facL = MPC_MULTIPLY_SCF( Cc[d->Res_L[Band]] , d->SCF_Index_L[Band][1] & 0xFF);
-                    facR = MPC_MULTIPLY_SCF( Cc[d->Res_R[Band]] , d->SCF_Index_R[Band][1] & 0xFF);
-                    for (; n < 24; n++, YL += 32, YR += 32 ) {
-                        *YL = MPC_MULTIPLY_FLOAT_INT(facL,*L++);
-                        *YR = MPC_MULTIPLY_FLOAT_INT(facR,*R++);
-                    }
-                    facL = MPC_MULTIPLY_SCF( Cc[d->Res_L[Band]] , d->SCF_Index_L[Band][2] & 0xFF);
-                    facR = MPC_MULTIPLY_SCF( Cc[d->Res_R[Band]] , d->SCF_Index_R[Band][2] & 0xFF);
-                    for (; n < 36; n++, YL += 32, YR += 32 ) {
-                        *YL = MPC_MULTIPLY_FLOAT_INT(facL,*L++);
-                        *YR = MPC_MULTIPLY_FLOAT_INT(facR,*R++);
-                    }
-                } else {     // L!=0, R==0
-                    facL = MPC_MULTIPLY_SCF( Cc[d->Res_L[Band]] , d->SCF_Index_L[Band][0] & 0xFF);
-                    for ( n = 0; n < 12; n++, YL += 32, YR += 32 ) {
-                        *YL = MPC_MULTIPLY_FLOAT_INT(facL,*L++);
-                        *YR = 0;
-                    }
-                    facL = MPC_MULTIPLY_SCF( Cc[d->Res_L[Band]] , d->SCF_Index_L[Band][1] & 0xFF);
-                    for ( ; n < 24; n++, YL += 32, YR += 32 ) {
-                        *YL = MPC_MULTIPLY_FLOAT_INT(facL,*L++);
-                        *YR = 0;
-                    }
-                    facL = MPC_MULTIPLY_SCF( Cc[d->Res_L[Band]] , d->SCF_Index_L[Band][2] & 0xFF);
-                    for ( ; n < 36; n++, YL += 32, YR += 32 ) {
-                        *YL = MPC_MULTIPLY_FLOAT_INT(facL,*L++);
-                        *YR = 0;
-                    }
+                    REQUANT_L1_R1(0);
+                    REQUANT_L1_R1(1);
+                    REQUANT_L1_R1(2);
+                } else {                    // L!=0, R==0
+                    REQUANT_L1_R0(0);
+                    REQUANT_L1_R0(1);
+                    REQUANT_L1_R0(2);
                 }
             }
             else {
                 if ( d->Res_R [Band] ) {    // L==0, R!=0
-                    facR = MPC_MULTIPLY_SCF( Cc[d->Res_R[Band]] , d->SCF_Index_R[Band][0] & 0xFF);
-                    for ( n = 0; n < 12; n++, YL += 32, YR += 32 ) {
-                        *YL = 0;
-                        *YR = MPC_MULTIPLY_FLOAT_INT(facR,*R++);
-                    }
-                    facR = MPC_MULTIPLY_SCF( Cc[d->Res_R[Band]] , d->SCF_Index_R[Band][1] & 0xFF);
-                    for ( ; n < 24; n++, YL += 32, YR += 32 ) {
-                        *YL = 0;
-                        *YR = MPC_MULTIPLY_FLOAT_INT(facR,*R++);
-                    }
-                    facR = MPC_MULTIPLY_SCF( Cc[d->Res_R[Band]] , d->SCF_Index_R[Band][2] & 0xFF);
-                    for ( ; n < 36; n++, YL += 32, YR += 32 ) {
-                        *YL = 0;
-                        *YR = MPC_MULTIPLY_FLOAT_INT(facR,*R++);
-                    }
-                } else {    // L==0, R==0
-                    for ( n = 0; n < 36; n++, YL += 32, YR += 32 ) {
-                        *YR = *YL = 0;
-                    }
+                    REQUANT_L0_R1(0);
+                    REQUANT_L0_R1(1);
+                    REQUANT_L0_R1(2);
+                } else {                    // L==0, R==0
+                    REQUANT_SILENCE;
                 }
             }
         }

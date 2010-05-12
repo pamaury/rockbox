@@ -22,10 +22,11 @@
 #ifndef _FILE_H_
 #define _FILE_H_
 
-#include <sys/types.h>
-
 #undef MAX_PATH /* this avoids problems when building simulator */
 #define MAX_PATH 260
+
+#include <sys/types.h>
+#include "_ansi.h"
 
 #define MAX_OPEN_FILES 11
 
@@ -48,9 +49,9 @@
 #define O_TRUNC  0x10
 #endif
 
-#if defined(SIMULATOR) && !defined(PLUGIN) && !defined(CODEC)
-#define open(x,y) sim_open(x,y)
-#define creat(x) sim_creat(x)
+#if  defined(SIMULATOR) && !defined(PLUGIN) && !defined(CODEC)
+#define open(x, ...) sim_open(x, __VA_ARGS__)
+#define creat(x,m) sim_creat(x,m)
 #define remove(x) sim_remove(x)
 #define rename(x,y) sim_rename(x,y)
 #define filesize(x) sim_filesize(x)
@@ -60,26 +61,39 @@
 #define read(x,y,z) sim_read(x,y,z)
 #define write(x,y,z) sim_write(x,y,z)
 #define close(x) sim_close(x)
+extern int sim_creat(const char *pathname, mode_t mode);
+extern int sim_open(const char *pathname, int flags, ...);
 #endif
 
-typedef int (*open_func)(const char* pathname, int flags);
+typedef int (*open_func)(const char* pathname, int flags, ...);
 typedef ssize_t (*read_func)(int fd, void *buf, size_t count);
-typedef int (*creat_func)(const char *pathname);
+typedef int (*creat_func)(const char *pathname, mode_t mode);
 typedef ssize_t (*write_func)(int fd, const void *buf, size_t count);
 typedef void (*qsort_func)(void *base, size_t nmemb,  size_t size,
                            int(*_compar)(const void *, const void *));
 
-extern int open(const char* pathname, int flags);
+extern int file_open(const char* pathname, int flags);
 extern int close(int fd);
 extern int fsync(int fd);
 extern ssize_t read(int fd, void *buf, size_t count);
 extern off_t lseek(int fildes, off_t offset, int whence);
-extern int creat(const char *pathname);
+extern int file_creat(const char *pathname);
+#ifndef SIMULATOR
+/* posix compatibility function */
+static inline int creat(const char *pathname, mode_t mode)
+{
+    (void)mode;
+    return file_creat(pathname);
+}
+#if !defined(CODEC) && !defined(PLUGIN) && !defined(__PCTOOL__)
+#define open(x, y, ...) file_open(x,y)
+#endif
+#endif
 extern ssize_t write(int fd, const void *buf, size_t count);
 extern int remove(const char* pathname);
 extern int rename(const char* path, const char* newname);
 extern int ftruncate(int fd, off_t length);
 extern off_t filesize(int fd);
 extern int release_files(int volume);
-
+int fdprintf (int fd, const char *fmt, ...) ATTRIBUTE_PRINTF(2, 3);
 #endif
