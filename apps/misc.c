@@ -30,7 +30,6 @@
 #include "file.h"
 #ifndef __PCTOOL__
 #include "usb.h"
-#include "sprintf.h"
 #include "lang.h"
 #include "dir.h"
 #include "lcd-remote.h"

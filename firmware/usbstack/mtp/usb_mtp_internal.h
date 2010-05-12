@@ -22,13 +22,13 @@
 #define USB_MTP_INT_H
 
 #include "system.h"
-#include "sprintf.h"
 #include "dir.h"
 #include "powermgmt.h"
 #include "timefuncs.h"
 #include "file.h"
-#include "errno.h"
-#include "string.h"
+#include <errno.h>
+#include <string.h>
+#include <stdio.h>
 
 #if 1
 #define errorf  _logf
