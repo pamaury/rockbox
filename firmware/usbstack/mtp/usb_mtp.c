@@ -145,7 +145,12 @@ static uint32_t max_usb_recv_xfer_size(void)
 
 void fail_with_ex(uint16_t error_code, const char *debug_message)
 {
+    int i;
     errorf("mtp: fail with error code 0x%x (%s)", error_code, debug_message);
+    errorf("current command info: code=%x", mtp_cur_cmd.code);
+    for(i = 0; i < mtp_cur_cmd.nb_parameters; i++)
+        errorf("  param[%d] -> %lx", i, mtp_cur_cmd.param[i]);
+    errorf("current session: %lx", mtp_state.session_id);
     mtp_state.error = error_code;
     usb_drv_stall(ep_bulk_in, true, true);
     usb_drv_stall(ep_bulk_out, true, false);
@@ -525,7 +530,12 @@ static void fail_op_with_finish_recv_split_routine(bool error, void *user)
 
 void fail_op_with_ex(uint16_t error_code, enum data_phase_type dht, const char *debug_msg)
 {
+    int i;
     errorf("mtp: fail operation with error code 0x%x (%s)", error_code, debug_msg);
+    errorf("current command info: code=%x", mtp_cur_cmd.code);
+    for(i = 0; i < mtp_cur_cmd.nb_parameters; i++)
+        errorf("  param[%d] -> %lx", i, mtp_cur_cmd.param[i]);
+    errorf("current session: %lx", mtp_state.session_id);
     mtp_cur_resp.code = error_code;
     mtp_cur_resp.nb_parameters = 0;
     
@@ -572,7 +582,8 @@ void handle_command2(void)
     #define want_session(data_phase) \
         if(mtp_state.session_id == 0x00000000) \
             return fail_op_with_ex(ERROR_SESSION_NOT_OPEN, data_phase, "session not open");
-    
+
+    logf("[handle command: code=%x session=%x]", mtp_cur_cmd.code, mtp_state.session_id);
     switch(mtp_cur_cmd.code)
     {
         case MTP_OP_GET_DEV_INFO:
@@ -730,8 +741,8 @@ int usb_mtp_request_endpoints(struct usb_class_driver *drv)
         usb_core_release_endpoint(ep_bulk_in);
         return -1;
     }
-    
-    /* Communication Class interrupt endpoint */
+
+    /* interrupt endpoint */
     ep_int=usb_core_request_endpoint(USB_ENDPOINT_XFER_INT,USB_DIR_IN,drv);
     if(ep_int<0)
     {
@@ -758,7 +769,7 @@ int usb_mtp_get_config_descriptor(unsigned char *dest, int max_packet_size)
     /* MTP interface */
     interface_descriptor.bInterfaceNumber=usb_interface;
     PACK_DATA(dest,interface_descriptor);
-    
+
     /* interrupt endpoint */
     int_endpoint_descriptor.wMaxPacketSize=8;
     int_endpoint_descriptor.bInterval=8;
