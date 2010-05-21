@@ -258,6 +258,16 @@ PLUGIN_HEADER
 #define CALENDAR_NEXT_MONTH BUTTON_PLAY
 #define CALENDAR_PREV_MONTH BUTTON_MENU
 
+#elif CONFIG_KEYPAD == MPIO_HD200_PAD
+#define CALENDAR_QUIT       (BUTTON_REC|BUTTON_PLAY)
+#define CALENDAR_SELECT     BUTTON_SELECT
+#define CALENDAR_NEXT_WEEK  BUTTON_NEXT
+#define CALENDAR_PREV_WEEK  BUTTON_PREV
+#define CALENDAR_NEXT_DAY   BUTTON_VOL_UP
+#define CALENDAR_PREV_DAY   BUTTON_VOL_DOWN
+#define CALENDAR_NEXT_MONTH BUTTON_PLAY
+#define CALENDAR_PREV_MONTH BUTTON_REC
+
 #else
 #error "No keypad setting."
 #endif
@@ -601,8 +611,8 @@ static bool save_memo(int changed, bool new_mod, struct shown *shown)
 {
     int fp, fq;
     /* use O_RDWR|O_CREAT so that file is created if it doesn't exist. */
-    fp = rb->open(MEMO_FILE, O_RDWR|O_CREAT);
-    fq = rb->creat(TEMP_FILE);
+    fp = rb->open(MEMO_FILE, O_RDWR|O_CREAT, 0666);
+    fq = rb->creat(TEMP_FILE, 0666);
     if ( (fq > -1) && (fp > -1) )
     {
         int i;

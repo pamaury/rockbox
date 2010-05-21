@@ -34,8 +34,6 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-#define VERSION "0.1"
-
 #define MAX_FIRMWARESIZE   (10*1024*1024)   /* Arbitrary limit (for safety) */
 
 /* For win32 compatibility: */
@@ -57,6 +55,7 @@ static struct device_t devices[] =
     {"c100",     "Sansa C100 series",            0xb021, 0x20000000, 0x42e97010 },
     {"m200",     "Sansa M200 series",            0xb021, 0x20000000, 0x42e97010 },
     {"cowond2",  "Cowon D2",                     0xb011, 0x20000000, 0xa2e92010 },
+    {"cowons9",  "Cowon S9",                     0xb057, 0x20000000, 0xa1102800 },
     {"iaudio6",  "iAudio 6",                     0xb021, 0x20000000, 0x62e97010 },
     {"iaudio7",  "iAudio 7",                     0xb021, 0x20000000, 0x62e97010 },
     {"logikdax", "Logik DAX 1GB DAB/MP3 player", 0xb021, 0x20000000, 0x52e97410 },
@@ -264,7 +263,7 @@ int main(int argc, char* argv[])
     int fd;
     int device;
 
-    printf("tcctool v" VERSION " - (C) 2007 Dave Chapman\n");
+    printf("tcctool " VERSION " - (C) 2007-2010 Dave Chapman\n");
     printf("This is free software; see the source for copying conditions.  There is NO\n");
     printf("warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n");
 

@@ -26,6 +26,7 @@ include $(APPSDIR)/codecs/demac/libdemac.make
 include $(APPSDIR)/codecs/liba52/liba52.make
 include $(APPSDIR)/codecs/libalac/libalac.make
 include $(APPSDIR)/codecs/libasap/libasap.make
+include $(APPSDIR)/codecs/libasf/libasf.make
 include $(APPSDIR)/codecs/libfaad/libfaad.make
 include $(APPSDIR)/codecs/libffmpegFLAC/libffmpegFLAC.make
 include $(APPSDIR)/codecs/libm4a/libm4a.make
@@ -40,10 +41,11 @@ include $(APPSDIR)/codecs/libcook/libcook.make
 include $(APPSDIR)/codecs/librm/librm.make
 include $(APPSDIR)/codecs/libatrac/libatrac.make
 include $(APPSDIR)/codecs/libpcm/libpcm.make
+include $(APPSDIR)/codecs/libtta/libtta.make
 
 # compile flags for codecs
-CODECFLAGS = $(filter-out -fno-strict-aliasing,$(CFLAGS)) -fstrict-aliasing \
-	-I$(APPSDIR)/codecs -I$(APPSDIR)/codecs/lib -DCODEC
+CODECFLAGS = $(CFLAGS) -fstrict-aliasing -I$(APPSDIR)/codecs \
+	-I$(APPSDIR)/codecs/lib -DCODEC
 
 ifndef SIMVER
   CONFIGFILE := $(FIRMDIR)/export/config/$(MODELNAME).h
@@ -80,7 +82,8 @@ $(CODECDIR)/aac.codec : $(CODECDIR)/libfaad.a $(CODECDIR)/libm4a.a
 $(CODECDIR)/shorten.codec : $(CODECDIR)/libffmpegFLAC.a
 $(CODECDIR)/ape-pre.map : $(CODECDIR)/libdemac-pre.a
 $(CODECDIR)/ape.codec : $(CODECDIR)/libdemac.a
-$(CODECDIR)/wma.codec : $(CODECDIR)/libwma.a
+$(CODECDIR)/wma.codec : $(CODECDIR)/libwma.a $(CODECDIR)/libasf.a
+$(CODECDIR)/wmapro.codec : $(CODECDIR)/libwma.a $(CODECDIR)/libasf.a
 $(CODECDIR)/wavpack_enc.codec: $(CODECDIR)/libwavpack.a
 $(CODECDIR)/asap.codec : $(CODECDIR)/libasap.a
 $(CODECDIR)/cook.codec : $(CODECDIR)/libcook.a $(CODECDIR)/librm.a
@@ -94,6 +97,7 @@ $(CODECDIR)/smaf.codec : $(CODECDIR)/libpcm.a
 $(CODECDIR)/au.codec : $(CODECDIR)/libpcm.a
 $(CODECDIR)/vox.codec : $(CODECDIR)/libpcm.a
 $(CODECDIR)/wav64.codec : $(CODECDIR)/libpcm.a
+$(CODECDIR)/tta.codec : $(CODECDIR)/libtta.a
 
 $(CODECS): $(CODECLIB) # this must be last in codec dependency list
 

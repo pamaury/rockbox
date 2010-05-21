@@ -43,8 +43,7 @@ the \setting{Show Files} setting to all.
 }}
 
 \subsection{\label{ref:controls}File Browser Controls}
-\begin{table}
-    \begin{btnmap}{}{}
+\begin{btnmap}
       \ActionStdPrev{}/\ActionStdNext{}
       \opt{HAVEREMOTEKEYMAP}{& \ActionRCStdPrev{}/\ActionRCStdNext{}}
          & Go to previous/next item in list. If you are on the first/last 
@@ -117,8 +116,7 @@ the \setting{Show Files} setting to all.
         (see \reference{ref:Hotkeys}).
             \\
       }
-    \end{btnmap}
-\end{table}
+\end{btnmap}
 
 \opt{RECORDER_PAD}{
   The functions of the F keys are also summarised on the button bar at the
@@ -136,11 +134,6 @@ or directory and access the context menu with \ActionStdContext{}.\\
 \setting{Context Menu} is invoked on a file, it will display options available 
 for files.  If the \setting{Context Menu} is invoked on a directory, 
 it will display options for directories.\\}
-
-\opt{hotkey}{
-Some of these options can be set to the \setting{Hotkey} (see \reference{ref:Hotkeys})
-for that context by pressing \ActionWpsHotkey.\\
-}
 
 The \setting{Context Menu} contains the following options (unless otherwise noted, 
 each option pertains both to files and directories):
@@ -167,11 +160,10 @@ each option pertains both to files and directories):
   not to directories. Rockbox will ask for confirmation before deleting a file.
   Press \ActionYesNoAccept{}
   to confirm deletion or any other key to cancel.
-  \opt{hotkey}{\setting{Hotkey}able (see \reference{ref:Hotkeys}).}
 \item [Delete Directory.]
   Deletes the currently selected directory and all of the files and subdirectories
   it may contain. Deleted directories cannot be recovered. Use this feature with
-  caution! \opt{hotkey}{\setting{Hotkey}able (see \reference{ref:Hotkeys}).}
+  caution!
 \opt{lcd_non-mono}{
 \item [Set As Backdrop.]
   Set the selected \fname{bmp} file as background image. The bitmaps need to meet the
@@ -185,7 +177,7 @@ each option pertains both to files and directories):
   For example, this function can be used to view a text file
   even if the file has a non-standard extension (i.e., the file has an extension
   of something other than \fname{.txt}). See \reference{ref:Viewersplugins}
-  for more details on viewers. \opt{hotkey}{\setting{Hotkey}able (see \reference{ref:Hotkeys}).}
+  for more details on viewers.
 \item [Create Directory.]
   Create a new directory in the current directory on the disk.
 \item [Properties.]
@@ -215,15 +207,14 @@ example when renaming a file or creating a new directory.
   Also you can switch to Morse code input mode by changing the
   \setting{Use Morse Code Input} setting%
   \opt{IRIVER_H100_PAD,IRIVER_H300_PAD,IPOD_4G_PAD,IPOD_3G_PAD,IRIVER_H10_PAD%
-      ,GIGABEAT_PAD,GIGABEAT_S_PAD,MROBE100_PAD,SANSA_E200_PAD}%
+      ,GIGABEAT_PAD,GIGABEAT_S_PAD,MROBE100_PAD,SANSA_E200_PAD,PBELL_VIBE500_PAD}%
     { or by pressing \ActionKbdMorseInput{} in the virtual keyboard}%
   .
 }
 
 \opt{IRIVER_H100_PAD,IRIVER_H300_PAD,RECORDER_PAD,GIGABEAT_PAD,GIGABEAT_S_PAD%
     ,MROBE100_PAD,SANSA_E200_PAD,SANSA_FUZE_PAD,SANSA_C200_PAD}{
-  \begin{table}
-    \begin{btnmap}{}{}
+    \begin{btnmap}
       \ActionKbdLeft{} / \ActionKbdRight{} / \ActionKbdUp{} / \ActionKbdDown
       \opt{HAVEREMOTEKEYMAP}{
       & \ActionRCKbdLeft{} / \ActionRCKbdRight{} / \ActionRCKbdUp{} / \ActionRCKbdDown}
@@ -267,12 +258,11 @@ example when renaming a file or creating a new directory.
         %
       }
     \end{btnmap}
-  \end{table}
 }
-\opt{ONDIO_PAD,IPOD_4G_PAD,IPOD_3G_PAD,IRIVER_H10_PAD,IAUDIO_X5_PAD,IAUDIO_M3_PAD}{
+\opt{ONDIO_PAD,IPOD_4G_PAD,IPOD_3G_PAD,IRIVER_H10_PAD,IAUDIO_X5_PAD,IAUDIO_M3_PAD
+     ,PBELL_VIBE500_PAD}{
   \textbf{Picker area}
-  \begin{table}
-    \begin{btnmap}{}{}
+    \begin{btnmap}
       \ActionKbdLeft{} / \ActionKbdRight
       \opt{HAVEREMOTEKEYMAP}{& }
       & Move the cursor on the virtual keyboard.
@@ -288,6 +278,11 @@ example when renaming a file or creating a new directory.
       \opt{HAVEREMOTEKEYMAP}{& }
       & Insert the selected keyboard letter at the current line cursor position. \\
       %
+      \opt{PBELL_VIBE500_PAD}{
+      \ActionKbdBackSpace
+      & Delete the character before the line cursor. \\
+      }
+      %
       \ActionKbdDone
       \opt{HAVEREMOTEKEYMAP}{& }
       & Exit the virtual keyboard and save any changes. \\
@@ -297,7 +292,7 @@ example when renaming a file or creating a new directory.
       & Exit the virtual keyboard without saving any changes. \\
       %
       \opt{morse_input}{
-        \opt{IPOD_4G_PAD,IPOD_3G_PAD,IRIVER_H10_PAD}{
+        \opt{IPOD_4G_PAD,IPOD_3G_PAD,IRIVER_H10_PAD,PBELL_VIBE500_PAD}{
           \ActionKbdMorseInput
           \opt{HAVEREMOTEKEYMAP}{& }
           & Toggle keyboard input mode and Morse code input mode. \\
@@ -309,11 +304,9 @@ example when renaming a file or creating a new directory.
         %
       }
     \end{btnmap}
-  \end{table}
 
   \textbf{Line edit mode}
-  \begin{table}
-    \begin{btnmap}{}{}
+    \begin{btnmap}
       \ActionKbdLeft{} / \ActionKbdRight
       \opt{HAVEREMOTEKEYMAP}{& }
       & Move the line cursor within the text line. \\
@@ -327,14 +320,12 @@ example when renaming a file or creating a new directory.
       & Return to the picker area. \\
       %
     \end{btnmap}
-  \end{table}
 }
 \opt{player}{
   The current text line to be entered or edited is always listed on the first
   line of the display. The second line of the display can contain the character
   selection bar, as in the screenshot above.
-  \begin{table}
-    \begin{btnmap}{}{}
+    \begin{btnmap}
       \ButtonOn & Toggle picker- and line edit mode. \\
       \ButtonLeft{} / \ButtonRight
         & Move back and forth in the selected line (picker of input line). \\
@@ -344,7 +335,6 @@ example when renaming a file or creating a new directory.
       \ButtonStop & Cancel \\
       \ButtonMenu & Flip picker lines. \\
     \end{btnmap}
-  \end{table}
 }
 
 \input{rockbox_interface/tagcache.tex}

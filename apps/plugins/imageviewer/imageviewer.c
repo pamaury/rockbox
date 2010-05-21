@@ -100,7 +100,7 @@ static fb_data rgb_linebuf[LCD_WIDTH];  /* Line buffer for scrolling when
 static char print[32]; /* use a common snprintf() buffer */
 /* the remaining free part of the buffer for loaded+resized images */
 static unsigned char* buf;
-static ssize_t buf_size;
+static size_t buf_size;
 
 static int ds, ds_min, ds_max; /* downscaling and limits */
 static struct image_info image_info;
@@ -128,7 +128,7 @@ static void get_pic_list(void)
     pname = rb->strrchr(np_file,'/');
     pname++;
 
-    for (i = 0; i < tree->filesindir; i++)
+    for (i = 0; i < tree->filesindir && buf_size > sizeof(char**); i++)
     {
         if (!(dircache[i].attr & ATTR_DIRECTORY)
             && img_ext(rb->strrchr(dircache[i].name,'.')))
@@ -138,11 +138,11 @@ static void get_pic_list(void)
             if (!rb->strcmp(file_pt[entries], pname))
                 curfile = entries;
             entries++;
+
+            buf += (sizeof(char**));
+            buf_size -= (sizeof(char**));
         }
     }
-
-    buf += (entries * sizeof(char**));
-    buf_size -= (entries * sizeof(char**));
 }
 
 static int change_filename(int direct)
@@ -346,7 +346,7 @@ static int ask_and_get_audio_buffer(const char *filename)
         {
             case IMGVIEW_ZOOM_IN:
                 plug_buf = false;
-                buf = rb->plugin_get_audio_buffer((size_t *)&buf_size);
+                buf = rb->plugin_get_audio_buffer(&buf_size);
                 /*try again this file, now using the audio buffer */
                 return PLUGIN_OTHER;
 #ifdef IMGVIEW_RC_MENU
@@ -866,9 +866,9 @@ enum plugin_status plugin_start(const void* parameter)
     if(!parameter) return PLUGIN_ERROR;
 
 #ifdef USE_PLUG_BUF
-    buf = rb->plugin_get_buffer((size_t *)&buf_size);
+    buf = rb->plugin_get_buffer(&buf_size);
 #else
-    buf = rb->plugin_get_audio_buffer((size_t *)&buf_size);
+    buf = rb->plugin_get_audio_buffer(&buf_size);
 #endif
 
     rb->strcpy(np_file, parameter);
@@ -880,7 +880,7 @@ enum plugin_status plugin_start(const void* parameter)
     if(!rb->audio_status())
     {
         plug_buf = false;
-        buf = rb->plugin_get_audio_buffer((size_t *)&buf_size);
+        buf = rb->plugin_get_audio_buffer(&buf_size);
     }
 #endif
 

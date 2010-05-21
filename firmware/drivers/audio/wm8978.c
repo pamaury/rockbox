@@ -37,26 +37,34 @@ extern void audiohw_enable_headphone_jack(bool enable);
 
 const struct sound_settings_info audiohw_settings[] =
 {
-    [SOUND_VOLUME]        = {"dB", 0,  1, -90,   6, -25},
-    [SOUND_BASS]          = {"dB", 0,  1, -12,  12,   0},
-    [SOUND_TREBLE]        = {"dB", 0,  1, -12,  12,   0},
-    [SOUND_BALANCE]       = {"%",  0,  1,-100, 100,   0},
-    [SOUND_CHANNELS]      = {"",   0,  1,   0,   5,   0},
-    [SOUND_STEREO_WIDTH]  = {"%",  0,  5,   0, 250, 100},
+    [SOUND_VOLUME]             = {"dB", 0,   1, -90,   6, -25},
+    [SOUND_BALANCE]            = {"%",  0,   1,-100, 100,   0},
+    [SOUND_CHANNELS]           = {"",   0,   1,   0,   5,   0},
+    [SOUND_STEREO_WIDTH]       = {"%",  0,   5,   0, 250, 100},
+    [SOUND_EQ_BAND1_GAIN]      = {"dB", 0,   1, -12,  12,   0},
+    [SOUND_EQ_BAND2_GAIN]      = {"dB", 0,   1, -12,  12,   0},
+    [SOUND_EQ_BAND3_GAIN]      = {"dB", 0,   1, -12,  12,   0},
+    [SOUND_EQ_BAND4_GAIN]      = {"dB", 0,   1, -12,  12,   0},
+    [SOUND_EQ_BAND5_GAIN]      = {"dB", 0,   1, -12,  12,   0},
+    [SOUND_EQ_BAND1_FREQUENCY] = {"",   0,   1,   0,   3,   0},
+    [SOUND_EQ_BAND2_FREQUENCY] = {"",   0,   1,   0,   3,   0},
+    [SOUND_EQ_BAND3_FREQUENCY] = {"",   0,   1,   0,   3,   0},
+    [SOUND_EQ_BAND4_FREQUENCY] = {"",   0,   1,   0,   3,   0},
+    [SOUND_EQ_BAND5_FREQUENCY] = {"",   0,   1,   0,   3,   0},
+    [SOUND_EQ_BAND2_WIDTH]     = {"",   0,   1,   0,   1,   0},
+    [SOUND_EQ_BAND3_WIDTH]     = {"",   0,   1,   0,   1,   0},
+    [SOUND_EQ_BAND4_WIDTH]     = {"",   0,   1,   0,   1,   0},
+    [SOUND_DEPTH_3D]           = {"%",  0,   1,   0,  15,   0},
 #ifdef HAVE_RECORDING
     /* Digital: -119.0dB to +8.0dB in 0.5dB increments
      * Analog:  Relegated to volume control
      * Circumstances unfortunately do not allow a great deal of positive
      * gain. */
-    [SOUND_LEFT_GAIN]     = {"dB", 1,  1,-238,  16,   0},
-    [SOUND_RIGHT_GAIN]    = {"dB", 1,  1,-238,  16,   0},
+    [SOUND_LEFT_GAIN]          = {"dB", 1,   1,-238,  16,   0},
+    [SOUND_RIGHT_GAIN]         = {"dB", 1,   1,-238,  16,   0},
 #if 0
-    [SOUND_MIC_GAIN]      = {"dB", 1,  1,-238,  16,   0},
+    [SOUND_MIC_GAIN]           = {"dB", 1,   1,-238,  16,   0},
 #endif
-#endif
-#if 0
-    [SOUND_BASS_CUTOFF]   = {"",   0,  1,   1,   4,   1},
-    [SOUND_TREBLE_CUTOFF] = {"",   0,  1,   1,   4,   1},
 #endif
 };
 
@@ -76,11 +84,11 @@ static uint16_t wmc_regs[WMC_NUM_REGISTERS] =
     [WMC_GPIO]                    = 0x000,
     [WMC_JACK_DETECT_CONTROL1]    = 0x000,
     [WMC_DAC_CONTROL]             = 0x000,
-    [WMC_LEFT_DAC_DIGITAL_VOL]    = 0x0ff | WMC_VU,
+    [WMC_LEFT_DAC_DIGITAL_VOL]    = 0x0ff, /* Latch left first */
     [WMC_RIGHT_DAC_DIGITAL_VOL]   = 0x0ff | WMC_VU,
     [WMC_JACK_DETECT_CONTROL2]    = 0x000,
     [WMC_ADC_CONTROL]             = 0x100,
-    [WMC_LEFT_ADC_DIGITAL_VOL]    = 0x0ff | WMC_VU,
+    [WMC_LEFT_ADC_DIGITAL_VOL]    = 0x0ff, /* Latch left first */
     [WMC_RIGHT_ADC_DIGITAL_VOL]   = 0x0ff | WMC_VU,
     [WMC_EQ1_LOW_SHELF]           = 0x12c,
     [WMC_EQ2_PEAK1]               = 0x02c,
@@ -104,16 +112,16 @@ static uint16_t wmc_regs[WMC_NUM_REGISTERS] =
     [WMC_3D_CONTROL]              = 0x000,
     [WMC_BEEP_CONTROL]            = 0x000,
     [WMC_INPUT_CTRL]              = 0x033,
-    [WMC_LEFT_INP_PGA_GAIN_CTRL]  = 0x010 | WMC_VU | WMC_ZC,
+    [WMC_LEFT_INP_PGA_GAIN_CTRL]  = 0x010 | WMC_ZC, /* Latch left first */
     [WMC_RIGHT_INP_PGA_GAIN_CTRL] = 0x010 | WMC_VU | WMC_ZC,
     [WMC_LEFT_ADC_BOOST_CTRL]     = 0x100,
     [WMC_RIGHT_ADC_BOOST_CTRL]    = 0x100,
     [WMC_OUTPUT_CTRL]             = 0x002,
     [WMC_LEFT_MIXER_CTRL]         = 0x001,
     [WMC_RIGHT_MIXER_CTRL]        = 0x001,
-    [WMC_LOUT1_HP_VOLUME_CTRL]    = 0x039 | WMC_VU | WMC_ZC,
+    [WMC_LOUT1_HP_VOLUME_CTRL]    = 0x039 | WMC_ZC, /* Latch left first */
     [WMC_ROUT1_HP_VOLUME_CTRL]    = 0x039 | WMC_VU | WMC_ZC,
-    [WMC_LOUT2_SPK_VOLUME_CTRL]   = 0x039 | WMC_VU | WMC_ZC,
+    [WMC_LOUT2_SPK_VOLUME_CTRL]   = 0x039 | WMC_ZC, /* Latch left first */
     [WMC_ROUT2_SPK_VOLUME_CTRL]   = 0x039 | WMC_VU | WMC_ZC,
     [WMC_OUT3_MIXER_CTRL]         = 0x001,
     [WMC_OUT4_MONO_MIXER_CTRL]    = 0x001,
@@ -123,10 +131,20 @@ struct
 {
     int vol_l;
     int vol_r;
+    int dac_l;
+    int dac_r;
     bool ahw_mute;
+    int prescaler;
+    int enhance_3d_prescaler;
 } wmc_vol =
 {
-    0, 0, false
+    .vol_l = 0,
+    .vol_r = 0,
+    .dac_l = 0,
+    .dac_r = 0,
+    .ahw_mute = false,
+    .prescaler = 0,
+    .enhance_3d_prescaler = 0,
 };
 
 static void wmc_write(unsigned int reg, unsigned int val)
@@ -191,6 +209,10 @@ int sound_val2phys(int setting, int value)
         break;
 #endif
 
+    case SOUND_DEPTH_3D:
+        result = (100 * value + 8) / 15;
+        break;
+
     default:
         result = value;
     }
@@ -216,8 +238,12 @@ void audiohw_preinit(void)
     wmc_set(WMC_OUT4_MONO_MIXER_CTRL, WMC_MUTE);
 
     /* 3. Set L/RMIXEN = 1 and DACENL/R = 1 in register R3. */
-    wmc_write(WMC_POWER_MANAGEMENT3,
-              WMC_RMIXEN | WMC_LMIXEN | WMC_DACENR | WMC_DACENL);
+    wmc_write(WMC_POWER_MANAGEMENT3, WMC_RMIXEN | WMC_LMIXEN);
+
+    /* EQ and 3D applied to DAC (Set before DAC enable!) */
+    wmc_set(WMC_EQ1_LOW_SHELF, WMC_EQ3DMODE);
+
+    wmc_set(WMC_POWER_MANAGEMENT3, WMC_DACENR | WMC_DACENL);
 
     /* 4. Set BUFIOEN = 1 and VMIDSEL[1:0] to required value in register
      *    R1. Wait for VMID supply to settle */
@@ -305,17 +331,23 @@ void audiohw_set_headphone_vol(int vol_l, int vol_r)
     get_headphone_levels(vol_l, &dac_l, &hp_l, &mix_l, &boost_l);
     get_headphone_levels(vol_r, &dac_r, &hp_r, &mix_r, &boost_r);
 
-    wmc_write_masked(WMC_LEFT_MIXER_CTRL, WMC_BYPLMIXVOLw(mix_l),
+    wmc_vol.dac_l = dac_l;
+    wmc_vol.dac_r = dac_r;
+
+    dac_l -= wmc_vol.prescaler + wmc_vol.enhance_3d_prescaler;
+    dac_r -= wmc_vol.prescaler + wmc_vol.enhance_3d_prescaler;
+
+    wmc_write_masked(WMC_LEFT_MIXER_CTRL, mix_l << WMC_BYPLMIXVOL_POS,
                      WMC_BYPLMIXVOL);
     wmc_write_masked(WMC_LEFT_ADC_BOOST_CTRL,
-                     WMC_L2_2BOOSTVOLw(boost_l), WMC_L2_2BOOSTVOL);
+                     boost_l << WMC_L2_2BOOSTVOL_POS, WMC_L2_2BOOSTVOL);
     wmc_write_masked(WMC_LEFT_DAC_DIGITAL_VOL, dac_l, WMC_DVOL);
     wmc_write_masked(WMC_LOUT1_HP_VOLUME_CTRL, hp_l, WMC_AVOL);
 
-    wmc_write_masked(WMC_RIGHT_MIXER_CTRL, WMC_BYPRMIXVOLw(mix_r),
+    wmc_write_masked(WMC_RIGHT_MIXER_CTRL, mix_r << WMC_BYPRMIXVOL_POS,
                      WMC_BYPRMIXVOL);
     wmc_write_masked(WMC_RIGHT_ADC_BOOST_CTRL,
-                     WMC_R2_2BOOSTVOLw(boost_r), WMC_R2_2BOOSTVOL);
+                     boost_r << WMC_R2_2BOOSTVOL_POS, WMC_R2_2BOOSTVOL);
     wmc_write_masked(WMC_RIGHT_DAC_DIGITAL_VOL, dac_r, WMC_DVOL);
     wmc_write_masked(WMC_ROUT1_HP_VOLUME_CTRL, hp_r, WMC_AVOL);
 
@@ -346,25 +378,7 @@ void audiohw_set_headphone_vol(int vol_l, int vol_r)
     }
 }
 
-void audiohw_close(void)
-{
-    /* 1. Mute all analogue outputs */
-    audiohw_mute(true);
-    audiohw_enable_headphone_jack(false);
-
-    /* 2. Disable power management register 1. R1 = 00 */
-    wmc_write(WMC_POWER_MANAGEMENT1, 0x000);
-
-    /* 3. Disable power management register 2. R2 = 00 */
-    wmc_write(WMC_POWER_MANAGEMENT2, 0x000);
-
-    /* 4. Disable power management register 3. R3 = 00 */
-    wmc_write(WMC_POWER_MANAGEMENT3, 0x000);
-
-    /* 5. Remove external power supplies. */
-}
-
-void audiohw_mute(bool mute)
+static void audiohw_mute(bool mute)
 {
     wmc_vol.ahw_mute = mute;
 
@@ -385,6 +399,82 @@ void audiohw_mute(bool mute)
     }
 }
 
+/* Equalizer - set the eq band level -12 to +12 dB. */
+void audiohw_set_eq_band_gain(unsigned int band, int val)
+{
+    if (band > 4)
+        return;
+
+    wmc_write_masked(band + WMC_EQ1_LOW_SHELF, 12 - val, WMC_EQG);
+}
+
+/* Equalizer - set the eq band frequency index. */
+void audiohw_set_eq_band_frequency(unsigned int band, int val)
+{
+    if (band > 4)
+        return;
+
+    wmc_write_masked(band + WMC_EQ1_LOW_SHELF,
+                     val << WMC_EQC_POS, WMC_EQC);
+}
+
+/* Equalizer - set bandwidth for peaking filters to wide (!= 0) or
+ * narrow (0); only valid for peaking filter bands 1-3. */
+void audiohw_set_eq_band_width(unsigned int band, int val)
+{
+    if (band < 1 || band > 3)
+        return;
+
+    wmc_write_masked(band + WMC_EQ1_LOW_SHELF,
+                     (val == 0) ? 0 : WMC_EQBW, WMC_EQBW);
+}
+
+/* Set prescaler to prevent clipping the output amp when applying positive
+ * gain to EQ bands. */
+void audiohw_set_prescaler(int val)
+{
+    val *= 2;
+    wmc_vol.prescaler = val;
+    val += wmc_vol.enhance_3d_prescaler; /* Combine with 3D attenuation */
+
+    wmc_write_masked(WMC_LEFT_DAC_DIGITAL_VOL, wmc_vol.dac_l - val,
+                     WMC_DVOL);
+    wmc_write_masked(WMC_RIGHT_DAC_DIGITAL_VOL, wmc_vol.dac_r - val,
+                     WMC_DVOL);
+}
+
+/* Set the depth of the 3D effect */
+void audiohw_set_depth_3d(int val)
+{
+    int att = 10*val / 15; /* -5 dB @ full setting */
+    wmc_vol.enhance_3d_prescaler = att;
+    att += wmc_vol.prescaler;  /* Combine with prescaler attenuation */
+
+    wmc_write_masked(WMC_LEFT_DAC_DIGITAL_VOL, wmc_vol.dac_l - att,
+                     WMC_DVOL);
+    wmc_write_masked(WMC_RIGHT_DAC_DIGITAL_VOL, wmc_vol.dac_r - att,
+                     WMC_DVOL);
+    wmc_write_masked(WMC_3D_CONTROL, val, WMC_DEPTH3D);
+}
+
+void audiohw_close(void)
+{
+    /* 1. Mute all analogue outputs */
+    audiohw_mute(true);
+    audiohw_enable_headphone_jack(false);
+
+    /* 2. Disable power management register 1. R1 = 00 */
+    wmc_write(WMC_POWER_MANAGEMENT1, 0x000);
+
+    /* 3. Disable power management register 2. R2 = 00 */
+    wmc_write(WMC_POWER_MANAGEMENT2, 0x000);
+
+    /* 4. Disable power management register 3. R3 = 00 */
+    wmc_write(WMC_POWER_MANAGEMENT3, 0x000);
+
+    /* 5. Remove external power supplies. */
+}
+
 void audiohw_set_frequency(int fsel)
 {
     /* For 16.9344MHz MCLK, codec as master. */
@@ -400,10 +490,10 @@ void audiohw_set_frequency(int fsel)
     {
         [HW_FREQ_8] = /* PLL = 65.536MHz */
         {
-            .plln    = WMC_PLLNw(7) | WMC_PLL_PRESCALE,
-            .pllk1   = WMC_PLLK_23_18w(12414886ul >> 18),
-            .pllk2   = WMC_PLLK_17_9w(12414886ul >> 9),
-            .pllk3   = WMC_PLLK_8_0w(12414886ul >> 0),
+            .plln    = 7 | WMC_PLL_PRESCALE,
+            .pllk1   = 0x2f,            /* 12414886 */
+            .pllk2   = 0x0b7,
+            .pllk3   = 0x1a6,
             .mclkdiv = WMC_MCLKDIV_8,   /*  2.0480 MHz */
             .filter  = WMC_SR_8KHZ,
         },
@@ -414,19 +504,19 @@ void audiohw_set_frequency(int fsel)
         },
         [HW_FREQ_12] = /* PLL = 73.728 MHz */
         {
-            .plln    = WMC_PLLNw(8) | WMC_PLL_PRESCALE,
-            .pllk1   = WMC_PLLK_23_18w(11869595ul >> 18),
-            .pllk2   = WMC_PLLK_17_9w(11869595ul >> 9),
-            .pllk3   = WMC_PLLK_8_0w(11869595ul >> 0),
+            .plln    = 8 | WMC_PLL_PRESCALE,
+            .pllk1   = 0x2d,            /* 11869595 */
+            .pllk2   = 0x08e,
+            .pllk3   = 0x19b,
             .mclkdiv = WMC_MCLKDIV_6,   /*  3.0720 MHz */
             .filter  = WMC_SR_12KHZ,
         },
         [HW_FREQ_16] = /* PLL = 65.536MHz */
         {
-            .plln    = WMC_PLLNw(7) | WMC_PLL_PRESCALE,
-            .pllk1   = WMC_PLLK_23_18w(12414886ul >> 18),
-            .pllk2   = WMC_PLLK_17_9w(12414886ul >> 9),
-            .pllk3   = WMC_PLLK_8_0w(12414886ul >> 0),
+            .plln    = 7 | WMC_PLL_PRESCALE,
+            .pllk1   = 0x2f,            /* 12414886 */
+            .pllk2   = 0x0b7,
+            .pllk3   = 0x1a6,
             .mclkdiv = WMC_MCLKDIV_4,   /*  4.0960 MHz */
             .filter  = WMC_SR_16KHZ,
         },
@@ -437,19 +527,19 @@ void audiohw_set_frequency(int fsel)
         },
         [HW_FREQ_24] = /* PLL = 73.728 MHz */
         {
-            .plln    = WMC_PLLNw(8) | WMC_PLL_PRESCALE,
-            .pllk1   = WMC_PLLK_23_18w(11869595ul >> 18),
-            .pllk2   = WMC_PLLK_17_9w(11869595ul >> 9),
-            .pllk3   = WMC_PLLK_8_0w(11869595ul >> 0),
+            .plln    = 8 | WMC_PLL_PRESCALE,
+            .pllk1   = 0x2d,            /* 11869595 */
+            .pllk2   = 0x08e,
+            .pllk3   = 0x19b,
             .mclkdiv = WMC_MCLKDIV_3,   /*  6.1440 MHz */
             .filter  = WMC_SR_24KHZ,
         },
         [HW_FREQ_32] = /* PLL = 65.536MHz */
         {
-            .plln    = WMC_PLLNw(7) | WMC_PLL_PRESCALE,
-            .pllk1   = WMC_PLLK_23_18w(12414886ul >> 18),
-            .pllk2   = WMC_PLLK_17_9w(12414886ul >> 9),
-            .pllk3   = WMC_PLLK_8_0w(12414886ul >> 0),
+            .plln    = 7 | WMC_PLL_PRESCALE,
+            .pllk1   = 0x2f,            /* 12414886 */
+            .pllk2   = 0x0b7,
+            .pllk3   = 0x1a6,
             .mclkdiv = WMC_MCLKDIV_2,   /*  8.1920 MHz */
             .filter  = WMC_SR_32KHZ,
         },
@@ -460,10 +550,10 @@ void audiohw_set_frequency(int fsel)
         },
         [HW_FREQ_48] = /* PLL = 73.728 MHz */
         {
-            .plln    = WMC_PLLNw(8) | WMC_PLL_PRESCALE,
-            .pllk1   = WMC_PLLK_23_18w(11869595ul >> 18),
-            .pllk2   = WMC_PLLK_17_9w(11869595ul >> 9),
-            .pllk3   = WMC_PLLK_8_0w(11869595ul >> 0),
+            .plln    = 8 | WMC_PLL_PRESCALE,
+            .pllk1   = 0x2d,            /* 11869595 */
+            .pllk2   = 0x08e,
+            .pllk3   = 0x19b,
             .mclkdiv = WMC_MCLKDIV_1_5, /* 12.2880 MHz */
             .filter  = WMC_SR_48KHZ,
         },

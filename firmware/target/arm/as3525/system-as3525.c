@@ -70,7 +70,8 @@ default_interrupt(RESERVED6); /* Interrupt 25 : unused */
 default_interrupt(RESERVED7); /* Interrupt 26 : unused */
 default_interrupt(RESERVED8); /* Interrupt 27 : unused */
 default_interrupt(RESERVED9); /* Interrupt 28 : unused */
-default_interrupt(INT_GPIOA);
+/* INT_GPIOA is declared in this file */
+void INT_GPIOA(void);
 default_interrupt(INT_GPIOB);
 default_interrupt(INT_GPIOC);
 
@@ -107,21 +108,25 @@ struct vec_int_src
 /* Vectored interrupts (16 available) */
 struct vec_int_src vec_int_srcs[] =
 {
-    { INT_SRC_TIMER1, INT_TIMER1 },
-    { INT_SRC_TIMER2, INT_TIMER2 },
+    /* Highest priority at the top of the list */
     { INT_SRC_DMAC, INT_DMAC },
     { INT_SRC_NAND, INT_NAND },
-    { INT_SRC_I2C_AUDIO, INT_I2C_AUDIO },
-    { INT_SRC_AUDIO, INT_AUDIO },
 #if (defined HAVE_MULTIDRIVE  && CONFIG_CPU == AS3525)
     { INT_SRC_MCI0, INT_MCI0 },
 #endif
-#ifdef HAVE_HOTSWAP
-    { INT_SRC_GPIOA, INT_GPIOA, },
-#endif
+    { INT_SRC_USB, INT_USB, },
 #ifdef HAVE_RECORDING
     { INT_SRC_I2SIN, INT_I2SIN, },
 #endif
+    { INT_SRC_TIMER1, INT_TIMER1 },
+    { INT_SRC_TIMER2, INT_TIMER2 },
+    { INT_SRC_I2C_AUDIO, INT_I2C_AUDIO },
+    { INT_SRC_AUDIO, INT_AUDIO },
+#if defined(HAVE_HOTSWAP) || \
+    (defined(SANSA_FUZEV2) && !INCREASED_SCROLLWHEEL_POLLING)
+    { INT_SRC_GPIOA, INT_GPIOA, },
+#endif
+    /* Lowest priority at the end of the list */
 };
 
 static void setup_vic(void)
@@ -142,6 +147,18 @@ static void setup_vic(void)
         vic_vect_addrs[i] = (unsigned long)vec_int_srcs[i].isr;
         vic_vect_cntls[i] = (1<<5) | vec_int_srcs[i].source;
     }
+}
+
+void INT_GPIOA(void)
+{
+#ifdef HAVE_HOTSWAP
+    void sd_gpioa_isr(void);
+    sd_gpioa_isr();
+#endif
+#if defined(SANSA_FUZEV2) && !INCREASED_SCROLLWHEEL_POLLING
+    void button_gpioa_isr(void);
+    button_gpioa_isr();
+#endif
 }
 
 void irq_handler(void)
@@ -266,7 +283,8 @@ static void sdram_init(void)
         "ldr r4, [%0]\n"
         : : "p"(0x30000000+0x2300*MEM) : "r4");
 
-    MPMC_DYNAMIC_CONTROL = 0x2; /* SDRAM NORMAL, MPMCCLKOUT runs continuously */
+    /* SDRAM NORMAL, MPMCCLKOUT stopped when SDRAM is idle */
+    MPMC_DYNAMIC_CONTROL = 0x0;
 
     MPMC_DYNAMIC_CONFIG_0 |= (1<<19); /* buffer enable */
 }
@@ -305,16 +323,16 @@ void system_init(void)
         "mcr p15, 0, r0, c1, c0   \n"
         : : : "r0" );
 
-    CGU_COUNTA = 0xff;
+    CGU_COUNTA = CGU_LOCK_CNT;
     CGU_PLLA = AS3525_PLLA_SETTING;
-    CGU_PLLASUP = 0;        /* enable PLLA */
-    while(!(CGU_INTCTRL & (1<<0)));           /* wait until PLLA is locked */
-    
-#if (AS3525_MCLK_SEL == AS3525_CLK_PLLB)
-    CGU_COUNTB = 0xff;
+    CGU_PLLASUP = 0;                          /* enable PLLA */
+    while(!(CGU_INTCTRL & CGU_PLLA_LOCK));    /* wait until PLLA is locked */
+
+#if AS3525_MCLK_SEL == AS3525_CLK_PLLB
+    CGU_COUNTB = CGU_LOCK_CNT;
     CGU_PLLB = AS3525_PLLB_SETTING;
-    CGU_PLLBSUP = 0;        /* enable PLLB */
-    while(!(CGU_INTCTRL & (1<<1)));           /* wait until PLLB is locked */
+    CGU_PLLBSUP = 0;                          /* enable PLLB */
+    while(!(CGU_INTCTRL & CGU_PLLB_LOCK));    /* wait until PLLB is locked */
 #endif
 
     /*  Set FCLK frequency */
@@ -330,8 +348,11 @@ void system_init(void)
 #endif
                   AS3525_PCLK_SEL);
 
-#ifdef BOOTLOADER
+#if defined(BOOTLOADER)
     sdram_init();
+#elif defined(SANSA_FUZE) || defined(SANSA_CLIP) || defined(SANSA_E200V2)
+    /* XXX: remove me when we have a new bootloader */
+    MPMC_DYNAMIC_CONTROL = 0x0; /* MPMCCLKOUT stops when all SDRAMs are idle */
 #endif  /* BOOTLOADER */
 
 #if 0 /* the GPIO clock is already enabled by the dualboot function */
@@ -348,6 +369,13 @@ void system_init(void)
     ascodec_init();
 
 #ifndef BOOTLOADER
+    /* setup isr for microsd monitoring and for fuzev2 scrollwheel irq */
+#if defined(HAVE_HOTSWAP) || \
+    (defined(SANSA_FUZEV2) && !INCREASED_SCROLLWHEEL_POLLING)
+    VIC_INT_ENABLE = (INTERRUPT_GPIOA);
+    /* pin selection for irq happens in the drivers */
+#endif
+
     /*  Initialize power management settings */
     ascodec_write(AS3514_CVDD_DCDC3, AS314_CP_DCDC3_SETTING);
 #if CONFIG_TUNER
@@ -431,41 +459,33 @@ void set_cpu_frequency(long frequency)
     }
 }
 #else   /* as3525v2  */
+/* FIXME : disabled for now, seems to cause buggy memory accesses
+ * Disabling MMU or putting the function in uncached memory seems to help? */
 void set_cpu_frequency(long frequency)
 {
     int oldstatus = disable_irq_save();
-    int delay;
+
+    /* We only have 2 settings */
+    cpu_frequency = (frequency == CPUFREQ_MAX) ? frequency : CPUFREQ_NORMAL;
 
     if(frequency == CPUFREQ_MAX)
     {
         /* Change PCLK while FCLK is low, so it doesn't go too high */
         CGU_PERI = (CGU_PERI & ~(0xF << 2)) | (AS3525_PCLK_DIV0 << 2);
 
-        delay = 40; while(delay--) asm("nop");
-
         CGU_PROC = ((AS3525_FCLK_POSTDIV << 4) |
                     (AS3525_FCLK_PREDIV  << 2) |
                     AS3525_FCLK_SEL);
-
-        delay = 40; while(delay--) asm("nop");
-
     }
     else
     {
-        frequency = CPUFREQ_NORMAL; /* We only have 2 settings */
-
         CGU_PROC = ((AS3525_FCLK_POSTDIV_UNBOOSTED << 4) |
                     (AS3525_FCLK_PREDIV  << 2) |
                     AS3525_FCLK_SEL);
 
-        delay = 40; while(delay--) asm("nop");
-
         /* Change PCLK after FCLK is low, so it doesn't go too high */
         CGU_PERI = (CGU_PERI & ~(0xF << 2)) | (AS3525_PCLK_DIV0_UNBOOSTED << 2);
-        delay = 40; while(delay--) asm("nop");
     }
-
-    cpu_frequency = frequency;
 
     restore_irq(oldstatus);
 }

@@ -99,8 +99,12 @@ const struct sound_settings_info audiohw_settings[] = {
     [SOUND_RIGHT_GAIN]    = {"dB", 1,  1,-128,  96,   0},
     [SOUND_MIC_GAIN]      = {"dB", 1,  1,-128, 108,  16},
 #endif
+#ifdef AUDIOHW_HAVE_BASS_CUTOFF
     [SOUND_BASS_CUTOFF]   = {"",   0,  1,   1,   4,   1},
+#endif
+#ifdef AUDIOHW_HAVE_TREBLE_CUTOFF
     [SOUND_TREBLE_CUTOFF] = {"",   0,  1,   1,   4,   1},
+#endif
 };
 
 /* shadow registers */
@@ -165,6 +169,18 @@ void audiohw_preinit(void)
     wmcodec_write(OUT4ADC, 0x0);    /* POBCTRL = 0 */
 }
 
+static void audiohw_mute(bool mute)
+{
+    if (mute)
+    {
+        /* Set DACMU = 1 to soft-mute the audio DACs. */
+        wmcodec_write(DACCTRL, 0x4c);
+    } else {
+        /* Set DACMU = 0 to soft-un-mute the audio DACs. */
+        wmcodec_write(DACCTRL, 0xc);
+    }
+}
+
 void audiohw_postinit(void)
 {
     sleep(HZ/2);
@@ -215,18 +231,6 @@ void audiohw_set_treble_cutoff(int value)
 {
     eq5_reg = (eq5_reg & ~EQ_CUTOFF_MASK) | EQ_CUTOFF_VALUE(value);
     wmcodec_write(EQ5, eq5_reg);
-}
-
-void audiohw_mute(bool mute)
-{
-    if (mute)
-    {
-        /* Set DACMU = 1 to soft-mute the audio DACs. */
-        wmcodec_write(DACCTRL, 0x4c);
-    } else {
-        /* Set DACMU = 0 to soft-un-mute the audio DACs. */
-        wmcodec_write(DACCTRL, 0xc);
-    }
 }
 
 /* Nice shutdown of WM8985 codec */

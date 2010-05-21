@@ -32,11 +32,13 @@
 #endif
 
 #include <stdbool.h>
+#include <inttypes.h>
 #include <sys/types.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "string-extra.h"
 
 char* strncpy(char *, const char *, size_t);
 void* plugin_get_buffer(size_t *buffer_size);
@@ -111,6 +113,11 @@ void* plugin_get_buffer(size_t *buffer_size);
 #include "usbstack/usb_hid_usage_tables.h"
 #endif
 
+
+/* on some platforms strcmp() seems to be a tricky define which
+ * breaks if we write down strcmp's prototype */
+#undef strcmp
+
 #ifdef PLUGIN
 
 #if defined(DEBUG) || defined(SIMULATOR)
@@ -119,8 +126,10 @@ void* plugin_get_buffer(size_t *buffer_size);
 #undef LDEBUGF
 #define LDEBUGF rb->debugf
 #else
-#define DEBUGF(...)
-#define LDEBUGF(...)
+#undef DEBUGF
+#define DEBUGF(...) do { } while(0)
+#undef LDEBUGF
+#define LDEBUGF(...) do { } while(0)
 #endif
 
 #ifdef ROCKBOX_HAS_LOGF
@@ -135,7 +144,7 @@ void* plugin_get_buffer(size_t *buffer_size);
 #define PLUGIN_MAGIC 0x526F634B /* RocK */
 
 /* increase this every time the api struct changes */
-#define PLUGIN_API_VERSION 183
+#define PLUGIN_API_VERSION 186
 
 /* update this to latest version if a change to the api struct breaks
    backwards compatibility (and please take the opportunity to sort in any
@@ -397,11 +406,11 @@ struct plugin_api {
 
     /* file */
     int (*open_utf8)(const char* pathname, int flags);
-    int (*open)(const char* pathname, int flags);
+    int (*open)(const char* pathname, int flags, ...);
     int (*close)(int fd);
     ssize_t (*read)(int fd, void* buf, size_t count);
     off_t (*lseek)(int fd, off_t offset, int whence);
-    int (*creat)(const char *pathname);
+    int (*creat)(const char *pathname, mode_t mode);
     ssize_t (*write)(int fd, const void* buf, size_t count);
     int (*remove)(const char* pathname);
     int (*rename)(const char* path, const char* newname);
@@ -529,7 +538,7 @@ struct plugin_api {
     /* strings and memory */
     int (*snprintf)(char *buf, size_t size, const char *fmt, ...)
                     ATTRIBUTE_PRINTF(3, 4);
-    int (*vsnprintf)(char *buf, int size, const char *fmt, va_list ap);
+    int (*vsnprintf)(char *buf, size_t size, const char *fmt, va_list ap);
     char* (*strcpy)(char *dst, const char *src);
     size_t (*strlcpy)(char *dst, const char *src, size_t length);
     size_t (*strlen)(const char *str);
@@ -541,7 +550,9 @@ struct plugin_api {
     void* (*memset)(void *dst, int c, size_t length);
     void* (*memcpy)(void *out, const void *in, size_t n);
     void* (*memmove)(void *out, const void *in, size_t n);
+#ifndef SIMULATOR
     const unsigned char *_rbctype_;
+#endif
     int (*atoi)(const char *str);
     char *(*strchr)(const char *s, int c);
     char *(*strcat)(char *s1, const char *s2);
@@ -728,7 +739,7 @@ struct plugin_api {
 #endif
 
     /* misc */
-#if !defined(SIMULATOR) || defined(__MINGW32__) || defined(__CYGWIN__)
+#if !defined(SIMULATOR)
     int* __errno;
 #endif
     void (*srand)(unsigned int seed);
@@ -866,6 +877,24 @@ struct plugin_api {
 
 #ifdef HAVE_LCD_BITMAP
     bool (*is_diacritic)(const unsigned short char_code, bool *is_rtl);
+#endif
+
+#if (CONFIG_CODEC == SWCODEC) && defined(HAVE_RECORDING) && \
+    (defined(HAVE_LINE_IN) || defined(HAVE_MIC_IN))
+int (*round_value_to_list32)(unsigned long value,
+                             const unsigned long list[],
+                             int count,
+                             bool signd);
+#endif
+
+#ifdef AUDIOHW_HAVE_EQ
+    int (*sound_enum_hw_eq_band_setting)(unsigned int band,
+                                         unsigned int band_setting);
+#endif /* AUDIOHW_HAVE_EQ */
+
+#if CONFIG_CODEC == SWCODEC
+    void ** (*find_array_ptr)(void **arr, void *ptr);
+    int (*remove_array_ptr)(void **arr, void *ptr);
 #endif
 };
 

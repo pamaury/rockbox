@@ -80,6 +80,9 @@ F3: equal to "="
 
 PLUGIN_HEADER
 
+
+#define M_TWOPI         (M_PI * 2.0)
+
 #define BUTTON_ROWS 5
 #define BUTTON_COLS 5
 
@@ -102,6 +105,9 @@ PLUGIN_HEADER
 #define X_5_POS (X_4_POS + REC_WIDTH)  /* x5 = 110, column 111 left blank */
 
 #define SIGN(x) ((x)<0?-1:1)
+#ifndef ABS
+#define ABS(a) (((a) < 0) ? -(a) : (a))
+#endif
 
 /* variable button definitions */
 #if CONFIG_KEYPAD == RECORDER_PAD
@@ -373,6 +379,13 @@ PLUGIN_HEADER
 #define CALCULATOR_INPUT BUTTON_OK
 #define CALCULATOR_CALC  BUTTON_PLAY
 #define CALCULATOR_CLEAR BUTTON_CANCEL
+
+#elif CONFIG_KEYPAD == MPIO_HD200_PAD
+#define CALCULATOR_LEFT  BUTTON_PREV
+#define CALCULATOR_RIGHT BUTTON_NEXT
+#define CALCULATOR_QUIT  (BUTTON_REC|BUTTON_PLAY)
+#define CALCULATOR_INPUT BUTTON_SELECT
+#define CALCULATOR_CALC  BUTTON_PLAY
 
 #else
 #error No keymap defined!

@@ -132,9 +132,9 @@
 /* define this if the flash memory uses the SecureDigital Memory Card protocol */
 #define CONFIG_STORAGE STORAGE_SD
 
-#define BATTERY_CAPACITY_DEFAULT 380    /* default battery capacity */
-#define BATTERY_CAPACITY_MIN 380        /* min. capacity selectable */
-#define BATTERY_CAPACITY_MAX 380        /* max. capacity selectable */
+#define BATTERY_CAPACITY_DEFAULT 290    /* default battery capacity */
+#define BATTERY_CAPACITY_MIN 290        /* min. capacity selectable */
+#define BATTERY_CAPACITY_MAX 290        /* max. capacity selectable */
 #define BATTERY_CAPACITY_INC 0          /* capacity increment */
 #define BATTERY_TYPES_COUNT  1          /* only one type */
 
@@ -151,14 +151,17 @@
 #define CONFIG_CPU AS3525v2
 
 /* Define this if you want to use the AS3525 i2c interface */
-#define CONFIG_I2C I2C_AS3525   /* FIXME : looks similar to AS353x interface */
+#define CONFIG_I2C I2C_AS3525
 
 /* define this if the hardware can be powered off while charging */
 /* Sansa can't be powered off while charging */
 /* #define HAVE_POWEROFF_WHILE_CHARGING */
 
-/* The start address index for ROM builds */
-#define ROM_START 0x00000000
+/* define current usage levels (based on battery bench) */
+#define CURRENT_NORMAL     15
+#define CURRENT_BACKLIGHT  15
+#define CURRENT_RECORD     CURRENT_NORMAL /* TODO */
+
 
 /* Define this to the CPU frequency */
 #define CPU_FREQ      240000000
@@ -169,11 +172,10 @@
 #ifndef BOOTLOADER
 
 #define USB_HANDLED_BY_OF
-
-#if 0 /* disabled since there is no USB driver */
+//#define USE_ROCKBOX_USB
 
 /* USB On-the-go */
-#define CONFIG_USBOTG USBOTG_ARC
+#define CONFIG_USBOTG USBOTG_AS3525v2
 
 /* enable these for the experimental usb stack */
 #define HAVE_USBSTACK
@@ -181,14 +183,12 @@
 #define USB_PRODUCT_ID 0x74d1
 #endif /* BOOTLOADER */
 
-#endif
-
 
 /* Virtual LED (icon) */
 #define CONFIG_LED LED_VIRTUAL
 
 /* Define this if you have adjustable CPU frequency */
-#define HAVE_ADJUSTABLE_CPU_FREQ
+//#define HAVE_ADJUSTABLE_CPU_FREQ
 
 #define BOOTFILE_EXT    "sansa"
 #define BOOTFILE        "rockbox." BOOTFILE_EXT

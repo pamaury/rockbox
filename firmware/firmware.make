@@ -7,7 +7,10 @@
 # $Id$
 #
 
-INCLUDES += -I$(FIRMDIR) -I$(FIRMDIR)/include -I$(FIRMDIR)/export -I$(FIRMDIR)/common -I$(FIRMDIR)/drivers
+INCLUDES += -I$(FIRMDIR) -I$(FIRMDIR)/export -I$(FIRMDIR)/drivers -I$(FIRMDIR)/include
+ifndef SIMVER
+INCLUDES += -I$(FIRMDIR)/libc/include
+endif
 
 FIRMLIB_SRC += $(call preprocess, $(FIRMDIR)/SOURCES)
 FIRMLIB_OBJ := $(call c2obj, $(FIRMLIB_SRC))

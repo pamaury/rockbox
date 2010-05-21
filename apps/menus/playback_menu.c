@@ -177,6 +177,9 @@ MAKE_MENU(unplug_menu, ID2P(LANG_HEADPHONE_UNPLUG), 0, Icon_NOICON,
 
 MENUITEM_SETTING(skip_length, &global_settings.skip_length, NULL);
 MENUITEM_SETTING(prevent_skip, &global_settings.prevent_skip, NULL);
+#if CONFIG_CODEC == SWCODEC
+MENUITEM_SETTING(resume_rewind, &global_settings.resume_rewind, NULL);
+#endif
 
 MAKE_MENU(playback_settings,ID2P(LANG_PLAYBACK),0,
           Icon_Playback_menu,
@@ -203,6 +206,10 @@ MAKE_MENU(playback_settings,ID2P(LANG_PLAYBACK),0,
          ,&unplug_menu
 #endif
          ,&skip_length, &prevent_skip,
+
+#if CONFIG_CODEC == SWCODEC
+          &resume_rewind,
+#endif
          );
          
 static int playback_callback(int action,const struct menu_item_ex *this_item)

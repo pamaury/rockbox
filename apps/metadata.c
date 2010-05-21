@@ -19,10 +19,9 @@
  *
  ****************************************************************************/
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
-#include <inttypes.h>
+#include "string-extra.h"
 
 #include "debug.h"
 #include "logf.h"
@@ -108,6 +107,9 @@ const struct afmt_entry audio_formats[AFMT_NUM_CODECS] =
     /* WMA (WMAV1/V2 in ASF) */
     [AFMT_WMA] =
         AFMT_ENTRY("WMA",  "wma",     NULL,          "wma\0wmv\0asf\0"   ),
+    /* WMA Professional in ASF */
+    [AFMT_WMAPRO] =
+        AFMT_ENTRY("WMAPro",  "wmapro",     NULL,    "wma\0wmv\0asf\0"   ),
     /* Amiga MOD File */
     [AFMT_MOD] =
         AFMT_ENTRY("MOD",  "mod",     NULL,          "mod\0"      ),
@@ -177,6 +179,9 @@ const struct afmt_entry audio_formats[AFMT_NUM_CODECS] =
     /* Wave64 */
     [AFMT_WAVE64] =
         AFMT_ENTRY("WAVE64",  "wav64",   NULL,          "w64\0"      ),
+    /* True Audio */
+    [AFMT_TTA] =
+        AFMT_ENTRY("TTA",  "tta",   NULL,          "tta\0"      ),
 #endif
 };
 
@@ -488,6 +493,14 @@ bool get_metadata(struct mp3entry* id3, int fd, const char* trackname)
         if (!get_wave64_metadata(fd, id3))
         {
             DEBUGF("get_wave64_metadata error\n");
+            return false;
+        }
+        break;
+        
+    case AFMT_TTA:
+        if (!get_tta_metadata(fd, id3))
+        {
+            DEBUGF("get_tta_metadata error\n");
             return false;
         }
         break;

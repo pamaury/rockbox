@@ -19,6 +19,8 @@
  *
  ****************************************************************************/
 
+#include <stdio.h>
+#include <stdbool.h>
 #include "action.h"
 #include "font.h"
 #ifdef HAVE_REMOTE_LCD
@@ -30,7 +32,6 @@
 #include "usb_core.h"
 #ifdef USB_ENABLE_HID
 #include "usb_keymaps.h"
-#include "sprintf.h"
 #endif
 #endif
 #include "settings.h"
@@ -153,6 +154,8 @@ static void usb_screen_fix_viewports(struct screen *screen,
     viewport_set_defaults(parent, screen->screen_type);
     disable = (parent->width < logo_width || parent->height < logo_height);
     viewportmanager_theme_enable(screen->screen_type, !disable, parent);
+    screen->clear_display();
+    screen->stop_scroll();
 
     *logo = *parent;
     logo->x = parent->x + parent->width - logo_width;
@@ -182,13 +185,6 @@ static void usb_screen_fix_viewports(struct screen *screen,
 static void usb_screens_draw(struct usb_screen_vps_t *usb_screen_vps_ar)
 {
     int i;
-
-    /* Clear main and remote screens to remove scrolling line artifacts */
-    lcd_clear_display();
-#ifdef HAVE_LCD_REMOTE
-    lcd_remote_clear_display();
-#endif
-
     FOR_NB_SCREENS(i)
     {
         struct screen *screen = &screens[i];

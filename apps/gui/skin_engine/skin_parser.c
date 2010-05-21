@@ -52,6 +52,10 @@
 #include "skin_engine.h"
 #include "settings.h"
 #include "settings_list.h"
+#if CONFIG_TUNER
+#include "radio.h"
+#include "tuner.h"
+#endif
 #include "skin_fonts.h"
 
 #ifdef HAVE_LCD_BITMAP
@@ -202,7 +206,7 @@ static const struct wps_tag all_tags[] = {
     { WPS_TOKEN_ALIGN_RIGHT_RTL,          "aR",  0,                   NULL },
     { WPS_NO_TOKEN,                       "ax",  0,   parse_languagedirection },
 
-    { WPS_TOKEN_BATTERY_PERCENT,          "bl",  WPS_REFRESH_DYNAMIC, NULL },
+    { WPS_TOKEN_BATTERY_PERCENT,          "bl",  WPS_REFRESH_DYNAMIC, parse_progressbar },
     { WPS_TOKEN_BATTERY_VOLTS,            "bv",  WPS_REFRESH_DYNAMIC, NULL },
     { WPS_TOKEN_BATTERY_TIME,             "bt",  WPS_REFRESH_DYNAMIC, NULL },
     { WPS_TOKEN_BATTERY_SLEEPTIME,        "bs",  WPS_REFRESH_DYNAMIC, NULL },
@@ -348,6 +352,25 @@ static const struct wps_tag all_tags[] = {
     { WPS_TOKEN_CROSSFADE,                "xf",  WPS_REFRESH_DYNAMIC, NULL },
 #endif
 
+    { WPS_TOKEN_HAVE_TUNER,               "tp",  WPS_REFRESH_STATIC,  NULL },
+#if CONFIG_TUNER /* Re-uses the 't' and 'T' prefixes, be careful about doubleups */
+    { WPS_TOKEN_TUNER_TUNED,              "tt",  WPS_REFRESH_DYNAMIC, NULL },
+    { WPS_TOKEN_TUNER_SCANMODE,           "tm",  WPS_REFRESH_DYNAMIC, NULL },
+    { WPS_TOKEN_TUNER_STEREO,             "ts",  WPS_REFRESH_DYNAMIC, NULL },
+    { WPS_TOKEN_TUNER_MINFREQ,            "ta",  WPS_REFRESH_STATIC,  NULL },
+    { WPS_TOKEN_TUNER_MAXFREQ,            "tb",  WPS_REFRESH_STATIC,  NULL }, 
+    { WPS_TOKEN_TUNER_CURFREQ,            "tf",  WPS_REFRESH_DYNAMIC, NULL },
+    { WPS_TOKEN_PRESET_ID,                "Ti",  WPS_REFRESH_STATIC, NULL },
+    { WPS_TOKEN_PRESET_NAME,              "Tn",  WPS_REFRESH_STATIC, NULL },
+    { WPS_TOKEN_PRESET_FREQ,              "Tf",  WPS_REFRESH_STATIC, NULL },
+    { WPS_TOKEN_PRESET_COUNT,             "Tc",  WPS_REFRESH_STATIC, NULL },
+    { WPS_TOKEN_HAVE_RDS,                 "tx",  WPS_REFRESH_STATIC, NULL },
+#ifdef HAVE_RDS_CAP
+    { WPS_TOKEN_RDS_NAME,                 "ty", WPS_REFRESH_DYNAMIC, NULL },
+    { WPS_TOKEN_RDS_TEXT,                 "tz", WPS_REFRESH_DYNAMIC, NULL },
+#endif
+#endif /* CONFIG_TUNER */
+
     { WPS_NO_TOKEN,                       "s",   WPS_REFRESH_SCROLL,  NULL },
     { WPS_TOKEN_SUBLINE_TIMEOUT,          "t",   0,  parse_timeout },
 
@@ -369,6 +392,8 @@ static const struct wps_tag all_tags[] = {
 #endif
 
     { WPS_VIEWPORT_ENABLE,                "Vd",  WPS_REFRESH_DYNAMIC,
+                                                    parse_viewport_display },
+    { WPS_TOKEN_UIVIEWPORT_ENABLE,        "VI",  WPS_REFRESH_STATIC,
                                                     parse_viewport_display },
 #ifdef HAVE_LCD_BITMAP
     { WPS_VIEWPORT_CUSTOMLIST,            "Vp",  WPS_REFRESH_STATIC, parse_playlistview },
@@ -396,10 +421,14 @@ static const struct wps_tag all_tags[] = {
     /* Recording Tokens */
     { WPS_TOKEN_HAVE_RECORDING,         "Rp", WPS_REFRESH_STATIC, NULL },
 #ifdef HAVE_RECORDING
+    { WPS_TOKEN_IS_RECORDING,           "Rr", WPS_REFRESH_DYNAMIC, NULL },
     { WPS_TOKEN_REC_FREQ,               "Rf", WPS_REFRESH_DYNAMIC, NULL },
     { WPS_TOKEN_REC_ENCODER,            "Re", WPS_REFRESH_DYNAMIC, NULL },
     { WPS_TOKEN_REC_BITRATE,            "Rb", WPS_REFRESH_DYNAMIC, NULL },
     { WPS_TOKEN_REC_MONO,               "Rm", WPS_REFRESH_DYNAMIC, NULL },
+    { WPS_TOKEN_REC_SECONDS,            "Rs", WPS_REFRESH_DYNAMIC, NULL },
+    { WPS_TOKEN_REC_MINUTES,            "Rn", WPS_REFRESH_DYNAMIC, NULL },
+    { WPS_TOKEN_REC_HOURS,              "Rh", WPS_REFRESH_DYNAMIC, NULL },
 #endif
     { WPS_TOKEN_UNKNOWN,                  "",    0, NULL }
     /* the array MUST end with an empty string (first char is \0) */
@@ -801,6 +830,7 @@ static int parse_playlistview_text(struct playlistviewer *viewer,
                     viewer->lines[line].tokens[viewer->lines[line].count++] = WPS_TOKEN_CHARACTER;
                     viewer->lines[line].strings[cur_string][0] = *text;
                     viewer->lines[line].strings[cur_string++][1] = '\0';
+                    text++;
                     break;
                 default:
                 for (tag = all_tags;
@@ -914,9 +944,25 @@ static int parse_viewport(const char *wps_bufptr,
 
     if (*ptr == 'i')
     {
-        skin_vp->label = VP_INFO_LABEL;
-        skin_vp->hidden_flags = VP_NEVER_VISIBLE;
-        ++ptr;
+        if (*(ptr+1) == '|')
+        {
+            char label = *(ptr+2);
+            if (label >= 'a' && label <= 'z')
+            {
+                skin_vp->hidden_flags = VP_NEVER_VISIBLE;
+                skin_vp->label = VP_INFO_LABEL|label;
+                ptr += 3;
+            }
+            else
+            {
+                skin_vp->label = VP_INFO_LABEL|VP_DEFAULT_LABEL;
+                skin_vp->hidden_flags = VP_NEVER_VISIBLE;
+                ++ptr;            
+            }
+        }
+        else
+            return WPS_ERROR_INVALID_PARAM; /* malformed token: e.g. %Cl7  */
+        
     }
     else if (*ptr == 'l')
     {
@@ -1021,7 +1067,7 @@ static int parse_setting_and_lang(const char *wps_bufptr,
         return WPS_ERROR_INVALID_PARAM;
     ptr++;
     end = strchr(ptr,'|');
-    if (!end)
+    if (!end || (size_t)(end-ptr+1) > sizeof temp)
         return WPS_ERROR_INVALID_PARAM;
     strlcpy(temp, ptr,end-ptr+1);
     
@@ -1038,9 +1084,7 @@ static int parse_setting_and_lang(const char *wps_bufptr,
         /* Find the setting */
         for (i=0; i<nb_settings; i++)
             if (settings[i].cfg_name &&
-                !strncmp(settings[i].cfg_name,ptr,end-ptr) &&
-                /* prevent matches on cfg_name prefixes */
-                strlen(settings[i].cfg_name)==(size_t)(end-ptr))
+                !strcmp(settings[i].cfg_name, temp))
                 break;
 #ifndef __PCTOOL__
         if (i == nb_settings)
@@ -1157,6 +1201,7 @@ static int parse_progressbar(const char *wps_bufptr,
     pb->have_bitmap_pb = false;
     pb->bm.data = NULL; /* no bitmap specified */
     pb->follow_lang_direction = follow_lang_direction > 0;
+    pb->draw = false;
 
     if (*wps_bufptr != '|') /* regular old style */
     {
@@ -1164,7 +1209,7 @@ static int parse_progressbar(const char *wps_bufptr,
         pb->width = vp->width;
         pb->height = SYSFONT_HEIGHT-2;
         pb->y = -line_num - 1; /* Will be computed during the rendering */
-        if (token->type == WPS_TOKEN_VOLUME)
+        if (token->type == WPS_TOKEN_VOLUME || token->type == WPS_TOKEN_BATTERY_PERCENT)
             return 0; /* dont add it, let the regular token handling do the work */
         add_to_ll_chain(&wps_data->progressbars, item);
         return 0;
@@ -1173,7 +1218,14 @@ static int parse_progressbar(const char *wps_bufptr,
 
     if (!(ptr = parse_list("sdddd", &set, '|', ptr, &filename,
                                                  &x, &y, &width, &height)))
+    {
+        /* If we are in a conditional then we probably don't want to fail
+         * if the above doesnt work. So assume the | is breaking the conditional
+         * and move on. The next token will fail if this is incorrect. */
+        if (level >= 0)
+            return 0;
         return WPS_ERROR_INVALID_PARAM;
+    }
 
     if (LIST_VALUE_PARSED(set, PB_FILENAME)) /* filename */
         pb->bm.data = (char*)filename;
@@ -1224,12 +1276,15 @@ static int parse_progressbar(const char *wps_bufptr,
     add_to_ll_chain(&wps_data->progressbars, item);
     if (token->type == WPS_TOKEN_VOLUME)
         token->type = WPS_TOKEN_VOLUMEBAR;
+    else if (token->type == WPS_TOKEN_BATTERY_PERCENT)
+        token->type = WPS_TOKEN_BATTERY_PERCENTBAR;
     pb->type = token->type;
     
     return ptr+1-wps_bufptr;
 #else
     (void)wps_bufptr;
-    if (token->type != WPS_TOKEN_VOLUME)
+    if (token->type != WPS_TOKEN_VOLUME &&
+        token->type != WPS_TOKEN_BATTERY_PERCENTBAR)
     {
         wps_data->full_line_progressbar = 
                         token->type == WPS_TOKEN_PLAYER_PROGRESSBAR;
@@ -1453,10 +1508,11 @@ static int parse_touchregion(const char *wps_bufptr,
     unsigned i, imax;
     struct touchregion *region = NULL;
     const char *ptr = wps_bufptr;
-    const char *action;
+    const char *action, *end;
     const char pb_string[] = "progressbar";
     const char vol_string[] = "volume";
     int x,y,w,h;
+    char temp[20];
 
     /* format: %T|x|y|width|height|action|
      * if action starts with & the area must be held to happen
@@ -1504,11 +1560,15 @@ static int parse_touchregion(const char *wps_bufptr,
     region->wvp = curr_vp;
     region->armed = false;
 
-    if(!strncmp(pb_string, action, sizeof(pb_string)-1)
-        && *(action + sizeof(pb_string)-1) == '|')
+    end = strchr(action, '|');
+    if (!end || (size_t)(end-action+1) > sizeof temp)
+        return WPS_ERROR_INVALID_PARAM;
+    strlcpy(temp, action, end-action+1);
+    action = temp;
+
+    if(!strcmp(pb_string, action))
         region->type = WPS_TOUCHREGION_SCROLLBAR;
-    else if(!strncmp(vol_string, action, sizeof(vol_string)-1)
-        && *(action + sizeof(vol_string)-1) == '|')
+    else if(!strcmp(vol_string, action))
         region->type = WPS_TOUCHREGION_VOLUME;
     else
     {
@@ -1522,17 +1582,15 @@ static int parse_touchregion(const char *wps_bufptr,
         else
             region->repeat = false;
 
-        i = 0;
         imax = ARRAYLEN(touchactions);
-        while ((region->action == ACTION_NONE) &&
-                (i < imax))
+        for (i = 0; i < imax; i++)
         {
             /* try to match with one of our touchregion screens */
-            int len = strlen(touchactions[i].s);
-            if (!strncmp(touchactions[i].s, action, len)
-                    && *(action+len) == '|')
+            if (!strcmp(touchactions[i].s, action))
+            {
                 region->action = touchactions[i].action;
-            i++;
+                break;
+            }
         }
         if (region->action == ACTION_NONE)
             return WPS_ERROR_INVALID_PARAM;
@@ -1693,6 +1751,13 @@ static int check_feature_tag(const char *wps_bufptr, const int type)
 #else
             return find_false_branch(wps_bufptr);
 #endif
+        case WPS_TOKEN_HAVE_TUNER:
+#if CONFIG_TUNER
+            if (radio_hardware_present())
+                return 0;
+#endif
+            return find_false_branch(wps_bufptr);
+
         default: /* not a tag we care about, just don't skip */
             return 0;
     }

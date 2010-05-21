@@ -138,7 +138,7 @@ static struct mp3entry unbuffered_id3; /* the id3 for the first unbuffered track
 static struct cuesheet *curr_cue = NULL;
 
 
-#define MAX_MULTIPLE_AA 2
+#define MAX_MULTIPLE_AA SKINNABLE_SCREENS_COUNT
 
 #ifdef HAVE_ALBUMART
 static struct albumart_slot {
@@ -629,7 +629,8 @@ struct mp3entry* audio_next_track(void)
     return NULL;
 }
 
-bool audio_peek_track(struct mp3entry* id3, int offset)
+/* gets a pointer to the id3 data, Not thread safe!, DON'T yield()/sleep() */
+bool audio_peek_track(struct mp3entry** id3, int offset)
 {
     int next_idx;
     int new_offset = ci.new_track + wps_offset + offset;
@@ -640,7 +641,7 @@ bool audio_peek_track(struct mp3entry* id3, int offset)
 
     if (tracks[next_idx].id3_hid >= 0)
     {
-        return bufread(tracks[next_idx].id3_hid, sizeof(struct mp3entry), id3) 
+        return bufgetdata(tracks[next_idx].id3_hid, 0, (void**)id3) 
                     == sizeof(struct mp3entry);
     }
     return false;
@@ -1343,6 +1344,17 @@ static void audio_finish_load_track(void)
 
     track_id3->elapsed = 0;
     offset = track_id3->offset;
+    size_t resume_rewind = (global_settings.resume_rewind *
+                            track_id3->bitrate * 1000) / 8;
+
+    if (offset < resume_rewind)
+    {
+        offset = 0;
+    }
+    else
+    {
+        offset -= resume_rewind;
+    }
 
     enum data_type type = TYPE_PACKET_AUDIO;
 
@@ -1373,6 +1385,8 @@ static void audio_finish_load_track(void)
         /* no special treatment needed */
         break;
     }
+
+    track_id3->offset = offset;
 
     logf("load track: %s", track_id3->path);
 
@@ -1695,6 +1709,7 @@ static void audio_play_start(size_t offset)
 {
     int i;
 
+    send_event(PLAYBACK_EVENT_START_PLAYBACK, NULL);
 #if INPUT_SRC_CAPS != 0
     audio_set_input_source(AUDIO_SRC_PLAYBACK, SRCF_PLAYBACK);
     audio_set_output_source(AUDIO_SRC_PLAYBACK);

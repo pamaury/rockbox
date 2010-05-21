@@ -210,6 +210,12 @@ PLUGIN_HEADER
 #define BATTERY_ON_TXT  "PLAY - start"
 #define BATTERY_OFF_TXT "REC"
 
+#elif CONFIG_KEYPAD == MPIO_HD200_PAD
+#define BATTERY_ON  BUTTON_PLAY
+#define BATTERY_OFF BUTTON_REC
+#define BATTERY_ON_TXT  "PLAY - start"
+#define BATTERY_OFF_TXT "REC"
+
 #else
 #error No keymap defined!
 #endif
@@ -330,7 +336,7 @@ static void flush_buffer(void* data)
     if (in_usb_mode || (buf_idx == 0))
         return;
 
-    fd = rb->open(BATTERY_LOG, O_RDWR | O_CREAT | O_APPEND);
+    fd = rb->open(BATTERY_LOG, O_RDWR | O_CREAT | O_APPEND, 0666);
     if (fd < 0)
         return;
 
@@ -440,7 +446,7 @@ void thread(void)
     rb->unregister_storage_idle_func(flush_buffer, true);
     
     /* log end of bench and exit reason */
-    fd = rb->open(BATTERY_LOG, O_RDWR | O_CREAT | O_APPEND);
+    fd = rb->open(BATTERY_LOG, O_RDWR | O_CREAT | O_APPEND, 0666);
     if (fd >= 0)
     {
         rb->fdprintf(fd, "--Battery bench ended, reason: %s--\n", exit_reason);
@@ -519,7 +525,7 @@ int main(void)
     fd = rb->open(BATTERY_LOG, O_RDONLY);
     if (fd < 0)
     {
-        fd = rb->open(BATTERY_LOG, O_RDWR | O_CREAT);
+        fd = rb->open(BATTERY_LOG, O_RDWR | O_CREAT, 0666);
         if (fd >= 0)
         {
             rb->fdprintf(fd,

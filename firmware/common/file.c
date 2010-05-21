@@ -55,9 +55,9 @@ static struct filedesc openfiles[MAX_OPEN_FILES];
 
 static int flush_cache(int fd);
 
-int creat(const char *pathname)
+int file_creat(const char *pathname)
 {
-    return open(pathname, O_WRONLY|O_CREAT|O_TRUNC);
+    return open(pathname, O_WRONLY|O_CREAT|O_TRUNC, 0666);
 }
 
 static int open_internal(const char* pathname, int flags, bool use_cache)
@@ -228,7 +228,7 @@ static int open_internal(const char* pathname, int flags, bool use_cache)
     return fd;
 }
 
-int open(const char* pathname, int flags)
+int file_open(const char* pathname, int flags)
 {
     /* By default, use the dircache if available. */
     return open_internal(pathname, flags, true);
@@ -647,7 +647,7 @@ static int readwrite(int fd, void* buf, long count, bool write)
             file->dirty = true;
         }
         else {
-            rc = fat_readwrite(&(file->fatfile), 1, &(file->cache),false);
+            rc = fat_readwrite(&(file->fatfile), 1, file->cache,false);
             if (rc < 1 ) {
                 DEBUGF("Failed caching sector\n");
                 errno = EIO;
@@ -756,8 +756,7 @@ off_t lseek(int fd, off_t offset, int whence)
             }
         }
         if ( sectoroffset ) {
-            rc = fat_readwrite(&(file->fatfile), 1,
-                               &(file->cache),false);
+            rc = fat_readwrite(&(file->fatfile), 1, file->cache ,false);
             if ( rc < 0 ) {
                 errno = EIO;
                 return rc * 10 - 6;

@@ -71,6 +71,13 @@ PLUGIN_HEADER
 #define SCANRATE_INC     BUTTON_UP
 #define SCANRATE_DEC     BUTTON_DOWN
 
+#elif CONFIG_KEYPAD == MPIO_HD200_PAD
+#define SCANRATE_DONE    BUTTON_PLAY
+#define SCANRATE_FASTINC BUTTON_NEXT
+#define SCANRATE_FASTDEC BUTTON_PREV
+#define SCANRATE_INC     BUTTON_VOL_UP
+#define SCANRATE_DEC     BUTTON_VOL_DOWN
+
 #endif
 
 /* Default refresh rates in 1/10 Hz */
@@ -81,6 +88,9 @@ PLUGIN_HEADER
 #elif defined IAUDIO_M3
 #define DEFAULT_SCAN_RATE 1500
 #define HORIZ_SCAN /* LCD controller updates the panel sideways */
+#define NEED_BOOST
+#elif defined MPIO_HD200
+#define DEFAULT_SCAN_RATE 1460
 #define NEED_BOOST
 #elif defined IAUDIO_M5
 #define DEFAULT_SCAN_RATE 730

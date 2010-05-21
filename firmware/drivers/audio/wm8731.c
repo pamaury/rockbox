@@ -35,7 +35,6 @@
 #include "audio.h"
 
 #include "wmcodec.h"
-#include "audiohw.h"
 #include "sound.h"
 
 
@@ -149,7 +148,7 @@ int sound_val2phys(int setting, int value)
     return result;
 }
 
-void audiohw_mute(bool mute)
+static void audiohw_mute(bool mute)
 {
     if (mute) {
         /* Set DACMU = 1 to soft-mute the audio DACs. */

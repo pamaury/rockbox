@@ -1129,7 +1129,10 @@ static void decodeGeneric(LodePNG_Decoder* decoder, unsigned char* in, size_t si
             {
                 if (chunkLength != 1) { decoder->error = 43; break; } /*error: this chunk must be 1 byte for indexed color image*/
                 decoder->infoPng.background_defined = 1;
-                decoder->infoPng.background_r = decoder->infoPng.background_g = decoder->infoPng.background_g = data[0];
+                decoder->infoPng.background_r = decoder->infoPng.color.palette[4 * data[0] + 0];
+                decoder->infoPng.background_g = decoder->infoPng.color.palette[4 * data[0] + 1];
+                decoder->infoPng.background_b = decoder->infoPng.color.palette[4 * data[0] + 2];
+
             }
             else if (decoder->infoPng.color.colorType == 0 || decoder->infoPng.color.colorType == 4)
             {
@@ -1356,7 +1359,7 @@ int load_image(char *filename, struct image_info *info,
 
     } else {
         if (!running_slideshow) {
-            rb->snprintf(print, sizeof(print), "loading %lu bytes", image_size);
+            rb->snprintf(print, sizeof(print), "loading %zu bytes", image_size);
             rb->lcd_puts(0, 1, print);
             rb->lcd_update();
         }

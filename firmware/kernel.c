@@ -22,14 +22,12 @@
 #include <string.h>
 #include "config.h"
 #include "kernel.h"
-#ifdef SIMULATOR
-#include "system-sdl.h"
-#include "debug.h"
-#endif
 #include "thread.h"
 #include "cpu.h"
 #include "system.h"
 #include "panic.h"
+#include "debug.h"
+#include "general.h"
 
 /* Make this nonzero to enable more elaborate checks on objects */
 #if defined(DEBUG) || defined(SIMULATOR)
@@ -57,48 +55,12 @@ volatile long current_tick SHAREDDATA_ATTR = 0;
 /* List of tick tasks - final element always NULL for termination */
 void (*tick_funcs[MAX_NUM_TICK_TASKS+1])(void);
 
-extern struct core_entry cores[NUM_CORES];
-
 /* This array holds all queues that are initiated. It is used for broadcast. */
 static struct
 {
     struct event_queue *queues[MAX_NUM_QUEUES+1];
     IF_COP( struct corelock cl; )
 } all_queues SHAREDBSS_ATTR;
-
-/****************************************************************************
- * Common utilities
- ****************************************************************************/
-
-/* Find a pointer in a pointer array. Returns the addess of the element if
- * found or the address of the terminating NULL otherwise. */
-static void ** find_array_ptr(void **arr, void *ptr)
-{
-    void *curr;
-    for(curr = *arr; curr != NULL && curr != ptr; curr = *(++arr));
-    return arr;
-}
-
-/* Remove a pointer from a pointer array if it exists. Compacts it so that
- * no gaps exist. Returns 0 on success and -1 if the element wasn't found. */
-static int remove_array_ptr(void **arr, void *ptr)
-{
-    void *curr;
-    arr = find_array_ptr(arr, ptr);
-
-    if(*arr == NULL)
-        return -1;
-
-    /* Found. Slide up following items. */
-    do
-    {
-        void **arr1 = arr + 1;
-        *arr++ = curr = *arr1;
-    }
-    while(curr != NULL);
-
-    return 0;
-}
 
 /****************************************************************************
  * Standard kernel stuff
@@ -318,7 +280,9 @@ static void queue_release_sender(struct thread_entry **sender,
     struct thread_entry *thread = *sender;
 
     *sender = NULL;               /* Clear slot. */
+#ifdef HAVE_WAKEUP_EXT_CB
     thread->wakeup_ext_cb = NULL; /* Clear callback. */
+#endif
     thread->retval = retval;      /* Assign thread-local return value. */
     *thread->bqp = thread;        /* Move blocking queue head to thread since
                                      wakeup_thread wakes the first thread in
@@ -352,7 +316,9 @@ static void queue_release_all_senders(struct event_queue *q)
 static void queue_remove_sender_thread_cb(struct thread_entry *thread)
 {
     *((struct thread_entry **)thread->retval) = NULL;
+#ifdef HAVE_WAKEUP_EXT_CB
     thread->wakeup_ext_cb = NULL;
+#endif
     thread->retval = 0;
 }
 
@@ -535,7 +501,7 @@ void queue_wait(struct event_queue *q, struct queue_event *ev)
 
 #ifdef HAVE_PRIORITY_SCHEDULING
     KERNEL_ASSERT(QUEUE_GET_THREAD(q) == NULL ||
-                  QUEUE_GET_THREAD(q) == cores[CURRENT_CORE].running,
+                  QUEUE_GET_THREAD(q) == thread_id_entry(THREAD_ID_CURRENT),
                   "queue_wait->wrong thread\n");
 #endif
 
@@ -547,7 +513,7 @@ void queue_wait(struct event_queue *q, struct queue_event *ev)
     
     if (q->read == q->write)
     {
-        struct thread_entry *current = cores[CURRENT_CORE].running;
+        struct thread_entry *current = thread_id_entry(THREAD_ID_CURRENT);
 
         do
         {
@@ -582,7 +548,7 @@ void queue_wait_w_tmo(struct event_queue *q, struct queue_event *ev, int ticks)
 
 #ifdef HAVE_EXTENDED_MESSAGING_AND_NAME
     KERNEL_ASSERT(QUEUE_GET_THREAD(q) == NULL ||
-                  QUEUE_GET_THREAD(q) == cores[CURRENT_CORE].running,
+                  QUEUE_GET_THREAD(q) == thread_id_entry(THREAD_ID_CURRENT),
                   "queue_wait_w_tmo->wrong thread\n");
 #endif
 
@@ -594,7 +560,7 @@ void queue_wait_w_tmo(struct event_queue *q, struct queue_event *ev, int ticks)
 
     if (q->read == q->write && ticks > 0)
     {
-        struct thread_entry *current = cores[CURRENT_CORE].running;
+        struct thread_entry *current = thread_id_entry(THREAD_ID_CURRENT);
 
         IF_COP( current->obj_cl = &q->cl; )
         current->bqp = &q->queue;
@@ -669,7 +635,7 @@ intptr_t queue_send(struct event_queue *q, long id, intptr_t data)
     {
         struct queue_sender_list *send = q->send;
         struct thread_entry **spp = &send->senders[wr];
-        struct thread_entry *current = cores[CURRENT_CORE].running;
+        struct thread_entry *current = thread_id_entry(THREAD_ID_CURRENT);
 
         if(UNLIKELY(*spp))
         {
@@ -684,7 +650,9 @@ intptr_t queue_send(struct event_queue *q, long id, intptr_t data)
         *spp = current;
         IF_COP( current->obj_cl = &q->cl; )
         IF_PRIO( current->blocker = q->blocker_p; )
+#ifdef HAVE_WAKEUP_EXT_CB
         current->wakeup_ext_cb = queue_remove_sender_thread_cb;
+#endif
         current->retval = (intptr_t)spp;
         current->bqp = &send->list;
 
@@ -744,6 +712,7 @@ void queue_reply(struct event_queue *q, intptr_t retval)
         restore_irq(oldlevel);
     }
 }
+#endif /* HAVE_EXTENDED_MESSAGING_AND_NAME */
 
 bool queue_peek(struct event_queue *q, struct queue_event *ev)
 {
@@ -766,7 +735,6 @@ bool queue_peek(struct event_queue *q, struct queue_event *ev)
 
     return have_msg;
 }
-#endif /* HAVE_EXTENDED_MESSAGING_AND_NAME */
 
 /* Poll queue to see if a message exists - careful in using the result if
  * queue_remove_from_head is called when messages are posted - possibly use
@@ -859,6 +827,28 @@ int queue_broadcast(long id, intptr_t data)
  * Simple mutex functions ;)
  ****************************************************************************/
 
+static inline void mutex_set_thread(struct mutex *mtx, struct thread_entry *td)
+        __attribute__((always_inline));
+static inline void mutex_set_thread(struct mutex *mtx, struct thread_entry *td)
+{
+#ifdef HAVE_PRIORITY_SCHEDULING
+    mtx->blocker.thread = td;
+#else
+    mtx->thread = td;
+#endif
+}
+
+static inline struct thread_entry* mutex_get_thread(struct mutex *mtx)
+        __attribute__((always_inline));
+static inline struct thread_entry* mutex_get_thread(struct mutex *mtx)
+{
+#ifdef HAVE_PRIORITY_SCHEDULING
+    return mtx->blocker.thread;
+#else
+    return mtx->thread;
+#endif
+}
+
 /* Initialize a mutex object - call before any use and do not call again once
  * the object is available to other threads */
 void mutex_init(struct mutex *m)
@@ -866,8 +856,8 @@ void mutex_init(struct mutex *m)
     corelock_init(&m->cl);
     m->queue = NULL;
     m->count = 0;
-    m->locked = 0;
-    MUTEX_SET_THREAD(m, NULL);
+    m->locked = false;
+    mutex_set_thread(m, NULL);
 #ifdef HAVE_PRIORITY_SCHEDULING
     m->blocker.priority = PRIORITY_IDLE;
     m->blocker.wakeup_protocol = wakeup_priority_protocol_transfer;
@@ -878,10 +868,9 @@ void mutex_init(struct mutex *m)
 /* Gain ownership of a mutex object or block until it becomes free */
 void mutex_lock(struct mutex *m)
 {
-    const unsigned int core = CURRENT_CORE;
-    struct thread_entry *current = cores[core].running;
+    struct thread_entry *current = thread_id_entry(THREAD_ID_CURRENT);
 
-    if(current == MUTEX_GET_THREAD(m))
+    if(current == mutex_get_thread(m))
     {
         /* current thread already owns this mutex */
         m->count++;
@@ -891,11 +880,11 @@ void mutex_lock(struct mutex *m)
     /* lock out other cores */
     corelock_lock(&m->cl);
 
-    if(LIKELY(m->locked == 0))
+    if(LIKELY(!m->locked))
     {
         /* lock is open */
-        MUTEX_SET_THREAD(m, current);
-        m->locked = 1;
+        mutex_set_thread(m, current);
+        m->locked = true;
         corelock_unlock(&m->cl);
         return;
     }
@@ -918,10 +907,10 @@ void mutex_lock(struct mutex *m)
 void mutex_unlock(struct mutex *m)
 {
     /* unlocker not being the owner is an unlocking violation */
-    KERNEL_ASSERT(MUTEX_GET_THREAD(m) == cores[CURRENT_CORE].running,
+    KERNEL_ASSERT(mutex_get_thread(m) == thread_id_entry(THREAD_ID_CURRENT),
                   "mutex_unlock->wrong thread (%s != %s)\n",
-                  MUTEX_GET_THREAD(m)->name,
-                  cores[CURRENT_CORE].running->name);
+                  mutex_get_thread(m)->name,
+                  thread_id_entry(THREAD_ID_CURRENT)->name);
 
     if(m->count > 0)
     {
@@ -937,8 +926,8 @@ void mutex_unlock(struct mutex *m)
     if(LIKELY(m->queue == NULL))
     {
         /* no threads waiting - open the lock */
-        MUTEX_SET_THREAD(m, NULL);
-        m->locked = 0;
+        mutex_set_thread(m, NULL);
+        m->locked = false;
         corelock_unlock(&m->cl);
         return;
     }
@@ -948,7 +937,7 @@ void mutex_unlock(struct mutex *m)
         /* Tranfer of owning thread is handled in the wakeup protocol
          * if priorities are enabled otherwise just set it from the
          * queue head. */
-        IFN_PRIO( MUTEX_SET_THREAD(m, m->queue); )
+        IFN_PRIO( mutex_set_thread(m, m->queue); )
         IF_PRIO( unsigned int result = ) wakeup_thread(&m->queue);
         restore_irq(oldlevel);
 
@@ -989,7 +978,7 @@ void semaphore_wait(struct semaphore *s)
     }
 
     /* too many waits - block until dequeued... */
-    current = cores[CURRENT_CORE].running;
+    current = thread_id_entry(THREAD_ID_CURRENT);
 
     IF_COP( current->obj_cl = &s->cl; )
     current->bqp = &s->queue;
@@ -1037,7 +1026,7 @@ void semaphore_release(struct semaphore *s)
 void wakeup_init(struct wakeup *w)
 {
     w->queue = NULL;
-    w->signalled = 0;
+    w->signalled = false;
     IF_COP( corelock_init(&w->cl); )
 }
 
@@ -1049,9 +1038,9 @@ int wakeup_wait(struct wakeup *w, int timeout)
 
     corelock_lock(&w->cl);
 
-    if(LIKELY(w->signalled == 0 && timeout != TIMEOUT_NOBLOCK))
+    if(LIKELY(!w->signalled && timeout != TIMEOUT_NOBLOCK))
     {
-        struct thread_entry * current = cores[CURRENT_CORE].running;
+        struct thread_entry * current = thread_id_entry(THREAD_ID_CURRENT);
 
         IF_COP( current->obj_cl = &w->cl; )
         current->bqp = &w->queue;
@@ -1068,14 +1057,14 @@ int wakeup_wait(struct wakeup *w, int timeout)
         corelock_lock(&w->cl);
     }
 
-    if(UNLIKELY(w->signalled == 0))
+    if(UNLIKELY(!w->signalled))
     {
         /* Timed-out or failed */
         ret = (timeout != TIMEOUT_BLOCK) ?
             OBJ_WAIT_TIMEDOUT : OBJ_WAIT_FAILED;
     }
 
-    w->signalled = 0;  /* Reset */
+    w->signalled = false;  /* Reset */
 
     corelock_unlock(&w->cl);
     restore_irq(oldlevel);
@@ -1095,7 +1084,7 @@ int wakeup_signal(struct wakeup *w)
 
     corelock_lock(&w->cl);
 
-    w->signalled = 1;
+    w->signalled = true;
     ret = wakeup_thread(&w->queue);
 
     corelock_unlock(&w->cl);

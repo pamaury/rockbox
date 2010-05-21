@@ -43,7 +43,7 @@ you to configure settings related to audio playback.
         Setting the End Point (B) is done accordingly using
         \ActionWpsAbSetBNextDir{}.  To reset the markers press \ActionWpsAbReset{}.
     }%
-    \opt{ipod,IAUDIO_X5_PAD,ONDIO_PAD,PLAYER_PAD}{%
+    \opt{ipod,IAUDIO_X5_PAD,ONDIO_PAD,PLAYER_PAD,PBELL_VIBE500_PAD}{%
         To set the Start Point (A) press \ActionWpsBrowse{}. The following
         press of \ActionWpsBrowse{} will set the End Point (B), and a third
         successive \ActionWpsBrowse{} will reset the markers.
@@ -288,3 +288,14 @@ you to configure settings related to audio playback.
   if a track ends, which can be achieved by combining this option with
   \setting{Repeat} set to \setting{One}
 
+\opt{swcodec}{
+  \section{Rewind Before Resume}\index{Rewind Before Resume}
+    When resuming a track or a bookmark, a short rewind can be done before the
+    playback is started. This can be useful when listening to speech material,
+    to help remember what was being said just before playback was stopped.
+    The size of the rewind can be set to various values between 0 (off) and
+    60 seconds.
+    \note{The rewind is not done when resuming a paused track.}
+    \note{The actual rewind distance may differ a little from the requested
+      value, depending on the file in question.}
+}%\opt{swcodec}

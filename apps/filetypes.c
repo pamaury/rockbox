@@ -26,7 +26,6 @@
 #include "string.h"
 #include <ctype.h>
 
-#include "sprintf.h"
 #include "settings.h"
 #include "debug.h"
 #include "lang.h"
@@ -43,9 +42,9 @@
 
 /* max filetypes (plugins & icons stored here) */
 #if CONFIG_CODEC == SWCODEC
-#define MAX_FILETYPES 128
+#define MAX_FILETYPES 192
 #else
-#define MAX_FILETYPES 64
+#define MAX_FILETYPES 128
 #endif
 
 /* a table for the know file types */
@@ -106,6 +105,7 @@ static const struct filetype inbuilt_filetypes[] = {
     { "snd", FILE_ATTR_AUDIO, Icon_Audio, VOICE_EXT_MPA },
     { "vox", FILE_ATTR_AUDIO, Icon_Audio, VOICE_EXT_MPA },
     { "w64", FILE_ATTR_AUDIO, Icon_Audio, VOICE_EXT_MPA },
+    { "tta", FILE_ATTR_AUDIO, Icon_Audio, VOICE_EXT_MPA },
 #endif
     { "m3u", FILE_ATTR_M3U, Icon_Playlist, LANG_PLAYLIST },
     { "m3u8",FILE_ATTR_M3U, Icon_Playlist, LANG_PLAYLIST },
@@ -116,6 +116,7 @@ static const struct filetype inbuilt_filetypes[] = {
 #endif
 #if CONFIG_TUNER
     { "fmr", FILE_ATTR_FMR, Icon_Preset, LANG_FMR },
+    { "fms", FILE_ATTR_FMS, Icon_Wps, VOICE_EXT_FMS },
 #endif
     { "lng", FILE_ATTR_LNG, Icon_Language, LANG_LANGUAGE },
     { "rock",FILE_ATTR_ROCK,Icon_Plugin,   VOICE_EXT_ROCK },
@@ -131,6 +132,9 @@ static const struct filetype inbuilt_filetypes[] = {
 #endif
 #ifdef HAVE_REMOTE_LCD
     { "rsbs", FILE_ATTR_RSBS, Icon_Wps,   VOICE_EXT_RSBS },
+#if CONFIG_TUNER
+    { "rfms", FILE_ATTR_RFMS, Icon_Wps, VOICE_EXT_RFMS },
+#endif    
 #endif
 #ifdef BOOTFILE_EXT
     { BOOTFILE_EXT, FILE_ATTR_MOD, Icon_Firmware, VOICE_EXT_AJZ },

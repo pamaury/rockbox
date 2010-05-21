@@ -49,7 +49,6 @@
 #include "status.h"
 #include "debug_menu.h"
 #include "version.h"
-#include "sprintf.h"
 #include "font.h"
 #include "language.h"
 #include "wps.h"
@@ -125,8 +124,14 @@ const char appsversion[]=APPSVERSION;
 
 static void init(void);
 
-#ifdef SIMULATOR
-void app_main(void)
+#ifdef HAVE_SDL
+#if defined(WIN32) && defined(main)
+/* Don't use SDL_main on windows -> no more stdio redirection */
+#undef main
+#endif
+int main(int argc, char *argv[])
+{
+    sys_handle_argv(argc, argv);
 #else
 /* main(), and various functions called by main() and init() may be
  * be INIT_ATTR. These functions must not be called after the final call
@@ -134,8 +139,8 @@ void app_main(void)
  * see definition of INIT_ATTR in config.h */
 int main(void)  INIT_ATTR __attribute__((noreturn));
 int main(void)
-#endif
 {
+#endif
     int i;
     CHART(">init");
     init();
@@ -314,6 +319,7 @@ static void init_tagcache(void)
 
 static void init(void)
 {
+    system_init();
     kernel_init();
     buffer_init();
     enable_irq();

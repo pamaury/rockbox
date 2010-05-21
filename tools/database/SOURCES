@@ -8,8 +8,6 @@ database.c
 ../../apps/mp3data.c
 ../../apps/tagcache.c
 ../../firmware/common/crc32.c
-../../firmware/common/ctype.c
-../../firmware/common/errno.c
 ../../firmware/common/strlcpy.c
 ../../firmware/common/strcasestr.c
 ../../firmware/common/structec.c
@@ -17,6 +15,7 @@ database.c
 ../../firmware/logf.c
 ../../uisimulator/common/io.c
 #if CONFIG_CODEC != SWCODEC
+../../apps/metadata/id3tags.c
 ../../apps/metadata/mp3.c
 #endif
 /* Caution. metadata files do not add!! */

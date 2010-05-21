@@ -23,7 +23,7 @@
 PLUGIN_HEADER
 
 static char   *audiobuf;
-static ssize_t audiobuflen;
+static size_t audiobuflen;
 unsigned char xingbuf[1500];
 char tmpname[MAX_PATH];
 
@@ -49,7 +49,7 @@ static int insert_data_in_file(const char *fname, int fpos, char *buf, int num_b
         return 10*orig_fd - 1;
     }
 
-    fd = rb->creat(tmpname);
+    fd = rb->creat(tmpname, 0666);
     if(fd < 0) {
         rb->close(orig_fd);
         return 10*fd - 2;
@@ -267,7 +267,7 @@ enum plugin_status plugin_start(const void *parameter)
     if (!parameter)
         return PLUGIN_ERROR;
 
-    audiobuf = rb->plugin_get_audio_buffer((size_t *)&audiobuflen);
+    audiobuf = rb->plugin_get_audio_buffer(&audiobuflen);
     
 #ifdef HAVE_ADJUSTABLE_CPU_FREQ
     rb->cpu_boost(true);

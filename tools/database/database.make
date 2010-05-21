@@ -32,15 +32,15 @@ INCLUDES = -I$(ROOTDIR)/apps/gui \
            -I$(APPSDIR) \
            -I$(BUILDDIR) \
 
-SIMINCLUDES += -I$(ROOTDIR)/uisimulator/sdl -I$(ROOTDIR)/uisimulator/common \
-	-I$(FIRMDIR)/export $(TARGET_INC) -I$(BUILDDIR) -I$(APPSDIR)
+SIMINCLUDES += -I$(FIRMDIR)/target/hosted/sdl -I$(FIRMDIR)/target/hosted \
+	-I$(ROOTDIR)/uisimulator/common -I$(FIRMDIR)/export -I$(BUILDDIR) -I$(APPSDIR)
 
 # Makes mkdepfile happy
 GCCOPTS+=`$(SDLCONFIG) --cflags`
 OLDGCCOPTS:=$(GCCOPTS)
 GCCOPTS+=-D__PCTOOL__  $(FIRMINC) $(SIMINCLUDES)
 
-LIBS=`$(SDLCONFIG) --libs`
+LIBS=`$(SDLCONFIG) --libs` -lc
 ifneq ($(findstring MINGW,$(shell uname)),MINGW)
 LIBS += -ldl
 endif

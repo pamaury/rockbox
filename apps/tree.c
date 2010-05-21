@@ -19,9 +19,9 @@
  *
  ****************************************************************************/
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include "string-extra.h"
 
 #include "applimits.h"
 #include "dir.h"
@@ -32,7 +32,6 @@
 #include "kernel.h"
 #include "usb.h"
 #include "tree.h"
-#include "sprintf.h"
 #include "audio.h"
 #include "playlist.h"
 #include "menu.h"
@@ -756,8 +755,13 @@ static int dirbrowse()
                 break;
 #endif
 
-            case ACTION_STD_CONTEXT:
+#ifdef HAVE_HOTKEY
             case ACTION_TREE_HOTKEY:
+                if (!global_settings.hotkey_tree)
+                    break;
+                /* fall through */
+#endif
+            case ACTION_STD_CONTEXT:
             {
                 bool hotkey = button == ACTION_TREE_HOTKEY;
                 int onplay_result;
@@ -1069,7 +1073,7 @@ bool bookmark_play(char *resume_file, int index, int offset, int seed,
         lastdir[0]='\0';
         if (playlist_create(resume_file, NULL) != -1)
         {
-            char* peek_filename;
+            const char* peek_filename;
             resume_directory(resume_file);
             if (global_settings.playlist_shuffle)
                 playlist_shuffle(seed, -1);

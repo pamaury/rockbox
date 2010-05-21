@@ -21,7 +21,7 @@
  ****************************************************************************/
 #include "font.h"
 #include <stdio.h>
-#include <string.h>
+#include "string-extra.h"
 #include <stdlib.h>
 #include "action.h"
 #include "system.h"
@@ -61,6 +61,10 @@
 #endif
 #include "language.h"
 #include "usb.h"
+#if CONFIG_TUNER
+#include "radio.h"
+#include "tuner.h"
+#endif
 
 extern struct wps_state wps_state;
 
@@ -247,9 +251,23 @@ const char *get_id3_token(struct wps_token *token, struct mp3entry *id3,
                 {
                     *intval = limit * elapsed / length + 1;
                 }
-                snprintf(buf, buf_size, "%d", 100 * elapsed / length);
+                snprintf(buf, buf_size, "%lu", 100 * elapsed / length);
                 return buf;
 
+            case WPS_TOKEN_TRACK_STARTING:
+                {
+                    unsigned long time = token->value.i * 1000;
+                    if (elapsed < time)
+                        return "starting";
+                }
+                return NULL;
+            case WPS_TOKEN_TRACK_ENDING:
+                {
+                    unsigned long time = token->value.i * 1000;
+                    if (length - elapsed < time)
+                        return "ending";
+                }
+                return NULL;
 
             case WPS_TOKEN_FILE_CODEC:
                 if (intval)
@@ -269,7 +287,7 @@ const char *get_id3_token(struct wps_token *token, struct mp3entry *id3,
                 if ((id3->frequency % 1000) < 100)
                     snprintf(buf, buf_size, "%ld", id3->frequency / 1000);
                 else
-                    snprintf(buf, buf_size, "%ld.%d",
+                    snprintf(buf, buf_size, "%ld.%lu",
                             id3->frequency / 1000,
                             (id3->frequency % 1000) / 100);
                 return buf;
@@ -302,12 +320,12 @@ const char *get_id3_token(struct wps_token *token, struct mp3entry *id3,
         case WPS_TOKEN_DATABASE_RATING:
             if (intval)
                 *intval = id3->rating + 1;
-            snprintf(buf, buf_size, "%ld", id3->rating);
+            snprintf(buf, buf_size, "%d", id3->rating);
             return buf;
         case WPS_TOKEN_DATABASE_AUTOSCORE:
             if (intval)
                 *intval = id3->score + 1;
-            snprintf(buf, buf_size, "%ld", id3->score);
+            snprintf(buf, buf_size, "%d", id3->score);
             return buf;
 #endif
 
@@ -338,6 +356,108 @@ const char *get_id3_token(struct wps_token *token, struct mp3entry *id3,
     }
     return buf;
 }
+
+#if CONFIG_TUNER
+
+/* Formats the frequency (specified in Hz) in MHz,   */
+/* with one or two digits after the decimal point -- */
+/* depending on the frequency changing step.         */
+/* Returns buf                                       */
+static char *format_freq_MHz(int freq, int freq_step, char *buf, int buf_size)
+{
+    int scale, div;
+    char *fmt;
+    if (freq_step < 100000)
+    {
+        /* Format with two digits after decimal point */
+        scale = 10000;
+        fmt = "%d.%02d";
+    }
+    else
+    {
+        /* Format with one digit after decimal point */
+        scale = 100000;
+        fmt = "%d.%d";
+    }
+    div = 1000000 / scale;
+    freq = freq / scale;
+    snprintf(buf, buf_size, fmt, freq/div, freq%div);
+    return buf;
+}
+
+
+/* Tokens which are really only used by the radio screen go in here */
+const char *get_radio_token(struct wps_token *token, int preset_offset,
+                            char *buf, int buf_size, int limit, int *intval)
+{
+    const struct fm_region_data *region_data =
+            &(fm_region_data[global_settings.fm_region]);
+    (void)limit;
+    switch (token->type)
+    {
+        /* Radio/tuner tokens */
+        case WPS_TOKEN_TUNER_TUNED:
+            if (tuner_get(RADIO_TUNED))
+                return "t";
+            return NULL;
+        case WPS_TOKEN_TUNER_SCANMODE:
+            if (radio_scan_mode())
+                return "s";
+            return NULL;
+        case WPS_TOKEN_TUNER_STEREO:
+            if (radio_is_stereo())
+                return "s";
+            return NULL;
+        case WPS_TOKEN_TUNER_MINFREQ: /* changes based on "region" */
+            return format_freq_MHz(region_data->freq_min,
+                            region_data->freq_step, buf, buf_size);
+        case WPS_TOKEN_TUNER_MAXFREQ: /* changes based on "region" */
+            return format_freq_MHz(region_data->freq_max,
+                            region_data->freq_step, buf, buf_size);
+        case WPS_TOKEN_TUNER_CURFREQ:
+            return format_freq_MHz(radio_current_frequency(),
+                            region_data->freq_step, buf, buf_size);
+        case WPS_TOKEN_PRESET_ID:
+            snprintf(buf, buf_size, "%d", radio_current_preset() + 1 + preset_offset);
+            return buf;
+        case WPS_TOKEN_PRESET_NAME:
+        case WPS_TOKEN_PRESET_FREQ:
+        {
+            int preset_count = radio_preset_count();
+            int cur_preset = radio_current_preset();
+            if (preset_count == 0 || cur_preset < 0)
+                return NULL;
+            int preset = cur_preset + preset_offset;
+            /* make sure it's in the valid range */
+            preset %= preset_count;
+            if (preset < 0)
+                preset += preset_count;
+            if (token->type == WPS_TOKEN_PRESET_NAME)
+                snprintf(buf, buf_size, "%s", radio_get_preset(preset)->name);
+            else
+                format_freq_MHz(radio_get_preset(preset)->frequency,
+                                region_data->freq_step, buf, buf_size);
+            return buf;
+        }
+        case WPS_TOKEN_PRESET_COUNT:
+            snprintf(buf, buf_size, "%d", radio_preset_count());        
+            if (intval)
+                *intval = radio_preset_count();
+            return buf;
+        case WPS_TOKEN_HAVE_RDS:
+#ifdef HAVE_RDS_CAP
+            return "rds";
+        case WPS_TOKEN_RDS_NAME:
+            return tuner_get_rds_info(RADIO_RDS_NAME);
+        case WPS_TOKEN_RDS_TEXT:
+            return tuner_get_rds_info(RADIO_RDS_TEXT);
+#else
+            return NULL; /* end of the WPS_TOKEN_HAVE_RDS case */
+#endif /* HAVE_RDS_CAP */
+    }
+    return NULL;
+}
+#endif
 
 /* Return the tags value as text. buf should be used as temp storage if needed.
 
@@ -396,6 +516,11 @@ const char *get_token_value(struct gui_wps *gwps,
     out_text = get_id3_token(token, id3, buf, buf_size, limit, intval);
     if (out_text)
         return out_text;
+#if CONFIG_TUNER
+    out_text = get_radio_token(token, 0, buf, buf_size, limit, intval);
+    if (out_text)
+        return out_text;
+#endif
 
     switch (token->type)
     {
@@ -462,8 +587,18 @@ const char *get_token_value(struct gui_wps *gwps,
             return buf;
 #ifdef HAVE_ALBUMART
         case WPS_TOKEN_ALBUMART_FOUND:
-            if (data->albumart) {
-                if (playback_current_aa_hid(data->playback_aa_slot) >= 0)
+            if (data->albumart)
+            {
+                int handle = -1;
+                handle = playback_current_aa_hid(data->playback_aa_slot);
+#if CONFIG_TUNER
+                if (in_radio_screen() || (get_radio_status() != FMRADIO_OFF))
+                {
+                    struct dim dim = {data->albumart->width, data->albumart->height};
+                    handle = radio_get_art_hid(&dim);
+                }
+#endif
+                if (handle >= 0)    
                     return "C";
             }
             return NULL;
@@ -897,23 +1032,6 @@ const char *get_token_value(struct gui_wps *gwps,
                 return "v";
             return NULL;
             
-        case WPS_TOKEN_TRACK_STARTING:
-            if (id3)
-            {
-                int elapsed = id3->elapsed + state->ff_rewind_count;
-                if (elapsed < token->value.i * 1000)
-                    return "starting";
-            }
-            return NULL;
-        case WPS_TOKEN_TRACK_ENDING:
-            if (id3)
-            {
-                unsigned long elapsed = id3->elapsed + state->ff_rewind_count;
-                unsigned time = token->value.i * 1000;
-                if (id3->length - elapsed < time)
-                    return "ending";
-            }
-            return NULL;
         case WPS_TOKEN_LASTTOUCH:
 #ifdef HAVE_TOUCHSCREEN
             if (TIME_BEFORE(current_tick, token->value.i * TIMEOUT_UNIT +
@@ -971,6 +1089,9 @@ const char *get_token_value(struct gui_wps *gwps,
                          * The string's emptyness discards the setting's
                          * prefix and suffix */
                         *intval = ((char*)s->setting)[0]?1:2;
+                        /* if there is a prefix we should ignore it here */
+                        if (s->filename_setting->prefix)
+                            return (char*)s->setting;
                         break;
                     default:
                         /* This shouldn't happen ... but you never know */
@@ -988,6 +1109,12 @@ const char *get_token_value(struct gui_wps *gwps,
             cfg_to_string(token->value.i,buf,buf_size);
             return buf;
         }
+        case WPS_TOKEN_HAVE_TUNER:
+#if CONFIG_TUNER
+            if (radio_hardware_present())
+                return "r";
+#endif
+            return NULL;
         /* Recording tokens */
         case WPS_TOKEN_HAVE_RECORDING:
 #ifdef HAVE_RECORDING
@@ -997,6 +1124,10 @@ const char *get_token_value(struct gui_wps *gwps,
 #endif
 
 #ifdef HAVE_RECORDING
+        case WPS_TOKEN_IS_RECORDING:
+            if (audio_status() == AUDIO_STATUS_RECORD)
+                return "r";
+            return NULL;
         case WPS_TOKEN_REC_FREQ: /* order from REC_FREQ_CFG_VAL_LIST */
         {
 #if CONFIG_CODEC == SWCODEC
@@ -1064,7 +1195,7 @@ const char *get_token_value(struct gui_wps *gwps,
                         break;)
                 }
             }
-            snprintf(buf, buf_size, "%d.%1d", samprk/1000,samprk%1000);
+            snprintf(buf, buf_size, "%lu.%1lu", samprk/1000,samprk%1000);
 #else /* HWCODEC */
             
             static const char * const freq_strings[] =
@@ -1079,7 +1210,7 @@ const char *get_token_value(struct gui_wps *gwps,
 #endif /* HAVE_SPDIF_IN */
             if (intval)
                 *intval = freq+1; /* so the token gets a value 1<=x<=7 */
-            snprintf(buf, buf_size, "%d\n",
+            snprintf(buf, buf_size, "%s\n",
                         freq_strings[global_settings.rec_frequency]);
 #endif
             return buf;
@@ -1164,7 +1295,7 @@ const char *get_token_value(struct gui_wps *gwps,
                     #endif
                     *intval = global_settings.mp3_enc_config.bitrate+1;
                 }
-                snprintf(buf, buf_size, "%d", global_settings.mp3_enc_config.bitrate+1);
+                snprintf(buf, buf_size, "%lu", global_settings.mp3_enc_config.bitrate+1);
                 return buf;
             }
             else
@@ -1179,8 +1310,34 @@ const char *get_token_value(struct gui_wps *gwps,
             if (!global_settings.rec_channels)
                 return "m";
             return NULL;
+            
+        case WPS_TOKEN_REC_SECONDS:
+        {
+            int time = (audio_recorded_time() / HZ) % 60;
+            if (intval)
+                *intval = time;
+            snprintf(buf, buf_size, "%02d", time);
+            return buf;
+        }
+        case WPS_TOKEN_REC_MINUTES:
+        {
+            int time = (audio_recorded_time() / HZ) / 60;
+            if (intval)
+                *intval = time;
+            snprintf(buf, buf_size, "%02d", time);
+            return buf;
+        }
+        case WPS_TOKEN_REC_HOURS:
+        {
+            int time = (audio_recorded_time() / HZ) / 3600;
+            if (intval)
+                *intval = time;
+            snprintf(buf, buf_size, "%02d", time);
+            return buf;
+        }
 
 #endif /* HAVE_RECORDING */
+
         case WPS_TOKEN_CURRENT_SCREEN:
         {
             int curr_screen = current_screen();

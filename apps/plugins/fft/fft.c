@@ -195,6 +195,14 @@ GREY_INFO_STRUCT
 #   define FFT_SCALE            BUTTON_PLAY
 #   define FFT_QUIT             BUTTON_REC
 
+#elif CONFIG_KEYPAD == MPIO_HD200_PAD
+#   define FFT_PREV_GRAPH       BUTTON_PREV
+#   define FFT_NEXT_GRAPH       BUTTON_NEXT
+#   define FFT_ORIENTATION      BUTTON_REC
+#   define FFT_WINDOW           BUTTON_SELECT
+#   define FFT_SCALE            BUTTON_PLAY
+#   define FFT_QUIT             (BUTTON_REC | BUTTON_PLAY)
+
 #else
 #error No keymap defined!
 #endif
@@ -264,11 +272,7 @@ static kiss_fft_cpx output[ARRAYSIZE_OUT];
 static int32_t plot[ARRAYSIZE_PLOT];
 static char buffer[BUFSIZE];
 
-#if LCD_DEPTH > 1 /* greyscale or color, enable spectrogram */
 #define MODES_COUNT 3
-#else
-#define MODES_COUNT 2
-#endif
 
 const unsigned char* modes_text[] = { "Lines", "Bars", "Spectrogram" };
 const unsigned char* scales_text[] = { "Linear scale", "Logarithmic scale" };
@@ -299,8 +303,8 @@ struct {
 /************************* End of globals *************************/
 
 /************************* Math functions *************************/
-#define QLOG_MAX 286286
-#define QLIN_MAX 1534588906
+#define QLOG_MAX 0x00040000 
+#define QLIN_MAX 0x5B000000
 #define QLN_10 float_q16(2.302585093)
 #define LIN_MAX (QLIN_MAX >> 16)
 
@@ -342,24 +346,31 @@ void apply_window_func(char mode)
 /* Calculates the magnitudes from complex numbers and returns the maximum */
 int32_t calc_magnitudes(bool logarithmic)
 {
-    int64_t tmp;
+    /* A major assumption made when calculating the Q*MAX constants 
+     * is that the maximum magnitude is 29 bits long. */
+
+    uint32_t tmp;
     size_t i;
 
-    int32_t max = -2147483647;
-    
-    /* Calculate the magnitude, discarding the phase.
-     * The sum of the squares can easily overflow the 15-bit (s15.16)
-     * requirement for fsqrt, so we scale the data down */
+    int32_t max = 0;
+
+    /* Calculate the magnitude, discarding the phase. */
     for (i = 0; i < ARRAYSIZE_PLOT; ++i)
     {
         tmp = output[i].r * output[i].r + output[i].i * output[i].i;
-        tmp <<= 16;
 
-        tmp = fsqrt64(tmp, 16);
-
-        if (logarithmic)
-            tmp = get_log_value(tmp & 0x7FFFFFFF);
-
+        if (tmp > 0x7FFFFFFF) tmp >>= 1; /* if our assumptions are correct,
+                                            this should never happen. It's just
+                                            a safeguard. */
+        if (tmp > 0)
+        {
+            tmp = fp_sqrt(tmp, 0); /* linear scaling, nothing
+                                      bad should happen */
+            tmp <<= 16;
+            if (logarithmic)
+                tmp = get_log_value(tmp);/* the log function
+                                            expects s15.16 values */
+        }
         plot[i] = tmp;
 
         if (plot[i] > max)

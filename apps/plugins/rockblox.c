@@ -326,6 +326,16 @@ PLUGIN_HEADER
 #define ROCKBLOX_DROP          BUTTON_OK
 #define ROCKBLOX_RESTART       BUTTON_CANCEL
 
+#elif CONFIG_KEYPAD == MPIO_HD200_PAD
+#define ROCKBLOX_OFF           (BUTTON_REC|BUTTON_PLAY)
+#define ROCKBLOX_ROTATE_CCW    BUTTON_PREV
+#define ROCKBLOX_ROTATE_CW     BUTTON_NEXT
+#define ROCKBLOX_DOWN          BUTTON_SELECT
+#define ROCKBLOX_LEFT          BUTTON_VOL_DOWN
+#define ROCKBLOX_RIGHT         BUTTON_VOL_UP
+#define ROCKBLOX_DROP          BUTTON_PLAY
+#define ROCKBLOX_RESTART       BUTTON_REC
+
 #else
 #error No keymap defined!
 #endif
@@ -867,7 +877,7 @@ static void dump_resume(void)
 {
     int fd;
 
-    fd = rb->open(RESUME_FILE, O_WRONLY|O_CREAT);
+    fd = rb->open(RESUME_FILE, O_WRONLY|O_CREAT, 0666);
     if (fd < 0)
         goto fail;
 
@@ -901,6 +911,7 @@ static void init_rockblox (bool resume)
     pgfx_display (0, 0);
     pgfx_display_block (3, 0, 3, 1);
     pgfx_display_block (4, 0, 3, 0);
+    rb->lcd_puts(4, 1, " ");
     pgfx_clear_display();
     pgfx_fillrect (3, 0, 2, 14);
     pgfx_fillrect (15, 7, 2, 7);

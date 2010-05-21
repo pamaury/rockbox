@@ -584,7 +584,7 @@ static int keybox(void)
 
     if (data_changed)
     {
-        fd = rb->open(KEYBOX_FILE, O_WRONLY | O_CREAT | O_TRUNC);
+        fd = rb->open(KEYBOX_FILE, O_WRONLY | O_CREAT | O_TRUNC, 0666);
         if (fd < 0)
             return FILE_OPEN_ERROR;
         write_output(fd);
@@ -608,6 +608,7 @@ static void reset(void)
         rb->remove(KEYBOX_FILE);
         rb->memset(&buffer, 0, sizeof(buffer));
         rb->memset(&pw_list, 0, sizeof(pw_list));
+        rb->gui_synclist_set_nb_items(&kb_list, 0);
         init_ll();
     }
 }

@@ -20,11 +20,11 @@ not even load on devices with little available memory.\\
 one file.  These are rare, but if you have one don't even try it (the file will most
 likely be corrupted if you save over it). You have been warned.\\}
 
-The file \fname {"/sgf/gbn\_def.sgf"} is used by the plugin to store any unsaved
+The file \fname {/sgf/gbn\_def.sgf} is used by the plugin to store any unsaved
 changes in the most recently loaded game.  This means that if you forget to save your
-changes, you should load \fname {"/sgf/gbn\_def.sgf"} immediately to offload the changes
+changes, you should load \fname {/sgf/gbn\_def.sgf} immediately to offload the changes
 to another file.  If you load another file first then your changes will be lost
-permanently.  The \fname {"/sgf/gbn\_def.sgf"} file is also the file loaded if another
+permanently.  The \fname {/sgf/gbn\_def.sgf} file is also the file loaded if another
 is not selected.\\
 
 The information panel which displays the current move number may also contain
@@ -38,13 +38,14 @@ these markers:
       \emph{Next Variation} menu option of the \emph{Context Menu}%
       \opt{SANSA_E200_PAD,SANSA_C200_PAD,SANSA_FUZE_PAD,SANSA_CLIP_PAD,%
          RECORDER_PAD,MROBE100_PAD,GIGABEAT_PAD,GIGABEAT_S_PAD,IRIVER_H100_PAD,%
-         IRIVER_H300_PAD}{ or the %
+         IRIVER_H300_PAD,PBELL_VIBE500_PAD}{ or the %
          \opt{SANSA_E200_PAD,SANSA_C200_PAD}{\ButtonRec}%
          \opt{SANSA_FUZE_PAD,SANSA_CLIP_PAD}{\ButtonHome}%
          \opt{RECORDER_PAD}{\ButtonOn}%
          \opt{MROBE100_PAD}{\ButtonPower}%
          \opt{GIGABEAT_PAD}{\ButtonA}%
          \opt{GIGABEAT_S_PAD}{\ButtonPlay}%
+         \opt{PBELL_VIBE500_PAD}{\ButtonCancel}%
          \opt{IRIVER_H100_PAD,IRIVER_H300_PAD}{\ButtonRec} button}. \\
       \emph{C } & There is a comment at the current node.  It can be viewed/edited using
                 the \emph{Add/Edit Comment} menu option of the \emph{Context Menu}. \\
@@ -52,10 +53,9 @@ these markers:
 \end{table}
 
 \subsubsection{Controls}
-\begin{table}
-    \begin{btnmap}{}{}
-        \nopt{IPOD_1G2G_PAD,IPOD_3G_PAD,IPOD_4G_PAD,IRIVER_H10_PAD,COWON_D2_PAD}{
-            \ButtonUp}%
+    \begin{btnmap}
+        \nopt{IPOD_1G2G_PAD,IPOD_3G_PAD,IPOD_4G_PAD,IRIVER_H10_PAD,COWON_D2_PAD}
+             {\ButtonUp}%
         \opt{IPOD_1G2G_PAD,IPOD_3G_PAD,IPOD_4G_PAD}{\ButtonMenu}%
         \opt{IRIVER_H10_PAD}{\ButtonScrollUp}
         \opt{COWON_D2_PAD}{\TouchTopMiddle}
@@ -65,8 +65,8 @@ these markers:
         Move cursor up
         \\
         
-        \nopt{IPOD_1G2G_PAD,IPOD_3G_PAD,IPOD_4G_PAD,IRIVER_H10_PAD,COWON_D2_PAD}{
-            \ButtonDown}%
+        \nopt{IPOD_1G2G_PAD,IPOD_3G_PAD,IPOD_4G_PAD,IRIVER_H10_PAD,COWON_D2_PAD}
+             {\ButtonDown}%
         \opt{IPOD_1G2G_PAD,IPOD_3G_PAD,IPOD_4G_PAD}{\ButtonPlay}%
         \opt{IRIVER_H10_PAD}{\ButtonScrollDown}
         \opt{COWON_D2_PAD}{\TouchBottomMiddle}
@@ -103,9 +103,10 @@ these markers:
             \\
         }
         
-        \nopt{IRIVER_H10_PAD,COWON_D2_PAD,ONDIO_PAD,RECORDER_PAD,IAUDIO_M3_PAD}{%
+        \nopt{IRIVER_H10_PAD,COWON_D2_PAD,ONDIO_PAD,RECORDER_PAD,IAUDIO_M3_PAD%
+             ,PBELL_VIBE500_PAD}{%
             \ButtonSelect}%
-        \opt{IRIVER_H10_PAD,RECORDER_PAD}{\ButtonPlay}%
+        \opt{IRIVER_H10_PAD,RECORDER_PAD,PBELL_VIBE500_PAD}{\ButtonPlay}%
         \opt{ONDIO_PAD}{\ButtonMenu}
         \opt{COWON_D2_PAD}{\TouchCenter}
             &
@@ -125,6 +126,7 @@ these markers:
             \opt{IAUDIO_X5_PAD}{\ButtonPlay}%
             \opt{RECORDER_PAD}{\ButtonFOne}
             \opt{COWON_D2_PAD}{\TouchBottomLeft}
+            \opt{PBELL_VIBE500_PAD}{\ButtonOK{} + \ButtonLeft}
                 &
             \opt{HAVEREMOTEKEYMAP}{
                 &}
@@ -140,6 +142,7 @@ these markers:
             \opt{IAUDIO_X5_PAD}{\ButtonRec}%
             \opt{RECORDER_PAD}{\ButtonFThree}
             \opt{COWON_D2_PAD}{\TouchBottomRight}
+            \opt{PBELL_VIBE500_PAD}{\ButtonOK{} + \ButtonRight}
                 &
             \opt{HAVEREMOTEKEYMAP}{
                 &}
@@ -151,7 +154,7 @@ these markers:
             ,SANSA_C200_PAD,IRIVER_H10_PAD,IAUDIO_X5_PAD}{\ButtonPower}%
         \opt{MROBE100_PAD}{\ButtonDisplay}%
         \opt{IPOD_1G2G_PAD,IPOD_3G_PAD,IPOD_4G_PAD}{Long \ButtonSelect}%
-        \opt{GIGABEAT_PAD,GIGABEAT_S_PAD}{\ButtonMenu}%
+        \opt{GIGABEAT_PAD,GIGABEAT_S_PAD,PBELL_VIBE500_PAD}{\ButtonMenu}%
         \opt{IRIVER_H100_PAD,IRIVER_H300_PAD}{\ButtonMode}%
         \opt{RECORDER_PAD}{\ButtonFTwo}%
         \opt{ONDIO_PAD}{Long \ButtonMenu}
@@ -164,10 +167,12 @@ these markers:
 
 %        \nopt{IPOD_1G2G_PAD,IPOD_3G_PAD,IPOD_4G_PAD,ONDIO_PAD,RECORDER_PAD}{%
         \opt{SANSA_E200_PAD,SANSA_FUZE_PAD,SANSA_C200_PAD,GIGABEAT_PAD,GIGABEAT_S_PAD%
-            ,IRIVER_H100_PAD,IRIVER_H300_PAD,MROBE100_PAD,IAUDIO_X5_PAD,IRIVER_H10_PAD}{% 
-            \nopt{IRIVER_H10_PAD,COWON_D2_PAD}{Long \ButtonSelect}%
+            ,IRIVER_H100_PAD,IRIVER_H300_PAD,MROBE100_PAD,IAUDIO_X5_PAD,IRIVER_H10_PAD%
+            ,PBELL_VIBE500_PAD}{% 
+            \nopt{IRIVER_H10_PAD,COWON_D2_PAD,PBELL_VIBE500_PAD}{Long \ButtonSelect}%
             \opt{IRIVER_H10_PAD}{Long \ButtonPlay}
             \opt{COWON_D2_PAD}{Long \TouchCenter}
+            \opt{PBELL_VIBE500_PAD}{\ButtonOK}
                 &
             \opt{HAVEREMOTEKEYMAP}{
                 &}
@@ -176,7 +181,8 @@ these markers:
         }
         
         \opt{SANSA_E200_PAD,SANSA_C200_PAD,SANSA_FUZE_PAD,RECORDER_PAD,MROBE100_PAD%
-            ,GIGABEAT_PAD,GIGABEAT_S_PAD,IRIVER_H100_PAD,IRIVER_H300_PAD,SANSA_CLIP_PAD}{%
+            ,GIGABEAT_PAD,GIGABEAT_S_PAD,IRIVER_H100_PAD,IRIVER_H300_PAD,SANSA_CLIP_PAD%
+            ,PBELL_VIBE500_PAD}{%
             \opt{SANSA_E200_PAD,SANSA_C200_PAD,IRIVER_H100_PAD,IRIVER_H300_PAD}{%
                 \ButtonRec}%
             \opt{SANSA_FUZE_PAD,SANSA_CLIP_PAD}{\ButtonHome}%
@@ -185,6 +191,7 @@ these markers:
             \opt{GIGABEAT_PAD}{\ButtonA}%
             \opt{GIGABEAT_S_PAD}{\ButtonPlay}%
             \opt{COWON_D2_PAD}{\TouchTopRight}
+            \opt{PBELL_VIBE500_PAD}{\ButtonCancel}
                 &
             \opt{HAVEREMOTEKEYMAP}{
                 &}
@@ -192,7 +199,6 @@ these markers:
             \\
         }
     \end{btnmap}
-\end{table}
 
 \subsubsection{Menus}
 \begin {description}
@@ -201,7 +207,7 @@ these markers:
     \begin{description}
         \item[New.] Create a new game with your choice of board size and handicaps.
         \item[Save.] Save the current state of the game.  It will be saved to
-            \fname {"/sgf/gbn\_def.sgf"} unless otherwise set.
+            \fname {/sgf/gbn\_def.sgf} unless otherwise set.
         \item[Save As.] Save to a specified file.
         \item[Game Info.] View and modify the metadata of the current game.
         \item[Playback Control.] Control the playback of the current playlist
@@ -212,7 +218,7 @@ these markers:
         \item[Context Menu.] Open the Context Menu which allows you to set play
             modes and other tools.
         \item[Quit.] Leave the plugin.  Any unsaved changes are saved to
-            \fname {"/sgf/gbn\_def.sgf"}.
+            \fname {/sgf/gbn\_def.sgf}.
     \end{description}
 \item [Game Info. ]
     The menu for modifying game info (metadata) of the current game.  This
@@ -262,7 +268,7 @@ these markers:
             global Rockbox settings).
         \item[Idle Autosave Time.] Set the amount of idle time to wait before
             automatically saving any unsaved changes.  These autosaves go to
-            the file \fname {"/sgf/gbn\_def.sgf"} regardless of if you have
+            the file \fname {/sgf/gbn\_def.sgf} regardless of if you have
             loaded a game or used \setting{Save As} to save the game before or
             not.  Set to \setting{Off} to disable this functionality completely.
         \item[Automatically Show Comments?] If this is enabled and you navigate
@@ -291,7 +297,7 @@ these markers:
         \item[Next Variation.] If the game is at the first move in a variation,
             this will navigate to the next variation after the current one. This
             is the only way to reach variations which start with adding or
-            removing stones, as you cannot follow them by "playing" the same move.
+            removing stones, as you cannot follow them by ``playing'' the same move.
         \item[Force Play Mode.] The same as Play Mode except that this mode will
             allow you to play illegal moves such as retaking a ko immediately
             without a ko threat, suicide on rulesets which don't allow it
@@ -302,7 +308,7 @@ these markers:
         \item[Square Mode.] Add square marks to the board, or remove them.
         \item[Triangle Mode.] Add triangle marks to the board, or remove them.
         \item[Label Mode.] Add one character labels to the board. Each label
-            starts at the letter 'a' and each subsequent application of a label
+            starts at the letter `a' and each subsequent application of a label
             will increment the letter.  To remove a label, click on it until it
             cycles through the allowed letters and disappears.
         \item[Add/Edit Comment.] Add or edit a comment at the current node.

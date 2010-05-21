@@ -22,8 +22,6 @@
 
 /* Driver for the ARM PL180 SD/MMC controller inside AS3525 SoC */
 
-/* TODO: Find the real capacity of >2GB models (will be useful for USB) */
-
 #include "config.h" /* for HAVE_MULTIDRIVE & AMS_OF_SIZE */
 #include "fat.h"
 #include "thread.h"
@@ -107,7 +105,7 @@ static int sd_select_bank(signed char bank);
 static int sd_init_card(const int drive);
 static void init_pl180_controller(const int drive);
 
-#define BLOCKS_PER_BANK 0x7a7800
+#define BLOCKS_PER_BANK 0x7a7800u
 
 static tCardInfo card_info[NUM_DRIVES];
 
@@ -131,6 +129,7 @@ bool sd_enabled = false;
 
 #if defined(HAVE_MULTIDRIVE)
 static bool hs_card = false;
+#define EXT_SD_BITS (1<<2)
 #endif
 
 static struct wakeup transfer_completion_signal;
@@ -139,15 +138,10 @@ static volatile unsigned int transfer_error[NUM_VOLUMES];
 
 #define UNALIGNED_NUM_SECTORS 10
 static unsigned char aligned_buffer[UNALIGNED_NUM_SECTORS* SD_BLOCK_SIZE] __attribute__((aligned(32)));   /* align on cache line size */
-static unsigned char *uncached_buffer = UNCACHED_ADDR(&aligned_buffer[0]);
+static unsigned char *uncached_buffer = AS3525_UNCACHED_ADDR(&aligned_buffer[0]);
 
-static inline void mci_delay(void)
-{
-    int i = 0xffff;
-    do {
-        asm volatile("nop\n");
-    } while (--i);
-}
+
+static inline void mci_delay(void) { udelay(1000) ; }
 
 
 static inline bool card_detect_target(void)
@@ -158,6 +152,7 @@ static inline bool card_detect_target(void)
     return false;
 #endif
 }
+
 
 #ifdef HAVE_HOTSWAP
 static int sd1_oneshot_callback(struct timeout *tmo)
@@ -176,12 +171,13 @@ static int sd1_oneshot_callback(struct timeout *tmo)
     return 0;
 }
 
-void INT_GPIOA(void)
+void sd_gpioa_isr(void)
 {
     static struct timeout sd1_oneshot;
+    if (GPIOA_MIS & EXT_SD_BITS)
+        timeout_register(&sd1_oneshot, sd1_oneshot_callback, (3*HZ/10), 0);
     /* acknowledge interrupt */
-    GPIOA_IC = (1<<2);
-    timeout_register(&sd1_oneshot, sd1_oneshot_callback, (3*HZ/10), 0);
+    GPIOA_IC = EXT_SD_BITS;
 }
 #endif  /* HAVE_HOTSWAP */
 
@@ -376,6 +372,25 @@ static int sd_init_card(const int drive)
         const int ret = sd_select_bank(-1);
         if(ret < 0)
             return ret -16;
+
+        /*  CMD7 w/rca = 0: Select card to put it in STBY state */
+        if(!send_cmd(drive, SD_SELECT_CARD, 0, MCI_ARG, NULL))
+            return -17;
+        mci_delay();
+
+        /* CMD9 send CSD again, so we got the correct number of blocks */
+        if(!send_cmd(drive, SD_SEND_CSD, card_info[drive].rca,
+                     MCI_RESP|MCI_LONG_RESP|MCI_ARG, card_info[drive].csd))
+            return -18;
+
+        sd_parse_csd(&card_info[drive]);
+        /* The OF is stored in the first blocks */
+        card_info[INTERNAL_AS3525].numblocks -= AMS_OF_SIZE;
+
+        /*  CMD7 w/rca: Select card to put it in TRAN state */
+        if(!send_cmd(drive, SD_SELECT_CARD, card_info[drive].rca, MCI_ARG, NULL))
+            return -19;
+        mci_delay();
     }
 
     card_info[drive].initialized = 1;
@@ -483,15 +498,12 @@ static void init_pl180_controller(const int drive)
 #ifdef HAVE_MULTIDRIVE
     VIC_INT_ENABLE =
         (drive == INTERNAL_AS3525) ? INTERRUPT_NAND : INTERRUPT_MCI0;
-
-    /* setup isr for microsd monitoring */
-    VIC_INT_ENABLE = (INTERRUPT_GPIOA);
     /* clear previous irq */
-    GPIOA_IC = (1<<2);
+    GPIOA_IC = EXT_SD_BITS;
     /* enable edge detecting */
-    GPIOA_IS &= ~(1<<2);
+    GPIOA_IS &= ~EXT_SD_BITS;
     /* detect both raising and falling edges */
-    GPIOA_IBE |= (1<<2);
+    GPIOA_IBE |= EXT_SD_BITS;
 
 #else
     VIC_INT_ENABLE = INTERRUPT_NAND;
@@ -561,7 +573,7 @@ bool sd_present(IF_MD_NONVOID(int drive))
 static int sd_wait_for_state(const int drive, unsigned int state)
 {
     unsigned long response = 0;
-    unsigned int timeout = current_tick + 100; /* 100 ticks timeout */
+    unsigned int timeout = current_tick + HZ;
 
     while (1)
     {
@@ -655,10 +667,6 @@ static int sd_transfer_sectors(IF_MD2(int drive,) unsigned long start,
     int ret = 0;
     unsigned loops = 0;
 
-    /* skip SanDisk OF */
-    if (drive == INTERNAL_AS3525)
-        start += AMS_OF_SIZE;
-
     mutex_lock(&sd_mtx);
 #ifndef BOOTLOADER
     sd_enable(true);
@@ -671,6 +679,21 @@ static int sd_transfer_sectors(IF_MD2(int drive,) unsigned long start,
         if (!(card_info[drive].initialized))
             goto sd_transfer_error;
     }
+
+    if(count < 0) /* XXX: why is it signed ? */
+    {
+        ret = -20;
+        goto sd_transfer_error;
+    }
+    if((start+count) > card_info[drive].numblocks)
+    {
+        ret = -21;
+        goto sd_transfer_error;
+    }
+
+    /* skip SanDisk OF */
+    if (drive == INTERNAL_AS3525)
+        start += AMS_OF_SIZE;
 
     last_disk_activity = current_tick;
 
@@ -689,7 +712,12 @@ static int sd_transfer_sectors(IF_MD2(int drive,) unsigned long start,
         /* Only switch banks for internal storage */
         if(drive == INTERNAL_AS3525)
         {
-            unsigned int bank = start / BLOCKS_PER_BANK; /* Current bank */
+            unsigned int bank = 0;
+            while(bank_start >= BLOCKS_PER_BANK)
+            {
+                bank_start -= BLOCKS_PER_BANK;
+                bank++;
+            }
 
             /* Switch bank if needed */
             if(card_info[INTERNAL_AS3525].current_bank != bank)
@@ -701,9 +729,6 @@ static int sd_transfer_sectors(IF_MD2(int drive,) unsigned long start,
                     goto sd_transfer_error;
                 }
             }
-
-            /* Adjust start block in current bank */
-            bank_start -= bank * BLOCKS_PER_BANK;
 
             /* Do not cross a bank boundary in a single transfer loop */
             if((transfer + bank_start) > BLOCKS_PER_BANK)
@@ -887,6 +912,10 @@ void sd_enable(bool on)
         }
 #endif  /* defined(HAVE_HOTSWAP) && defined (HAVE_ADJUSTABLE_CPU_VOLTAGE) */
 
+        /* not sure why we have to wait, but without this, test_disk freezes
+         * when closing the 300MB file which was just written to */
+        udelay(100);
+
         sd_enabled = false;
 
 #ifdef HAVE_MULTIDRIVE
@@ -914,9 +943,9 @@ tCardInfo *card_get_info_target(int card_no)
 void card_enable_monitoring_target(bool on)
 {
     if (on) /* enable interrupt */
-        GPIOA_IE |= (1<<2);
+        GPIOA_IE |= EXT_SD_BITS;
     else    /* disable interrupt */
-        GPIOA_IE &= ~(1<<2);
+        GPIOA_IE &= ~EXT_SD_BITS;
 }
 #endif /* HAVE_HOTSWAP */
 

@@ -27,8 +27,8 @@
 /*#define LOGF_ENABLE*/
 
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include "string-extra.h"
 #include "config.h"
 #include "system.h"
 #include "kernel.h"
@@ -1168,6 +1168,12 @@ static int retrieve_entries(struct tree_context *c, int offset, bool init)
     {
         if (total_count++ < offset)
             continue;
+        
+        if ( strcmp(tcs.result , UNTAGGED ) == 0)
+        {
+            tcs.result_len = strlcpy(tcs.result, 
+                                     str(LANG_TAGNAVI_UNTAGGED), TAG_MAXLEN )+1;
+        }
         
         dptr->newtable = NAVIBROWSE;
         if (tag == tag_title || tag == tag_filename)

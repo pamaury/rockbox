@@ -3492,7 +3492,7 @@ static int record_file(char *filename)
         {8, 32000}, {9, 44100}, {10, 48000}
     };
 
-    fd = rb->open(filename, O_RDWR|O_CREAT|O_TRUNC);
+    fd = rb->open(filename, O_RDWR|O_CREAT|O_TRUNC, 0666);
     if (fd < 0)
     {
         rb->splash(2*HZ, "Couldn't create WAV file");
@@ -3750,7 +3750,7 @@ static int recording_menu(void)
 /* plugin entry point */
 enum plugin_status plugin_start(const void* parameter)
 {
-    ssize_t buf_size;
+    size_t buf_size;
     int align;
     int rc;
     const char *recbasedir;
@@ -3776,7 +3776,8 @@ enum plugin_status plugin_start(const void* parameter)
         }
     }
 
-    aud_buf = rb->plugin_get_audio_buffer((size_t *)&aud_size);
+    aud_buf = rb->plugin_get_audio_buffer(&buf_size);
+    aud_size = buf_size;
     align = (-(long)aud_buf) & 3;
     aud_buf += align;
     aud_size -= align;

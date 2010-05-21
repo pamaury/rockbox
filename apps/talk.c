@@ -25,7 +25,7 @@
 
 #include <stdio.h>
 #include <stddef.h>
-#include <string.h>
+#include "string-extra.h"
 #include "file.h"
 #include "buffer.h"
 #include "system.h"
@@ -37,6 +37,7 @@
 #include "lang.h"
 #include "talk.h"
 #include "metadata.h"
+/*#define LOGF_ENABLE*/
 #include "logf.h"
 #include "bitswap.h"
 #include "structec.h"
@@ -539,7 +540,9 @@ void talk_init(void)
     reset_state(); /* use this for most of our inits */
 
     filehandle = open_voicefile();
-    has_voicefile = (filehandle >= 0); /* test if we can open it */
+    size_t audiobufsz = audiobufend - audiobuf;
+    /* test if we can open and if it fits in the audiobuffer */
+    has_voicefile = filehandle >= 0 && filesize(filehandle) <= (off_t)audiobufsz;
     voicefile_size = 0;
 
     if (has_voicefile)
@@ -625,6 +628,7 @@ int talk_id(int32_t id, bool enqueue)
     if (clipbuf == NULL)
         return -1; /* not present */
 
+    logf("\ntalk_id: Say '%s'\n", str(id));
     queue_clip(clipbuf, clipsize, enqueue);
 
     return 0;

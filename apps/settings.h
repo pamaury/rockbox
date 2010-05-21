@@ -26,6 +26,7 @@
 #include <stddef.h>
 #include "inttypes.h"
 #include "config.h"
+#include "audiohw.h" /* for the AUDIOHW_* defines */
 #include "statusbar.h" /* for the statusbar values */
 #include "quickscreen.h"
 #include "button.h"
@@ -146,7 +147,7 @@ enum
  *       must be added after NUM_FILTER_MODES. */
 enum { SHOW_ALL, SHOW_SUPPORTED, SHOW_MUSIC, SHOW_PLAYLIST, SHOW_ID3DB,
        NUM_FILTER_MODES,
-       SHOW_WPS, SHOW_RWPS, SHOW_SBS, SHOW_RSBS, SHOW_FMR, SHOW_CFG,
+       SHOW_WPS, SHOW_RWPS, SHOW_FMS, SHOW_RFMS, SHOW_SBS, SHOW_RSBS, SHOW_FMR, SHOW_CFG,
        SHOW_LNG, SHOW_MOD, SHOW_FONT, SHOW_PLUGINS};
 
 /* file and dir sort options */
@@ -336,8 +337,10 @@ struct user_settings
     bool superbass;     /* true/false */
 #endif
 
-#ifdef HAVE_WM8758
+#ifdef AUDIOHW_HAVE_BASS_CUTOFF
     int bass_cutoff;
+#endif
+#ifdef AUDIOHW_HAVE_TREBLE_CUTOFF
     int treble_cutoff;
 #endif
 
@@ -498,7 +501,11 @@ struct user_settings
     int fm_region;
     bool fm_force_mono;  /* Forces Mono mode if true */
     unsigned char fmr_file[MAX_FILENAME+1]; /* last fmr preset */
+    unsigned char fms_file[MAX_FILENAME+1];  /* last fms */
+#ifdef HAVE_REMOTE_LCD
+    unsigned char rfms_file[MAX_FILENAME+1];  /* last remote-fms */
 #endif
+#endif /* CONFIG_TUNER */
 
     /* misc options */
 #ifndef HAVE_WHEEL_ACCELERATION
@@ -818,11 +825,34 @@ struct user_settings
 
 #ifdef HAVE_HOTKEY
     /* hotkey assignments - acceptable values are in
-       hotkey_settings enum in onplay.c */
+       hotkey_action enum in onplay.h */
     int hotkey_wps;
     int hotkey_tree;
 #endif
 
+#if CONFIG_CODEC == SWCODEC
+    /* When resuming playback (after a stop), rewind this number of seconds */
+    int resume_rewind;
+#endif
+
+#ifdef AUDIOHW_HAVE_DEPTH_3D
+    int depth_3d;
+#endif
+
+#ifdef AUDIOHW_HAVE_EQ
+    /** Hardware EQ tone controls **/
+    struct hw_eq_band
+    {
+        /* Maintain the order of members or sound_menu has to be changed */
+        int gain;
+#ifdef AUDIOHW_HAVE_EQ_FREQUENCY
+        int frequency;
+#endif
+#ifdef AUDIOHW_HAVE_EQ_WIDTH
+        int width;
+#endif
+    } hw_eq_bands[AUDIOHW_EQ_BAND_NUM];
+#endif /* AUDIOHW_HAVE_EQ */
 };
 
 /** global variables **/

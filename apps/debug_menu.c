@@ -28,7 +28,6 @@
 #include "menu.h"
 #include "debug_menu.h"
 #include "kernel.h"
-#include "sprintf.h"
 #include "structec.h"
 #include "action.h"
 #include "debug.h"
@@ -109,7 +108,8 @@
 #endif
 
 #if defined(SANSA_E200) || defined(SANSA_C200) || defined(PHILIPS_SA9200) \
-    || defined(SANSA_CLIP) || defined(SANSA_FUZE) || defined(SANSA_C200V2)
+      || (CONFIG_CPU == AS3525 && defined(CONFIG_CHARGING)) \
+      || CONFIG_CPU == AS3525v2
 #include "ascodec.h"
 #include "as3514.h"
 #endif
@@ -287,7 +287,7 @@ static void dbg_audio_task(void)
 static bool dbg_buffering_thread(void)
 {
     int button;
-    int line;
+    int line, i;    
     bool done = false;
     size_t bufused;
     size_t bufsize = pcmbuf_get_bufsize();
@@ -299,8 +299,10 @@ static bool dbg_buffering_thread(void)
     ticks = boost_ticks = freq_sum = 0;
 
     tick_add_task(dbg_audio_task);
-
-    lcd_setfont(FONT_SYSFIXED);
+    
+    FOR_NB_SCREENS(i)
+        screens[i].setfont(FONT_SYSFIXED);
+        
     while(!done)
     {
         button = get_action(CONTEXT_STD,HZ/5);
@@ -318,72 +320,83 @@ static bool dbg_buffering_thread(void)
         }
 
         buffering_get_debugdata(&d);
-
-        line = 0;
-        lcd_clear_display();
-
         bufused = bufsize - pcmbuf_free();
 
-        lcd_putsf(0, line++, "pcm: %6ld/%ld", (long) bufused, (long) bufsize);
+        FOR_NB_SCREENS(i) 
+        {
+            line = 0;
+            screens[i].clear_display();
 
-        gui_scrollbar_draw(&screens[SCREEN_MAIN],0, line*8, LCD_WIDTH, 6,
-                           bufsize, 0, bufused, HORIZONTAL);
-        line++;
 
-        lcd_putsf(0, line++, "alloc: %6ld/%ld", audio_filebufused(),
-                 (long) filebuflen);
+            screens[i].putsf(0, line++, "pcm: %6ld/%ld", (long) bufused, (long) bufsize);
 
-#if LCD_HEIGHT > 80
-        gui_scrollbar_draw(&screens[SCREEN_MAIN],0, line*8, LCD_WIDTH, 6,
-                           filebuflen, 0, audio_filebufused(), HORIZONTAL);
-        line++;
+            gui_scrollbar_draw(&screens[i],0, line*8, screens[i].lcdwidth, 6,
+                               bufsize, 0, bufused, HORIZONTAL);
+            line++;
 
-        lcd_putsf(0, line++, "real:  %6ld/%ld", (long)d.buffered_data,
-                 (long)filebuflen);
+            screens[i].putsf(0, line++, "alloc: %6ld/%ld", audio_filebufused(),
+                            (long) filebuflen);
 
-        gui_scrollbar_draw(&screens[SCREEN_MAIN],0, line*8, LCD_WIDTH, 6,
-                           filebuflen, 0, (long)d.buffered_data, HORIZONTAL);
-        line++;
+#if LCD_HEIGHT > 80 || (defined(HAVE_REMOTE_LCD) && LCD_REMOTE_HEIGHT > 80)
+            if (screens[i].lcdheight > 80)
+            {
+                gui_scrollbar_draw(&screens[i],0, line*8, screens[i].lcdwidth, 6,
+                                   filebuflen, 0, audio_filebufused(), HORIZONTAL);
+                line++;
+
+                screens[i].putsf(0, line++, "real:  %6ld/%ld", (long)d.buffered_data,
+                                (long)filebuflen);
+
+                gui_scrollbar_draw(&screens[i],0, line*8, screens[i].lcdwidth, 6,
+                                   filebuflen, 0, (long)d.buffered_data, HORIZONTAL);
+                line++;
+            }
 #endif
 
-        lcd_putsf(0, line++, "usefl: %6ld/%ld", (long)(d.useful_data),
+            screens[i].putsf(0, line++, "usefl: %6ld/%ld", (long)(d.useful_data),
                                                        (long)filebuflen);
 
-#if LCD_HEIGHT > 80
-        gui_scrollbar_draw(&screens[SCREEN_MAIN],0, line*8, LCD_WIDTH, 6,
-                           filebuflen, 0, d.useful_data, HORIZONTAL);
-        line++;
+#if LCD_HEIGHT > 80 || (defined(HAVE_REMOTE_LCD) && LCD_REMOTE_HEIGHT > 80)
+            if (screens[i].lcdheight > 80)
+            {
+                gui_scrollbar_draw(&screens[i],0, line*8, screens[i].lcdwidth, 6,
+                                   filebuflen, 0, d.useful_data, HORIZONTAL);
+                line++;
+            }
 #endif
 
-        lcd_putsf(0, line++, "data_rem: %ld", (long)d.data_rem);
+            screens[i].putsf(0, line++, "data_rem: %ld", (long)d.data_rem);
 
-        lcd_putsf(0, line++, "track count: %2d", audio_track_count());
+            screens[i].putsf(0, line++, "track count: %2d", audio_track_count());
 
-        lcd_putsf(0, line++, "handle count: %d", (int)d.num_handles);
+            screens[i].putsf(0, line++, "handle count: %d", (int)d.num_handles);
 
 #ifndef SIMULATOR
-        lcd_putsf(0, line++, "cpu freq: %3dMHz",
-                 (int)((FREQ + 500000) / 1000000));
+            screens[i].putsf(0, line++, "cpu freq: %3dMHz",
+                             (int)((FREQ + 500000) / 1000000));
 #endif
 
-        if (ticks > 0)
-        {
-            int boostquota = boost_ticks * 1000 / ticks; /* in 0.1 % */
-            int avgclock   = freq_sum * 10 / ticks;      /* in 100 kHz */
-            lcd_putsf(0, line++, "boost:%3d.%d%% (%d.%dMHz)",
-                     boostquota/10, boostquota%10, avgclock/10, avgclock%10);
+            if (ticks > 0)
+            {
+                int boostquota = boost_ticks * 1000 / ticks; /* in 0.1 % */
+                int avgclock   = freq_sum * 10 / ticks;      /* in 100 kHz */
+                screens[i].putsf(0, line++, "boost:%3d.%d%% (%d.%dMHz)",
+                                 boostquota/10, boostquota%10, avgclock/10, avgclock%10);
+            }
+
+            screens[i].putsf(0, line++, "pcmbufdesc: %2d/%2d",
+                             pcmbuf_used_descs(), pcmbufdescs);
+            screens[i].putsf(0, line++, "watermark: %6d",
+                             (int)(d.watermark));
+
+            screens[i].update();
         }
-
-        lcd_putsf(0, line++, "pcmbufdesc: %2d/%2d",
-                pcmbuf_used_descs(), pcmbufdescs);
-        lcd_putsf(0, line++, "watermark: %6d",
-                (int)(d.watermark));
-
-        lcd_update();
     }
 
     tick_remove_task(dbg_audio_task);
-    lcd_setfont(FONT_UI);
+    
+    FOR_NB_SCREENS(i)
+        screens[i].setfont(FONT_UI);
 
     return false;
 }
@@ -987,6 +1000,9 @@ static bool dbg_spdif(void)
 #elif (CONFIG_KEYPAD == PBELL_VIBE500_PAD)
 #   define DEBUG_CANCEL  BUTTON_CANCEL
 
+#elif (CONFIG_KEYPAD == MPIO_HD200_PAD)
+#   define DEBUG_CANCEL  BUTTON_REC
+
 #endif /* key definitions */
 
 /* Test code!!! */
@@ -1518,8 +1534,12 @@ static bool view_battery(void)
                 break;
 
             case 1: /* status: */
+#if CONFIG_CHARGING >= CHARGING_MONITOR
+                lcd_putsf(0, 0, "Pwr status: %s",
+                         charging_state() ? "charging" : "discharging");
+#else 
                 lcd_puts(0, 0, "Power status:");
-
+#endif
                 battery_read_info(&y, NULL);
                 lcd_putsf(0, 1, "Battery: %d.%03d V", y / 1000, y % 1000);
 #ifdef ADC_EXT_POWER
@@ -1641,8 +1661,8 @@ static bool view_battery(void)
                     lcd_puts(0, line++, "T Battery: ?");
                 }
                     
-#elif defined(SANSA_E200) || defined(SANSA_C200) || defined(SANSA_CLIP) || \
-      defined(SANSA_FUZE) || defined (SANSA_C200V2)
+#elif defined(SANSA_E200) || defined(SANSA_C200) || CONFIG_CPU == AS3525 || \
+      CONFIG_CPU == AS3525v2
                 const int first = CHARGE_STATE_DISABLED;
                 static const char * const chrgstate_strings[] =
                 {
@@ -1663,8 +1683,7 @@ static bool view_battery(void)
                 lcd_putsf(0, 4, "State: %s",
                          str ? str : "<unknown>");
 
-                lcd_putsf(0, 5, "CHARGER: %02X", 
-                         ascodec_read(AS3514_CHARGER));
+                lcd_putsf(0, 5, "CHARGER: %02X", ascodec_read_charger());
 #elif defined(IPOD_NANO2G)
                 y = pmu_read_battery_voltage();
                 lcd_putsf(17, 1, "RAW: %d.%03d V", y / 1000, y % 1000);
@@ -2052,7 +2071,7 @@ static int disk_callback(int btn, struct gui_synclist *lists)
 #if  (CONFIG_STORAGE & STORAGE_ATA) 
 static bool dbg_identify_info(void)
 {
-    int fd = creat("/identify_info.bin");
+    int fd = creat("/identify_info.bin", 0666);
     if(fd >= 0)
     {
 #ifdef ROCKBOX_LITTLE_ENDIAN
@@ -2186,14 +2205,14 @@ static bool dbg_save_roms(void)
     int fd;
     int oldmode = system_memory_guard(MEMGUARD_NONE);
 
-    fd = creat("/internal_rom_0000-FFFF.bin");
+    fd = creat("/internal_rom_0000-FFFF.bin", 0666);
     if(fd >= 0)
     {
         write(fd, (void *)0, 0x10000);
         close(fd);
     }
 
-    fd = creat("/internal_rom_2000000-203FFFF.bin");
+    fd = creat("/internal_rom_2000000-203FFFF.bin", 0666);
     if(fd >= 0)
     {
         write(fd, (void *)0x2000000, 0x40000);
@@ -2210,11 +2229,13 @@ static bool dbg_save_roms(void)
     int oldmode = system_memory_guard(MEMGUARD_NONE);
 
 #if defined(IRIVER_H100_SERIES)
-    fd = creat("/internal_rom_000000-1FFFFF.bin");
+    fd = creat("/internal_rom_000000-1FFFFF.bin", 0666);
 #elif defined(IRIVER_H300_SERIES)
-    fd = creat("/internal_rom_000000-3FFFFF.bin");
+    fd = creat("/internal_rom_000000-3FFFFF.bin", 0666);
 #elif defined(IAUDIO_X5) || defined(IAUDIO_M5) || defined(IAUDIO_M3)
-    fd = creat("/internal_rom_000000-3FFFFF.bin");
+    fd = creat("/internal_rom_000000-3FFFFF.bin", 0666);
+#elif defined(MPIO_HD200)
+    fd = creat("/internal_rom_000000-1FFFFF.bin", 0666);
 #endif
     if(fd >= 0)
     {
@@ -2224,7 +2245,7 @@ static bool dbg_save_roms(void)
     system_memory_guard(oldmode);
 
 #ifdef HAVE_EEPROM
-    fd = creat("/internal_eeprom.bin");
+    fd = creat("/internal_eeprom.bin", 0666);
     if (fd >= 0)
     {
         int old_irq_level;
@@ -2255,7 +2276,7 @@ static bool dbg_save_roms(void)
 {
     int fd;
 
-    fd = creat("/internal_rom_000000-0FFFFF.bin");
+    fd = creat("/internal_rom_000000-0FFFFF.bin", 0666);
     if(fd >= 0)
     {
         write(fd, (void *)0x20000000, FLASH_SIZE);
@@ -2269,7 +2290,7 @@ static bool dbg_save_roms(void)
 {
     int fd;
 
-    fd = creat("/flash_rom_A0000000-A01FFFFF.bin");
+    fd = creat("/flash_rom_A0000000-A01FFFFF.bin", 0666);
     if (fd >= 0)
     {
         write(fd, (void*)0xa0000000, FLASH_SIZE);
@@ -2283,7 +2304,7 @@ static bool dbg_save_roms(void)
 {
     int fd;
 
-    fd = creat("/eeprom_E0000000-E0001FFF.bin");
+    fd = creat("/eeprom_E0000000-E0001FFF.bin", 0666);
     if (fd >= 0)
     {
         write(fd, (void*)0xe0000000, 0x2000);
@@ -2493,6 +2514,7 @@ static bool cpu_boost_log(void)
             }
         }
     }
+    lcd_stop_scroll();
     get_action(CONTEXT_STD,TIMEOUT_BLOCK);
     lcd_setfont(FONT_UI);
     return false;

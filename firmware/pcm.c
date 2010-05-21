@@ -40,7 +40,6 @@
  *      pcm_play_unlock
  *   Semi-private -
  *      pcm_play_dma_init
- *      pcm_play_dma_init
  *      pcm_play_dma_start
  *      pcm_play_dma_stop
  *      pcm_play_dma_pause
@@ -66,10 +65,10 @@
  *      pcm_rec_dma_init
  *      pcm_rec_dma_close
  *      pcm_rec_dma_start
+ *      pcm_rec_dma_record_more
  *      pcm_rec_dma_stop
  *      pcm_rec_dma_get_peak_buffer
  *   Data Read/Written within TSP -
- *      pcm_rec_peak_addr (R/W)
  *      pcm_callback_more_ready (R)
  *      pcm_recording (R)
  *
@@ -93,46 +92,46 @@ unsigned long pcm_sampr SHAREDBSS_ATTR = HW_SAMPR_DEFAULT;
 int pcm_fsel SHAREDBSS_ATTR = HW_FREQ_DEFAULT;
 
 /**
- * Do peak calculation using distance squared from axis and save a lot
- * of jumps and negation. Don't bother with the calculations of left or
- * right only as it's never really used and won't save much time.
+ * Perform peak calculation on a buffer of packed 16-bit samples.
  *
  * Used for recording and playback.
  */
-static void pcm_peak_peeker(const void *addr, int count, int peaks[2])
+static void pcm_peak_peeker(const int32_t *addr, int count, int peaks[2])
 {
-    int32_t peak_l = 0, peak_r = 0;
-    int32_t peaksq_l = 0, peaksq_r = 0;
+    int peak_l = 0, peak_r = 0;
+    const int32_t * const end = addr + count;
 
     do
     {
-        int32_t value = *(int32_t *)addr;
-        int32_t ch, chsq;
+        int32_t value = *addr;
+        int ch;
+
 #ifdef ROCKBOX_BIG_ENDIAN
         ch = value >> 16;
 #else
         ch = (int16_t)value;
 #endif
-        chsq = ch*ch;
-        if (chsq > peaksq_l)
-            peak_l = ch, peaksq_l = chsq;
+        if (ch < 0)
+            ch = -ch;
+        if (ch > peak_l)
+            peak_l = ch;
 
 #ifdef ROCKBOX_BIG_ENDIAN
         ch = (int16_t)value;
 #else
         ch = value >> 16;
 #endif
-        chsq = ch*ch;
-        if (chsq > peaksq_r)
-            peak_r = ch, peaksq_r = chsq;
+        if (ch < 0)
+            ch = -ch;
+        if (ch > peak_r)
+            peak_r = ch;
 
-        addr += 16;
-        count -= 4;
+        addr += 4;
     }
-    while (count > 0);
+    while (addr < end);
 
-    peaks[0] = abs(peak_l);
-    peaks[1] = abs(peak_r);
+    peaks[0] = peak_l;
+    peaks[1] = peak_r;
 }
 
 void pcm_calculate_peaks(int *left, int *right)
@@ -168,7 +167,7 @@ void pcm_calculate_peaks(int *left, int *right)
         count = MIN(framecount, count);
 
         if (count > 0)
-            pcm_peak_peeker(addr, count, peaks);
+            pcm_peak_peeker((int32_t *)addr, count, peaks);
         /* else keep previous peak values */
     }
     else
@@ -210,6 +209,9 @@ void pcm_init(void)
 /* Common code to pcm_play_data and pcm_play_pause */
 static void pcm_play_data_start(unsigned char *start, size_t size)
 {
+    start = (unsigned char *)(((uintptr_t)start + 3) & ~3);
+    size &= ~3;
+
     if (!(start && size))
     {
         pcm_more_callback_type get_more = pcm_callback_for_more;
@@ -218,6 +220,9 @@ static void pcm_play_data_start(unsigned char *start, size_t size)
         {
             logf(" get_more");
             get_more(&start, &size);
+
+            start = (unsigned char *)(((uintptr_t)start + 3) & ~3);
+            size &= ~3;
         }
     }
 
@@ -355,21 +360,11 @@ bool pcm_is_paused(void)
     return pcm_paused;
 }
 
-void pcm_mute(bool mute)
-{
-#ifndef SIMULATOR
-    audiohw_mute(mute);
-#endif
-
-    if (mute)
-        sleep(HZ/16);
-}
-
 #ifdef HAVE_RECORDING
 /** Low level pcm recording apis **/
 
 /* Next start for recording peaks */
-const volatile void *pcm_rec_peak_addr SHAREDBSS_ATTR = NULL;
+static const void * volatile pcm_rec_peak_addr SHAREDBSS_ATTR = NULL;
 /* the registered callback function for when more data is available */
 volatile pcm_more_callback_type2
     pcm_callback_more_ready SHAREDBSS_ATTR = NULL;
@@ -383,17 +378,23 @@ volatile bool pcm_recording SHAREDBSS_ATTR = false;
 void pcm_calculate_rec_peaks(int *left, int *right)
 {
     static int peaks[2];
-    int count;
-    const void *addr = pcm_rec_dma_get_peak_buffer(&count);
 
     if (pcm_recording)
     {
-        if (count > 0)
-        {
-            pcm_peak_peeker(addr, count, peaks);
+        const void *peak_addr = pcm_rec_peak_addr;
+        const void *addr = pcm_rec_dma_get_peak_buffer();
 
-            if (addr == pcm_rec_peak_addr)
-                pcm_rec_peak_addr = (int32_t *)addr + count;
+        if (addr != NULL)
+        {
+            int count = (int)(((intptr_t)addr - (intptr_t)peak_addr) >> 2);
+
+            if (count > 0)
+            {
+                pcm_peak_peeker((int32_t *)peak_addr, count, peaks);
+
+                if (peak_addr == pcm_rec_peak_addr)
+                    pcm_rec_peak_addr = addr;
+            }
         }
         /* else keep previous peak values */
     }
@@ -453,6 +454,10 @@ void pcm_record_data(pcm_more_callback_type2 more_ready,
 {
     logf("pcm_record_data");
 
+    /* 32-bit aligned and sized data only */
+    start = (void *)(((uintptr_t)start + 3) & ~3);
+    size &= ~3;
+
     if (!(start && size))
     {
         logf(" no buffer");
@@ -462,6 +467,13 @@ void pcm_record_data(pcm_more_callback_type2 more_ready,
     pcm_rec_lock();
 
     pcm_callback_more_ready = more_ready;
+
+#ifdef HAVE_PCM_REC_DMA_ADDRESS
+    /* Need a physical DMA address translation, if not already physical. */
+    pcm_rec_peak_addr = pcm_dma_addr(start);
+#else
+    pcm_rec_peak_addr = start;
+#endif
 
     logf(" pcm_rec_dma_start");
     pcm_apply_settings();
@@ -486,6 +498,28 @@ void pcm_stop_recording(void)
 
     pcm_rec_unlock();
 } /* pcm_stop_recording */
+
+void pcm_record_more(void *start, size_t size)
+{
+    start = (void *)(((uintptr_t)start + 3) & ~3);
+    size = size & ~3;
+
+    if (!size)
+    {
+        pcm_rec_dma_stop();
+        pcm_rec_dma_stopped_callback();
+        return;
+    }
+
+#ifdef HAVE_PCM_REC_DMA_ADDRESS
+    /* Need a physical DMA address translation, if not already physical. */
+    pcm_rec_peak_addr = pcm_dma_addr(start);
+#else
+    pcm_rec_peak_addr = start;
+#endif
+
+    pcm_rec_dma_record_more(start, size);
+}
 
 bool pcm_is_recording(void)
 {

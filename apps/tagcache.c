@@ -66,7 +66,7 @@
 #include "kernel.h"
 #include "system.h"
 #include "logf.h"
-#include "string.h"
+#include "string-extra.h"
 #include "usb.h"
 #include "metadata.h"
 #include "tagcache.h"
@@ -94,8 +94,6 @@ static struct event_queue tagcache_queue;
 static long tagcache_stack[(DEFAULT_STACK_SIZE + 0x4000)/sizeof(long)];
 static const char tagcache_thread_name[] = "tagcache";
 #endif
-
-#define UNTAGGED "<Untagged>"
 
 /* Previous path when scanning directory tree recursively. */
 static char curpath[TAG_MAXLEN+32];
@@ -1392,7 +1390,7 @@ static bool get_next(struct tagcache_search *tcs)
     
     if (TAGCACHE_IS_NUMERIC(tcs->type))
     {
-        snprintf(buf, sizeof(buf), "%d", tcs->position);
+        snprintf(buf, sizeof(buf), "%ld", tcs->position);
         tcs->result = buf;
         tcs->result_len = strlen(buf) + 1;
         return true;
@@ -1618,6 +1616,8 @@ bool tagcache_fill_tags(struct mp3entry *id3, const char *filename)
     
     entry = &hdr->indices[idx_id];
     
+    memset(id3, 0, sizeof(struct mp3entry));
+    
     id3->title        = get_tag_string(entry, tag_title);
     id3->artist       = get_tag_string(entry, tag_artist);
     id3->album        = get_tag_string(entry, tag_album);
@@ -1703,7 +1703,7 @@ static void __attribute__ ((noinline)) add_tagcache(char *path,
 #ifdef SIMULATOR
     /* Crude logging for the sim - to aid in debugging */
     int logfd = open(ROCKBOX_DIR "/database.log",
-                     O_WRONLY | O_APPEND | O_CREAT);
+                     O_WRONLY | O_APPEND | O_CREAT, 0666);
     if (logfd >= 0) {
         write(logfd, path, strlen(path));
         write(logfd, "\n", 1);
@@ -2492,7 +2492,7 @@ static int build_index(int index_type, struct tagcache_header *h, int tmpfd)
          * anything whether the index type is sorted or not.
          */
         snprintf(buf, sizeof buf, TAGCACHE_FILE_INDEX, index_type);
-        fd = open(buf, O_WRONLY | O_CREAT | O_TRUNC);
+        fd = open(buf, O_WRONLY | O_CREAT | O_TRUNC, 0666);
         if (fd < 0)
         {
             logf("%s open fail", buf);
@@ -2519,7 +2519,7 @@ static int build_index(int index_type, struct tagcache_header *h, int tmpfd)
     if (masterfd < 0)
     {
         logf("Creating new DB");
-        masterfd = open(TAGCACHE_FILE_MASTER, O_WRONLY | O_CREAT | O_TRUNC);
+        masterfd = open(TAGCACHE_FILE_MASTER, O_WRONLY | O_CREAT | O_TRUNC, 0666);
 
         if (masterfd < 0)
         {
@@ -3445,7 +3445,7 @@ bool tagcache_create_changelog(struct tagcache_search *tcs)
         return false;
     
     /* Initialize the changelog */
-    clfd = open(TAGCACHE_FILE_CHANGELOG, O_WRONLY | O_CREAT | O_TRUNC);
+    clfd = open(TAGCACHE_FILE_CHANGELOG, O_WRONLY | O_CREAT | O_TRUNC, 0666);
     if (clfd < 0)
     {
         logf("failure to open changelog");
@@ -3488,7 +3488,7 @@ bool tagcache_create_changelog(struct tagcache_search *tcs)
         {
             if (TAGCACHE_IS_NUMERIC(j))
             {
-                snprintf(temp, sizeof temp, "%d", idx.tag_seek[j]);
+                snprintf(temp, sizeof temp, "%d", (int)idx.tag_seek[j]);
                 write_tag(clfd, tagcache_tag_to_str(j), temp);
                 continue;
             }
@@ -3714,14 +3714,14 @@ static bool check_event_queue(void)
 {
     struct queue_event ev;
     
-    queue_wait_w_tmo(&tagcache_queue, &ev, 0);
+    if(!queue_peek(&tagcache_queue, &ev))
+        return false;
+    
     switch (ev.id)
     {
         case Q_STOP_SCAN:
         case SYS_POWEROFF:
         case SYS_USB_CONNECTED:
-            /* Put the event back into the queue. */
-            queue_post(&tagcache_queue, ev.id, ev.data);
             return true;
     }
     
@@ -3818,7 +3818,7 @@ static bool tagcache_dumpsave(void)
     if (!tc_stat.ramcache)
         return false;
     
-    fd = open(TAGCACHE_STATEFILE, O_WRONLY | O_CREAT | O_TRUNC);
+    fd = open(TAGCACHE_STATEFILE, O_WRONLY | O_CREAT | O_TRUNC, 0666);
     if (fd < 0)
     {
         logf("failed to create a statedump");
@@ -4250,7 +4250,7 @@ void tagcache_build(const char *path)
         return ;
     }
     
-    cachefd = open(TAGCACHE_FILE_TEMP, O_RDWR | O_CREAT | O_TRUNC);
+    cachefd = open(TAGCACHE_FILE_TEMP, O_RDWR | O_CREAT | O_TRUNC, 0666);
     if (cachefd < 0)
     {
         logf("master file open failed: %s", TAGCACHE_FILE_TEMP);

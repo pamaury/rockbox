@@ -11,7 +11,7 @@ change to customise your listening experience.
   can produce without possible distortion (clipping). All values lower than
   this reference will be negative and yield a progressively softer volume.
   \opt{player,recorder,recorderv2fm,ondio,x5,m5,ipodnano,ipodnano2g,ipodvideo,
-       ipodcolor,ipod1g2g,h10,h10_5gb,sansa,sansaAMS,gigabeats,gigabeatf}{
+       ipodcolor,ipod1g2g,h10,h10_5gb,sansa,sansaAMS,gigabeats,gigabeatf,vibe500}{
   Values higher than 0~dB are available and can be used to raise the
   volume more than would otherwise be possible. These volume levels will
   ordinarily lead to distorted sound, but might work nicely for music that has
@@ -26,7 +26,7 @@ change to customise your listening experience.
   \opt{ipodnano2g,ipodcolor,ipod1g2g,h10,h10_5gb,sansa,sansaAMS}{minimum of 
   -74~dB to a maximum of +6~dB.}%
   \opt{gigabeats}{minimum of -90~dB to a maximum of +6~dB.}%
-  \opt{gigabeatf}{minimum of -74~dB to a maximum of +6~dB.}%
+  \opt{gigabeatf,vibe500}{minimum of -74~dB to a maximum of +6~dB.}%
   \opt{ipodvideo}{\\Remark: Lowering the volume below -57~dB will also affect the line-out 
   and the recording gain.}
   
@@ -40,7 +40,7 @@ change to customise your listening experience.
   \opt{h100,h300}{The minimum setting is 0~dB and the maximum is 24~dB.}%
   \opt{ipodnano,ipodnano2g,ipodcolor}{The minimum setting is -6~dB and the maximum is 9~dB.}%
   \opt{ipodvideo}{The minimum setting is -12~dB and the maximum is 12~dB.}%
-  \opt{x5,sansa,sansaAMS,h10,h10_5gb}{The minimum setting is -24~dB and the maximum is 24~dB.}
+  \opt{x5,sansa,sansaAMS,h10,h10_5gb,vibe500}{The minimum setting is -24~dB and the maximum is 24~dB.}
 
 \opt{ipodvideo}{
 \section{Bass Cutoff}
@@ -60,7 +60,7 @@ change to customise your listening experience.
   \opt{h100,h300}{The minimum setting is 0~dB and the maximum is 6~dB.}%
   \opt{ipodnano,ipodnano2g,ipodcolor}{The minimum setting is -6~dB and the maximum is 9~dB.}%
   \opt{ipodvideo}{The minimum setting is -12~dB and the maximum is 12~dB.}%
-  \opt{x5,sansa,sansaAMS,h10,h10_5gb}{The minimum setting is -24~dB and the maximum is 24~dB.}
+  \opt{x5,sansa,sansaAMS,h10,h10_5gb,vibe500}{The minimum setting is -24~dB and the maximum is 24~dB.}
 
 \opt{ipodvideo}{
 \section{Treble Cutoff}
@@ -323,10 +323,9 @@ change to customise your listening experience.
   the three parameters described above (gain, centre frequency, and Q) for each
   of the five EQ bands.
   
-  \begin{table}
-    \begin{btnmap}{}{}
+    \begin{btnmap}
       \opt{IPOD_4G_PAD,IPOD_3G_PAD,IPOD_VIDEO_PAD}{\ButtonScrollFwd}
-      \opt{IRIVER_H100_PAD,IRIVER_H300_PAD,IAUDIO_X5_PAD}{\ButtonUp}
+      \opt{IRIVER_H100_PAD,IRIVER_H300_PAD,IAUDIO_X5_PAD,PBELL_VIBE500_PAD}{\ButtonUp}
       \opt{SANSA_E200_PAD}{\ButtonScrollBack}
       \opt{GIGABEAT_PAD,GIGABEAT_S_PAD}{\ButtonRight}
       \opt{COWON_D2_PAD}{\TouchMidRight}
@@ -336,7 +335,7 @@ change to customise your listening experience.
       & Raises the highlighted parameter.\\
       %
       \opt{IPOD_4G_PAD,IPOD_3G_PAD,IPOD_VIDEO_PAD}{\ButtonScrollBack}
-      \opt{IRIVER_H100_PAD,IRIVER_H300_PAD,IAUDIO_X5_PAD}{\ButtonDown}
+      \opt{IRIVER_H100_PAD,IRIVER_H300_PAD,IAUDIO_X5_PAD,PBELL_VIBE500_PAD}{\ButtonDown}
       \opt{SANSA_E200_PAD}{\ButtonScrollFwd}
       \opt{GIGABEAT_PAD,GIGABEAT_S_PAD}{\ButtonLeft}
       \opt{touchscreen}{\TouchMidLeft}
@@ -346,7 +345,7 @@ change to customise your listening experience.
       & Lowers the highlighted parameter.\\
       %
       \opt{IRIVER_H100_PAD,IRIVER_H300_PAD,IAUDIO_X5_PAD}{\ButtonLeft}
-      \opt{IPOD_4G_PAD,IPOD_3G_PAD,IPOD_VIDEO_PAD}{\ButtonLeft}
+      \opt{IPOD_4G_PAD,IPOD_3G_PAD,IPOD_VIDEO_PAD,PBELL_VIBE500_PAD}{\ButtonLeft}
       \opt{SANSA_E200_PAD,GIGABEAT_PAD,GIGABEAT_S_PAD}{\ButtonUp}
       \opt{COWON_D2_PAD}{\ActionStdPrev}
     \opt{HAVEREMOTEKEYMAP}{& }
@@ -354,7 +353,7 @@ change to customise your listening experience.
       & Moves to the previous EQ band. \\
       %
       \opt{IRIVER_H100_PAD,IRIVER_H300_PAD,IAUDIO_X5_PAD}{\ButtonRight}
-      \opt{IPOD_4G_PAD,IPOD_3G_PAD,IPOD_VIDEO_PAD}{\ButtonRight}
+      \opt{IPOD_4G_PAD,IPOD_3G_PAD,IPOD_VIDEO_PAD,PBELL_VIBE500_PAD}{\ButtonRight}
       \opt{SANSA_E200_PAD,GIGABEAT_PAD,GIGABEAT_S_PAD}{\ButtonDown}
       \opt{COWON_D2_PAD}{\ActionStdNext}
     \opt{HAVEREMOTEKEYMAP}{& }
@@ -363,6 +362,7 @@ change to customise your listening experience.
       %
       \opt{IRIVER_H100_PAD,IRIVER_H300_PAD,GIGABEAT_PAD,GIGABEAT_S_PAD}{\ButtonSelect}
       \opt{IAUDIO_X5_PAD,IPOD_4G_PAD,IPOD_3G_PAD,IPOD_VIDEO_PAD,SANSA_E200_PAD}{\ButtonSelect}
+      \opt{PBELL_VIBE500_PAD}{\ButtonOK}
       \opt{touchscreen}{\ButtonMenu{} or \TouchCenter}
     \opt{HAVEREMOTEKEYMAP}{&       
       \opt{IRIVER_RC_H100_PAD}{\ButtonRCSelect}
@@ -376,6 +376,7 @@ change to customise your listening experience.
       \opt{IAUDIO_X5_PAD}{\ButtonPower/\ButtonRec}
       \opt{SANSA_E200_PAD}{\ButtonPower/\ButtonRight}
       \opt{GIGABEAT_PAD,GIGABEAT_S_PAD}{\ButtonPower}
+      \opt{PBELL_VIBE500_PAD}{\ButtonCancel}
       \opt{touchscreen}{\ButtonPower{} or \TouchTopLeft}
     \opt{HAVEREMOTEKEYMAP}{& 
       \opt{IRIVER_RC_H100_PAD}{\ButtonRCStop}
@@ -383,7 +384,6 @@ change to customise your listening experience.
         }
       & Exits the graphic EQ screen.\\
     \end{btnmap}
-  \end{table}
 
   \item[Pre-cut.]
   If too much gain is added through the graphical EQ, your music may distort.
@@ -466,7 +466,7 @@ There are several settings associated with the compressor.  The first, and most
 important, is the \setting{Threshold}.  The threshold is the audio input level
 at which the compressor begins to act.  Any level louder than the threshold
 will be compressed to some extent.  The maximum amount of compression, or the
-quietest level at which the compressor will operate, is -24db.  The default of
+quietest level at which the compressor will operate, is -24~dB.  The default of
 Off disables the compressor.
 
 The \setting{Makeup Gain} setting has two options: Off and Auto.  Off means
@@ -495,6 +495,6 @@ The \setting{Release Time} setting sets the recovery time after the signal is
 compressed.  Once the compressor determines that compression is necessary,
 the input signal is reduced appropriately, but the gain isn't allowed to
 immediately return to normal levels.  This is necessary to reduce artifacts
-such as "pumping."  Instead, the gain is allowed to return to normal at the
+such as ``pumping.''  Instead, the gain is allowed to return to normal at the
 chosen rate.  Release Time is the time for the gain to recover by 10~dB.
 }

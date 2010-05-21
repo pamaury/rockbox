@@ -22,7 +22,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+#include "string-extra.h"
 #include "action.h"
 #include "dir.h"
 #include "file.h"
@@ -36,7 +36,6 @@
 #include "playlist.h"
 #include "settings.h"
 #include "splash.h"
-#include "sprintf.h"
 #include "tree.h"
 #include "yesno.h"
 #include "filetypes.h"
@@ -349,7 +348,7 @@ static int add_to_playlist(const char* playlist, bool new_playlist,
     if (new_playlist)
         fd = open_utf8(playlist, O_CREAT|O_WRONLY|O_TRUNC);
     else
-        fd = open(playlist, O_CREAT|O_WRONLY|O_APPEND);
+        fd = open(playlist, O_CREAT|O_WRONLY|O_APPEND, 0666);
 
     if(fd < 0)
         return result;

@@ -11,7 +11,7 @@ before beginning there are a few things it is important to know.
 follow the instructions at 
 \url{http://www.rockbox.org/twiki/bin/view/Main/SansaE200RInstallation}.}}
 
-\opt{ipodnano,ipodnano2g,ipodvideo,e200,c200,e200v2,clipv1,clipv2,cowond2,fuze}{
+\opt{ipodnano,ipodnano2g,ipodvideo,e200,c200,e200v2,clipv1,clipv2,cowond2,fuze,fuzev2}{
 \begin{description}  
 \item[Supported hardware versions.] 
     \opt{ipodnano,ipodnano2g}{
@@ -43,23 +43,17 @@ follow the instructions at
     v2 firmware begins with 03. Make sure that you are following the
     instructions from the correct manual.
 }
-  \opt{clipv1,clipv2}{
+  \opt{clipv1,clipv2,fuze,fuzev2}{
     The \playertype{} is available in multiple versions, and you need to make
-    sure which you have by checking the Sandisk firmware version number under 
-    Settings $\rightarrow$ Info. The v1 firmware is named 01.xx.xx, while the
-    v2 firmware begins with 02. Make sure that you are following the
-    instructions from the correct manual.
-}
-  \opt{fuze}{
-    The \playertype{} is available in multiple versions, not all of which
-    run Rockbox.  Rockbox doesn't run on the newer v2 models. They can be
-    identified by checking the Sandisk firmware version number under 
-    System Settings $\rightarrow$ System Info. The v1 firmware is named
-    01.xx.xx, while the v2 firmware begins with 02.
+    sure which you have by checking the Sandisk firmware version number under
+    Settings $\rightarrow$ \opt{fuze,fuzev2}{System Settings $\rightarrow$}
+    Info. The v1 firmware is named 01.xx.xx, while the v2 firmware begins with
+    02. Make sure that you are following the instructions from the correct
+    manual.
 }
   \opt{cowond2}{
     Rockbox runs on all \playerman{} \playertype{} and \playertype{}+ variants
-    (2 / 4 / 8 / 16GB, with or without DAB/DMB).
+    (2 / 4 / 8 / 16~GB, with or without DAB/DMB).
     \note{Newer \playertype{}+ hardware revisions use an updated power
     management chip, and some functionality is not yet implemented on these
     players (e.g. touchscreen support).}
@@ -82,7 +76,7 @@ follow the instructions at
           cards until we are satisfied the driver is safe to use.\\}
       \item There is only basic touchscreen support. Further work is
         required to make the UI more usable with a touchscreen in general.
-        \note{The touchscreen can be used in two modes, either a 3x3 grid mode
+        \note{The touchscreen can be used in two modes, either a 3$\times$3 grid mode
           which divides the screen into areas to emulate a set of physical
           buttons (the default setting), or ``absolute point'' mode where the
           touchscreen is used to point to items on the screen.\\}
@@ -139,17 +133,24 @@ follow the instructions at
   }
   \opt{x5}{
     When instructed to connect/disconnect the USB cable, always use
-    the USB port through the subpack, not the side 'USB Host' port. The side port
+    the USB port through the subpack, not the side `USB Host' port. The side port
     is intended to be used for USB OTG connections only (digital cameras, memory
     sticks, etc.).
-  }    
-  \opt{sansa,e200v2,clipv1,clipv2,clipplus}{
+  }
+  \opt{sansa,e200v2,clipv1,clipv2}{
     \note{The following steps require you to change the setting in
     \setting{Settings $\rightarrow$ USB Mode} to \setting{MSC} from within the
     original firmware.}
 
     \nopt{sansaAMS}{\warn{Never extract files to your \dap{} while it is in recovery mode.}}
   }
+
+  \opt{fuze,clipplus}{
+    \note{The following steps require you to change the setting in
+    \setting{Settings $\rightarrow$ System Settings $\rightarrow$ USB Mode} to
+    \setting{MSC} from within the original firmware.}
+  }
+
   \opt{h10,h10_5gb}{
     The installation requires you to use UMS mode and so
     may require use of the UMS trick, whereby it is possible to force a MTP
@@ -171,7 +172,17 @@ follow the instructions at
       $\rightarrow$ Connections $\rightarrow$ PC Connections} is set to 
       \setting{gigabeat room}. Also, during installation, do not connect your
       \dap{} using the cradle but plug the USB cable directly to the \dap{}.
-  } 
+  }
+  \opt{vibe500}{
+    The installation requires you to use UMS mode.
+    In order to start up your \playertype{} in UMS mode you need to:
+      \begin{enumerate}
+        \item Turn off the \dap{} (Original Firmware).
+        \item Connect your \playertype{} to the computer using the data cable.
+        \item Push and hold \ButtonPower{} (for about 2 seconds) until the ``USB'' screen appears.
+      \end{enumerate}
+    The \dap{} will now appear as a regular disk on your computer.
+  }
 \end{description}
 }
 
@@ -300,7 +311,7 @@ filesystem.\\*
 
 \opt{ipodvideo}
     {\note{Autodetection is unable to distinguish between the
-    \playerman{} 30~GB and 60~GB / 80~GB models and defaults to the
+    \playerman{} \playertype{} 30~GB and 60/80~GB models and defaults to the
     30~GB model. This will usually work but you might want to check the
     detected value, especially if you experience problems with Rockbox.}
 }
@@ -394,7 +405,7 @@ straight to \reference{ref:finish_install}
 \subsubsection{Installing the firmware}\label{sec:installing_firmware}
 
 \opt{gigabeats}{\note{When your \dap{} is in the Rockbox USB or bootloader
-USB mode, you will see two visible partitions - the 150MB firmware
+USB mode, you will see two visible partitions - the 150~MB firmware
 partition (containing at least a file called \fname{nk.bin}) and
 the main data partition. Rockbox \emph{must} be installed onto the main
 data partiton.}}
@@ -402,12 +413,12 @@ data partiton.}}
 \begin{enumerate} 
 \item Download your chosen version of Rockbox from the links in the
   previous section.
-\opt{ipodvideo}{\note{There are separate versions of Rockbox for the 30GB and 
-60GB/80GB models.  You must ensure you download the correct version for your 
-\dap{}.}}
+\opt{ipodvideo}{\note{There are separate versions of Rockbox for the 30~GB and 
+60/80~GB \playerman{} \playertype{} models. You must ensure you download the 
+correct version for your \dap{}.}}
 
 \item Connect your \dap{} to the computer via USB 
-  \opt{sansa,sansaAMS,h10,h10_5gb}{ in MSC mode }
+  \opt{sansa,sansaAMS,h10,h10_5gb,vibe500}{ in MSC mode }
   \opt{ipod3g,ipod4g,ipodmini,ipodcolor}{ or Firewire }as described in
   the manual that came with your \dap{}.
 
@@ -453,6 +464,7 @@ structure that Rockbox needs.\\}
   \opt{sansaAMS}{\input{getting_started/sansaAMS_install.tex}}
   \opt{mrobe100}{\input{getting_started/mrobe100_install.tex}}
   \opt{cowond2}{\input{getting_started/cowond2_install.tex}}
+  \opt{vibe500}{\input{getting_started/vibe500_install.tex}}
 }}
 
 \subsection{Finishing the install}\label{ref:finish_install}
@@ -483,7 +495,7 @@ structure that Rockbox needs.\\}
   \end{itemize}
 }
 
-\opt{h10,h10_5gb,ipod,mrobe100,sansa,archos,sansaAMS,cowond2}{
+\opt{h10,h10_5gb,ipod,mrobe100,sansa,archos,sansaAMS,cowond2,vibe500}{
   Safely eject / unmount the USB drive, unplug the cable and restart.
 }
 
@@ -581,7 +593,7 @@ The new build will be installed over your current build.\\
 
 \opt{gigabeats}{
   \note{When your \dap{} is in the Rockbox USB or bootloader
-  USB mode, you will see two visible partitions, the 150MB firmware
+  USB mode, you will see two visible partitions, the 150~MB firmware
   partition (containing at least a file called \fname{nk.bin}) and
   the main data partition. Rockbox \emph{must} be installed onto the main
   data partiton.\\}
@@ -626,6 +638,15 @@ completely follow the manual uninstallation instructions below.}}
   connect the \dap{} to your computer, and delete the
   \opt{h10}{\fname{H10\_20GC.mi4}}\opt{h10_5gb}{\fname{H10.mi4}} file and rename
   \fname{OF.mi4} to \opt{h10}{\fname{H10\_20GC.mi4}}\opt{h10_5gb}{\fname{H10.mi4}}
+  in the \fname{System} directory on your \playertype{}. As in the installation,
+  it may be necessary to first put your device into UMS mode.
+}
+
+\opt{vibe500}{
+  If you would like to go back to using the original \playerman{} software,
+  connect the \dap{} to your computer, and delete the
+  \fname{jukebox.mi4} file and rename
+  \fname{OF.mi4} to \fname{JUKEBOX.mi4}
   in the \fname{System} directory on your \playertype{}. As in the installation,
   it may be necessary to first put your device into UMS mode.
 }
@@ -704,7 +725,7 @@ completely follow the manual uninstallation instructions below.}}
   your favourite unzipping utility e.g. 7zip.
   \item Connect your \dap{} to your computer.
   \item Extract \fname{nk.bin} from within
-  \fname{gbs\_update\_1\_2\_us.exe} using e.g. 7zip and copy it to the 150 MB
+  \fname{gbs\_update\_1\_2\_us.exe} using e.g. 7zip and copy it to the 150~MB
   firmware partition of your \dap{}.
   \item Safely eject / unmount the USB drive, unplug the cable and restart.
   \end{itemize}

@@ -21,7 +21,6 @@
 #include "plugin.h"
 #include <ctype.h>
 #include <string.h>
-#include <sprintf.h>
 #include <stdlib.h>
 #include "debug.h"
 #include "i2c.h"
@@ -93,11 +92,11 @@ static char current_plugin[MAX_PATH];
 
 char *plugin_get_current_filename(void);
 
-#ifdef HAVE_PLUGIN_CHECK_OPEN_CLOSE
 /* Some wrappers used to monitor open and close and detect leaks*/
-static int open_wrapper(const char* pathname, int flags);
+static int open_wrapper(const char* pathname, int flags, ...);
+#ifdef HAVE_PLUGIN_CHECK_OPEN_CLOSE
 static int close_wrapper(int fd);
-static int creat_wrapper(const char *pathname);
+static int creat_wrapper(const char *pathname, mode_t mode);
 #endif
 
 static const struct plugin_api rockbox_api = {
@@ -299,13 +298,12 @@ static const struct plugin_api rockbox_api = {
 
     /* file */
     open_utf8,
-#ifdef HAVE_PLUGIN_CHECK_OPEN_CLOSE
     (open_func)open_wrapper,
+#ifdef HAVE_PLUGIN_CHECK_OPEN_CLOSE
     close_wrapper,
 #else
-    (open_func)PREFIX(open),
     PREFIX(close),
-    #endif
+#endif
     (read_func)PREFIX(read),
     PREFIX(lseek),
 #ifdef HAVE_PLUGIN_CHECK_OPEN_CLOSE
@@ -436,7 +434,9 @@ static const struct plugin_api rockbox_api = {
     memset,
     memcpy,
     memmove,
+#ifndef SIMULATOR
     _ctype_,
+#endif
     atoi,
     strchr,
     strcat,
@@ -598,7 +598,7 @@ static const struct plugin_api rockbox_api = {
 #endif
 
     /* misc */
-#if !defined(SIMULATOR) || defined(__MINGW32__) || defined(__CYGWIN__)
+#if !defined(SIMULATOR)
     &errno,
 #endif
     srand,
@@ -714,6 +714,20 @@ static const struct plugin_api rockbox_api = {
 
 #ifdef HAVE_LCD_BITMAP
     is_diacritic,
+#endif
+
+#if (CONFIG_CODEC == SWCODEC) && defined(HAVE_RECORDING) && \
+    (defined(HAVE_LINE_IN) || defined(HAVE_MIC_IN))
+    round_value_to_list32,
+#endif
+
+#ifdef AUDIOHW_HAVE_EQ
+    sound_enum_hw_eq_band_setting,
+#endif
+
+#if CONFIG_CODEC == SWCODEC
+    find_array_ptr,
+    remove_array_ptr,
 #endif
 };
 
@@ -979,17 +993,33 @@ char *plugin_get_current_filename(void)
     return current_plugin;
 }
 
-#ifdef HAVE_PLUGIN_CHECK_OPEN_CLOSE
-static int open_wrapper(const char* pathname, int flags)
+static int open_wrapper(const char* pathname, int flags, ...)
 {
-    int fd = PREFIX(open)(pathname,flags);
+/* we don't have an 'open' function. it's a define. and we need
+ * the real file_open, hence PREFIX() doesn't work here */
+    int fd;
+#ifdef SIMULATOR
+    if (flags & O_CREAT)
+    {
+        va_list ap;
+        va_start(ap, flags);
+        fd = sim_open(pathname, flags, va_arg(ap, unsigned int));
+        va_end(ap);
+    }
+    else
+        fd = sim_open(pathname, flags);
+#else
+    fd = file_open(pathname,flags);
+#endif
 
+#ifdef HAVE_PLUGIN_CHECK_OPEN_CLOSE
     if(fd >= 0)
         open_files |= 1<<fd;
-    
+#endif
     return fd;
 }
 
+#ifdef HAVE_PLUGIN_CHECK_OPEN_CLOSE
 static int close_wrapper(int fd)
 {
     if((~open_files) & (1<<fd))
@@ -1002,9 +1032,9 @@ static int close_wrapper(int fd)
     return PREFIX(close)(fd);
 }
 
-static int creat_wrapper(const char *pathname)
+static int creat_wrapper(const char *pathname, mode_t mode)
 {
-    int fd = PREFIX(creat)(pathname);
+    int fd = PREFIX(creat)(pathname, mode);
 
     if(fd >= 0)
         open_files |= (1<<fd);

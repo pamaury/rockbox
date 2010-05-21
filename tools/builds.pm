@@ -1,4 +1,6 @@
 $publicrelease="3.5.1";
+$manualrelease="3.5";
+$voicerelease="3.5";
 $releasedate="March 4, 2010";
 $releasenotes="/wiki/ReleaseNotes351";
 
@@ -232,12 +234,12 @@ $releasenotes="/wiki/ReleaseNotes351";
     },
     'sansaclipv2' => {
         name => 'SanDisk Sansa Clip v2',
-        status => 1,
+        status => 2,
         icon => 'sansaclip',
     },
     'sansaclipplus' => {
         name => 'SanDisk Sansa Clip+',
-        status => 1,
+        status => 2,
     },
     'sansae200' => {
         name => 'SanDisk Sansa e200',
@@ -254,7 +256,7 @@ $releasenotes="/wiki/ReleaseNotes351";
     },
     'sansafuzev2' => {
         name => 'SanDisk Sansa Fuze v2',
-        status => 1,
+        status => 2,
         icon => 'sansafuze',
     },
     'sansam200' => {
@@ -275,7 +277,7 @@ $releasenotes="/wiki/ReleaseNotes351";
     },
     'vibe500' => {
         name => 'Packard Bell Vibe 500',
-        status => 2,
+        status => 3,
     },
     'zenvision' => {
         name => 'Creative Zen Vision',
@@ -287,6 +289,10 @@ $releasenotes="/wiki/ReleaseNotes351";
     },
     'zenvisionm60gb' => {
         name => 'Creative Zen Vision:M 60GB',
+        status => 1,
+    },
+    'hd200' => {
+        name => 'MPIO HD200',
         status => 1,
     },
 );

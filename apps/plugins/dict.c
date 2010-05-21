@@ -62,10 +62,10 @@ void init_screen(void)
 
 /* global vars for pl_malloc() */
 void *bufptr;
-ssize_t bufleft;
+size_t bufleft;
 
 /* simple function to "allocate" memory in pluginbuffer. */
-void *pl_malloc(ssize_t size)
+void *pl_malloc(size_t size)
 {
     void *ptr;
     ptr = bufptr;
@@ -85,7 +85,7 @@ void *pl_malloc(ssize_t size)
 /* init function for pl_malloc() */
 void pl_malloc_init(void)
 {
-    bufptr = rb->plugin_get_buffer((size_t *)&bufleft);
+    bufptr = rb->plugin_get_buffer(&bufleft);
 }
 
 /* for endian problems */
@@ -150,6 +150,8 @@ long reverse (long N) {
 #define LP_QUIT BUTTON_LEFT
 #elif CONFIG_KEYPAD == PBELL_VIBE500_PAD
 #define LP_QUIT BUTTON_CANCEL
+#elif CONFIG_KEYPAD == MPIO_HD200_PAD
+#define LP_QUIT (BUTTON_REC|BUTTON_PLAY)
 #else
 #define LP_QUIT BUTTON_OFF
 #endif

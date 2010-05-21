@@ -117,6 +117,7 @@
 #define MINI2440_PAD       41
 #define PHILIPS_HDD6330_PAD 42
 #define PBELL_VIBE500_PAD 43
+#define MPIO_HD200_PAD     44
 
 /* CONFIG_REMOTE_KEYPAD */
 #define H100_REMOTE 1
@@ -275,6 +276,7 @@ Lyre prototype 1 */
 #define USBOTG_ARC      5020 /* PortalPlayer 502x */
 #define USBOTG_JZ4740   4740 /* Ingenic Jz4740/Jz4732 */
 #define USBOTG_AS3525   3525 /* AMS AS3525 */
+#define USBOTG_AS3525v2 3535 /* AMS AS3525v2 */
 #define USBOTG_S3C6400X 6400 /* Samsung S3C6400X, also used in the S5L8701 */
 
 /* Multiple cores */
@@ -412,6 +414,8 @@ Lyre prototype 1 */
 #include "config/samsungyps3.h"
 #elif defined(PBELL_VIBE500)
 #include "config/vibe500.h"
+#elif defined(MPIO_HD200)
+#include "config/mpiohd200.h"
 #else
 /* no known platform */
 #endif
@@ -664,6 +668,7 @@ Lyre prototype 1 */
 #else /* !BOOTLOADER */
 
 #define HAVE_EXTENDED_MESSAGING_AND_NAME
+#define HAVE_WAKEUP_EXT_CB
 
 #ifndef SIMULATOR
 #define HAVE_PRIORITY_SCHEDULING
@@ -730,7 +735,7 @@ Lyre prototype 1 */
 #define IBSS_ATTR       __attribute__ ((section(".ibss")))
 #define USE_IRAM
 #if CONFIG_CPU != SH7034 && (CONFIG_CPU != AS3525 || MEMORYSIZE > 2) \
-    && CONFIG_CPU != JZ4732
+    && CONFIG_CPU != JZ4732 && CONFIG_CPU != AS3525v2
 #define PLUGIN_USE_IRAM
 #endif
 #if defined(CPU_ARM)
@@ -821,6 +826,11 @@ Lyre prototype 1 */
 #endif /* !defined(BOOTLOADER) && CONFIG_CPU != PP5002 */
 
 #endif /* CPU_PP */
+
+#if CONFIG_CPU == IMX31L
+#define NOCACHEBSS_ATTR     __attribute__((section(".ncbss"),nocommon))
+#define NOCACHEDATA_ATTR    __attribute__((section(".ncdata"),nocommon))
+#endif
 
 #ifndef CONFIG_CORELOCK
 #define CONFIG_CORELOCK CORELOCK_NONE

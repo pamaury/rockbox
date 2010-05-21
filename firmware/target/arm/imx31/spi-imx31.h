@@ -41,19 +41,6 @@ enum spi_module_number
     SPI_NUM_CSPI,
 };
 
-struct cspi_map
-{
-    volatile uint32_t rxdata;       /* 00h */
-    volatile uint32_t txdata;       /* 04h */
-    volatile uint32_t conreg;       /* 08h */
-    volatile uint32_t intreg;       /* 0Ch */
-    volatile uint32_t dmareg;       /* 10h */
-    volatile uint32_t statreg;      /* 14h */
-    volatile uint32_t periodreg;    /* 18h */
-    volatile uint32_t skip1[0x69];  /* 1Ch */
-    volatile uint32_t testreg;      /* 1C0h */
-};
-
 struct spi_node
 {
     enum spi_module_number num; /* Module number (CSPIx_NUM) */
@@ -61,29 +48,42 @@ struct spi_node
     unsigned long periodreg;    /* CSPI periodreg setup */
 };
 
-struct spi_transfer
+struct spi_transfer_desc;
+
+typedef void (*spi_transfer_cb_fn_type)(struct spi_transfer_desc *);
+
+struct spi_transfer_desc
 {
-    const void *txbuf;
-    void       *rxbuf;
-    int         count;
+    const struct spi_node *node;      /* node for this transfer */
+    const void *txbuf;                /* buffer to transmit */
+    void       *rxbuf;                /* buffer to receive */
+    int         count;                /* number of elements */
+    spi_transfer_cb_fn_type callback; /* function to call when done */
+    struct spi_transfer_desc *next;   /* next transfer queued,
+                                         spi layer sets this */
 };
+
+/* NOTE: SPI updates the descrptor during the operation. Do not write
+ * to it until completion notification is received. If no callback is
+ * specified, the caller must find a way to ensure integrity.
+ *
+ * -1 will be written to 'count' if an error occurs, otherwise it will
+ * be zero when completed.
+ */
 
 /* One-time init of SPI driver */
 void spi_init(void);
 
 /* Enable the specified module for the node */
-void spi_enable_module(struct spi_node *node);
+void spi_enable_module(const struct spi_node *node);
 
 /* Disabled the specified module for the node */
-void spi_disable_module(struct spi_node *node);
+void spi_disable_module(const struct spi_node *node);
 
-/* Lock module mutex */
-void spi_lock(struct spi_node *node);
+/* Send and/or receive data on the specified node (asychronous) */
+bool spi_transfer(struct spi_transfer_desc *xfer);
 
-/* Unlock module mutex */
-void spi_unlock(struct spi_node *node);
-
-/* Send and/or receive data on the specified node */
-int spi_transfer(struct spi_node *node, struct spi_transfer *trans);
+/* Returns 'true' if the descriptor is not busy */
+bool spi_transfer_complete(const struct spi_transfer_desc *xfer);
 
 #endif /* SPI_IMX31_H */

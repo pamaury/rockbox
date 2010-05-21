@@ -277,6 +277,16 @@ CONFIG_KEYPAD == MROBE500_PAD
 #define HK_SELECT "OK"
 #define HK_CANCEL "REC"
 
+#elif CONFIG_KEYPAD == MPIO_HD200_PAD
+#define JEWELS_LEFT   BUTTON_VOL_DOWN
+#define JEWELS_RIGHT  BUTTON_VOL_UP
+#define JEWELS_UP     BUTTON_PREV
+#define JEWELS_DOWN   BUTTON_NEXT
+#define JEWELS_SELECT BUTTON_SELECT
+#define JEWELS_CANCEL BUTTON_REC
+#define HK_SELECT "SELECT"
+#define HK_CANCEL "REC"
+
 #else
 #error No keymap defined!
 #endif
@@ -488,7 +498,7 @@ static void jewels_savegame(struct game_context* bj)
 {
     int fd;
     /* write out the game state to the save file */
-    fd = rb->open(SAVE_FILE, O_WRONLY|O_CREAT);
+    fd = rb->open(SAVE_FILE, O_WRONLY|O_CREAT, 0666);
     if(fd < 0) return;
 
     rb->write(fd, &bj->tmp_type, sizeof(bj->tmp_type));

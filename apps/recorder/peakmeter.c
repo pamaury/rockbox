@@ -29,7 +29,6 @@
 #include "storage.h"
 #include "lcd.h"
 #include "scrollbar.h"
-#include "sprintf.h"
 #include "button.h"
 #include "system.h"
 #include "font.h"
@@ -79,7 +78,11 @@ static long pm_clip_timeout_r;
 
 /* Temporarily en- / disables peak meter. This is especially for external
    applications to detect if the peak_meter is in use and needs drawing at all */
-bool peak_meter_enabled = true;
+static bool peak_meter_enabled = true;
+void peak_meter_enable(bool enable)
+{
+    peak_meter_enabled = enable;
+}
 
 /** Parameters **/
 /* Range */

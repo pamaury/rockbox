@@ -55,8 +55,7 @@ your WPS (While Playing Screen).
 
 \subsection{\label{ref:WPS_Key_Controls}WPS Key Controls}
 
-\begin{table}
-  \begin{btnmap}{}{}
+  \begin{btnmap}
       \ActionWpsVolUp{} / \ActionWpsVolDown
       \opt{HAVEREMOTEKEYMAP}{& \ActionRCWpsVolUp{} / \ActionRCWpsVolDown}
       & Volume up/down.\\
@@ -130,7 +129,7 @@ your WPS (While Playing Screen).
         \opt{HAVEREMOTEKEYMAP}{& \ActionRCWpsPitchScreen}
          & Show \setting{Pitch Screen} (see \reference{sec:pitchscreen}).\\%
       }%
-      \opt{GIGABEAT_PAD,GIGABEAT_S_PAD,SANSA_CLIP_PAD,MROBE100_PAD}{%
+      \opt{GIGABEAT_PAD,GIGABEAT_S_PAD,SANSA_CLIP_PAD,MROBE100_PAD,PBELL_VIBE500_PAD}{%
         \ActionWpsPlaylist 
           & Show current \setting{Playlist}.\\%
       }%
@@ -170,8 +169,7 @@ your WPS (While Playing Screen).
           \opt{HAVEREMOTEKEYMAP}{&} 
           & Switch to the \setting{Recording Screen}.\\
       }%
-    \end{btnmap}
-\end{table}
+  \end{btnmap}
 
 
 \opt{lcd_bitmap}{
@@ -209,9 +207,7 @@ your WPS (While Playing Screen).
 }
 \subsection{\label{sec:contextmenu}The WPS Context Menu}
 Like the context menu for the \setting{File Browser}, the \setting{WPS Context Menu} 
-allows you quick access to some often used functions. \opt{hotkey}{
-Some of these options can be set to the \setting{Hotkey} (see \reference{ref:Hotkeys})
-for that context by pressing \ActionWpsHotkey.}
+allows you quick access to some often used functions.
 
 \subsubsection{Playlist}
 The \setting{Playlist} submenu allows you to view, save, search and
@@ -252,7 +248,7 @@ See \reference{ref:configure_rockbox_sound} for more information.
 
 \subsubsection{Playback Settings}
 This is a shortcut to the \setting{Playback Settings Menu}, where you can configure shuffle,
-repeat, party mode, study mode and other settings affecting the playback of your music.  
+repeat, party mode, skip length and other settings affecting the playback of your music.  
 
 \subsubsection{Rating}
 The menu entry is only shown if \setting{Gather Runtime Information} is
@@ -268,13 +264,12 @@ This allows you to create a bookmark in the currently-playing track.
 This screen is accessible from the WPS screen, and provides a detailed view of
 all the identity information about the current track. This info is known as
 meta data and is stored in audio file formats to keep information on artist,
-album etc. \opt{hotkey}{\setting{Hotkey}able from the \setting{WPS Context
-Menu} (see \reference{ref:Hotkeys}).} To access this screen, %
+album etc. To access this screen, %
 \opt{RECORDER_PAD,IRIVER_H100_PAD,IRIVER_H300_PAD,IRIVER_H10_PAD,%
       SANSA_C200_PAD,SANSA_E200_PAD,SANSA_FUZE_PAD}{
   press \ActionWpsIdThreeScreen. }%
 \opt{PLAYER_PAD,ONDIO_PAD,IPOD_4G_PAD,IPOD_3G_PAD,IAUDIO_X5_PAD,IAUDIO_M3_PAD,%
-      GIGABEAT_PAD,GIGABEAT_S_PAD,MROBE100_PAD,SANSA_CLIP_PAD}{press
+      GIGABEAT_PAD,GIGABEAT_S_PAD,MROBE100_PAD,SANSA_CLIP_PAD,PBELL_VIBE500_PAD}{press
   \ActionWpsContext{} to access the \setting{WPS Context Menu} and select
   \setting{Show Track Info}. }%
 \opt{RECORDER_PAD,PLAYER_PAD,ONDIO_PAD}{Use \ButtonLeft\ and \ButtonRight\
@@ -283,20 +278,19 @@ Menu} (see \reference{ref:Hotkeys}).} To access this screen, %
 \subsubsection{Open With...}
 This \setting{Open With} function is the same as the \setting{Open With} 
 function in the file browser's \setting{Context Menu}.
-\opt{hotkey}{\setting{Hotkey}able (see \reference{ref:Hotkeys}).}
 
 \subsubsection{Delete}
 Delete the currently playing file. The file will be deleted but the playback
 of the file will not stop immediately. Instead, the part of the file that
 has already been buffered (i.e. read into the \daps\ memory) will be played.
-This may even be the whole track. \opt{hotkey}{\setting{Hotkey}able (see \reference{ref:Hotkeys}).}
+This may even be the whole track.
 
 \opt{pitchscreen}{
   \subsubsection{\label{sec:pitchscreen}Pitch}
   
   The \setting{Pitch Screen} allows you to change the rate of playback
   (i.e. the playback speed and at the same time the pitch) of your
-  \dap.  \opt{hotkey}{\setting{Hotkey}able (see \reference{ref:Hotkeys}).}  The rate value can be adjusted
+  \dap.  The rate value can be adjusted
   between 50\% and 200\%. 50\% means half the normal playback speed and a
   pitch that is an octave lower than the normal pitch. 200\% means double
   playback speed and a pitch that is an octave higher than the normal pitch.
@@ -318,12 +312,14 @@ This may even be the whole track. \opt{hotkey}{\setting{Hotkey}able (see \refere
   }
   
   The value of the \opt{swcodec}{rate, pitch and speed}\nopt{swcodec}{rate}
-  is not persisted, i.e. after the \dap\ is turned on it will
-  always be set to 100\%.
+  is not persistent, i.e. after the \dap\ is turned on it will
+  always be set to 100\%.  \opt{swcodec}{ However, the rate, pitch and speed
+  information will be stored in any bookmarks you may create
+  (see \reference{ref:Bookmarkconfigactual}) and will be restored upon
+  playing back those bookmarks.}
 
   \nopt{swcodec}{
-    \begin{table}
-      \begin{btnmap}{}{}
+      \begin{btnmap}
         \ActionPsToggleMode
         & Toggle pitch changing mode. \\
         %
@@ -345,14 +341,12 @@ This may even be the whole track. \opt{hotkey}{\setting{Hotkey}able (see \refere
         & Leave the \setting{Pitch Screen}. \\
         %
       \end{btnmap}
-    \end{table}
 
-    \warn{Changing the pitch can cause audible 'Artifacts' or 'Dropouts'.}
+    \warn{Changing the pitch can cause audible `Artifacts' or `Dropouts'.}
   }
 
   \opt{swcodec}{
-    \begin{table}
-      \begin{btnmap}{}{}
+      \begin{btnmap}
         \ActionPsToggleMode
         \opt{HAVEREMOTEKEYMAP}{& \ActionRCPsToggleMode}
         & Toggle pitch changing mode (cycle through all available modes).\\
@@ -362,10 +356,12 @@ This may even be the whole track. \opt{hotkey}{\setting{Hotkey}able (see \refere
         & Increase~/ Decrease pitch by 0.1\% (in procentual mode) or 0.1
           semitone (in semitone mode).\\
         %
+        \nopt{PBELL_VIBE500_PAD}{ % ther is no long scroll up or down because of slide
         \ActionPsIncBig{} / \ActionPsDecBig
         \opt{HAVEREMOTEKEYMAP}{& \ActionRCPsIncBig{} / \ActionRCPsDecBig}
         & Increase~/ Decrease pitch by 1\% (in procentual mode) or a semitone
           (in semitone mode).\\
+        }
         %
         \ActionPsNudgeLeft{} / \ActionPsNudgeRight
         \opt{HAVEREMOTEKEYMAP}{& \ActionRCPsNudgeLeft{} / \ActionPsNudgeRight}
@@ -380,7 +376,6 @@ This may even be the whole track. \opt{hotkey}{\setting{Hotkey}able (see \refere
         & Leave the \setting{Pitch Screen}. \\
         %
       \end{btnmap}
-    \end{table}
   }
 
 }
@@ -411,13 +406,11 @@ This may even be the whole track. \opt{hotkey}{\setting{Hotkey}able (see \refere
   See \reference{ref:PlaybackOptions} for more information about these
   settings.
 
-  \begin{table}
-    \begin{btnmap}{}{}
+  \begin{btnmap}
       \ButtonLeft & Control Shuffle mode setting. \\
       \ButtonRight & Control Repeat mode setting. \\
       \ButtonDown & Control Show file setting. \\
-    \end{btnmap}
-  \end{table}
+  \end{btnmap}
   
   \ButtonFThree\ controls frequently used display options.
   
@@ -433,11 +426,9 @@ This may even be the whole track. \opt{hotkey}{\setting{Hotkey}able (see \refere
   See \reference{ref:Displayoptions} for more information about these
   settings.
   
-  \begin{table}
-    \begin{btnmap}{}{}
+  \begin{btnmap}
       \ButtonLeft & Control scroll bar display. \\
       \ButtonRight & Control status bar display. \\
       \ButtonDown & Control upside down screen setting. \\
-    \end{btnmap}
-  \end{table}
+  \end{btnmap}
 }

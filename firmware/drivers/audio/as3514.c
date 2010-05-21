@@ -34,7 +34,7 @@
 /*
  * This drivers supports:
  * as3514 , as used in the PP targets
- * as3517 , as used in the as3525 targets
+ * as3515 , as used in the as3525 targets
  * as3543 , as used in the as3525v2 targets
  */
 
@@ -64,7 +64,7 @@
 #endif
 
 const struct sound_settings_info audiohw_settings[] = {
-    [SOUND_VOLUME]        = {"dB",   0,   1, -74,   6, -25},
+    [SOUND_VOLUME]        = {"dB",   0,   1, -73,   6, -25},
     /* HAVE_SW_TONE_CONTROLS */
     [SOUND_BASS]          = {"dB",   0,   1, -24,  24,   0},
     [SOUND_TREBLE]        = {"dB",   0,   1, -24,  24,   0},
@@ -79,50 +79,36 @@ const struct sound_settings_info audiohw_settings[] = {
 };
 
 /* Shadow registers */
-static struct as3514_info
-{
-    int     vol_r;       /* Cached volume level (R) */
-    int     vol_l;       /* Cached volume level (L) */
-    uint8_t regs[AS3514_NUM_AUDIO_REGS]; /* 8-bit registers */
-} as3514;
+static uint8_t as3514_regs[AS3514_NUM_AUDIO_REGS]; /* 8-bit registers */
 
 /*
  * little helper method to set register values.
- * With the help of as3514.regs, we minimize i2c
+ * With the help of as3514_regs, we minimize i2c
  * traffic.
  */
 static void as3514_write(unsigned int reg, unsigned int value)
 {
-    if (ascodec_write(reg, value) != 2)
-    {
-        DEBUGF("as3514 error reg=0x%02x", reg);
-    }
+    ascodec_write(reg, value);
 
-    if (reg < ARRAYLEN(as3514.regs))
-    {
-        as3514.regs[reg] = value;
-    }
-    else
-    {
-        DEBUGF("as3514 error reg=0x%02x", reg);
-    }
+    if (reg < AS3514_NUM_AUDIO_REGS)
+        as3514_regs[reg] = value;
 }
 
 /* Helpers to set/clear bits */
 static void as3514_set(unsigned int reg, unsigned int bits)
 {
-    as3514_write(reg, as3514.regs[reg] | bits);
+    as3514_write(reg, as3514_regs[reg] | bits);
 }
 
 static void as3514_clear(unsigned int reg, unsigned int bits)
 {
-    as3514_write(reg, as3514.regs[reg] & ~bits);
+    as3514_write(reg, as3514_regs[reg] & ~bits);
 }
 
 static void as3514_write_masked(unsigned int reg, unsigned int bits,
                                 unsigned int mask)
 {
-    as3514_write(reg, (as3514.regs[reg] & ~mask) | (bits & mask));
+    as3514_write(reg, (as3514_regs[reg] & ~mask) | (bits & mask));
 }
 
 /* convert tenth of dB volume to master volume register value */
@@ -140,24 +126,18 @@ int tenthdb2master(int db)
 
 int sound_val2phys(int setting, int value)
 {
-    int result;
-
     switch(setting)
     {
 #if defined(HAVE_RECORDING)
     case SOUND_LEFT_GAIN:
     case SOUND_RIGHT_GAIN:
     case SOUND_MIC_GAIN:
-        result = (value - 23) * 15;
-        break;
+        return (value - 23) * 15;
 #endif
 
     default:
-        result = value;
-        break;
+        return value;
     }
-
-    return result;
 }
 
 /*
@@ -165,55 +145,38 @@ int sound_val2phys(int setting, int value)
  */
 void audiohw_preinit(void)
 {
-    unsigned int i;
-
     /* read all reg values */
-    for (i = 0; i < ARRAYLEN(as3514.regs); i++)
-    {
-        as3514.regs[i] = ascodec_read(i);
-    }
+    ascodec_readbytes(0x0, AS3514_NUM_AUDIO_REGS, as3514_regs);
+
+#ifdef HAVE_AS3543
+
+    as3514_write(AS3514_AUDIOSET1, AUDIOSET1_DAC_on | AUDIOSET1_DAC_GAIN_on);
+    as3514_write(AS3514_AUDIOSET2, AUDIOSET2_HPH_QUALITY_LOW_POWER);
+    /* common ground on, delay playback unmuting when inserting headphones */
+    as3514_write(AS3514_AUDIOSET3, AUDIOSET3_HPCM_on | AUDIOSET3_HP_LONGSTART);
+
+    as3514_write(AS3543_DAC_IF, AS3543_DAC_INT_PLL);
+    /* Select Line 2 for FM radio */
+    as3514_set(AS3514_LINE_IN1_R, LINE_IN_R_LINE_SELECT);
+    /* Output SUM of microphone/line/DAC */
+    as3514_write(AS3514_HPH_OUT_R, HPH_OUT_R_HEADPHONES | HPH_OUT_R_HP_OUT_SUM);
+
+#else
+    /* as3514/as3515 */
 
     /* Set ADC off, mixer on, DAC on, line out off, line in off, mic off */
-
     /* Turn on SUM, DAC */
     as3514_write(AS3514_AUDIOSET1, AUDIOSET1_DAC_on | AUDIOSET1_SUM_on);
 
-    /* Set BIAS on, DITH on, AGC on, IBR_DAC max, LSP_LP on, IBR_LSP min */
-    as3514_write(AS3514_AUDIOSET2,
-                 AUDIOSET2_IBR_DAC_0 | AUDIOSET2_LSP_LP |
-                 AUDIOSET2_IBR_LSP_50);
+    /* Set BIAS on, DITH off, AGC off, IBR_DAC max reduction, LSP_LP on, 
+       IBR_LSP max reduction (50%), taken from c200v2 OF
+     */
+    as3514_write(AS3514_AUDIOSET2, AUDIOSET2_IBR_LSP_50 | AUDIOSET2_LSP_LP |
+            AUDIOSET2_IBR_DAC_50 | AUDIOSET2_AGC_off | AUDIOSET2_DITH_off );
 
-/* AMS Sansas based on the AS3525 need HPCM enabled, otherwise they output the
-   L-R signal on both L and R headphone outputs instead of normal stereo.
-   Turning it off saves a little power on targets that don't need it. */
-#if (CONFIG_CPU == AS3525)
-    /* Set HPCM on, ZCU on */
-    as3514_write(AS3514_AUDIOSET3, 0);
-#else
-    /* Set HPCM off, ZCU on */
-    as3514_write(AS3514_AUDIOSET3, AUDIOSET3_HPCM_off);
-#endif
-
-#ifdef HAVE_AS3543
-    as3514_clear(AS3543_DAC_IF, 0x80);
-    as3514_set(AS3514_LINE_IN1_R, LINE_IN_R_LINE_SELECT); /* Line 2 */
-#else
     /* Mute and disable speaker */
     as3514_write(AS3514_LSP_OUT_R, LSP_OUT_R_SP_OVC_TO_256MS | 0x00);
     as3514_write(AS3514_LSP_OUT_L, LSP_OUT_L_SP_MUTE | 0x00);
-#endif
-
-#ifdef HAVE_AS3543
-    as3514_write(AS3514_HPH_OUT_R, (0<<7) /* out */ | HPH_OUT_R_HP_OUT_DAC |
-                                  0x00);
-#else
-    /* Set headphone over-current to 0, Min volume */
-    as3514_write(AS3514_HPH_OUT_R,
-                 HPH_OUT_R_HP_OVC_TO_0MS | 0x00);
-#endif
-    /* Headphone ON, MUTE, Min volume */
-    as3514_write(AS3514_HPH_OUT_L,
-                 HPH_OUT_L_HP_ON | HPH_OUT_L_HP_MUTE | 0x00);
 
 #ifdef PHILIPS_SA9200
     /* LRCK 8-23kHz (there are audible clicks while reading the ADC otherwise) */
@@ -221,17 +184,48 @@ void audiohw_preinit(void)
 #else
     /* LRCK 24-48kHz */
     as3514_write(AS3514_PLLMODE, PLLMODE_LRCK_24_48);
-#endif
+#endif /* PHILIPS_SA9200 */
 
-    /* DAC_Mute_off */
-    as3514_set(AS3514_DAC_L, DAC_L_DAC_MUTE_off);
+    /* Set headphone over-current to 0, Min volume */
+    as3514_write(AS3514_HPH_OUT_R, HPH_OUT_R_HP_OVC_TO_0MS | 0x00);
+
+/* AMS Sansas based on the AS3525 need HPCM enabled, otherwise they output the
+   L-R signal on both L and R headphone outputs instead of normal stereo.
+   Turning it off saves a little power on targets that don't need it. */
+#if (CONFIG_CPU == AS3525)
+    /* Set HPCM on, ZCU off, reduce bias current, settings taken from c200v2 OF
+     */
+    as3514_write(AS3514_AUDIOSET3, AUDIOSET3_IBR_HPH | AUDIOSET3_ZCU_off);
+#else
+    /* TODO: check if AS3525 settings save power on e200v1 or as3525v2 */
+    /* Set HPCM off, ZCU on */
+    as3514_write(AS3514_AUDIOSET3, AUDIOSET3_HPCM_off);
+#endif /* CONFIG_CPU == AS3525 */
+
+    /* M2_Sup_off */
+    as3514_set(AS3514_MIC2_L, MIC2_L_M2_SUP_off);
+
+#endif /* HAVE_AS3543 */
+
+    /* registers identical on as3514/as3515 and as3543 */
 
     /* M1_Sup_off */
     as3514_set(AS3514_MIC1_L, MIC1_L_M1_SUP_off);
-#ifndef HAVE_AS3543
-    /* M2_Sup_off */
-    as3514_set(AS3514_MIC2_L, MIC2_L_M2_SUP_off);
-#endif
+
+    /* Headphone ON, MUTE, Min volume */
+    as3514_write(AS3514_HPH_OUT_L, HPH_OUT_L_HP_ON | HPH_OUT_L_HP_MUTE | 0x00);
+
+    /* DAC_Mute_off */
+    as3514_set(AS3514_DAC_L, DAC_L_DAC_MUTE_off);
+}
+
+static void audiohw_mute(bool mute)
+{
+    if (mute) {
+        as3514_set(AS3514_HPH_OUT_L, HPH_OUT_L_HP_MUTE);
+    } else {
+        as3514_clear(AS3514_HPH_OUT_L, HPH_OUT_L_HP_MUTE);
+    }
 }
 
 void audiohw_postinit(void)
@@ -251,9 +245,10 @@ void audiohw_set_master_vol(int vol_l, int vol_r)
     unsigned int hph_r, hph_l;
     unsigned int mix_l, mix_r;
 
-    /* keep track of current setting */
-    as3514.vol_l = vol_l;
-    as3514.vol_r = vol_r;
+    if (vol_l == 0 && vol_r == 0) {
+        audiohw_mute(true);
+        return;
+    }
 
     /* We combine the mixer channel volume range with the headphone volume
        range - keep first stage as loud as possible */
@@ -281,29 +276,22 @@ void audiohw_set_master_vol(int vol_l, int vol_r)
 #endif
     as3514_write_masked(AS3514_HPH_OUT_R, hph_r, AS3514_VOL_MASK);
     as3514_write_masked(AS3514_HPH_OUT_L, hph_l, AS3514_VOL_MASK);
+
+    audiohw_mute(false);
 }
 
+#if 0 /* unused */
 void audiohw_set_lineout_vol(int vol_l, int vol_r)
 {
+#ifdef HAVE_AS3543
+    /* line out volume is set in the same registers */
+    audiohw_set_master_vol(vol_l, vol_r);
+#else
     as3514_write_masked(AS3514_LINE_OUT_R, vol_r, AS3514_VOL_MASK);
     as3514_write_masked(AS3514_LINE_OUT_L, vol_l, AS3514_VOL_MASK);
-}
-
-void audiohw_mute(bool mute)
-{
-    if (mute) {
-        as3514_set(AS3514_HPH_OUT_L, HPH_OUT_L_HP_MUTE);
-#ifdef HAVE_AS3543
-        as3514_set(AS3543_DAC_IF, 0x80);
 #endif
-
-    } else {
-        as3514_clear(AS3514_HPH_OUT_L, HPH_OUT_L_HP_MUTE);
-#ifdef HAVE_AS3543
-        as3514_clear(AS3543_DAC_IF, 0x80);
-#endif
-    }
 }
+#endif
 
 /* Nice shutdown of AS3514 audio codec */
 void audiohw_close(void)
@@ -321,10 +309,6 @@ void audiohw_close(void)
     /* turn off everything */
     as3514_clear(AS3514_HPH_OUT_L, HPH_OUT_L_HP_ON);
     as3514_write(AS3514_AUDIOSET1, 0x0);
-
-#ifdef HAVE_AS3543
-    as3514_set(AS3543_DAC_IF, 0x80);
-#endif
 
     /* Allow caps to discharge */
     sleep(HZ/4);
@@ -348,6 +332,7 @@ void audiohw_enable_recording(bool source_mic)
                             AUDIOSET1_INPUT_MASK);
 
 #if CONFIG_CPU == AS3525v2
+        /* XXX: why is the microphone supply not needed on other models ?? */
         /* Enable supply */
         as3514_clear(AS3514_MIC1_L, MIC1_L_M1_SUP_off);
 #endif
@@ -447,20 +432,12 @@ void audiohw_set_monitor(bool enable)
                             AUDIOSET1_LIN1_on | AUDIOSET1_LIN2_on);
         as3514_set(AS3514_LINE_IN_R, LINE_IN1_R_LI1R_MUTE_off);
         as3514_set(AS3514_LINE_IN_L, LINE_IN1_L_LI1L_MUTE_off);
-
-#ifdef HAVE_AS3543
-        as3514_write_masked(AS3514_HPH_OUT_R,
-                            HPH_OUT_R_HP_OUT_LINE, HPH_OUT_R_HP_OUT_MASK);
-#endif
     }
     else {
-        /* turn off both LIN1 and LIN2 */
+        /* turn off both LIN1 and LIN2 (if present) */
         as3514_clear(AS3514_LINE_IN1_R, LINE_IN1_R_LI1R_MUTE_off);
         as3514_clear(AS3514_LINE_IN1_L, LINE_IN1_L_LI1L_MUTE_off);
-#ifdef HAVE_AS3543
-        as3514_write_masked(AS3514_HPH_OUT_R,
-                            HPH_OUT_R_HP_OUT_DAC, HPH_OUT_R_HP_OUT_MASK);
-#else
+#ifndef HAVE_AS3543
         as3514_clear(AS3514_LINE_IN2_R, LINE_IN2_R_LI2R_MUTE_off);
         as3514_clear(AS3514_LINE_IN2_L, LINE_IN2_L_LI2L_MUTE_off);
 #endif
@@ -468,5 +445,3 @@ void audiohw_set_monitor(bool enable)
     }
 }
 #endif /* HAVE_RECORDING || HAVE_FMRADIO_IN */
-
-

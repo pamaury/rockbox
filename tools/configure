@@ -930,9 +930,12 @@ cat <<EOF
                                                  ==Logik==
  ==Samsung==              ==Tatung==             80) DAX 1GB MP3/DAB
  140) YH-820              150) Elio TPJ-1022
- 141) YH-920                                     ==Lyre project==1
+ 141) YH-920                                     ==Lyre project==
  142) YH-925              ==Packard Bell==       130) Lyre proto 1
  143) YP-S3               160) Vibe 500          131) Mini2440
+
+ ==MPIO==
+ 170) HD200
 EOF
 
   buildfor=`input`;
@@ -1027,7 +1030,7 @@ fi
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$rootdir/tools/bmp2rb -f 0"
     output="ajbrec.ajz"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     #archosrom="$pwd/rombox.ucl"
     flash="$pwd/rockbox.ucl"
     plugins="yes"
@@ -1049,7 +1052,7 @@ fi
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$rootdir/tools/bmp2rb -f 0"
     output="ajbrec.ajz"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     #archosrom="$pwd/rombox.ucl"
     flash="$pwd/rockbox.ucl"
     plugins="yes"
@@ -1071,7 +1074,7 @@ fi
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$rootdir/tools/bmp2rb -f 0"
     output="ajbrec.ajz"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     #archosrom="$pwd/rombox.ucl"
     flash="$pwd/rockbox.ucl"
     plugins="yes"
@@ -1093,7 +1096,7 @@ fi
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$rootdir/tools/bmp2rb -f 0"
     output="ajbrec.ajz"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     #archosrom="$pwd/rombox.ucl"
     flash="$pwd/rockbox.ucl"
     plugins="yes"
@@ -1115,7 +1118,7 @@ fi
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$rootdir/tools/bmp2rb -f 0"
     output="ajbrec.ajz"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     #archosrom="$pwd/rombox.ucl"
     flash="$pwd/rockbox.ucl"
     plugins="yes"
@@ -1136,7 +1139,7 @@ fi
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$rootdir/tools/bmp2rb -f 6"
     output="cjbm.ajz"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="yes"
     swcodec=""
     # toolset is the tools within the tools directory that we build for
@@ -1161,7 +1164,7 @@ fi
     bmp2rb_remotenative="$rootdir/tools/bmp2rb -f 0"
     output="rockbox.iriver"
     bootoutput="bootloader.iriver"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     flash="$pwd/rombox.iriver"
     plugins="yes"
     swcodec="yes"
@@ -1185,7 +1188,7 @@ fi
     bmp2rb_remotemono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_remotenative="$rootdir/tools/bmp2rb -f 0"
     output="rockbox.iriver"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="yes"
     swcodec="yes"
     # toolset is the tools within the tools directory that we build for
@@ -1209,7 +1212,7 @@ fi
     bmp2rb_remotenative="$rootdir/tools/bmp2rb -f 0"
     output="rockbox.iriver"
     bootoutput="bootloader.iriver"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     flash="$pwd/rombox.iriver"
     plugins="yes"
     swcodec="yes"
@@ -1231,7 +1234,7 @@ fi
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$rootdir/tools/bmp2rb -f 0"
     output="rockbox.wma"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="yes"
     swcodec="yes"
     # toolset is the tools within the tools directory that we build for
@@ -1252,7 +1255,7 @@ fi
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$rootdir/tools/bmp2rb -f 5"
     output="rockbox.mi4"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="yes"
     swcodec="yes"
     boottool="$rootdir/tools/scramble -mi4v3 -model=h10 -type=RBBL"
@@ -1276,7 +1279,7 @@ fi
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$rootdir/tools/bmp2rb -f 5"
     output="rockbox.mi4"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="yes"
     swcodec="yes"
     boottool="$rootdir/tools/scramble -mi4v2 -model=h105 -type=RBBL"
@@ -1300,7 +1303,7 @@ fi
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$rootdir/tools/bmp2rb -f 5"
     output="rockbox.ipod"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="yes"
     swcodec="yes"
     bootoutput="bootloader-$modelname.ipod"
@@ -1323,7 +1326,7 @@ fi
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$rootdir/tools/bmp2rb -f 5"
     output="rockbox.ipod"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="yes"
     swcodec="yes"
     bootoutput="bootloader-$modelname.ipod"
@@ -1345,7 +1348,7 @@ fi
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$rootdir/tools/bmp2rb -f 4"
     output="rockbox.ipod"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="yes"
     swcodec="yes"
     bootoutput="bootloader-$modelname.ipod"
@@ -1368,7 +1371,7 @@ fi
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$rootdir/tools/bmp2rb -f 6"
     output="rockbox.ipod"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="yes"
     swcodec="yes"
     bootoutput="bootloader-$modelname.ipod"
@@ -1391,7 +1394,7 @@ fi
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$rootdir/tools/bmp2rb -f 6"
     output="rockbox.ipod"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="yes"
     swcodec="yes"
     bootoutput="bootloader-$modelname.ipod"
@@ -1414,7 +1417,7 @@ fi
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$rootdir/tools/bmp2rb -f 6"
     output="rockbox.ipod"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="yes"
     swcodec="yes"
     bootoutput="bootloader-$modelname.ipod"
@@ -1437,7 +1440,7 @@ fi
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$rootdir/tools/bmp2rb -f 6"
     output="rockbox.ipod"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="yes"
     swcodec="yes"
     bootoutput="bootloader-$modelname.ipod"
@@ -1460,7 +1463,7 @@ fi
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$rootdir/tools/bmp2rb -f 6"
     output="rockbox.ipod"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="yes"
     swcodec="yes"
     bootoutput="bootloader-$modelname.ipod"
@@ -1483,7 +1486,7 @@ fi
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$rootdir/tools/bmp2rb -f 4"
     output="rockbox.ipod"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="yes"
     swcodec="yes"
     bootoutput="bootloader-$modelname.ipod"
@@ -1508,7 +1511,7 @@ fi
     bmp2rb_remotemono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_remotenative="$rootdir/tools/bmp2rb -f 7"
     output="rockbox.iaudio"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="yes"
     swcodec="yes"
     # toolset is the tools within the tools directory that we build for
@@ -1532,7 +1535,7 @@ fi
     bmp2rb_remotemono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_remotenative="$rootdir/tools/bmp2rb -f 7"
     output="rockbox.iaudio"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="yes"
     swcodec="yes"
     # toolset is the tools within the tools directory that we build for
@@ -1555,7 +1558,7 @@ fi
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$rootdir/tools/bmp2rb -f 4"
     output="rockbox.iaudio"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="yes"
     swcodec="yes"
     bootoutput="I7_FW.BIN"
@@ -1580,7 +1583,7 @@ fi
     bmp2rb_native="$rootdir/tools/bmp2rb -f 4"
     output="rockbox.d2"
     bootoutput="bootloader-cowond2.bin"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="yes"
     swcodec="yes"
     toolset="$tccbitmaptools"
@@ -1600,7 +1603,7 @@ fi
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$rootdir/tools/bmp2rb -f 7"
     output="rockbox.iaudio"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="yes"
     swcodec="yes"
     # toolset is the tools within the tools directory that we build for
@@ -1622,7 +1625,7 @@ fi
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$rootdir/tools/bmp2rb -f 4"
     output="rockbox.gigabeat"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="yes"
     swcodec="yes"
     toolset=$gigabeatbitmaptools
@@ -1644,7 +1647,7 @@ fi
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$rootdir/tools/bmp2rb -f 4"
     output="rockbox.gigabeat"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="yes"
     swcodec="yes"
     toolset="$gigabeatbitmaptools"
@@ -1668,7 +1671,7 @@ fi
     bmp2rb_remotemono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_remotenative="$rootdir/tools/bmp2rb -f 0"
     output="rockbox.mrobe500"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="yes"
     swcodec="yes"
     toolset=$gigabeatbitmaptools
@@ -1692,7 +1695,7 @@ fi
     bmp2rb_remotemono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_remotenative="$rootdir/tools/bmp2rb -f 0"
     output="rockbox.mi4"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="yes"
     swcodec="yes"
     boottool="$rootdir/tools/scramble -mi4v2 -model=m100 -type=RBBL"
@@ -1718,7 +1721,7 @@ fi
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$rootdir/tools/bmp2rb -f 0"
     output="rockbox.logik"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins=""
     swcodec="yes"
     # toolset is the tools within the tools directory that we build for
@@ -1741,7 +1744,7 @@ fi
     tool="$rootdir/tools/scramble -creative=zvm"
     USE_ELF="yes"
     output="rockbox.zvm"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="yes"
     swcodec="yes"
     toolset=$ipodbitmaptools
@@ -1764,7 +1767,7 @@ fi
     tool="$rootdir/tools/scramble -creative=zvm60 -no-ciff"
     USE_ELF="yes"
     output="rockbox.zvm60"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="yes"
     swcodec="yes"
     toolset=$ipodbitmaptools
@@ -1787,7 +1790,7 @@ fi
     tool="$rootdir/tools/scramble -creative=zenvision -no-ciff"
     USE_ELF="yes"
     output="rockbox.zv"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins=""
     swcodec="yes"
     toolset=$ipodbitmaptools
@@ -1809,7 +1812,7 @@ fi
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$rootdir/tools/bmp2rb -f 4"
     output="rockbox.mi4"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="yes"
     swcodec="yes"
     boottool="$rootdir/tools/scramble -mi4v3 -model=e200 -type=RBBL"
@@ -1836,7 +1839,7 @@ fi
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$rootdir/tools/bmp2rb -f 4"
     output="rockbox.mi4"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="yes"
     swcodec="yes"
     boottool="$rootdir/tools/scramble -mi4r -model=e20r -type=RBBL"
@@ -1860,7 +1863,7 @@ fi
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$rootdir/tools/bmp2rb -f 4"
     output="rockbox.mi4"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="yes"
     swcodec="yes"
     boottool="$rootdir/tools/scramble -mi4v3 -model=c200 -type=RBBL"
@@ -1886,7 +1889,7 @@ fi
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$rootdir/tools/bmp2rb -f 0"
     output="rockbox.m200"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins=""
     swcodec="yes"
     # toolset is the tools within the tools directory that we build for
@@ -1910,7 +1913,7 @@ fi
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$rootdir/tools/bmp2rb -f 4"
     output="rockbox.c100"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins=""
     swcodec="yes"
     # toolset is the tools within the tools directory that we build for
@@ -1932,7 +1935,7 @@ fi
     tool="$rootdir/tools/scramble -add=clip"
     output="rockbox.sansa"
     bootoutput="bootloader-clip.sansa"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="yes"
     swcodec="yes"
     toolset=$scramblebitmaptools
@@ -1953,7 +1956,7 @@ fi
     tool="$rootdir/tools/scramble -add=e2v2"
     output="rockbox.sansa"
     bootoutput="bootloader-e200v2.sansa"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="yes"
     swcodec="yes"
     toolset=$scramblebitmaptools
@@ -1974,7 +1977,7 @@ fi
     tool="$rootdir/tools/scramble -add=m2v4"
     output="rockbox.sansa"
     bootoutput="bootloader-m200v4.sansa"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="yes"
     swcodec="yes"
     toolset=$scramblebitmaptools
@@ -1995,7 +1998,7 @@ fi
     tool="$rootdir/tools/scramble -add=fuze"
     output="rockbox.sansa"
     bootoutput="bootloader-fuze.sansa"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="yes"
     swcodec="yes"
     toolset=$scramblebitmaptools
@@ -2016,7 +2019,7 @@ fi
     tool="$rootdir/tools/scramble -add=c2v2"
     output="rockbox.sansa"
     bootoutput="bootloader-c200v2.sansa"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="yes"
     swcodec="yes"
     # toolset is the tools within the tools directory that we build for
@@ -2039,7 +2042,7 @@ fi
     tool="$rootdir/tools/scramble -add=clv2"
     output="rockbox.sansa"
     bootoutput="bootloader-clipv2.sansa"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="yes"
     swcodec="yes"
     toolset=$scramblebitmaptools
@@ -2083,7 +2086,7 @@ fi
     tool="$rootdir/tools/scramble -add=cli+"
     output="rockbox.sansa"
     bootoutput="bootloader-clipplus.sansa"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="yes"
     swcodec="yes"
     toolset=$scramblebitmaptools
@@ -2103,7 +2106,7 @@ fi
     tool="$rootdir/tools/scramble -add=fuz2"
     output="rockbox.sansa"
     bootoutput="bootloader-fuzev2.sansa"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="yes"
     swcodec="yes"
     toolset=$scramblebitmaptools
@@ -2123,7 +2126,7 @@ fi
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$rootdir/tools/bmp2rb -f 5"
     output="rockbox.elio"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="yes"
     swcodec="yes"
     boottool="$rootdir/tools/scramble -mi4v2"
@@ -2147,7 +2150,7 @@ fi
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$rootdir/tools/bmp2rb -f 4"
     output="rockbox.mi4"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins=""
     swcodec="yes"
     boottool="$rootdir/tools/scramble -mi4v3 -model=9200 -type=RBBL"
@@ -2171,7 +2174,7 @@ fi
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$rootdir/tools/bmp2rb -f 4"
     output="rockbox.mi4"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="yes"
     swcodec="yes"
     boottool="$rootdir/tools/scramble -mi4v3 -model=1630 -type=RBBL"
@@ -2195,7 +2198,7 @@ fi
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$rootdir/tools/bmp2rb -f 4"
     output="rockbox.mi4"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins=""
     swcodec="yes"
     boottool="$rootdir/tools/scramble -mi4v3 -model=6330 -type=RBBL"
@@ -2219,7 +2222,7 @@ fi
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$rootdir/tools/bmp2rb -f 4"
     output="rockbox.meizu"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="no" #FIXME
     swcodec="yes"
     toolset=$genericbitmaptools
@@ -2241,7 +2244,7 @@ fi
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$rootdir/tools/bmp2rb -f 4"
     output="rockbox.meizu"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="no" #FIXME
     swcodec="yes"
     toolset=$genericbitmaptools
@@ -2263,7 +2266,7 @@ fi
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$rootdir/tools/bmp2rb -f 4"
     output="rockbox.meizu"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="no" #FIXME
     swcodec="yes"
     toolset=$genericbitmaptools
@@ -2285,7 +2288,7 @@ fi
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$rootdir/tools/bmp2rb -f 4"
     output="rockbox.vx747"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="yes"
     swcodec="yes"
     toolset=$genericbitmaptools
@@ -2307,7 +2310,7 @@ fi
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$rootdir/tools/bmp2rb -f 4"
     output="rockbox.vx767"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="" #FIXME
     swcodec="yes"
     toolset=$genericbitmaptools
@@ -2329,7 +2332,7 @@ fi
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$rootdir/tools/bmp2rb -f 4"
     output="rockbox.vx747p"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="yes"
     swcodec="yes"
     toolset=$genericbitmaptools
@@ -2351,7 +2354,7 @@ fi
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$rootdir/tools/bmp2rb -f 4"
     output="rockbox.vx777"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="yes"
     swcodec="yes"
     toolset=$genericbitmaptools
@@ -2373,7 +2376,7 @@ fi
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$rootdir/tools/bmp2rb -f 4"
     output="rockbox.lyre"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins=""
     swcodec="yes"
     toolset=$scramblebitmaptools
@@ -2395,7 +2398,7 @@ fi
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$rootdir/tools/bmp2rb -f 4"
     output="rockbox.mini2440"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins=""
     swcodec="yes"
     toolset=$scramblebitmaptools
@@ -2417,7 +2420,7 @@ fi
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$rootdir/tools/bmp2rb -f 4"
     output="rockbox.mi4"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="yes"
     swcodec="yes"
     boottool="$rootdir/tools/scramble -mi4v2 -model=y820 -type=RBBL"
@@ -2441,7 +2444,7 @@ fi
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$rootdir/tools/bmp2rb -f 2"
     output="rockbox.mi4"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="yes"
     swcodec="yes"
     boottool="$rootdir/tools/scramble -mi4v2 -model=y920 -type=RBBL"
@@ -2465,7 +2468,7 @@ fi
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$rootdir/tools/bmp2rb -f 4"
     output="rockbox.mi4"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="yes"
     swcodec="yes"
     boottool="$rootdir/tools/scramble -mi4v2 -model=y925 -type=RBBL"
@@ -2489,7 +2492,7 @@ fi
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$rootdir/tools/bmp2rb -f 4"
     output="rockbox.yps3"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="no" #FIXME
     swcodec="yes"
     toolset=$genericbitmaptools
@@ -2511,7 +2514,7 @@ fi
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
     bmp2rb_native="$rootdir/tools/bmp2rb -f 5"
     output="rockbox.mi4"
-    appextra="recorder:gui"
+    appextra="recorder:gui:radio"
     plugins="yes"
     swcodec="yes"
     boottool="$rootdir/tools/scramble -mi4v3 -model=v500 -type=RBBL"
@@ -2523,6 +2526,29 @@ fi
     t_cpu="arm"
     t_manufacturer="pbell"
     t_model="vibe500"
+    ;;
+
+   170|hd200)
+    target_id=69
+    modelname="mpiohd200"
+    target="-DMPIO_HD200"
+    memory=16 # always
+    coldfirecc
+    tool="$rootdir/tools/scramble -add=hd20"
+    bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
+    bmp2rb_native="$rootdir/tools/bmp2rb -f 7"
+    output="rockbox.mpio"
+    bootoutput="bootloader.mpio"
+    appextra="recorder:gui:radio"
+    plugins="yes"
+    swcodec="yes"
+    # toolset is the tools within the tools directory that we build for
+    # this particular target.
+    toolset="$genericbitmaptools"
+    # architecture, manufacturer and model for the target-tree build
+    t_cpu="coldfire"
+    t_manufacturer="mpio"
+    t_model="hd200"
     ;;
 
    *)
@@ -2808,13 +2834,6 @@ else
    GCCOPTS="$GCCOPTS -Wno-pointer-sign"
  fi
 
- if test "$gccnum" -ge "401"; then
-   # this is a lame hack to avoid "warning: dereferencing type-punned pointer
-   # will break strict-aliasing rules"
-
-   GCCOPTS="$GCCOPTS -fno-strict-aliasing"
- fi
-
  if test "$gccnum" -ge "402"; then
    # disable warning about "warning: initialized field overwritten" as gcc 4.2
    # and later would throw it for several valid cases
@@ -2954,6 +2973,10 @@ EOF
 
 if test -n "$t_cpu"; then
   TARGET_INC="-I\$(FIRMDIR)/target/$t_cpu/$t_manufacturer/$t_model"
+  if [ "$simulator" = "yes" ]; then # a few more includes for the sim target tree
+    TARGET_INC="$TARGET_INC -I\$(FIRMDIR)/target/hosted/sdl/"
+    TARGET_INC="$TARGET_INC -I\$(FIRMDIR)/target/hosted/"
+  fi
   TARGET_INC="$TARGET_INC -I\$(FIRMDIR)/target/$t_cpu/$t_manufacturer"
   TARGET_INC="$TARGET_INC -I\$(FIRMDIR)/target/$t_cpu"
   GCCOPTS="$GCCOPTS"

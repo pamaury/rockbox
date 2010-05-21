@@ -25,9 +25,9 @@
 #include "sound.h"
 #include "logf.h"
 #include "system.h"
-#ifndef SIMULATOR
 #include "i2c.h"
-#include "mas.h"
+#include "mas.h"  
+#ifndef SIMULATOR
 #if CONFIG_CPU == PNX0101
 #include "pnx0101.h"
 #endif
@@ -41,58 +41,7 @@
  * find a nice way to handle 1.5db steps -> see wm8751 ifdef in sound_set_bass/treble
 */
 
-#define ONE_DB 10
-
-#if !defined(VOLUME_MIN) && !defined(VOLUME_MAX)
-#warning define for VOLUME_MIN and VOLUME_MAX is missing
-#define VOLUME_MIN -700
-#define VOLUME_MAX  0
-#endif
-
-/* volume/balance/treble/bass interdependency main part */
-#define VOLUME_RANGE (VOLUME_MAX - VOLUME_MIN)
-
-#ifndef SIMULATOR
 extern bool audio_is_initialized;
-
-#if (CONFIG_CODEC == MAS3587F) || (CONFIG_CODEC == MAS3539F)
-extern unsigned long shadow_io_control_main;
-extern unsigned shadow_codec_reg0;
-#endif
-#endif /* SIMULATOR */
-
-#ifdef SIMULATOR
-/* dummy for sim */
-const struct sound_settings_info audiohw_settings[] = {
-    [SOUND_VOLUME]        = {"dB", 0,  1, VOLUME_MIN / 10, VOLUME_MAX / 10, -25},
-    [SOUND_BASS]          = {"dB", 0,  1, -24,  24,   0},
-    [SOUND_TREBLE]        = {"dB", 0,  1, -24,  24,   0},
-    [SOUND_BALANCE]       = {"%",  0,  1,-100, 100,   0},
-    [SOUND_CHANNELS]      = {"",   0,  1,   0,   5,   0},
-    [SOUND_STEREO_WIDTH]  = {"%",  0,  5,   0, 250, 100},
-#if defined(HAVE_RECORDING)
-    [SOUND_LEFT_GAIN]     = {"dB", 1,  1,-128,  96,   0},
-    [SOUND_RIGHT_GAIN]    = {"dB", 1,  1,-128,  96,   0},
-    [SOUND_MIC_GAIN]      = {"dB", 1,  1,-128, 108,  16},
-#endif
-#if defined(AUDIOHW_HAVE_BASS_CUTOFF)
-    [SOUND_BASS_CUTOFF]   = {"",   0,  1,   1,   4,   1},
-#endif
-#if defined(AUDIOHW_HAVE_TREBLE_CUTOFF)
-    [SOUND_TREBLE_CUTOFF] = {"",   0,  1,   1,   4,   1},
-#endif
-#if (CONFIG_CODEC == MAS3587F) || (CONFIG_CODEC == MAS3539F)
-    [SOUND_LOUDNESS]      = {"dB", 0,  1,   0,  17,   0},
-    [SOUND_AVC]           = {"",   0,  1,  -1,   4,   0},
-    [SOUND_MDB_STRENGTH]  = {"dB", 0,  1,   0, 127,  48},
-    [SOUND_MDB_HARMONICS] = {"%",  0,  1,   0, 100,  50},
-    [SOUND_MDB_CENTER]    = {"Hz", 0, 10,  20, 300,  60},
-    [SOUND_MDB_SHAPE]     = {"Hz", 0, 10,  50, 300,  90},
-    [SOUND_MDB_ENABLE]    = {"",   0,  1,   0,   1,   0},
-    [SOUND_SUPERBASS]     = {"",   0,  1,   0,   1,   0},
-#endif
-};
-#endif
 
 static int sound_setting_volume = (VOLUME_MAX + VOLUME_MIN) / 2;
 
@@ -130,8 +79,12 @@ static sound_set_type * const sound_set_fns[] =
 {
     [0 ... SOUND_LAST_SETTING-1] = NULL,
     [SOUND_VOLUME]        = sound_set_volume,
+#if defined(AUDIOHW_HAVE_BASS)
     [SOUND_BASS]          = sound_set_bass,
+#endif
+#if defined(AUDIOHW_HAVE_TREBLE)
     [SOUND_TREBLE]        = sound_set_treble,
+#endif
     [SOUND_BALANCE]       = sound_set_balance,
     [SOUND_CHANNELS]      = sound_set_channels,
     [SOUND_STEREO_WIDTH]  = sound_set_stereo_width,
@@ -144,13 +97,56 @@ static sound_set_type * const sound_set_fns[] =
     [SOUND_MDB_SHAPE]     = sound_set_mdb_shape,
     [SOUND_MDB_ENABLE]    = sound_set_mdb_enable,
     [SOUND_SUPERBASS]     = sound_set_superbass,
-#endif
+#endif /* (CONFIG_CODEC == MAS3587F) || (CONFIG_CODEC == MAS3539F) */
 #if defined(AUDIOHW_HAVE_BASS_CUTOFF)
     [SOUND_BASS_CUTOFF]   = sound_set_bass_cutoff,
 #endif
 #if defined(AUDIOHW_HAVE_TREBLE_CUTOFF)
     [SOUND_TREBLE_CUTOFF] = sound_set_treble_cutoff,
 #endif
+#if defined(AUDIOHW_HAVE_DEPTH_3D)
+    [SOUND_DEPTH_3D]      = sound_set_depth_3d,
+#endif
+/* Hardware EQ tone controls */
+#if defined(AUDIOHW_HAVE_EQ)
+    [SOUND_EQ_BAND1_GAIN] = sound_set_hw_eq_band1_gain,
+#if defined(AUDIOHW_HAVE_EQ_BAND1_FREQUENCY)
+    [SOUND_EQ_BAND1_FREQUENCY] = sound_set_hw_eq_band1_frequency,
+#endif
+#if defined(AUDIOHW_HAVE_EQ_BAND2)
+    [SOUND_EQ_BAND2_GAIN] = sound_set_hw_eq_band2_gain,
+#if defined(AUDIOHW_HAVE_EQ_BAND2_FREQUENCY)
+    [SOUND_EQ_BAND2_FREQUENCY] = sound_set_hw_eq_band2_frequency,
+#endif
+#if defined(AUDIOHW_HAVE_EQ_BAND2_WIDTH)
+    [SOUND_EQ_BAND2_WIDTH] = sound_set_hw_eq_band2_width,
+#endif
+#endif /* AUDIOHW_HAVE_EQ_BAND2 */
+#if defined(AUDIOHW_HAVE_EQ_BAND3)
+    [SOUND_EQ_BAND3_GAIN] = sound_set_hw_eq_band3_gain,
+#if defined(AUDIOHW_HAVE_EQ_BAND3_FREQUENCY)
+    [SOUND_EQ_BAND3_FREQUENCY] = sound_set_hw_eq_band3_frequency,
+#endif
+#if defined(AUDIOHW_HAVE_EQ_BAND3_WIDTH)
+    [SOUND_EQ_BAND3_WIDTH] = sound_set_hw_eq_band3_width,
+#endif
+#endif /* AUDIOHW_HAVE_EQ_BAND3 */
+#if defined(AUDIOHW_HAVE_EQ_BAND4)
+    [SOUND_EQ_BAND4_GAIN] = sound_set_hw_eq_band4_gain,
+#if defined(AUDIOHW_HAVE_EQ_BAND4_FREQUENCY)
+    [SOUND_EQ_BAND4_FREQUENCY] = sound_set_hw_eq_band4_frequency,
+#endif
+#if defined(AUDIOHW_HAVE_EQ_BAND4_WIDTH)
+    [SOUND_EQ_BAND4_WIDTH] = sound_set_hw_eq_band4_width,
+#endif
+#endif /* AUDIOHW_HAVE_EQ_BAND4 */
+#if defined(AUDIOHW_HAVE_EQ_BAND5)
+    [SOUND_EQ_BAND5_GAIN] = sound_set_hw_eq_band5_gain,
+#if defined(AUDIOHW_HAVE_EQ_BAND5_FREQUENCY)
+    [SOUND_EQ_BAND5_FREQUENCY] = sound_set_hw_eq_band5_frequency,
+#endif
+#endif /* AUDIOHW_HAVE_EQ_BAND5 */
+#endif /* AUDIOHW_HAVE_EQ */
 };
 
 sound_set_type* sound_get_fn(int setting)
@@ -168,8 +164,7 @@ void sound_set_dsp_callback(int (*func)(int, intptr_t))
 }
 #endif
 
-#ifndef SIMULATOR
-#if CONFIG_CODEC == MAS3507D
+#if (CONFIG_CODEC == MAS3507D) && !defined(SIMULATOR)
 /* convert tenth of dB volume (-780..+180) to dac3550 register value */
 static int tenthdb2reg(int db)
 {
@@ -194,8 +189,15 @@ static int tenthdb2reg(int db)
 /* all values in tenth of dB    MAS3507D    UDA1380  */
 int current_volume = 0;    /* -780..+180  -840..   0 */
 int current_balance = 0;   /* -960..+960  -840..+840 */
+#ifdef AUDIOHW_HAVE_TREBLE
 int current_treble = 0;    /* -150..+150     0.. +60 */
+#endif
+#ifdef AUDIOHW_HAVE_BASS
 int current_bass = 0;      /* -150..+150     0..+240 */
+#endif
+#ifdef AUDIOHW_HAVE_EQ
+int current_eq_band_gain[AUDIOHW_EQ_BAND_NUM];
+#endif
 
 static void set_prescaled_volume(void)
 {
@@ -209,13 +211,20 @@ static void set_prescaled_volume(void)
  */
 #if defined(HAVE_SW_TONE_CONTROLS) || !(defined(HAVE_WM8975) \
     || defined(HAVE_WM8711) || defined(HAVE_WM8721) || defined(HAVE_WM8731) \
-    || defined(HAVE_WM8751) || defined(HAVE_WM8758) || defined(HAVE_WM8985) \
-    || defined(HAVE_UDA1341))
+    || defined(HAVE_WM8758) || defined(HAVE_WM8985) || defined(HAVE_UDA1341))
 
+#if defined(AUDIOHW_HAVE_BASS) && defined(AUDIOHW_HAVE_TREBLE)
     prescale = MAX(current_bass, current_treble);
+#endif
+#if defined(AUDIOHW_HAVE_EQ)
+    int i;
+    for (i = 0; i < AUDIOHW_EQ_BAND_NUM; i++)
+        prescale = MAX(current_eq_band_gain[i], prescale);
+#endif
+
     if (prescale < 0)
         prescale = 0;  /* no need to prescale if we don't boost
-                          bass or treble */
+                          bass, treble or eq band */
 
     /* Gain up the analog volume to compensate the prescale gain reduction,
      * but if this would push the volume over the top, reduce prescaling
@@ -250,29 +259,31 @@ static void set_prescaled_volume(void)
     dsp_callback(DSP_CALLBACK_SET_SW_VOLUME, 0);
 #endif
 
+#ifndef SIMULATOR
 #if CONFIG_CODEC == MAS3507D
     dac_volume(tenthdb2reg(l), tenthdb2reg(r), false);
 #elif defined(HAVE_UDA1380) || defined(HAVE_WM8975) || defined(HAVE_WM8758) \
    || defined(HAVE_WM8711) || defined(HAVE_WM8721) || defined(HAVE_WM8731) \
-   || defined(HAVE_WM8751) || defined(HAVE_AS3514) || defined(HAVE_TSC2100) \
-   || defined(HAVE_AK4537) || defined(HAVE_UDA1341)
+   || defined(HAVE_WM8750) || defined(HAVE_WM8751) || defined(HAVE_AS3514) \
+   || defined(HAVE_TSC2100) || defined(HAVE_AK4537) || defined(HAVE_UDA1341)
     audiohw_set_master_vol(tenthdb2master(l), tenthdb2master(r));
 #if defined(HAVE_WM8975) || defined(HAVE_WM8758) \
-    || (defined(HAVE_WM8751) && !defined(MROBE_100)) || defined(HAVE_WM8985)
+    || defined(HAVE_WM8750) || (defined(HAVE_WM8751) && !defined(MROBE_100)) \
+    || defined(HAVE_WM8985)
     audiohw_set_lineout_vol(tenthdb2master(0), tenthdb2master(0));
 #endif
 
 #elif defined(HAVE_TLV320) || defined(HAVE_WM8978) || defined(HAVE_WM8985)
     audiohw_set_headphone_vol(tenthdb2master(l), tenthdb2master(r));
-#elif defined(HAVE_JZ4740_CODEC)
+#elif defined(HAVE_JZ4740_CODEC) || defined(HAVE_SDL_AUDIO)
     audiohw_set_volume(current_volume);
 #endif
+#else /* SIMULATOR */
+    audiohw_set_volume(current_volume);
+#endif /* !SIMULATOR */
 }
 #endif /* (CONFIG_CODEC == MAS3507D) || defined HAVE_UDA1380 */
-#endif /* !SIMULATOR */
 
-
-#ifndef SIMULATOR
 
 #if (CONFIG_CODEC == MAS3587F) || (CONFIG_CODEC == MAS3539F)
 unsigned long mdb_shape_shadow = 0;
@@ -314,53 +325,77 @@ void sound_set_balance(int value)
 #endif
 }
 
+#ifdef AUDIOHW_HAVE_BASS
 void sound_set_bass(int value)
 {
     if(!audio_is_initialized)
         return;
 
 #if !defined(AUDIOHW_HAVE_CLIPPING)
-#if defined(HAVE_WM8751)
+#if defined(HAVE_WM8750) || defined(HAVE_WM8751)
     current_bass = value;
 #else
     current_bass =  value * 10;
 #endif
 #endif
 
-#if defined(AUDIOHW_HAVE_BASS)
-    audiohw_set_bass(value);
-#else
+#if defined(HAVE_SW_TONE_CONTROLS)
     dsp_callback(DSP_CALLBACK_SET_BASS, current_bass);
+#else
+    audiohw_set_bass(value);
 #endif
 
 #if !defined(AUDIOHW_HAVE_CLIPPING)
     set_prescaled_volume();
 #endif
 }
+#endif /* AUDIOHW_HAVE_BASS */
 
+#ifdef AUDIOHW_HAVE_TREBLE
 void sound_set_treble(int value)
 {
     if(!audio_is_initialized)
         return;
 
 #if !defined(AUDIOHW_HAVE_CLIPPING)
-#if defined(HAVE_WM8751)
+#if defined(HAVE_WM8750) || defined(HAVE_WM8751)
     current_treble = value;
 #else
     current_treble = value * 10;
 #endif
 #endif
 
-#if defined(AUDIOHW_HAVE_TREBLE)
-    audiohw_set_treble(value);
-#else
+#if defined(HAVE_SW_TONE_CONTROLS)
     dsp_callback(DSP_CALLBACK_SET_TREBLE, current_treble);
+#else
+    audiohw_set_treble(value);
 #endif
 
 #if !defined(AUDIOHW_HAVE_CLIPPING)
     set_prescaled_volume();
 #endif
 }
+#endif /* AUDIOHW_HAVE_TREBLE */
+
+#if defined(AUDIOHW_HAVE_BASS_CUTOFF)
+void sound_set_bass_cutoff(int value)
+{
+    if(!audio_is_initialized)
+        return;
+
+    audiohw_set_bass_cutoff(value);
+}
+#endif
+
+#if defined(AUDIOHW_HAVE_TREBLE_CUTOFF)
+void sound_set_treble_cutoff(int value)
+{
+    if(!audio_is_initialized)
+        return;
+
+    audiohw_set_treble_cutoff(value);
+}
+#endif
 
 void sound_set_channels(int value)
 {
@@ -386,27 +421,209 @@ void sound_set_stereo_width(int value)
 #endif
 }
 
-#if defined(AUDIOHW_HAVE_BASS_CUTOFF)
-void sound_set_bass_cutoff(int value)
+#if defined(AUDIOHW_HAVE_DEPTH_3D)
+void sound_set_depth_3d(int value)
 {
     if(!audio_is_initialized)
         return;
 
-    audiohw_set_bass_cutoff(value);
+    audiohw_set_depth_3d(value);
 }
 #endif
 
-#if defined(AUDIOHW_HAVE_TREBLE_CUTOFF)
-void sound_set_treble_cutoff(int value)
+#if defined(AUDIOHW_HAVE_EQ)
+int sound_enum_hw_eq_band_setting(unsigned int band,
+                                  unsigned int band_setting)
+{
+    static const int8_t
+    sound_hw_eq_band_setting[AUDIOHW_EQ_SETTING_NUM][AUDIOHW_EQ_BAND_NUM] =
+    {
+        [AUDIOHW_EQ_GAIN] =
+        {
+            [0 ... AUDIOHW_EQ_BAND_NUM-1] = -1,
+            [AUDIOHW_EQ_BAND1] = SOUND_EQ_BAND1_GAIN,
+        #ifdef AUDIOHW_HAVE_EQ_BAND2
+            [AUDIOHW_EQ_BAND2] = SOUND_EQ_BAND2_GAIN,
+        #endif
+        #ifdef AUDIOHW_HAVE_EQ_BAND3
+            [AUDIOHW_EQ_BAND3] = SOUND_EQ_BAND3_GAIN,
+        #endif
+        #ifdef AUDIOHW_HAVE_EQ_BAND4
+            [AUDIOHW_EQ_BAND4] = SOUND_EQ_BAND4_GAIN,
+        #endif
+        #ifdef AUDIOHW_HAVE_EQ_BAND5
+            [AUDIOHW_EQ_BAND5] = SOUND_EQ_BAND5_GAIN,
+        #endif
+        },
+#ifdef AUDIOHW_HAVE_EQ_FREQUENCY
+        [AUDIOHW_EQ_FREQUENCY] =
+        {
+            [0 ... AUDIOHW_EQ_BAND_NUM-1] = -1,
+        #ifdef AUDIOHW_HAVE_EQ_BAND1_FREQUENCY
+            [AUDIOHW_EQ_BAND1] = SOUND_EQ_BAND1_FREQUENCY,
+        #endif
+        #ifdef AUDIOHW_HAVE_EQ_BAND2_FREQUENCY
+            [AUDIOHW_EQ_BAND2] = SOUND_EQ_BAND2_FREQUENCY,
+        #endif
+        #ifdef AUDIOHW_HAVE_EQ_BAND3_FREQUENCY
+            [AUDIOHW_EQ_BAND3] = SOUND_EQ_BAND3_FREQUENCY,
+        #endif
+        #ifdef AUDIOHW_HAVE_EQ_BAND4_FREQUENCY
+            [AUDIOHW_EQ_BAND4] = SOUND_EQ_BAND4_FREQUENCY,
+        #endif
+        #ifdef AUDIOHW_HAVE_EQ_BAND5_FREQUENCY
+            [AUDIOHW_EQ_BAND5] = SOUND_EQ_BAND5_FREQUENCY,
+        #endif
+        },
+#endif /* AUDIOHW_HAVE_EQ_FREQUENCY */
+#ifdef AUDIOHW_HAVE_EQ_WIDTH
+        [AUDIOHW_EQ_WIDTH] =
+        {
+            [0 ... AUDIOHW_EQ_BAND_NUM-1] = -1,
+        #ifdef AUDIOHW_HAVE_EQ_BAND2_WIDTH
+            [AUDIOHW_EQ_BAND2] = SOUND_EQ_BAND2_WIDTH,
+        #endif
+        #ifdef AUDIOHW_HAVE_EQ_BAND3_WIDTH
+            [AUDIOHW_EQ_BAND3] = SOUND_EQ_BAND3_WIDTH,
+        #endif
+        #ifdef AUDIOHW_HAVE_EQ_BAND4_WIDTH
+            [AUDIOHW_EQ_BAND4] = SOUND_EQ_BAND4_WIDTH,
+        #endif
+        },
+#endif /* AUDIOHW_HAVE_EQ_WIDTH */
+    };
+
+    if (band < AUDIOHW_EQ_BAND_NUM && band_setting < AUDIOHW_EQ_SETTING_NUM)
+        return sound_hw_eq_band_setting[band_setting][band];
+
+    return -1;
+}
+
+static void sound_set_hw_eq_band_gain(unsigned int band, int value)
 {
     if(!audio_is_initialized)
         return;
 
-    audiohw_set_treble_cutoff(value);
+    current_eq_band_gain[band] = value;
+    audiohw_set_eq_band_gain(band, value);
+    set_prescaled_volume();
+}
+
+void sound_set_hw_eq_band1_gain(int value)
+{
+    sound_set_hw_eq_band_gain(AUDIOHW_EQ_BAND1, value);
+}
+
+#if defined(AUDIOHW_HAVE_EQ_BAND2)
+void sound_set_hw_eq_band2_gain(int value)
+{
+    sound_set_hw_eq_band_gain(AUDIOHW_EQ_BAND2, value);
 }
 #endif
 
-#if (CONFIG_CODEC == MAS3587F) || (CONFIG_CODEC == MAS3539F)
+#if defined(AUDIOHW_HAVE_EQ_BAND3)
+void sound_set_hw_eq_band3_gain(int value)
+{
+    sound_set_hw_eq_band_gain(AUDIOHW_EQ_BAND3, value);
+}
+#endif
+
+#if defined(AUDIOHW_HAVE_EQ_BAND4)
+void sound_set_hw_eq_band4_gain(int value)
+{
+    sound_set_hw_eq_band_gain(AUDIOHW_EQ_BAND4, value);
+}
+#endif
+
+#if defined(AUDIOHW_HAVE_EQ_BAND5)
+void sound_set_hw_eq_band5_gain(int value)
+{
+    sound_set_hw_eq_band_gain(AUDIOHW_EQ_BAND5, value);
+}
+#endif
+
+#if defined(AUDIOHW_HAVE_EQ_BAND1_FREQUENCY)
+void sound_set_hw_eq_band1_frequency(int value)
+{
+    if(!audio_is_initialized)
+        return;
+
+    audiohw_set_eq_band_frequency(AUDIOHW_EQ_BAND1, value);
+}
+#endif
+
+#if defined(AUDIOHW_HAVE_EQ_BAND2_FREQUENCY)
+void sound_set_hw_eq_band2_frequency(int value)
+{
+    if(!audio_is_initialized)
+        return;
+
+    audiohw_set_eq_band_frequency(AUDIOHW_EQ_BAND2, value);
+}
+#endif
+
+#if defined(AUDIOHW_HAVE_EQ_BAND3_FREQUENCY)
+void sound_set_hw_eq_band3_frequency(int value)
+{
+    if(!audio_is_initialized)
+        return;
+
+    audiohw_set_eq_band_frequency(AUDIOHW_EQ_BAND3, value);
+}
+#endif
+
+#if defined(AUDIOHW_HAVE_EQ_BAND4_FREQUENCY)
+void sound_set_hw_eq_band4_frequency(int value)
+{
+    if(!audio_is_initialized)
+        return;
+
+    audiohw_set_eq_band_frequency(AUDIOHW_EQ_BAND4, value);
+}
+#endif
+
+#if defined(AUDIOHW_HAVE_EQ_BAND5_FREQUENCY)
+void sound_set_hw_eq_band5_frequency(int value)
+{
+    if(!audio_is_initialized)
+        return;
+
+    audiohw_set_eq_band_frequency(AUDIOHW_EQ_BAND5, value);
+}
+#endif
+
+#if defined(AUDIOHW_HAVE_EQ_BAND2_WIDTH)
+void sound_set_hw_eq_band2_width(int value)
+{
+    if(!audio_is_initialized)
+        return;
+
+    audiohw_set_eq_band_width(AUDIOHW_EQ_BAND2, value);
+}
+#endif
+
+#if defined(AUDIOHW_HAVE_EQ_BAND3_WIDTH)
+void sound_set_hw_eq_band3_width(int value)
+{
+    if(!audio_is_initialized)
+        return;
+
+    audiohw_set_eq_band_width(AUDIOHW_EQ_BAND3, value);
+}
+#endif
+
+#if defined(AUDIOHW_HAVE_EQ_BAND4_WIDTH)
+void sound_set_hw_eq_band4_width(int value)
+{
+    if(!audio_is_initialized)
+        return;
+
+    audiohw_set_eq_band_width(AUDIOHW_EQ_BAND4, value);
+}
+#endif
+#endif /* AUDIOHW_HAVE_EQ */
+
+#if ((CONFIG_CODEC == MAS3587F) || (CONFIG_CODEC == MAS3539F))
 void sound_set_loudness(int value)
 {
     if(!audio_is_initialized)
@@ -493,95 +710,6 @@ void sound_set_superbass(int value)
     mas_codec_writereg(MAS_REG_KLOUDNESS, loudness_shadow);
 }
 #endif /* (CONFIG_CODEC == MAS3587F) || (CONFIG_CODEC == MAS3539F) */
-
-#else /* SIMULATOR */
-int sim_volume;
-void sound_set_volume(int value)
-{
-    /* 128 is SDL_MIX_MAXVOLUME */
-    sim_volume = 128 * (value - VOLUME_MIN / 10) / (VOLUME_RANGE / 10);
-}
-
-void sound_set_balance(int value)
-{
-    (void)value;
-}
-
-void sound_set_bass(int value)
-{
-    (void)value;
-}
-
-void sound_set_treble(int value)
-{
-    (void)value;
-}
-
-void sound_set_channels(int value)
-{
-    (void)value;
-}
-
-void sound_set_stereo_width(int value)
-{
-    (void)value;
-}
-
-#if (CONFIG_CODEC == MAS3587F) || (CONFIG_CODEC == MAS3539F)
-void sound_set_loudness(int value)
-{
-    (void)value;
-}
-
-void sound_set_avc(int value)
-{
-    (void)value;
-}
-
-void sound_set_mdb_strength(int value)
-{
-    (void)value;
-}
-
-void sound_set_mdb_harmonics(int value)
-{
-    (void)value;
-}
-
-void sound_set_mdb_center(int value)
-{
-    (void)value;
-}
-
-void sound_set_mdb_shape(int value)
-{
-    (void)value;
-}
-
-void sound_set_mdb_enable(int value)
-{
-    (void)value;
-}
-
-void sound_set_superbass(int value)
-{
-    (void)value;
-}
-#endif /* (CONFIG_CODEC == MAS3587F) || (CONFIG_CODEC == MAS3539F) */
-
-#if defined(HAVE_WM8758) || defined(HAVE_WM8985)
-void sound_set_bass_cutoff(int value)
-{
-    (void) value;
-}
-
-void sound_set_treble_cutoff(int value)
-{
-    (void) value;
-}
-#endif /* HAVE_WM8758 */
-
-#endif /* SIMULATOR */
 
 void sound_set(int setting, int value)
 {
@@ -686,6 +814,10 @@ int sound_val2phys(int setting, int value)
         break;
 #endif
 
+    case SOUND_DEPTH_3D:
+        result = (100 * value + 8) / 15;
+        break;
+
     default:
         result = value;
     }
@@ -699,13 +831,19 @@ int sound_val2phys(int setting, int value)
 #endif /* !defined(HAVE_AS3514) || defined(SIMULATOR) */
 
 #if (CONFIG_CODEC == MAS3587F) || (CONFIG_CODEC == MAS3539F)
-#ifndef SIMULATOR
 /* This function works by telling the decoder that we have another
    crystal frequency than we actually have. It will adjust its internal
    parameters and the result is that the audio is played at another pitch.
 
    The pitch value precision is based on PITCH_SPEED_PRECISION (in dsp.h)
 */
+
+#ifdef SIMULATOR
+static
+#else
+extern
+#endif
+        unsigned long shadow_io_control_main;
 static int last_pitch = PITCH_SPEED_100;
 
 void sound_set_pitch(int32_t pitch)
@@ -731,15 +869,4 @@ int32_t sound_get_pitch(void)
 {
     return last_pitch;
 }
-#else /* SIMULATOR */
-void sound_set_pitch(int32_t pitch)
-{
-    (void)pitch;
-}
-
-int32_t sound_get_pitch(void)
-{
-    return PITCH_SPEED_100;
-}
-#endif /* SIMULATOR */
 #endif /* (CONFIG_CODEC == MAS3587F) || (CONFIG_CODEC == MAS3539F) */

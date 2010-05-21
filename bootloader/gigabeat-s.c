@@ -20,7 +20,7 @@
  ****************************************************************************/
 #include "config.h"
 #include "system.h"
-#include <sprintf.h>
+#include <stdio.h>
 #include "kernel.h"
 #include "string.h"
 #include "adc.h"
@@ -143,6 +143,9 @@ static void handle_usb(void)
     button_close();
     backlight_close();
 
+    /* Sleep a little to let the backlight ramp up */
+    sleep(HZ*5/4);
+
     reset_screen();
 }
 
@@ -193,7 +196,7 @@ static void untar(int tar_fd)
         {
             int wc;
 
-            fd = creat(path);
+            fd = creat(path, 0666);
             if (fd < 0)
             {
                 printf("failed to create file (%d)", fd);

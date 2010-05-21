@@ -97,8 +97,8 @@ static int32_t temp_buffer [TEMP_SAMPLES] IDATA_ATTR;
 static int wav2wv(const char *infile)
 {
     int in_fd, out_fd, num_chans, error = false, last_buttons;
-    unsigned int32_t total_bytes_read = 0, total_bytes_written = 0;
-    unsigned int32_t total_samples, samples_remaining;
+    uint32_t total_bytes_read = 0, total_bytes_written = 0;
+    uint32_t total_samples, samples_remaining;
     int32_t *input_buffer = (int32_t *) audiobuf;
     unsigned char *output_buffer = (unsigned char *)(audiobuf + 0x100000);
     char outfile[MAX_PATH];
@@ -169,7 +169,7 @@ static int wav2wv(const char *infile)
     outextension = outfile + rb->strlen(outfile) - 3; 
     outextension[1] = outextension[2];
     outextension[2] = 0;
-    out_fd = rb->creat(outfile);
+    out_fd = rb->creat(outfile, 0666);
 
     if (out_fd < 0) {
         rb->splash(HZ*2, "could not create file!");
@@ -180,7 +180,7 @@ static int wav2wv(const char *infile)
     wvupdate (start_tick, native_header.SampleRate, total_samples, 0, 0, 0);
 
     for (samples_remaining = total_samples; samples_remaining;) {
-        unsigned int32_t samples_count, samples_to_pack, bytes_count;
+        uint32_t samples_count, samples_to_pack, bytes_count;
         int cnt, buttons;
         int32_t value, *lp;
         signed char *cp;
@@ -204,7 +204,7 @@ static int wav2wv(const char *infile)
         cp = (signed char *) input_buffer;
 
         while (samples_to_pack) {
-            unsigned int32_t samples_this_pass = TEMP_SAMPLES / num_chans;
+            uint32_t samples_this_pass = TEMP_SAMPLES / num_chans;
 
             if (samples_this_pass > samples_to_pack)
                 samples_this_pass = samples_to_pack;

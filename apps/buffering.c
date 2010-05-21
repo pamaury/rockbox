@@ -38,7 +38,6 @@
 #include "kernel.h"
 #include "tree.h"
 #include "debug.h"
-#include "sprintf.h"
 #include "settings.h"
 #include "codecs.h"
 #include "audio.h"
@@ -687,7 +686,7 @@ static bool buffer_handle(int handle_id)
             stop = true;
             DEBUGF( "%s(): Preventing handle corruption: h1.id:%d h2.id:%d"
                     " copy_n:%lu overlap:%ld h1.filerem:%lu\n", __func__,
-                    h->id, h->next->id, (unsigned long)copy_n, overlap,
+                    h->id, h->next->id, (unsigned long)copy_n, (long)overlap,
                     (unsigned long)h->filerem);
             copy_n -= overlap;
         }
@@ -1008,7 +1007,6 @@ int bufopen(const char *file, size_t offset, enum data_type type,
     }
 
     /* Other cases: there is a little more work. */
-
     int fd = open(file, O_RDONLY);
     if (fd < 0)
         return ERR_FILE_ERROR;

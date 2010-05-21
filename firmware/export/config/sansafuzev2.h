@@ -21,7 +21,7 @@
 
 /* Define bitmask of input sources - recordable bitmask can be defined
    explicitly if different */
-#define INPUT_SRC_CAPS (SRC_CAP_MIC /*| SRC_CAP_FMRADIO*/)
+#define INPUT_SRC_CAPS (SRC_CAP_MIC | SRC_CAP_FMRADIO)
 
 /* define this if you have a bitmap LCD display */
 #define HAVE_LCD_BITMAP
@@ -68,6 +68,15 @@
 /* There is no hardware tone control */
 #define HAVE_SW_TONE_CONTROLS
 
+/* define this if the unit uses a scrollwheel for navigation */
+#define HAVE_SCROLLWHEEL
+/* define to activate advanced wheel acceleration code */
+#define HAVE_WHEEL_ACCELERATION
+/* define from which rotation speed [degree/sec] on the acceleration starts */
+#define WHEEL_ACCEL_START 720
+/* define type of acceleration (1 = ^2, 2 = ^3, 3 = ^4) */
+#define WHEEL_ACCELERATION  1
+
 #endif /* !BOOTLOADER */
 
 /* put the lcd frame buffer in IRAM */
@@ -108,7 +117,7 @@
 #define AB_REPEAT_ENABLE 1
 
 /* FM Tuner - suspected to be the SI4702 */
-//#define CONFIG_TUNER SI4700
+#define CONFIG_TUNER SI4700
 /* #define HAVE_TUNER_PWR_CTRL */
 
 /* Define this for LCD backlight available */
@@ -125,15 +134,6 @@
 
 /* Which backlight fading type? */
 #define CONFIG_BACKLIGHT_FADING BACKLIGHT_FADING_SW_SETTING
-
-/* define this if the unit uses a scrollwheel for navigation */
-#define HAVE_SCROLLWHEEL
-/* define to activate advanced wheel acceleration code */
-#define HAVE_WHEEL_ACCELERATION
-/* define from which rotation speed [degree/sec] on the acceleration starts */
-#define WHEEL_ACCEL_START 540
-/* define type of acceleration (1 = ^2, 2 = ^3, 3 = ^4) */
-#define WHEEL_ACCELERATION 1
 
 /* define this if you have a flash memory storage */
 #define HAVE_FLASH_STORAGE
@@ -160,7 +160,7 @@
 #define CONFIG_I2C I2C_AS3525
 
 /* define current usage levels (based on battery bench) */
-#define CURRENT_NORMAL     65
+#define CURRENT_NORMAL     30
 #define CURRENT_BACKLIGHT  30
 #define CURRENT_RECORD     CURRENT_NORMAL
 
@@ -186,7 +186,7 @@
 #define USB_HANDLED_BY_OF
 
 /* USB On-the-go */
-#define CONFIG_USBOTG USBOTG_AS3525
+#define CONFIG_USBOTG USBOTG_AS3525v2
 
 /* enable these for the experimental usb stack */
 #define HAVE_USBSTACK
@@ -196,7 +196,7 @@
 #endif /* !BOOTLOADER */
 
 /* Define this if you have adjustable CPU frequency */
-#define HAVE_ADJUSTABLE_CPU_FREQ
+//#define HAVE_ADJUSTABLE_CPU_FREQ
 
 #define BOOTFILE_EXT    "sansa"
 #define BOOTFILE        "rockbox." BOOTFILE_EXT

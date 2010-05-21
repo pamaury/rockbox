@@ -1,11 +1,27 @@
 % $Id$ %
 \section{\label{ref:SystemOptions}System}
 \subsection{Start Screen}
-    Set the screen that Rockbox will start in. Selecting
-    \setting{Resume Playback} will resume playback where it was when the \dap{}
-    was shut off if there is a playlist to resume and will then end up in the
-    WPS. Selecting \setting{Previous Screen} will make Rockbox start in the
-    screen it was when the \dap{} was shut off.
+    Set the screen that Rockbox will start in. The default is the main menu but
+    the following options are available: % almost all items in the main menu with a few exceptions
+    \begin{description}
+        \item[Previous Screen.] Start Rockbox in the same screen as when it was shut off.
+        \item[Main Menu.] Show the main menu.
+        \item[Files.] Display the file browser, starting in the root directory of your \dap.
+        \item[Database.] Show the default database view.
+        \item[Resume Playback.] Go to the WPS and and resume playback from where it was
+            before turning off (if there is a playlist to resume).
+        \item[Settings.] Display the main settings menu.
+        \opt{recording}{%
+            \item[Recording.] Start the \dap{} in the recording screen
+                (recording does not start automatically).
+        }
+        \opt{radio}{%
+            \item[FM Radio.] Go to the radio screen and start playing.
+        }
+        \item[Recent Bookmarks.] Show the list of recent bookmarks as
+            described in \reference{ref:Bookmarkconfigactual}. Bookmarking needs
+            to be enabled.
+    \end{description}
 
 \nopt{sansa}%will probably be there on Sansas one day -  exclude it the simple way without specific option
 {\nopt{sansaAMS}{
@@ -15,21 +31,21 @@
   \begin{description}
     \item [Battery Capacity.] This setting can be used to tell Rockbox what
       capacity (in mAh) the battery being used has. The default is
-      \opt{player,recorder}{1500mAh}%
-      \opt{recorderv2fm}{2200mAh}%
-      \opt{ondiosp,ondiofm}{1000mAh}%
-      \opt{h100,h300}{1300mAh}%
-      \opt{ipodmini}{400mAh (1G) or 630mAh (2G)}%
-      \opt{ipodcolor}{700mAh}%
-      \opt{ipodnano}{300mAh}%
-      \opt{ipodvideo}{400mAh (30GB) or 600mAh (60/80GB)}%
-      \opt{ipod4g}{630mAh}%
-      \opt{ipod3g}{630mAh}%
-      \opt{ipod1g2g}{1200mAh}%
-      \opt{m5,x5}{950mAh}%
-      \opt{gigabeatf}{2000mAh}%
-      \opt{gigabeats}{700mAh}%
-      \opt{cowond2}{1600mAh}%
+      \opt{player,recorder}{1500~mAh}%
+      \opt{recorderv2fm}{2200~mAh}%
+      \opt{ondiosp,ondiofm,vibe500}{1000~mAh}%
+      \opt{h100,h300}{1300~mAh}%
+      \opt{ipodmini}{400~mAh (1G) or 630~mAh (2G)}%
+      \opt{ipodcolor}{700~mAh}%
+      \opt{ipodnano}{300~mAh}%
+      \opt{ipodvideo}{400~mAh (30~GB) or 600~mAh (60/80~GB)}%
+      \opt{ipod4g}{630~mAh}%
+      \opt{ipod3g}{630~mAh}%
+      \opt{ipod1g2g}{1200~mAh}%
+      \opt{m5,x5}{950~mAh}%
+      \opt{gigabeatf}{2000~mAh}%
+      \opt{gigabeats}{700~mAh}%
+      \opt{cowond2}{1600~mAh}%
       , which is the capacity value for the standard
       \opt{archos}{batteries}\nopt{archos}{battery} shipped with the \dap.
         Rockbox uses this value for runtime estimation, not battery percentage
@@ -39,7 +55,7 @@
       \opt{iaudio}{Rockbox does not automatically distinguish between the
         ``L'' models and the ``simple'' models which determine the default
         value. If your dap{} is an \opt{m5}{M5L}\opt{x5}{X5L} set the value
-        to 2250mAh for more accuracy in the runtime estimation.}
+        to 2250~mAh for more accuracy in the runtime estimation.}
       \opt{ipod,sansa}{This value is fairly meaningless in the \playerman{}
         family at present, and work is on-going into finding a better way to
         determine battery life.}
@@ -52,7 +68,7 @@
       \opt{h300,ipodnano2g}{
       \item [Charge During USB Connection.] This option lets you control whether
         the \dap{} should charge during the USB connection and hence draw the
-        full 500mA. Turning it \setting{Off} is recommended if the dap{} is
+        full 500~mA. Turning it \setting{Off} is recommended if the dap{} is
         connected through an unpowered USB hub or a laptop port.
       }
 
@@ -205,17 +221,20 @@ therefore result in better runtime.
     keypad mode.  There are different modes which provide different
     functionality.
     \opt{SANSA_E200_PAD,GIGABEAT_S_PAD,SANSA_C200_PAD,SANSA_CLIP_PAD%
-        ,IRIVER_H10_PAD,IPOD_4G_PAD,IPOD_3G_PAD,IPOD_1G2G_PAD,MROBE100_PAD}{%
+        ,IRIVER_H10_PAD,IPOD_4G_PAD,IPOD_3G_PAD,IPOD_1G2G_PAD,MROBE100_PAD%
+        ,PBELL_VIBE500_PAD}{%
     Switching modes back and forth is done by pressing the
         \opt{SANSA_E200_PAD,SANSA_C200_PAD}{\ButtonRec}%
         \opt{GIGABEAT_S_PAD,SANSA_CLIP_PAD,MROBE100_PAD,IRIVER_H10_PAD}%
             {\ButtonPower}%
         \opt{IPOD_4G_PAD,IPOD_3G_PAD,IPOD_1G2G_PAD}{\ButtonSelect+\ButtonRight}
+        \opt{PBELL_VIBE500_PAD}{\ButtonOK+\ButtonLeft}
     and
         \opt{SANSA_E200_PAD,SANSA_C200_PAD}{Long \ButtonRec}%
         \opt{GIGABEAT_S_PAD,SANSA_CLIP_PAD,MROBE100_PAD,IRIVER_H10_PAD}%
             {Long \ButtonPower}%
         \opt{IPOD_4G_PAD,IPOD_3G_PAD,IPOD_1G2G_PAD}{\ButtonSelect+\ButtonLeft}
+        \opt{PBELL_VIBE500_PAD}{\ButtonOK+\ButtonRight}
     keys, respectively.%
     }%
     \opt{HAVEREMOTEKEYMAP}{
@@ -232,15 +251,14 @@ therefore result in better runtime.
         and skips tracks on the host computer. It is equivalent for the
         multimedia keys found on top of some multimedia keyboards.
 
-        \begin{table}
-            \begin{btnmap}{}{}
+            \begin{btnmap}
                 % Volume up / down
                 \opt{SANSA_E200_PAD,IPOD_4G_PAD,IPOD_3G_PAD,IPOD_1G2G_PAD}
                     {\ButtonScrollFwd / \ButtonScrollBack}
                 \opt{GIGABEAT_S_PAD,SANSA_C200_PAD,SANSA_CLIP_PAD}
                     {\ButtonVolUp / \ButtonVolDown}
                 \opt{IRIVER_H10_PAD}{\ButtonScrollUp / \ButtonScrollDown}
-                \opt{MROBE100_PAD}{\ButtonUp / \ButtonDown}
+                \opt{MROBE100_PAD,PBELL_VIBE500_PAD}{\ButtonUp / \ButtonDown}
                     &
                 \opt{HAVEREMOTEKEYMAP}{
                     \opt{GIGABEAT_RC_PAD,MROBE100_RC_PAD}
@@ -254,6 +272,7 @@ therefore result in better runtime.
                     ,IPOD_3G_PAD,IPOD_1G2G_PAD,MROBE100_PAD}{\ButtonSelect}
                 \opt{GIGABEAT_S_PAD}{\ButtonSelect; \ButtonBack}
                 \opt{IRIVER_H10_PAD}{\ButtonFF}
+                \opt{IRIVER_VIBE500_PAD}{\ButtonMenu}
                     &
                 \opt{HAVEREMOTEKEYMAP}{
                     \opt{GIGABEAT_RC_PAD}{Long \ButtonRCFF}%
@@ -265,7 +284,7 @@ therefore result in better runtime.
                 % Playback play / pause
                 \opt{SANSA_E200_PAD,SANSA_C200_PAD,SANSA_CLIP_PAD}{\ButtonUp}
                 \opt{IRIVER_H10_PAD,IPOD_4G_PAD,IPOD_3G_PAD,IPOD_1G2G_PAD%
-                    ,MROBE100_PAD}{\ButtonPlay}
+                    ,MROBE100_PAD,PBELL_VIBE500_PAD}{\ButtonPlay}
                 \opt{GIGABEAT_S_PAD}{\ButtonPlay; \ButtonUp}
                     &
                 \opt{HAVEREMOTEKEYMAP}{
@@ -282,6 +301,7 @@ therefore result in better runtime.
                 \opt{IRIVER_H10_PAD}{\ButtonRew; Long \ButtonPlay}
                 \opt{IPOD_4G_PAD,IPOD_3G_PAD,IPOD_1G2G_PAD}
                     {\ButtonMenu; Long \ButtonPlay}
+                \opt{PBELL_VIBE500_PAD}{\ButtonCancel; Long \ButtonPlay}
                 \opt{MROBE100_PAD}{\ButtonDisplay; Long {\ButtonPlay}}
                     &
                 \opt{HAVEREMOTEKEYMAP}{
@@ -294,7 +314,7 @@ therefore result in better runtime.
                 % Scan previous track
                 \opt{SANSA_E200_PAD,SANSA_C200_PAD,SANSA_CLIP_PAD,%
                     IRIVER_H10_PAD,IPOD_4G_PAD,IPOD_3G_PAD,IPOD_1G2G_PAD%
-                    ,MROBE100_PAD}
+                    ,MROBE100_PAD,PBELL_VIBE500_PAD}
                     {\ButtonLeft}
                 \opt{GIGABEAT_RC_PAD}{\ButtonPrev; \ButtonLeft}%
                     &
@@ -307,7 +327,7 @@ therefore result in better runtime.
                 % Scan next track
                 \opt{SANSA_E200_PAD,SANSA_C200_PAD,SANSA_CLIP_PAD%
                     ,IRIVER_H10_PAD,IPOD_4G_PAD,IPOD_3G_PAD,IPOD_1G2G_PAD%
-                    ,MROBE100_PAD}
+                    ,MROBE100_PAD,PBELL_VIBE500_PAD}
                     {\ButtonRight}
                 \opt{GIGABEAT_RC_PAD}{\ButtonNext; \ButtonRight}%
                     &
@@ -317,7 +337,6 @@ therefore result in better runtime.
                 Scan next track
                 \\
             \end{btnmap}
-        \end{table}
 
         \item [Presentation.] This mode lets you control a presentation program
         (e.g. OpenOffice Impress, and some other popular application), making
@@ -325,13 +344,12 @@ therefore result in better runtime.
         for lecturers who does not have a wireless remote control for this
         purpose.
 
-        \begin{table}
-            \begin{btnmap}{}{}
+            \begin{btnmap}
                 % Slideshow start
                 \opt{SANSA_E200_PAD,SANSA_C200_PAD,SANSA_CLIP_PAD}{\ButtonUp}
                 \opt{GIGABEAT_S_PAD}{\ButtonPlay; \ButtonUp}
                 \opt{IRIVER_H10_PAD,IPOD_4G_PAD,IPOD_3G_PAD,IPOD_1G2G_PAD%
-                    ,MROBE100_PAD}{\ButtonPlay}
+                    ,MROBE100_PAD,PBELL_VIBE500_PAD}{\ButtonPlay}
                     &
                 \opt{HAVEREMOTEKEYMAP}{
                     \opt{GIGABEAT_RC_PAD,MROBE100_RC_PAD}{\ButtonRCPlay}%
@@ -343,7 +361,7 @@ therefore result in better runtime.
                 \opt{SANSA_E200_PAD,SANSA_C200_PAD}{\ButtonPower}
                 \opt{GIGABEAT_S_PAD}{Long \ButtonPlay; Long \ButtonUp}
                 \opt{SANSA_CLIP_PAD}{\ButtonHome}
-                \opt{IRIVER_H10_PAD}{Long \ButtonPlay}
+                \opt{IRIVER_H10_PAD,PBELL_VIBE500_PAD}{Long \ButtonPlay}
                 \opt{IPOD_4G_PAD,IPOD_3G_PAD,IPOD_1G2G_PAD}{Long \ButtonPlay}
                 \opt{MROBE100_PAD}{\ButtonDisplay; Long \ButtonPlay}
                     &
@@ -355,7 +373,8 @@ therefore result in better runtime.
 
                 % Slide previous
                 \opt{SANSA_E200_PAD,SANSA_C200_PAD,SANSA_CLIP_PAD,IPOD_4G_PAD%
-                    ,IPOD_3G_PAD,IPOD_1G2G_PAD,MROBE100_PAD}{\ButtonLeft}
+                    ,IPOD_3G_PAD,IPOD_1G2G_PAD,MROBE100_PAD,PBELL_VIBE500_PAD}
+                    {\ButtonLeft}
                 \opt{GIGABEAT_S_PAD}{\ButtonPrev; \ButtonLeft}
                 \opt{IRIVER_H10_PAD}{\ButtonRew}
                     &
@@ -367,7 +386,8 @@ therefore result in better runtime.
 
                 % Slide next
                 \opt{SANSA_E200_PAD,SANSA_C200_PAD,SANSA_CLIP_PAD,IPOD_4G_PAD%
-                    ,IPOD_3G_PAD,IPOD_1G2G_PAD,MROBE100_PAD}{\ButtonRight}
+                    ,IPOD_3G_PAD,IPOD_1G2G_PAD,MROBE100_PAD,PBELL_VIBE500_PAD}
+                    {\ButtonRight}
                 \opt{GIGABEAT_S_PAD}{\ButtonNext; \ButtonRight}
                 \opt{IRIVER_H10_PAD}{\ButtonFF}
                     &
@@ -379,7 +399,8 @@ therefore result in better runtime.
 
                 % Slide first
                 \opt{SANSA_E200_PAD,SANSA_C200_PAD,SANSA_CLIP_PAD,IPOD_4G_PAD%
-                    ,IPOD_3G_PAD,IPOD_1G2G_PAD,MROBE100_PAD}{Long \ButtonLeft}
+                    ,IPOD_3G_PAD,IPOD_1G2G_PAD,MROBE100_PAD,PBELL_VIBE500_PAD}
+                    {Long \ButtonLeft}
                 \opt{GIGABEAT_S_PAD}{Long \ButtonPrev; Long \ButtonLeft}
                 \opt{IRIVER_H10_PAD}{Long \ButtonRew}
                     &
@@ -391,7 +412,8 @@ therefore result in better runtime.
 
                 % Slide last
                 \opt{SANSA_E200_PAD,SANSA_C200_PAD,SANSA_CLIP_PAD,IPOD_4G_PAD%
-                    ,IPOD_3G_PAD,IPOD_1G2G_PAD,MROBE100_PAD}{Long \ButtonRight}
+                    ,IPOD_3G_PAD,IPOD_1G2G_PAD,MROBE100_PAD,PBELL_VIBE500_PAD}
+                    {Long \ButtonRight}
                 \opt{GIGABEAT_S_PAD}{Long \ButtonNext; Long \ButtonRight}
                 \opt{IRIVER_H10_PAD}{Long \ButtonFF}
                     &
@@ -407,6 +429,7 @@ therefore result in better runtime.
                 \opt{IRIVER_H10_PAD}{\ButtonLeft}
                 \opt{IPOD_4G_PAD,IPOD_3G_PAD,IPOD_1G2G_PAD,MROBE100_PAD}
                     {\ButtonMenu}
+                \opt{PBELL_VIBE500_PAD}{\ButtonCancel}
                     &
                 \opt{HAVEREMOTEKEYMAP}{
                     \opt{MROBE100_RC_PAD}{\ButtonRCDisplay}%
@@ -420,6 +443,7 @@ therefore result in better runtime.
                 \opt{IRIVER_H10_PAD}{Long \ButtonLeft}
                 \opt{IPOD_4G_PAD,IPOD_3G_PAD,IPOD_1G2G_PAD,MROBE100_PAD}
                     {Long \ButtonMenu}
+                \opt{PBELL_VIBE500_PAD}{\ButtonMenu}
                     &
                 \opt{HAVEREMOTEKEYMAP}{
                     \opt{MROBE100_RC_PAD}{Long \ButtonRCDisplay}%
@@ -433,7 +457,7 @@ therefore result in better runtime.
                 \opt{GIGABEAT_S_PAD,SANSA_C200_PAD,SANSA_CLIP_PAD}
                     {\ButtonVolUp / \ButtonVolDown}
                 \opt{IRIVER_H10_PAD}{\ButtonScrollUp / \ButtonScrollDown}
-                \opt{MROBE100_PAD}{\ButtonUp / \ButtonDown}
+                \opt{MROBE100_PAD,PBELL_VIBE500_PAD}{\ButtonUp / \ButtonDown}
                     &
                 \opt{HAVEREMOTEKEYMAP}{
                     \opt{GIGABEAT_RC_PAD,MROBE100_RC_PAD}
@@ -448,12 +472,13 @@ therefore result in better runtime.
                     {\ButtonSelect}
                 \opt{GIGABEAT_S_PAD}{\ButtonSelect; \ButtonBack}
                 \opt{IRIVER_H10_PAD}{\ButtonRight}
+                \opt{PBELL_VIBE500_PAD}{\ButtonOK}
                     &
                 \opt{HAVEREMOTEKEYMAP}{
                     \opt{GIGABEAT_RC_PAD}{Long \ButtonRCFF}%
                     \opt{MROBE100_RC_PAD}{\ButtonRCHeart}%
                     &}
-                Perform a 'mouse click' over a link
+                Perform a `mouse click' over a link
                 \\
 
                 % Mouse over
@@ -461,22 +486,21 @@ therefore result in better runtime.
                     ,IPOD_3G_PAD,IPOD_1G2G_PAD,MROBE100_PAD}{Long \ButtonSelect}
                 \opt{GIGABEAT_S_PAD}{Long \ButtonSelect; Long \ButtonBack}
                 \opt{IRIVER_H10_PAD}{Long \ButtonRight}
+                \opt{PBELL_VIBE500_PAD}{Long \ButtonOK}
                     &
                 \opt{HAVEREMOTEKEYMAP}{
                     \opt{GIGABEAT_RC_PAD}{Long \ButtonRCRew}%
                     \opt{MROBE100_RC_PAD}{Long \ButtonRCHeart}%
                     &}
-                Perform a 'mouse over' over a link
+                Perform a `mouse over' over a link
                 \\
             \end{btnmap}
-        \end{table}
 
         \item [Browser.] This mode lets you control a web browser (e.g. 
         Firefox). It uses the \dap{}'s keys to navigate through the web page
         and different tabs, navigate through history, and to control zoom.
 
-        \begin{table}
-            \begin{btnmap}{}{}
+            \begin{btnmap}
                 % Scroll up / down
                 \opt{SANSA_E200_PAD,IPOD_4G_PAD,IPOD_3G_PAD,IPOD_1G2G_PAD}
                     {\ButtonScrollBack / \ButtonScrollFwd}
@@ -485,7 +509,7 @@ therefore result in better runtime.
                 \opt{GIGABEAT_S_PAD}
                     {\ButtonPrev; \ButtonVolUp / \ButtonNext; \ButtonVolDown}
                 \opt{IRIVER_H10_PAD}{\ButtonScrollUp / \ButtonScrollDown}
-                \opt{MROBE100_PAD}{\ButtonUp / \ButtonDown}
+                \opt{MROBE100_PAD,PBELL_VIBE500_PAD}{\ButtonUp / \ButtonDown}
                     &
                 \opt{HAVEREMOTEKEYMAP}{
                     \opt{GIGABEAT_RC_PAD,MROBE100_RC_PAD}
@@ -501,6 +525,7 @@ therefore result in better runtime.
                 \opt{IRIVER_H10_PAD}{\ButtonRew / \ButtonFF}
                 \opt{IPOD_4G_PAD,IPOD_3G_PAD,IPOD_1G2G_PAD,MROBE100_PAD}
                     {\ButtonPlay / \ButtonMenu}
+                \opt{PBELL_VIBE500_PAD}{\ButtonOK / \ButtonCancel}
                     &
                 \opt{HAVEREMOTEKEYMAP}{
                     \opt{MROBE100_RC_PAD}{\ButtonRCPlay / \ButtonRCDisplay}%
@@ -515,6 +540,7 @@ therefore result in better runtime.
                 \opt{IRIVER_H10_PAD}{Long \ButtonRew / Long \ButtonFF}
                 \opt{IPOD_4G_PAD,IPOD_3G_PAD,IPOD_1G2G_PAD,MROBE100_PAD}
                     {Long \ButtonPlay / Long \ButtonMenu}
+                \opt{PBELL_VIBE500_PAD}{\ButtonPlay / \ButtonMenu}
                     &
                 \opt{HAVEREMOTEKEYMAP}{
                     \opt{GIGABEAT_RC_PAD}{Long \ButtonRCFF / Long \ButtonRCRew}%
@@ -536,6 +562,7 @@ therefore result in better runtime.
                 \opt{IRIVER_H10_PAD}{Long \ButtonRew+\ButtonFF}
                 \opt{IPOD_4G_PAD,IPOD_3G_PAD,IPOD_1G2G_PAD}
                     {Long \ButtonPlay+\ButtonMenu}
+                \opt{PBELL_VIBE500_PAD}{Long \ButtonPlay}
                     &
                 \opt{HAVEREMOTEKEYMAP}{
                     \opt{GIGABEAT_RC_PAD}{Long \ButtonRCFF+\ButtonRCRew}%
@@ -547,7 +574,7 @@ therefore result in better runtime.
                 % Tab previous / next
                 \opt{SANSA_E200_PAD,GIGABEAT_S_PAD,SANSA_C200_PAD%
                     ,SANSA_CLIP_PAD,IRIVER_H10_PAD,IPOD_4G_PAD,IPOD_3G_PAD%
-                    ,IPOD_1G2G_PAD,MROBE100_PAD}
+                    ,IPOD_1G2G_PAD,MROBE100_PAD,PBELL_VIBE500_PAD}
                     {\ButtonLeft / \ButtonRight}
                     &
                 \opt{HAVEREMOTEKEYMAP}{
@@ -565,6 +592,7 @@ therefore result in better runtime.
                 \opt{MROBE100_PAD}{Long \ButtonDisplay}
                 \opt{IPOD_4G_PAD,IPOD_3G_PAD,IPOD_1G2G_PAD}
                     {Long \ButtonSelect+\ButtonMenu}
+                \opt{PBELL_VIBE500_PAD}{Long \ButtonCancel}
                     &
                 \opt{HAVEREMOTEKEYMAP}{
                     \opt{GIGABEAT_RC_PAD}{Long \ButtonRCPlay}%
@@ -575,7 +603,7 @@ therefore result in better runtime.
                 % History back / forward
                 \opt{SANSA_E200_PAD,GIGABEAT_S_PAD,SANSA_C200_PAD%
                     ,SANSA_CLIP_PAD,IRIVER_H10_PAD,IPOD_4G_PAD,IPOD_3G_PAD%
-                    ,IPOD_1G2G_PAD,MROBE100_PAD}
+                    ,IPOD_1G2G_PAD,MROBE100_PAD,PBELL_VIBE500_PAD}
                     {Long \ButtonLeft / Long \ButtonRight}
                     &
                 \opt{HAVEREMOTEKEYMAP}{
@@ -591,6 +619,7 @@ therefore result in better runtime.
                 \opt{IRIVER_H10_PAD}{\ButtonPlay}
                 \opt{IPOD_4G_PAD,IPOD_3G_PAD,IPOD_1G2G_PAD}
                     {Long \ButtonSelect+\ButtonPlay}
+                \opt{PBELL_VIBE500_PAD}{Long \ButtonRec}
                     &
                 \opt{HAVEREMOTEKEYMAP}{
                     \opt{GIGABEAT_RC_PAD}{\ButtonRCPlay}%
@@ -599,17 +628,15 @@ therefore result in better runtime.
                 View full-screen toggle
                 \\
             \end{btnmap}
-        \end{table}
 
         {\opt{usb_hid_mouse}{
         \item [Mouse.] This mode emulates a mouse. Features supported: Mouse
         movement; left and right button clicking; and dragging and dropping.
 
-        \begin{table}
-            \begin{btnmap}{}{}
+            \begin{btnmap}
                 % Cursor move up / down / left / right
                 \opt{SANSA_E200_PAD,GIGABEAT_S_PAD,SANSA_C200_PAD%
-                    ,SANSA_CLIP_PAD,MROBE100_PAD}
+                    ,SANSA_CLIP_PAD,MROBE100_PAD,PBELL_VIBE500_PAD}
                     {\ButtonUp / \ButtonDown / \ButtonLeft / \ButtonRight}
                 \opt{IRIVER_H10_PAD}{\ButtonScrollUp / \ButtonScrollDown / 
                     \ButtonLeft / \ButtonRight}
@@ -629,7 +656,7 @@ therefore result in better runtime.
                     {\ButtonSelect}
                 \opt{GIGABEAT_S_PAD}{\ButtonSelect; \ButtonBack}
                 \opt{IRIVER_H10_PAD}{\ButtonPlay}
-                \opt{MROBE100_PAD}{\ButtonMenu}
+                \opt{MROBE100_PAD,PBELL_VIBE500_PAD}{\ButtonMenu}
                     &
                 \opt{HAVEREMOTEKEYMAP}{
                     \opt{MROBE100_RC_PAD}{\ButtonRCHeart}%
@@ -642,7 +669,7 @@ therefore result in better runtime.
                 \opt{SANSA_E200_PAD,SANSA_C200_PAD}{\ButtonPower}
                 \opt{GIGABEAT_S_PAD}{\ButtonMenu}
                 \opt{SANSA_CLIP_PAD}{\ButtonHome}
-                \opt{MROBE100_PAD}{\ButtonPlay}
+                \opt{MROBE100_PAD,PBELL_VIBE500_PAD}{\ButtonPlay}
                 &
                 \opt{HAVEREMOTEKEYMAP}{
                     &}
@@ -658,6 +685,8 @@ therefore result in better runtime.
                     {\ButtonVolUp; \ButtonPrev / \ButtonVolDown; \ButtonNext}
                 \opt{SANSA_C200_PAD,SANSA_CLIP_PAD,MROBE100_PAD}
                     {\ButtonVolUp / \ButtonVolDown}
+                \opt{PBELL_VIBE500_PAD}
+                    {\ButtonOK / \ButtonCancel}
                 &
                 \opt{HAVEREMOTEKEYMAP}{
                     \opt{MROBE100_RC_PAD}{\ButtonRCVolUp / \ButtonRCVolDown}%
@@ -665,7 +694,6 @@ therefore result in better runtime.
                 Mouse wheel scroll up / down, respectively
                 \\
             \end{btnmap}
-        \end{table}
     }}
     \end{description}
 }

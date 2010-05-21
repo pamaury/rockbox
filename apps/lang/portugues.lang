@@ -6619,19 +6619,16 @@
 </phrase>
 <phrase>
   id: LANG_FM_STATION
-  desc: in radio screen
-  user: core
+  desc: deprecated
+  user:
   <source>
     *: none
-    radio: "Station: %d.%02d MHz"
   </source>
   <dest>
     *: none
-    radio: "Estação: %d.%02d MHz"
   </dest>
   <voice>
     *: none
-    radio: ""
   </voice>
 </phrase>
 <phrase>
@@ -13214,6 +13211,20 @@
   <voice>
     *: none
     usb_hid: "Modo de Apresentação"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_TAGNAVI_UNTAGGED
+  desc: "<untagged>" entry in tag browser
+  user: core
+  <source>
+    *: "<Untagged>"
+  </source>
+  <dest>
+    *: "<Sem Etiqueta>"
+  </dest>
+  <voice>
+    *: "Sem etiqueta"
   </voice>
 </phrase>
 <phrase>

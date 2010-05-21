@@ -18,8 +18,9 @@
  *
  */
 
+#include <stdlib.h>
+#include <string.h> /* size_t */
 #include "zxmisc.h"
-#include "helpers.h"
 #include "spperif.h"
 #include "z80.h"
 
@@ -29,9 +30,8 @@
 
 #include "spconf.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/types.h>
+/* include this at last to avoid clashes with stdio functions */
+#include "helpers.h"
 
 #define COMPRESS_SAVE 1
 
@@ -584,7 +584,7 @@ static void save_snapshot_file_type(char *name, int type)
   int snsh;
   snsh = rb->open(name, O_WRONLY);
   if(snsh < 0) {
-      snsh = rb->creat(name);
+      snsh = rb->creat(name, 0666);
       if(snsh < 0) {
         put_msg("Could not create snapshot file");
         return;

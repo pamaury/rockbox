@@ -66,15 +66,17 @@ void cpu_boost(bool on_off);
 #endif
 void cpu_idle_mode(bool on_off);
 int get_cpu_boost_counter(void);
-#else
+#else /* ndef HAVE_ADJUSTABLE_CPU_FREQ */
+#ifndef FREQ
 #define FREQ CPU_FREQ
+#endif
 #define set_cpu_frequency(frequency)
 #define cpu_boost(on_off)
 #define cpu_boost_id(on_off, id)
 #define cpu_idle_mode(on_off)
 #define get_cpu_boost_counter()
 #define get_cpu_boost_tracker()
-#endif
+#endif /* HAVE_ADJUSTABLE_CPU_FREQ */
 
 #ifdef CPU_BOOST_LOGGING
 #define cpu_boost(on_off) cpu_boost_(on_off,__FILE__,  __LINE__)
@@ -232,7 +234,8 @@ enum {
 
 #if !defined(SIMULATOR) && !defined(__PCTOOL__) 
 #include "system-target.h"
-#else /* SIMULATOR */
+#elif defined(HAVE_SDL) /* SIMULATOR */
+#include "system-sdl.h"
 static inline uint16_t swap16(uint16_t value)
     /*
       result[15..8] = value[ 7..0];
@@ -293,10 +296,14 @@ static inline void cpucache_flush(void)
 }
 #endif
 
+#ifndef CACHEALIGN_SIZE /* could be elsewhere for a particular reason */
 #ifdef CACHEALIGN_BITS
 /* 2^CACHEALIGN_BITS = the byte size */
 #define CACHEALIGN_SIZE (1u << CACHEALIGN_BITS)
+#else
+#define CACHEALIGN_SIZE sizeof(int)
 #endif
+#endif /* CACHEALIGN_SIZE */
 
 #ifdef PROC_NEEDS_CACHEALIGN
 /* Cache alignment attributes and sizes are enabled */

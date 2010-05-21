@@ -98,36 +98,6 @@ unsigned int htole32(unsigned int x)
 }
 #endif
 
-int read_line(int fd, char* buffer, int buffer_size)
-{
-    int count = 0;
-    int num_read = 0;
-
-    errno = 0;
-
-    while (count < buffer_size)
-    {
-        unsigned char c;
-
-        if (1 != read(fd, &c, 1))
-            break;
-
-        num_read++;
-
-        if ( c == '\n' )
-            break;
-
-        if ( c == '\r' )
-            continue;
-
-        buffer[count++] = c;
-    }
-
-    buffer[MIN(count, buffer_size - 1)] = 0;
-
-    return errno ? -1 : num_read;
-}
-
 int recalc_dimension(struct dim *dst, struct dim *src)
 {
     return 0;
@@ -237,6 +207,13 @@ void screen_clear_area(struct screen * display, int xstart, int ystart,
 }
 #endif
 
+#if CONFIG_TUNER
+bool radio_hardware_present(void)
+{
+    return true;
+}
+#endif
+
 #ifdef HAVE_LCD_BITMAP
 static int loaded_fonts = 0;
 int font_load(struct font* pf, const char *path)
@@ -296,7 +273,8 @@ int main(int argc, char **argv)
         printf("Checking %s...\n", argv[filearg]);
 #ifdef HAVE_REMOTE_LCD
         if((strcmp(&argv[filearg][strlen(argv[filearg])-4], "rwps") == 0) || 
-            (strcmp(&argv[filearg][strlen(argv[filearg])-4], "rsbs") == 0))
+           (strcmp(&argv[filearg][strlen(argv[filearg])-4], "rsbs") == 0) ||
+           (strcmp(&argv[filearg][strlen(argv[filearg])-4], "rfms") == 0))
             screen = SCREEN_REMOTE;
         else
             screen = SCREEN_MAIN;

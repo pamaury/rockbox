@@ -23,12 +23,12 @@
 #include "string.h"
 #include "button.h"
 #include "lcd.h"
-#include "sprintf.h"
 #include "font.h"
 #include "debug-target.h"
 #include "mc13783.h"
 #include "adc.h"
 #include "ccm-imx31.h"
+#include "dvfs_dptc-imx31.h"
 
 bool __dbg_hw_info(void)
 {
@@ -38,6 +38,11 @@ bool __dbg_hw_info(void)
     uint32_t mpctl, spctl, upctl;
     unsigned int freq;
     uint32_t regval;
+
+    extern volatile unsigned int dvfs_nr_dn, dvfs_nr_up,
+                                 dvfs_nr_pnc, dvfs_nr_no;
+    extern volatile unsigned int dptc_nr_dn, dptc_nr_up,
+                                 dptc_nr_pnc, dptc_nr_no;
 
     lcd_clear_display();
     lcd_setfont(FONT_SYSFIXED);
@@ -52,11 +57,11 @@ bool __dbg_hw_info(void)
         spctl = CCM_SPCTL;
         upctl = CCM_UPCTL;
 
-        pllref = ccm_get_pll_ref_clk();
+        pllref = ccm_get_pll_ref_clk_rate();
 
-        mcu_pllfreq = ccm_get_pll(PLL_MCU);
-        ser_pllfreq = ccm_get_pll(PLL_SERIAL);
-        usb_pllfreq = ccm_get_pll(PLL_USB);
+        mcu_pllfreq = ccm_calc_pll_rate(pllref, mpctl);
+        ser_pllfreq = ccm_calc_pll_rate(pllref, spctl);
+        usb_pllfreq = ccm_calc_pll_rate(pllref, upctl);
 
         lcd_putsf(0, line++, "pll_ref_clk: %u", pllref);
         line++;
@@ -107,10 +112,31 @@ bool __dbg_hw_info(void)
 
         freq = usb_pllfreq / (((CCM_PDR0 >> 16) & 0x1f) + 1);
         lcd_putsf(0, line++, "   ipg_per_baud:  %u", freq);
+
+        line++;
+        lcd_putsf(0, line++, "PMCR0: %08lX", CCM_PMCR0);
+
+        line++;
+        lcd_putsf(0, line++, "cpu_frequency: %ld Hz", cpu_frequency);
+
+        lcd_putsf(0, line++, "dvfs_level: %u", dvfs_get_level());
+        lcd_putsf(0, line++, "dvfs d|u|p|n: %u %u %u %u",
+                  dvfs_nr_dn, dvfs_nr_up, dvfs_nr_pnc, dvfs_nr_no);
+        regval = dvfs_dptc_get_voltage();
+        lcd_putsf(0, line++, "cpu_voltage: %d.%03d V", regval / 1000,
+                  regval % 1000);
+
+        lcd_putsf(0, line++, "dptc_wp: %u", dptc_get_wp());
+        lcd_putsf(0, line++, "dptc d|u|p|n: %u %u %u %u",
+                  dptc_nr_dn, dptc_nr_up, dptc_nr_pnc, dptc_nr_no);
+        lcd_putsf(0, line++, "DVCR0,1: %08lX %08lX", CCM_DCVR0, CCM_DCVR1);
+        lcd_putsf(0, line++, "DVCR2,3: %08lX %08lX", CCM_DCVR2, CCM_DCVR3);
+        lcd_putsf(0, line++, "SWITCHERS0: %08lX", mc13783_read(MC13783_SWITCHERS0));
+        lcd_putsf(0, line++, "SWITCHERS1: %08lX", mc13783_read(MC13783_SWITCHERS1));
           
         lcd_update();
 
-        if (button_get(true) == (DEBUG_CANCEL|BUTTON_REL))
+        if (button_get_w_tmo(HZ/10) == (DEBUG_CANCEL|BUTTON_REL))
             return false;
     }
 }
@@ -190,7 +216,7 @@ bool __dbg_ports(void)
         lcd_puts(0, line++, "PMIC Registers");
         line++;
 
-        mc13783_read_regset(pmic_regset, pmic_regs, ARRAYLEN(pmic_regs));
+        mc13783_read_regs(pmic_regset, pmic_regs, ARRAYLEN(pmic_regs));
 
         for (i = 0; i < (int)ARRAYLEN(pmic_regs); i++)
         {

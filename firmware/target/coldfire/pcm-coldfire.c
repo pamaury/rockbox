@@ -55,6 +55,24 @@
 
 #define FPARM_CLOCKSEL       0
 #define FPARM_CLSEL          1
+
+/* SCLK = Fs * bit clocks per word
+ * so SCLK should be Fs * 64
+ *
+ * CLOCKSEL sets SCLK freq based on Audio CLK
+ * 0x0c SCLK = Audio CLK/2   88200 * 64 = 5644800 Hz
+ * 0x06 SCLK = Audio CLK/4   44100 * 64 = 2822400 Hz
+ * 0x04 SCLK = Audio CLK/8   22050 * 64 = 1411200 Hz
+ * 0x02 SCLK = Audio CLK/16  11025 * 64 = 705600 Hz
+ *
+ * CLSEL sets MCLK1/2 DAC freq based on XTAL freq
+ * 0x01 MCLK1/2 = XTAL freq
+ * 0x02 MCLK1/2 = XTAL/2 freq
+ *
+ * Audio CLK can be XTAL freq or XTAL/2 freq  (bit22 in PLLCR)
+ * we always set bit22 so Audio CLK is always XTAL freq
+ */
+
 #if CONFIG_CPU == MCF5249 && defined(HAVE_UDA1380)
 static const unsigned char pcm_freq_parms[HW_NUM_FREQ][2] =
 {
@@ -62,6 +80,16 @@ static const unsigned char pcm_freq_parms[HW_NUM_FREQ][2] =
     [HW_FREQ_44] = { 0x06, 0x01 },
     [HW_FREQ_22] = { 0x04, 0x02 },
     [HW_FREQ_11] = { 0x02, 0x02 },
+};
+#endif
+
+#if CONFIG_CPU == MCF5249 && defined(HAVE_WM8750)
+static const unsigned char pcm_freq_parms[HW_NUM_FREQ][2] =
+{
+    [HW_FREQ_88] = { 0x0c, 0x01 },
+    [HW_FREQ_44] = { 0x06, 0x01 },
+    [HW_FREQ_22] = { 0x04, 0x01 },
+    [HW_FREQ_11] = { 0x02, 0x01 },
 };
 #endif
 
@@ -207,12 +235,6 @@ void pcm_play_dma_start(const void *addr, size_t size)
     /* Stop any DMA in progress */
     pcm_play_dma_stop();
 
-    addr = (void *)(((long)addr + 3) & ~3);
-    size &= ~3;
-
-    if (size <= 0)
-        return;
-
     /* Set up DMA transfer  */
     SAR0 = (unsigned long)addr;   /* Source address      */
     DAR0 = (unsigned long)&PDOR3; /* Destination address */
@@ -324,6 +346,7 @@ const void * pcm_play_dma_get_peak_buffer(int *count)
     return (void *)((addr + 2) & ~3);
 } /* pcm_play_dma_get_peak_buffer */
 
+#ifdef HAVE_RECORDING
 /****************************************************************************
  ** Recording DMA transfer
  **/
@@ -353,12 +376,6 @@ void pcm_rec_dma_start(void *addr, size_t size)
     /* stop any DMA in progress */
     pcm_rec_dma_stop();
 
-    addr = (void *)(((long)addr + 3) & ~3);
-    size &= ~3;
-
-    if (size <= 0)
-        return;
-
     and_l(~PDIR2_FIFO_RESET, &DATAINCONTROL);
 
     /* Start the DMA transfer.. */
@@ -367,7 +384,6 @@ void pcm_rec_dma_start(void *addr, size_t size)
     INTERRUPTCLEAR = (1 << 25) | (1 << 24) | (1 << 23) | (1 << 22);
 #endif
 
-    pcm_rec_peak_addr = (unsigned long *)addr; /* Start peaking at dest */
     SAR1 = (unsigned long)&PDIR2; /* Source address      */
     DAR1 = (unsigned long)addr;   /* Destination address */
     BCR1 = (unsigned long)size;   /* Bytes to transfer   */
@@ -461,29 +477,15 @@ void DMA1(void)
 } /* DMA1 */
 
 /* Continue transferring data in - call from interrupt callback */
-void pcm_record_more(void *start, size_t size)
+void pcm_rec_dma_record_more(void *start, size_t size)
 {
-    start = (void *)(((long)start + 3) & ~3);
-    size &= ~3;
-
-    pcm_rec_peak_addr = (unsigned long *)start; /* Start peaking at dest */
     DAR1 = (unsigned long)start;     /* Destination address */
     BCR1 = (unsigned long)size;      /* Bytes to transfer */
     or_l(DMA_EEXT | DMA_INT, &DCR1); /* per request and int ON */
 } /* pcm_record_more */
 
-const void * pcm_rec_dma_get_peak_buffer(int *count)
+const void * pcm_rec_dma_get_peak_buffer(void)
 {
-    unsigned long addr, end;
-
-    /* Make sure interrupt doesn't change the second value after we read the
-     * first value. */
-    int level = set_irq_level(DMA_IRQ_LEVEL);
-    addr = (unsigned long)pcm_rec_peak_addr;
-    end = DAR1;
-    restore_irq(level);
-
-    addr >>= 2;
-    *count = (end >> 2) - addr;
-    return (void *)(addr << 2);
+    return (void *)(DAR1 & ~3);
 } /* pcm_rec_dma_get_peak_buffer */
+#endif

@@ -173,6 +173,16 @@ static void setoptions (void)
         options.SELECT=BUTTON_VOL_UP;
         options.MENU=BUTTON_POWER;
 
+#elif CONFIG_KEYPAD == SANSA_CLIP_PAD
+        options.UP=BUTTON_UP;
+        options.DOWN=BUTTON_DOWN;
+
+        options.A=BUTTON_SELECT;
+        options.B=BUTTON_HOME;
+        options.START=BUTTON_VOL_DOWN;
+        options.SELECT=BUTTON_VOL_UP;
+        options.MENU=BUTTON_POWER;
+
 #elif CONFIG_KEYPAD == IAUDIO_X5M5_PAD
         options.UP=BUTTON_UP;
         options.DOWN=BUTTON_DOWN;
@@ -325,7 +335,7 @@ static void savesettings(void)
     {
         options.dirty=0;
         snprintf(optionsave, sizeof(optionsave), "%s/%s", savedir, optionname);
-        fd = open(optionsave, O_WRONLY|O_CREAT|O_TRUNC);
+        fd = open(optionsave, O_WRONLY|O_CREAT|O_TRUNC, 0666);
         write(fd,&options, sizeof(options));
         close(fd);
     }

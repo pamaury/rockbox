@@ -21,7 +21,7 @@
 #ifndef PCM_PLAYBACK_H
 #define PCM_PLAYBACK_H
 
-#include <sys/types.h>
+#include <string.h> /* size_t */
 
 #define DMA_REC_ERROR_DMA       (-1)
 #ifdef HAVE_SPDIF_REC
@@ -79,7 +79,6 @@ const void* pcm_get_peak_buffer(int* count);
 size_t pcm_get_bytes_waiting(void);
 
 void pcm_play_stop(void);
-void pcm_mute(bool mute);
 void pcm_play_pause(bool play);
 bool pcm_is_paused(void);
 bool pcm_is_playing(void);
@@ -121,7 +120,7 @@ void pcm_rec_unlock(void);
 
 /* Initialize pcm recording interface */
 void pcm_init_recording(void);
-/* Uninitialze pcm recording interface */
+/* Uninitialize pcm recording interface */
 void pcm_close_recording(void);
 
 /* Start recording "raw" PCM data */
@@ -141,7 +140,6 @@ void pcm_calculate_rec_peaks(int *left, int *right);
 
 /** The following are for internal use between pcm.c and target-
     specific portion **/
-extern volatile const void *pcm_rec_peak_addr;
 /* the registered callback function for when more data is available */
 extern volatile pcm_more_callback_type2 pcm_callback_more_ready;
 /* DMA transfer in is currently active */
@@ -151,9 +149,10 @@ extern volatile bool                    pcm_recording;
 void pcm_rec_dma_init(void);
 void pcm_rec_dma_close(void);
 void pcm_rec_dma_start(void *addr, size_t size);
+void pcm_rec_dma_record_more(void *start, size_t size);
 void pcm_rec_dma_stop(void);
 void pcm_rec_dma_stopped_callback(void);
-const void * pcm_rec_dma_get_peak_buffer(int *count);
+const void * pcm_rec_dma_get_peak_buffer(void);
 
 #endif /* HAVE_RECORDING */
 

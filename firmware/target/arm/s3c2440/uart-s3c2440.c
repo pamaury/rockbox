@@ -23,13 +23,13 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
-#include <sprintf.h>
 #include "inttypes.h"
 #include "string.h"
 #include "cpu.h"
 #include "system.h"
 #include "kernel.h"
 #include "thread.h"
+#include "format.h"
 
 #include "system-target.h"
 #include "uart-s3c2440.h"

@@ -40,9 +40,9 @@ static struct sdma_script_start_addrs script_info;
 /* Mask of channels with callback enabled */
 static unsigned long sdma_enabled_ints = 0;
 /* One channel control block per channel in physically mapped device RAM */
-static struct channel_control_block ccb_array[CH_NUM] DEVBSS_ATTR;
+static struct channel_control_block ccb_array[CH_NUM] NOCACHEBSS_ATTR;
 /* Channel 0 (command channel) data */
-static struct buffer_descriptor_extd c0_buffer_desc DEVBSS_ATTR;
+static struct buffer_descriptor_extd c0_buffer_desc NOCACHEBSS_ATTR;
 
 /* All SDMA channel interrupts are handled here.
  * Dispatches lower channel numbers first (prioritized by SDMA API callers
@@ -533,7 +533,7 @@ void sdma_init(void)
     /* 32-word channel contexts, use default bootscript address */
     SDMA_CHN0ADDR = SDMA_CHN0ADDR_SMSZ | 0x0050;
 
-    avic_enable_int(INT_SDMA, INT_TYPE_IRQ, INT_PRIO_DEFAULT+1, SDMA_HANDLER);
+    avic_enable_int(INT_SDMA, INT_TYPE_IRQ, INT_PRIO_SDMA, SDMA_HANDLER);
 
     /* SDMA core must run at the proper frequency based upon the AHB/IPG
      * ratio */

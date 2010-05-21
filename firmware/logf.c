@@ -29,13 +29,13 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdarg.h>
-#include <sprintf.h>
-#include <system.h>
-#include <font.h>
 #include "config.h"
+#include "system.h"
+#include "font.h"
 #include "lcd-remote.h"
 #include "logf.h"
 #include "serial.h"
+#include "format.h"
 
 #ifdef HAVE_USBSTACK
 #include "usb_core.h"

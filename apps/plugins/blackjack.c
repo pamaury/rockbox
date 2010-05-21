@@ -404,6 +404,21 @@ enum {
 #define BJACK_RIGHT         BUTTON_NEXT
 #define BJACK_LEFT          BUTTON_PREV
 
+#elif CONFIG_KEYPAD == MPIO_HD200_PAD
+#define BJACK_SELECT_NAME    "SELECT"
+#define BJACK_STAY_NAME     "RIGHT"
+#define BJACK_RESUME_NAME   "PLAY"
+#define BJACK_QUIT_NAME     "REC+PLAY"
+#define BJACK_DOUBLE_NAME   "LEFT"
+#define BJACK_SELECT        BUTTON_SELECT
+#define BJACK_QUIT          (BUTTON_REC|BUTTON_PLAY)
+#define BJACK_STAY          BUTTON_VOL_UP
+#define BJACK_DOUBLEDOWN    BUTTON_VOL_DOWN
+#define BJACK_UP            BUTTON_PREV
+#define BJACK_DOWN          BUTTON_NEXT
+#define BJACK_RIGHT         BUTTON_VOL_UP
+#define BJACK_LEFT          BUTTON_VOL_DOWN
+
 #else
 #error No keymap defined!
 #endif
@@ -856,7 +871,7 @@ static void blackjack_savegame(struct game_context* bj) {
     if(!resume)
         return;
     /* write out the game state to the save file */
-    fd = rb->open(SAVE_FILE, O_WRONLY|O_CREAT);
+    fd = rb->open(SAVE_FILE, O_WRONLY|O_CREAT, 0666);
     if(fd < 0)
         return;
     rb->write(fd, bj, sizeof(struct game_context));

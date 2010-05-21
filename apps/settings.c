@@ -27,13 +27,15 @@
 #include "config.h"
 #include "action.h"
 #include "crc32.h"
+#include "sound.h"
 #include "settings.h"
 #include "debug.h"
 #include "usb.h"
 #include "backlight.h"
 #include "audio.h"
 #include "talk.h"
-#include "string.h"
+#include "strlcpy.h"
+#include "strcasestr.h"
 #include "rtc.h"
 #include "power.h"
 #include "ata_idle_notify.h"
@@ -52,10 +54,8 @@
 #include "lang.h"
 #include "language.h"
 #include "powermgmt.h"
-#include "sprintf.h"
 #include "keyboard.h"
 #include "version.h"
-#include "sound.h"
 #include "rbunicode.h"
 #include "dircache.h"
 #include "splash.h"
@@ -193,7 +193,7 @@ static bool write_nvram_data(char* buf, int max_len)
                     max_len-NVRAM_DATA_START-1,0xffffffff);
     memcpy(&buf[4],&crc32,4);
 #ifndef HAVE_RTC_RAM
-    fd = open(NVRAM_FILE,O_CREAT|O_TRUNC|O_WRONLY);
+    fd = open(NVRAM_FILE,O_CREAT|O_TRUNC|O_WRONLY, 0666);
     if (fd >= 0)
     {
         int len = write(fd,buf,max_len);
@@ -532,7 +532,7 @@ static bool settings_write_config(const char* filename, int options)
     int i;
     int fd;
     char value[MAX_PATH];
-    fd = open(filename,O_CREAT|O_TRUNC|O_WRONLY);
+    fd = open(filename,O_CREAT|O_TRUNC|O_WRONLY, 0666);
     if (fd < 0)
         return false;
     fdprintf(fd, "# .cfg file created by rockbox %s - "
@@ -718,8 +718,12 @@ void sound_settings_apply(void)
 #if CONFIG_CODEC == SWCODEC
     sound_set_dsp_callback(dsp_callback);
 #endif
+#ifdef AUDIOHW_HAVE_BASS
     sound_set(SOUND_BASS, global_settings.bass);
+#endif
+#ifdef AUDIOHW_HAVE_TREBLE
     sound_set(SOUND_TREBLE, global_settings.treble);
+#endif
     sound_set(SOUND_BALANCE, global_settings.balance);
     sound_set(SOUND_VOLUME, global_settings.volume);
     sound_set(SOUND_CHANNELS, global_settings.channel_config);
@@ -734,13 +738,36 @@ void sound_settings_apply(void)
     sound_set(SOUND_MDB_ENABLE, global_settings.mdb_enable);
     sound_set(SOUND_SUPERBASS, global_settings.superbass);
 #endif
-
-#ifdef HAVE_WM8758
+#ifdef AUDIOHW_HAVE_BASS_CUTOFF
     sound_set(SOUND_BASS_CUTOFF, global_settings.bass_cutoff);
+#endif
+#ifdef AUDIOHW_HAVE_TREBLE_CUTOFF
     sound_set(SOUND_TREBLE_CUTOFF, global_settings.treble_cutoff);
 #endif
-}
+#ifdef AUDIOHW_HAVE_DEPTH_3D
+    sound_set(SOUND_DEPTH_3D, global_settings.depth_3d);
+#endif
+#ifdef AUDIOHW_HAVE_EQ
+    int b;
 
+    for (b = 0; b < AUDIOHW_EQ_BAND_NUM; b++)
+    {
+        int setting = sound_enum_hw_eq_band_setting(b, AUDIOHW_EQ_GAIN);
+        sound_set(setting, global_settings.hw_eq_bands[b].gain);
+
+#ifdef AUDIOHW_HAVE_EQ_FREQUENCY
+        setting = sound_enum_hw_eq_band_setting(b, AUDIOHW_EQ_FREQUENCY);
+        if (setting != -1)
+            sound_set(setting, global_settings.hw_eq_bands[b].frequency);
+#endif /* AUDIOHW_HAVE_EQ_FREQUENCY */
+#ifdef AUDIOHW_HAVE_EQ_WIDTH
+        setting = sound_enum_hw_eq_band_setting(b, AUDIOHW_EQ_WIDTH);
+        if (setting != -1)
+            sound_set(setting, global_settings.hw_eq_bands[b].width);
+#endif /* AUDIOHW_HAVE_EQ_WIDTH */
+    }
+#endif
+}
 
 void settings_apply(bool read_disk)
 {

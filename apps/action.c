@@ -369,7 +369,7 @@ int get_action_statuscode(int *button)
 /* return BUTTON_NONE               on error
  *        BUTTON_REPEAT             if repeated press
  *        BUTTON_REPEAT|BUTTON_REL  if release after repeated press
- *        BUTTON_REL                if its a short press = release after press
+ *        BUTTON_REL                if it's a short press = release after press
  *        BUTTON_TOUCHSCREEN        if press
  */
 int action_get_touchscreen_press(short *x, short *y)
@@ -419,9 +419,9 @@ int action_get_touchscreen_press_in_vp(short *x1, short *y1, struct viewport *vp
 }
 #endif
 
-/* Don't let get_action*() return any ACTION_* values untill the current buttons
- * have ben release. SYS_* and BUTTON_NONE will go through.
- * Any actions relying on _RELEASE won't get seen
+/* Don't let get_action*() return any ACTION_* values until the current buttons
+ * have been released. SYS_* and BUTTON_NONE will go through.
+ * Any actions relying on _RELEASE won't get seen.
  */
 void action_wait_for_release(void)
 {

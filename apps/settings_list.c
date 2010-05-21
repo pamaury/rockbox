@@ -21,7 +21,7 @@
 
 #include "config.h"
 #include <stdbool.h>
-#include <string.h>
+#include "string-extra.h"
 #include "system.h"
 #include "storage.h"
 #include "lang.h"
@@ -29,10 +29,10 @@
 #include "lcd.h"
 #include "button.h"
 #include "backlight.h"
+#include "sound.h"
 #include "settings.h"
 #include "settings_list.h"
 #include "usb.h"
-#include "sound.h"
 #include "dsp.h"
 #include "audio.h"
 #include "power.h"
@@ -55,6 +55,9 @@
 #ifdef HAVE_TOUCHSCREEN
 #include "touchscreen.h"
 #include "ctype.h" /* For isspace() */
+#endif
+#ifdef HAVE_HOTKEY
+#include "onplay.h"
 #endif
 
 #define NVRAM(bytes) (bytes<<F_NVRAM_MASK_SHIFT)
@@ -200,6 +203,7 @@ static const char graphic_numeric[] = "graphic,numeric";
 /* Default theme settings */
 #define DEFAULT_WPSNAME  "cabbiev2"
 #define DEFAULT_SBSNAME  "-"
+#define DEFAULT_FMS_NAME DEFAULT_WPSNAME
 
 #ifdef HAVE_LCD_BITMAP
 
@@ -529,13 +533,116 @@ static void tsc_set_default(void* setting, void* defaultval)
     memcpy(setting, defaultval, sizeof(struct touchscreen_parameter));
 }
 #endif
+#ifdef HAVE_HOTKEY
+static const char* hotkey_formatter(char* buffer, size_t buffer_size, int value,
+                              const char* unit)
+{
+    (void)buffer;
+    (void)buffer_size;
+    (void)unit;
+    return str(get_hotkey_lang_id(value));
+}
+static int32_t hotkey_getlang(int value, int unit)
+{
+    (void)unit;
+    return get_hotkey_lang_id(value);
+}
+#endif /* HAVE_HOTKEY */
 const struct settings_list settings[] = {
     /* sound settings */
     SOUND_SETTING(F_NO_WRAP,volume, LANG_VOLUME, "volume", SOUND_VOLUME),
     SOUND_SETTING(0, balance, LANG_BALANCE, "balance", SOUND_BALANCE),
+/* Tone controls */
+#ifdef AUDIOHW_HAVE_BASS
     SOUND_SETTING(F_NO_WRAP,bass, LANG_BASS, "bass", SOUND_BASS),
+#endif
+#ifdef AUDIOHW_HAVE_TREBLE
     SOUND_SETTING(F_NO_WRAP,treble, LANG_TREBLE, "treble", SOUND_TREBLE),
-
+#endif
+/* Hardware EQ tone controls */
+#ifdef AUDIOHW_HAVE_EQ
+/* Band gain is generic */
+    SOUND_SETTING(F_NO_WRAP, hw_eq_bands[AUDIOHW_EQ_BAND1].gain,
+                  LANG_HW_EQ_GAIN, "tone band1 gain", SOUND_EQ_BAND1_GAIN),
+#ifdef AUDIOHW_HAVE_EQ_BAND2
+    SOUND_SETTING(F_NO_WRAP, hw_eq_bands[AUDIOHW_EQ_BAND2].gain,
+                  LANG_HW_EQ_GAIN, "tone band2 gain", SOUND_EQ_BAND2_GAIN),
+#endif /* AUDIOHW_HAVE_EQ_BAND2 */
+#ifdef AUDIOHW_HAVE_EQ_BAND3
+    SOUND_SETTING(F_NO_WRAP, hw_eq_bands[AUDIOHW_EQ_BAND3].gain,
+                  LANG_HW_EQ_GAIN, "tone band3 gain", SOUND_EQ_BAND3_GAIN),
+#endif /* AUDIOHW_HAVE_EQ_BAND3 */
+#ifdef AUDIOHW_HAVE_EQ_BAND4
+    SOUND_SETTING(F_NO_WRAP, hw_eq_bands[AUDIOHW_EQ_BAND4].gain,
+                  LANG_HW_EQ_GAIN, "tone band4 gain", SOUND_EQ_BAND4_GAIN),
+#endif /* AUDIOHW_HAVE_EQ_BAND4 */
+#ifdef AUDIOHW_HAVE_EQ_BAND5
+    SOUND_SETTING(F_NO_WRAP, hw_eq_bands[AUDIOHW_EQ_BAND5].gain,
+                  LANG_HW_EQ_GAIN, "tone band5 gain", SOUND_EQ_BAND5_GAIN),
+#endif /* AUDIOHW_HAVE_EQ_BAND5 */
+#ifdef HAVE_WM8978
+    /* Frequencies vary with samplerate but at least the user has an idea
+     * about the bands and it will be correct with normal playback rates. */
+/* Band 1 */
+    STRINGCHOICE_SETTING(F_SOUNDSETTING,
+                         hw_eq_bands[AUDIOHW_EQ_BAND1].frequency,
+                         LANG_HW_EQ_FREQUENCY, 0,"tone band1 frequency",
+                         "80 Hz,105 Hz,135 Hz,175 Hz",
+                         sound_set_hw_eq_band1_frequency, 4,
+                         TALK_ID(80, UNIT_HERTZ), TALK_ID(105, UNIT_HERTZ),
+                         TALK_ID(135, UNIT_HERTZ), TALK_ID(175, UNIT_HERTZ)),
+/* Band 2 */
+    STRINGCHOICE_SETTING(F_SOUNDSETTING,
+                         hw_eq_bands[AUDIOHW_EQ_BAND2].frequency,
+                         LANG_HW_EQ_FREQUENCY, 0,"tone band2 frequency",
+                         "230 Hz,300 Hz,385 Hz,500 Hz",
+                         sound_set_hw_eq_band2_frequency, 4,
+                         TALK_ID(230, UNIT_HERTZ), TALK_ID(300, UNIT_HERTZ),
+                         TALK_ID(385, UNIT_HERTZ), TALK_ID(500, UNIT_HERTZ)),
+    CHOICE_SETTING(F_SOUNDSETTING, hw_eq_bands[AUDIOHW_EQ_BAND2].width,
+                   LANG_HW_EQ_WIDTH, 0, "tone band2 width", "narrow,wide",
+                   sound_set_hw_eq_band2_width, 2,
+                   ID2P(LANG_HW_EQ_WIDTH_NARROW), ID2P(LANG_HW_EQ_WIDTH_WIDE)),
+/* Band 3 */
+    STRINGCHOICE_SETTING(F_SOUNDSETTING,
+                         hw_eq_bands[AUDIOHW_EQ_BAND3].frequency,
+                         LANG_HW_EQ_FREQUENCY, 0, "tone band3 frequency",
+                         "650 Hz,850 Hz,1.1 kHz,1.4 kHz",
+                         sound_set_hw_eq_band3_frequency, 4,
+                         TALK_ID(650, UNIT_HERTZ), TALK_ID(850, UNIT_HERTZ),
+                         TALK_ID_DECIMAL(11, 1, UNIT_KHZ),
+                         TALK_ID_DECIMAL(14, 1, UNIT_KHZ)),
+    CHOICE_SETTING(F_SOUNDSETTING,hw_eq_bands[AUDIOHW_EQ_BAND3].width,
+                   LANG_HW_EQ_WIDTH, 0, "tone band3 width", "narrow,wide",
+                   sound_set_hw_eq_band3_width, 2,
+                   ID2P(LANG_HW_EQ_WIDTH_NARROW), ID2P(LANG_HW_EQ_WIDTH_WIDE)),
+/* Band 4 */
+    STRINGCHOICE_SETTING(F_SOUNDSETTING,
+                         hw_eq_bands[AUDIOHW_EQ_BAND4].frequency,
+                         LANG_HW_EQ_FREQUENCY, 0, "tone band4 frequency",
+                         "1.8 kHz,2.4 kHz,3.2 kHz,4.1 kHz",
+                         sound_set_hw_eq_band4_frequency, 4,
+                         TALK_ID_DECIMAL(18, 1, UNIT_KHZ),
+                         TALK_ID_DECIMAL(24, 1, UNIT_KHZ),
+                         TALK_ID_DECIMAL(32, 1, UNIT_KHZ),
+                         TALK_ID_DECIMAL(41, 1, UNIT_KHZ)),
+    CHOICE_SETTING(F_SOUNDSETTING, hw_eq_bands[AUDIOHW_EQ_BAND4].width,
+                   LANG_HW_EQ_WIDTH, 0, "tone band4 width", "narrow,wide",
+                   sound_set_hw_eq_band4_width, 2,
+                   ID2P(LANG_HW_EQ_WIDTH_NARROW), ID2P(LANG_HW_EQ_WIDTH_WIDE)),
+/* Band 5 */
+    STRINGCHOICE_SETTING(F_SOUNDSETTING,
+                         hw_eq_bands[AUDIOHW_EQ_BAND5].frequency,
+                         LANG_HW_EQ_FREQUENCY, 0, "tone band5 frequency",
+                         "5.3 kHz,6.9 kHz,9.0 kHz,11.7 kHz",
+                         sound_set_hw_eq_band5_frequency, 4,
+                         TALK_ID_DECIMAL(53, 1, UNIT_KHZ),
+                         TALK_ID_DECIMAL(69, 1, UNIT_KHZ),
+                         TALK_ID_DECIMAL(90, 1, UNIT_KHZ),
+                         TALK_ID_DECIMAL(117, 1, UNIT_KHZ)),
+#endif /* HAVE_WM8978 */
+#endif /* AUDIOHW_HAVE_EQ */
+/* 3-d enhancement effect */
 #if (CONFIG_CODEC == MAS3587F) || (CONFIG_CODEC == MAS3539F)
     SOUND_SETTING(0,loudness, LANG_LOUDNESS, "loudness", SOUND_LOUDNESS),
     STRINGCHOICE_SETTING(F_SOUNDSETTING,avc,LANG_AUTOVOL,0,"auto volume",
@@ -555,6 +662,10 @@ const struct settings_list settings[] = {
                    ID2P(LANG_CHANNEL_RIGHT), ID2P(LANG_CHANNEL_KARAOKE)),
     SOUND_SETTING(F_SOUNDSETTING, stereo_width, LANG_STEREO_WIDTH,
                   "stereo_width", SOUND_STEREO_WIDTH),
+#ifdef AUDIOHW_HAVE_DEPTH_3D
+    SOUND_SETTING(0,depth_3d, LANG_DEPTH_3D, "3-d enhancement",
+                  SOUND_DEPTH_3D),
+#endif
     /* playback */
     OFFON_SETTING(0, playlist_shuffle, LANG_SHUFFLE, false, "shuffle", NULL),
     SYSTEM_SETTING(NVRAM(4), resume_index, -1),
@@ -1313,9 +1424,11 @@ const struct settings_list settings[] = {
                        "compressor release time", UNIT_MS, 100, 1000,
                        100, NULL, NULL, compressor_set),
 #endif
-#ifdef HAVE_WM8758
+#ifdef AUDIOHW_HAVE_BASS_CUTOFF
     SOUND_SETTING(F_NO_WRAP, bass_cutoff, LANG_BASS_CUTOFF,
                   "bass cutoff", SOUND_BASS_CUTOFF),
+#endif
+#ifdef AUDIOHW_HAVE_TREBLE_CUTOFF
     SOUND_SETTING(F_NO_WRAP, treble_cutoff, LANG_TREBLE_CUTOFF,
                   "treble cutoff", SOUND_TREBLE_CUTOFF),
 #endif
@@ -1438,7 +1551,13 @@ const struct settings_list settings[] = {
 #if CONFIG_TUNER
     TEXT_SETTING(0, fmr_file, "fmr", "-",
                      FMPRESET_PATH "/", ".fmr"),
+    TEXT_SETTING(F_THEMESETTING,fms_file, "fms",
+                     DEFAULT_FMS_NAME, SBS_DIR "/", ".fms"),
+#ifdef HAVE_REMOTE_LCD
+    TEXT_SETTING(F_THEMESETTING,rfms_file, "rfms",
+                     DEFAULT_FMS_NAME, SBS_DIR "/", ".rfms"),
 #endif
+#endif /* CONFIG_TUNER */
 #ifdef HAVE_LCD_BITMAP
     TEXT_SETTING(F_THEMESETTING, font_file, "font",
                      DEFAULT_FONTNAME, FONT_DIR "/", ".fnt"),
@@ -1662,26 +1781,23 @@ const struct settings_list settings[] = {
 #endif
 
 #ifdef HAVE_HOTKEY
-    CHOICE_SETTING(0, hotkey_wps, -1, 1, "hotkey wps",
-        "off,view playlist,show track info,pitchscreen,open with,delete,insert",
-        NULL, 7, ID2P(LANG_OFF),
-        ID2P(LANG_VIEW_DYNAMIC_PLAYLIST), ID2P(LANG_MENU_SHOW_ID3_INFO),
-#ifdef HAVE_PITCHSCREEN
-        ID2P(LANG_PITCH),
-#else
-        NULL,
+    TABLE_SETTING(F_ALLOW_ARBITRARY_VALS, hotkey_wps,
+        LANG_HOTKEY_WPS, HOTKEY_VIEW_PLAYLIST, "hotkey wps",
+        "off,view playlist,show track info,pitchscreen,open with,delete",
+        UNIT_INT, hotkey_formatter, hotkey_getlang, NULL, 6, HOTKEY_OFF,
+        HOTKEY_VIEW_PLAYLIST, HOTKEY_SHOW_TRACK_INFO, HOTKEY_PITCHSCREEN,
+        HOTKEY_OPEN_WITH, HOTKEY_DELETE),
+    TABLE_SETTING(F_ALLOW_ARBITRARY_VALS, hotkey_tree,
+        LANG_HOTKEY_FILE_BROWSER, HOTKEY_OFF, "hotkey tree",
+        "off,open with,delete,insert,insert shuffled",
+        UNIT_INT, hotkey_formatter, hotkey_getlang, NULL, 5, HOTKEY_OFF,
+        HOTKEY_OPEN_WITH, HOTKEY_DELETE, HOTKEY_INSERT, HOTKEY_INSERT_SHUFFLED),
 #endif
-        ID2P(LANG_ONPLAY_OPEN_WITH), ID2P(LANG_DELETE), ID2P(LANG_INSERT)),
-    CHOICE_SETTING(0, hotkey_tree, -1, 0, "hotkey tree",
-        "off,view playlist,show track info,pitchscreen,open with,delete,insert",
-        NULL, 7, ID2P(LANG_OFF),
-        ID2P(LANG_VIEW_DYNAMIC_PLAYLIST), ID2P(LANG_MENU_SHOW_ID3_INFO),
-#ifdef HAVE_PITCHSCREEN
-        ID2P(LANG_PITCH),
-#else
-        NULL,
-#endif
-        ID2P(LANG_ONPLAY_OPEN_WITH), ID2P(LANG_DELETE), ID2P(LANG_INSERT)),
+
+#if CONFIG_CODEC == SWCODEC
+    INT_SETTING(0, resume_rewind, LANG_RESUME_REWIND, 0,
+                "resume rewind", UNIT_SEC, 0, 60, 5,
+                NULL, NULL, NULL),
 #endif
 };
 

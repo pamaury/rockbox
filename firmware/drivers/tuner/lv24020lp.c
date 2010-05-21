@@ -40,13 +40,12 @@ static struct mutex tuner_mtx;
 #undef SANYO_TUNER_LOGF
 
 #ifdef SANYO_TUNER_LOG_FILE
-#include "sprintf.h"
 #include "file.h"
 
 static int fd_log = -1;
 
 #define TUNER_LOG_OPEN()    if (fd_log < 0) \
-                                fd_log = creat("/tuner_dump.txt")
+                                fd_log = creat("/tuner_dump.txt", 0666)
 /* syncing required because close() is never called */
 #define TUNER_LOG_SYNC()    fsync(fd_log)
 #define TUNER_LOG(s...)     fdprintf(fd_log, s)

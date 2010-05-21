@@ -18,9 +18,9 @@
  * KIND, either express or implied.
  *
  ****************************************************************************/
+#include <sys/types.h>
 #include "system.h"
 #include "thread.h"
-#include "logf.h"
 #include "voice_thread.h"
 #include "talk.h"
 #include "dsp.h"
@@ -29,9 +29,13 @@
 #include "pcmbuf.h"
 #include "codecs/libspeex/speex/speex.h"
 
-/* Define any of these as "1" to log regular and/or timeout messages */
+/* Define any of these as "1" and uncomment the LOGF_ENABLE line to log
+   regular and/or timeout messages */
 #define VOICE_LOGQUEUES 0
 #define VOICE_LOGQUEUES_SYS_TIMEOUT 0
+
+/*#define LOGF_ENABLE*/
+#include "logf.h"
 
 #if VOICE_LOGQUEUES
 #define LOGFQUEUE logf
@@ -252,7 +256,7 @@ static void voice_message(struct voice_thread_data *td)
             return;
 
         case Q_VOICE_STOP:
-            LOGFQUEUE("voice < Q_VOICE_STOP: %d", ev.data);
+            LOGFQUEUE("voice < Q_VOICE_STOP: %ld", td->ev.data);
 
             if (td->ev.data != 0 && !playback_is_playing())
             {

@@ -283,6 +283,17 @@ PLUGIN_HEADER
 #define LABEL_MENU "MENU"
 #define LABEL_VOLUME "UP/DOWN"
 
+#elif CONFIG_KEYPAD == MPIO_HD200_PAD
+#define VUMETER_QUIT (BUTTON_REC|BUTTON_PLAY)
+#define VUMETER_HELP BUTTON_PLAY
+#define VUMETER_MENU BUTTON_SELECT
+#define VUMETER_UP BUTTON_VOL_UP
+#define VUMETER_DOWN BUTTON_VOL_DOWN
+#define LABEL_HELP "PLAY"
+#define LABEL_QUIT "MENU"
+#define LABEL_MENU "SELECT"
+#define LABEL_VOLUME "UP/DOWN"
+
 #else
 #error No keymap defined!
 #endif
@@ -446,7 +457,7 @@ void load_settings(void) {
 }
 
 void save_settings(void) {
-    int fp = rb->creat(PLUGIN_DEMOS_DIR "/.vu_meter");
+    int fp = rb->creat(PLUGIN_DEMOS_DIR "/.vu_meter", 0666);
     if(fp >= 0) {
         rb->write (fp, &vumeter_settings, sizeof(struct saved_settings));
         rb->close(fp);
