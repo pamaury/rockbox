@@ -31,7 +31,7 @@
 #include "panic.h"
 #include "mmu-arm.h"
 #include "system.h"
-//#define LOGF_ENABLE
+#define LOGF_ENABLE
 #include "logf.h"
 #include "usb-drv-as3525v2.h"
 #include "usb_core.h"
@@ -89,6 +89,8 @@ static struct usb_endpoint endpoints[USB_NUM_ENDPOINTS][2];
 /* setup packet for EP0 */
 static struct usb_ctrlrequest _ep0_setup_pkt __attribute__((aligned(32)));
 static struct usb_ctrlrequest *ep0_setup_pkt = AS3525_UNCACHED_ADDR(&_ep0_setup_pkt);
+
+static int g_usbreset_count = 0;
 
 /* state of EP0 */
 static enum ep0state ep0_state;
@@ -449,6 +451,8 @@ void usb_drv_init(void)
         wakeup_init(&endpoints[ep][DIR_OUT].complete);
     /* Enable global interrupts */
     enable_global_interrupts();
+
+    g_usbreset_count = 0;
 }
 
 void usb_drv_exit(void)
@@ -586,6 +590,19 @@ void INT_USB(void)
     if(sts & GINTMSK_usbreset)
     {
         logf("usb-drv: bus reset");
+
+        g_usbreset_count++;
+
+        if(g_usbreset_count == 2)
+        {
+            logf("usb-drv: hard reset");
+            logf("--------");
+            logf("--------");
+            DCTL |= DCTL_sftdiscon;
+            usb_delay();
+            usb_drv_exit();
+            usb_drv_init(); /* reset g_usbreset_count here */
+        }
 
         /* Clear the Remote Wakeup Signalling */
         DCTL &= ~DCTL_rmtwkupsig;
