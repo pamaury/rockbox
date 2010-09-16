@@ -22,8 +22,8 @@
   \begin{description}
 
   \item [Bookmark on Stop.]
-    This option controls whether Rockbox creates a bookmark playback is
-    stopped.
+    This option controls whether Rockbox creates a bookmark when playback is
+    stopped manually.
     \begin{description}    
       \item[No.]
             Do not create bookmarks.
@@ -44,6 +44,16 @@
       recently accessed track regardless of how the \setting{Bookmark on Stop}
       option is set.}
     
+  \item [Update on Stop.]
+    If set to ``No'', this setting has no effect and does not affect any other settings.
+    If set to ``Yes'', and the file
+    to which a new bookmark would be added already exists, this option overrides
+    the previous setting (\setting{Bookmark on Stop}) and unconditionally creates a
+    bookmark. This is useful if you don't generally want to create bookmarks but
+    only want to add them to already existing bookmark files. In this case you
+    should set the setting \setting{Bookmark on Stop} to ``No'' and the setting
+    \setting{Update on Stop} to ``Yes''.
+
   \item [Load Last Bookmark.]
     This option controls if Rockbox should automatically load a bookmark for
     a file, when that file is played.

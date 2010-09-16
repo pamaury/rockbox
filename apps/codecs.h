@@ -31,7 +31,6 @@
 #define MEM 2
 #endif
 
-#include <_ansi.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include "strlcpy.h"
@@ -44,12 +43,15 @@
 #include "thread.h"
 #endif
 #if (CONFIG_CODEC == SWCODEC)
-#if !defined(SIMULATOR) && defined(HAVE_RECORDING)
+#ifdef HAVE_RECORDING
 #include "pcm_record.h"
 #endif
 #include "dsp.h"
 #endif
 #include "settings.h"
+
+#include "gcc_extensions.h"
+#include "load_code.h"
 
 #ifdef CODEC
 #if defined(DEBUG) || defined(SIMULATOR)
@@ -77,12 +79,12 @@
 #define CODEC_ENC_MAGIC 0x52454E43 /* RENC */
 
 /* increase this every time the api struct changes */
-#define CODEC_API_VERSION 34
+#define CODEC_API_VERSION 35
 
 /* update this to latest version if a change to the api struct breaks
    backwards compatibility (and please take the opportunity to sort in any
    new function which are "waiting" at the end of the function table) */
-#define CODEC_MIN_API_VERSION 34
+#define CODEC_MIN_API_VERSION 35
 
 /* codec return codes */
 enum codec_status {
@@ -155,10 +157,10 @@ struct codec_api {
     void (*configure)(int setting, intptr_t value);
 
     /* kernel/ system */
-#ifdef CPU_ARM
+#if defined(CPU_ARM) && CONFIG_PLATFORM & PLATFORM_NATIVE
     void (*__div0)(void);
 #endif
-    void (*sleep)(int ticks);
+    unsigned (*sleep)(unsigned ticks);
     void (*yield)(void);
 
 #if NUM_CORES > 1
@@ -175,10 +177,8 @@ struct codec_api {
     void (*semaphore_release)(struct semaphore *s);
 #endif /* NUM_CORES */
 
-#if NUM_CORES > 1
     void (*cpucache_flush)(void);
     void (*cpucache_invalidate)(void);
-#endif
 
     /* strings and memory */
     char* (*strcpy)(char *dst, const char *src);
@@ -213,7 +213,7 @@ struct codec_api {
     void (*profile_func_exit)(void *this_fn, void *call_site);
 #endif
  
-#if defined(HAVE_RECORDING) && !defined(SIMULATOR)
+#ifdef HAVE_RECORDING
     volatile bool   stop_encoder;
     volatile int    enc_codec_loaded; /* <0=error, 0=pending, >0=ok */
     void            (*enc_get_inputs)(struct enc_inputs *inputs);
@@ -241,11 +241,7 @@ struct codec_api {
 
 /* codec header */
 struct codec_header {
-    unsigned long magic; /* RCOD or RENC */
-    unsigned short target_id;
-    unsigned short api_version;
-    unsigned char *load_addr;
-    unsigned char *end_addr;
+    struct lc_header lc_hdr; /* must be first */
     enum codec_status(*entry_point)(void);
     struct codec_api **api;
 };
@@ -254,7 +250,7 @@ extern unsigned char codecbuf[];
 extern size_t codec_size;
 
 #ifdef CODEC
-#ifndef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
 /* plugin_* is correct, codecs use the plugin linker script */
 extern unsigned char plugin_start_addr[];
 extern unsigned char plugin_end_addr[];
@@ -262,27 +258,27 @@ extern unsigned char plugin_end_addr[];
 #define CODEC_HEADER \
         const struct codec_header __header \
         __attribute__ ((section (".header")))= { \
-        CODEC_MAGIC, TARGET_ID, CODEC_API_VERSION, \
-        plugin_start_addr, plugin_end_addr, codec_start, &ci };
+        { CODEC_MAGIC, TARGET_ID, CODEC_API_VERSION, \
+        plugin_start_addr, plugin_end_addr }, codec_start, &ci };
 /* encoders */
 #define CODEC_ENC_HEADER \
         const struct codec_header __header \
         __attribute__ ((section (".header")))= { \
-        CODEC_ENC_MAGIC, TARGET_ID, CODEC_API_VERSION, \
-        plugin_start_addr, plugin_end_addr, codec_start, &ci };
+        { CODEC_ENC_MAGIC, TARGET_ID, CODEC_API_VERSION, \
+        plugin_start_addr, plugin_end_addr }, codec_start, &ci };
 
 #else /* def SIMULATOR */
 /* decoders */
 #define CODEC_HEADER \
         const struct codec_header __header \
         __attribute__((visibility("default"))) = { \
-        CODEC_MAGIC, TARGET_ID, CODEC_API_VERSION, \
-        NULL, NULL, codec_start, &ci };
+        { CODEC_MAGIC, TARGET_ID, CODEC_API_VERSION, NULL, NULL }, \
+        codec_start, &ci };
 /* encoders */
 #define CODEC_ENC_HEADER \
         const struct codec_header __header = { \
-        CODEC_ENC_MAGIC, TARGET_ID, CODEC_API_VERSION, \
-        NULL, NULL, codec_start, &ci };
+        { CODEC_ENC_MAGIC, TARGET_ID, CODEC_API_VERSION, NULL, NULL }, \
+        codec_start, &ci };
 #endif /* SIMULATOR */
 #endif /* CODEC */
 

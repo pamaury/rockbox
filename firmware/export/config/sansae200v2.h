@@ -103,7 +103,7 @@
 /* The number of bytes reserved for loadable plugins */
 #define PLUGIN_BUFFER_SIZE 0x80000
 
-#define AB_REPEAT_ENABLE 1
+#define AB_REPEAT_ENABLE
 
 /* FM Tuner - suspected to be the SI4702 */
 #define CONFIG_TUNER SI4700
@@ -158,9 +158,12 @@
 #define CONFIG_I2C I2C_AS3525
 
 /* define current usage levels (based on battery bench) */
-#define CURRENT_NORMAL     45
+#define CURRENT_NORMAL     44
 #define CURRENT_BACKLIGHT  30
 #define CURRENT_RECORD     CURRENT_NORMAL
+
+/* maximum charging current */
+#define CURRENT_MAX_CHG   300
 
 /* The start address index for ROM builds */
 #define ROM_START 0x00000000
@@ -182,19 +185,16 @@
 #define HAVE_HOTSWAP
 #endif
 
-#ifndef BOOTLOADER
-
-#define USB_HANDLED_BY_OF
-
 /* USB On-the-go */
 #define CONFIG_USBOTG USBOTG_AS3525
 
 /* enable these for the experimental usb stack */
 #define HAVE_USBSTACK
+//#define USB_HANDLED_BY_OF
+#define USE_ROCKBOX_USB
 #define USB_VENDOR_ID 0x0781
 #define USB_PRODUCT_ID 0x7423
-
-#endif /* !BOOTLOADER */
+#define HAVE_USB_HID_MOUSE
 
 /* Define this if you have adjustable CPU frequency */
 #define HAVE_ADJUSTABLE_CPU_FREQ

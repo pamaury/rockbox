@@ -8,7 +8,7 @@
 #
 
 INCLUDES += -I$(FIRMDIR) -I$(FIRMDIR)/export -I$(FIRMDIR)/drivers -I$(FIRMDIR)/include
-ifndef SIMVER
+ifndef APP_TYPE
 INCLUDES += -I$(FIRMDIR)/libc/include
 endif
 
@@ -23,7 +23,7 @@ FIRMLIB = $(BUILDDIR)/firmware/libfirmware.a
 
 SYSFONT = $(ROOTDIR)/fonts/08-Schumacher-Clean.bdf
 
-CLEANOBJS += $(BUILDDIR)/sysfont.*
+CLEANOBJS += $(BUILDDIR)/sysfont.* $(BUILDDIR)/version.*
 
 # Limits for the built-in sysfont: ASCII for bootloaders, ISO8859-1 for normal builds
 ifneq (,$(findstring -DBOOTLOADER,$(EXTRA_DEFINES)))
@@ -43,3 +43,12 @@ $(BUILDDIR)/sysfont.o: $(SYSFONT) $(BUILDDIR)/sysfont.h
 	$(call PRINTS,CONVBDF $(subst $(ROOTDIR)/,,$<))$(TOOLSDIR)/convbdf -l $(MAXCHAR) -c -o $(BUILDDIR)/sysfont.c $<
 	$(call PRINTS,CC $(subst $(ROOTDIR)/,,$(BUILDDIR)/sysfont.c))$(CC) $(CFLAGS) -c $(BUILDDIR)/sysfont.c -o $@
 
+SVNVERSION:=$(shell $(TOOLSDIR)/version.sh $(ROOTDIR))
+OLDSVNVERSION:=$(shell grep 'RBVERSION' $(BUILDDIR)/version.h 2>/dev/null|cut -d '"' -f 2 || echo "NOREVISION")
+
+ifneq ($(SVNVERSION),$(OLDSVNVERSION))
+.PHONY: $(BUILDDIR)/version.h
+endif
+
+$(BUILDDIR)/version.h:
+	$(call PRINTS,GEN $(@F))$(TOOLSDIR)/genversion.sh $(BUILDDIR) $(TOOLSDIR)/version.sh $(ROOTDIR)

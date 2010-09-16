@@ -301,6 +301,10 @@ enum rec_freq_indexes
 #define REC_FREQ_DEFAULT REC_FREQ_44
 #endif
 
+#ifndef REC_SAMPR_DEFAULT
+#define REC_SAMPR_DEFAULT SAMPR_44
+#endif
+
 #define REC_FREQ_CFG_VAL_LIST  &REC_HAVE_96_(",96") REC_HAVE_88_(",88") \
                                 REC_HAVE_64_(",64") REC_HAVE_48_(",48") \
                                 REC_HAVE_44_(",44") REC_HAVE_32_(",32") \
@@ -311,5 +315,25 @@ enum rec_freq_indexes
 /* List of recording supported sample rates (set or subset of master list) */
 extern const unsigned long rec_freq_sampr[REC_NUM_FREQ];
 #endif /* HAVE_RECORDING */
+
+#ifdef CONFIG_SAMPR_TYPES
+
+#define SAMPR_TYPE_MASK (0xff << 24)
+#define SAMPR_TYPE_PLAY (0x00 << 24)
+#ifdef HAVE_RECORDING
+#define SAMPR_TYPE_REC  (0x01 << 24)
+#endif
+
+unsigned int pcm_sampr_type_rec_to_play(unsigned int samplerate);
+
+#else /* ndef CONFIG_SAMPR_TYPES */
+
+/* Types are ignored and == 0 */
+#define SAMPR_TYPE_PLAY 0
+#ifdef HAVE_RECORDING
+#define SAMPR_TYPE_REC  0
+#endif
+
+#endif /* CONFIG_SAMPR_TYPES */
 
 #endif /* PCM_SAMPR_H */

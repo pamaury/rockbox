@@ -41,9 +41,6 @@
 #include "st_stuff.h"
 #include "lib/helper.h"
 
-PLUGIN_HEADER
-PLUGIN_IRAM_DECLARE
-
 extern boolean timingdemo, singledemo, demoplayback, fastdemo; // killough
 
 int filearray[9];
@@ -62,7 +59,7 @@ int fileexists(const char * fname)
    return -1;
 }
 
-#ifndef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
 int my_open(const char *file, int flags, ...)
 {
    if(fpoint==8)
@@ -111,7 +108,7 @@ int my_close(int id)
 
 bool noprintf=0;  // Variable disables printf lcd updates to protect grayscale lib/direct lcd updates
 
-#ifndef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
 // Here is a hacked up printf command to get the output from the game.
 int printf(const char *fmt, ...)
 {
@@ -663,8 +660,6 @@ enum plugin_status plugin_start(const void* parameter)
    /* Disable all talking before initializing IRAM */
    rb->talk_disable(true);
 
-   PLUGIN_IRAM_INIT(rb)
-
    (void)parameter;
 
    doomexit=0;
@@ -751,7 +746,7 @@ enum plugin_status plugin_start(const void* parameter)
    printf("There were still: %d files open\n", fpoint);
    while(fpoint>0)
    {
-#ifdef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_HOSTED)
       close(filearray[fpoint]);
 #else
       rb->close(filearray[fpoint]);

@@ -111,7 +111,6 @@ static inline void do_sw_pwm(void)
 {
     if (!timer2_pwm_on) {
         do_scrollwheel();  /* Handle scrollwheel and tick tasks */
-        TIMER2_INTCLR = 0;  /* clear interrupt */
         return;
     }
 
@@ -133,8 +132,6 @@ static inline void do_sw_pwm(void)
         if (!(timer2_cycles_pwmon > timer2_cycles_pwmoff))
             do_scrollwheel();  /* Handle scrollwheel and tick tasks */
     }
-
-    TIMER2_INTCLR = 0;  /* clear interrupt */
 }
 #else
 static inline void do_sw_pwm(void)
@@ -171,7 +168,7 @@ void tick_start(unsigned int interval_in_ms)
 {
     int cycles = KERNEL_TIMER_FREQ / 1000 * interval_in_ms;
 
-    CGU_PERI |= CGU_TIMER2_CLOCK_ENABLE;    /* enable peripheral */
+    bitset32(&CGU_PERI, CGU_TIMER2_CLOCK_ENABLE);    /* enable peripheral */
     VIC_INT_ENABLE = INTERRUPT_TIMER2;     /* enable interrupt */
 
     set_timer2_cycles_per_tick(cycles);

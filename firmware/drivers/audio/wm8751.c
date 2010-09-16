@@ -42,6 +42,14 @@ const struct sound_settings_info audiohw_settings[] = {
     [SOUND_BALANCE]       = {"%",  0,  1,-100, 100,   0},
     [SOUND_CHANNELS]      = {"",   0,  1,   0,   5,   0},
     [SOUND_STEREO_WIDTH]  = {"%",  0,  5,   0, 250, 100},
+#ifdef AUDIOHW_HAVE_DEPTH_3D
+    [SOUND_DEPTH_3D]      = {"",   0,  1,   0,  15,   0},
+#endif
+#ifdef HAVE_RECORDING
+    [SOUND_LEFT_GAIN]     = {"dB", 1,  1,-172, 300,   0},
+    [SOUND_RIGHT_GAIN]    = {"dB", 1,  1,-172, 300,   0},
+    [SOUND_MIC_GAIN]      = {"dB", 1,  1,-172, 300,   0},
+#endif
 };
 
 /* Flags used in combination with settings */
@@ -90,6 +98,50 @@ static int tone_tenthdb2hw(int value)
     return value;
 }
 
+#if 0
+static int alc_tenthdb2hw(int value)
+{
+   /* -28.5dB - -6dB step 1.5dB - translate -285 - -60 step 15
+      to 0 - 15 step 1
+    */
+
+    value = 15 - (value + 60)/15;
+}
+
+
+static int alc_hldus2hw(unsigned int value)
+{
+    /* 0000 -        0us
+     * 0001 -     2670us
+     * 0010 -     5330us
+     *
+     * 1111 - 43691000us
+     */
+    return 0;
+}
+
+static int alc_dcyms2hw(int value)
+{
+    /* 0000 - 24ms
+     * 0001 - 48ms
+     * 0010 - 96ms
+     *
+     * 1010 or higher 24580ms
+     */
+    return 0;  
+}
+
+static int alc_atkms2hw(int value)
+{
+    /* 0000 -  6ms
+     * 0001 - 12ms
+     * 0010 - 24ms
+     *
+     * 1010 or higher 6140ms
+     */
+    return 0;
+}
+#endif
 
 #ifdef USE_ADAPTIVE_BASS
 static int adaptivebass2hw(int value)
@@ -102,6 +154,14 @@ static int adaptivebass2hw(int value)
 #endif
 
 #if defined(HAVE_WM8750)
+#if 0
+static int ngath_tenthdb2hw(int value)
+{
+    /* -76.5dB - -30dB in 1.5db steps   -765 - -300 in 15 steps */
+    value = 31 - (value + 300)/15;
+    return value;
+}
+#endif
 static int recvol2hw(int value)
 {
 /* convert tenth of dB of input volume (-172...300) to input register value */
@@ -110,7 +170,7 @@ static int recvol2hw(int value)
     /* 010111 ==   0dB  (0x17)            */
     /* 000000 == -17.25dB                 */
 
-    return (3*(value/10 - 0x17))/4;
+    return ((4*(value))/30 + 0x17);
 }
 #endif
 static void audiohw_mute(bool mute)
@@ -167,6 +227,14 @@ void audiohw_postinit(void)
 
      /* 4. Enable line and / or headphone output buffers as required. */
 #if defined(MROBE_100) || defined(MPIO_HD200)
+    /* fix for high pitch noise after power-up on HD200
+     * it is *NOT* required step according to the
+     * Datasheet for WM8750L but real life is different :-)
+     */
+    wmcodec_write(LOUT1, LOUT1_BITS);
+    wmcodec_write(ROUT1, ROUT1_BITS);
+
+    /* power-up output stage */
     wmcodec_write(PWRMGMT2, PWRMGMT2_DACL | PWRMGMT2_DACR |
                   PWRMGMT2_LOUT1 | PWRMGMT2_ROUT1);
 #else
@@ -194,16 +262,6 @@ void audiohw_postinit(void)
     wmcodec_write(LEFTMIX2, LEFTMIX2_MI2LO | LEFTMIX2_MI2LOVOL(2));
     wmcodec_write(RIGHTMIX1, RIGHTMIX1_MI2RO | RIGHTMIX1_MI2ROVOL(2));
 #endif
-#endif
-
-#ifdef MPIO_HD200
-    /* Crude fix for high pitch noise at startup
-     * I should find out what realy causes this
-     */
-    wmcodec_write(LOUT1, LOUT1_BITS|0x7f);
-    wmcodec_write(ROUT1, ROUT1_BITS|0x7f);
-    wmcodec_write(LOUT1, LOUT1_BITS);
-    wmcodec_write(ROUT1, ROUT1_BITS);
 #endif
 
     /* lower power consumption */
@@ -276,10 +334,12 @@ void audiohw_close(void)
     wmcodec_write(PWRMGMT1, 0x0);
 }
 
+/* According to datasheet of WM8750
+ * clocking setup is needed in both slave and master mode
+ */
 void audiohw_set_frequency(int fsel)
 {
     (void)fsel;
-#ifndef CODEC_SLAVE
     static const unsigned char srctrl_table[HW_NUM_FREQ] =
     {
         HW_HAVE_11_([HW_FREQ_11] = CODEC_SRCTRL_11025HZ,)
@@ -292,10 +352,89 @@ void audiohw_set_frequency(int fsel)
         fsel = HW_FREQ_DEFAULT;
 
     wmcodec_write(CLOCKING, srctrl_table[fsel]);
-#endif
 }
 
 #if defined(HAVE_WM8750)
+#ifdef AUDIOHW_HAVE_DEPTH_3D
+/* Set the depth of the 3D effect */
+void audiohw_set_depth_3d(int val)
+{
+    if (val)
+        wmcodec_write(ENHANCE_3D,
+                      ENHANCE_3D_MODE3D_PLAYBACK | ENHANCE_3D_DEPTH(val) |
+                      ENHANCE_3D_3DEN);
+    else
+        wmcodec_write(ENHANCE_3D,ENHANCE_3D_MODE3D_PLAYBACK);
+}
+#endif
+
+#ifdef HAVE_RECORDING
+#if 0
+void audiohw_set_ngath(int ngath, int type, bool enable)
+{
+    /* This function controls Noise gate function
+     * of the codec. This can only run in conjunction
+     * with ALC
+     */
+
+    if(enable)
+        wmcodec_write(NGAT, NGAT_NGG(type)|NGAT_NGTH(ngath)|NGAT_NGAT);
+    else
+        wmcodec_write(NGAT, NGAT_NGG(type)|NGAT_NGTH(ngath_tenthdb2hw(ngath)));
+}
+
+
+void audiohw_set_alc(int level, unsigned int hold, int decay, int attack, bool enable)
+{
+    /* level in thenth of dB -28.5dB - -6dB in 1.5dB steps
+     * hold time in us 0us - 43691000us
+     * decay time in ms 24ms - 24580ms
+     * attack time in ms 6ms - 6140ms
+     */
+
+    if(enable)
+    {
+        wmcodec_write(ALC1, ALC1_ALCSEL_STEREO|ALC1_MAXGAIN(0x07)|
+                      ALC1_ALCL(alc_tenthdb2hw(level)));
+        wmcodec_write(ALC2, ALC2_ALCZ|ALC2_HLD(alc_hldus2hw(hold)));
+        wmcodec_write(ALC3, ALC3_DCY(alc_dcyms2hw(decay))|
+                      ALC3_ATK(alc_atkms2hw(attack)));
+    }
+    else
+    {
+        wmcodec_write(ALC1, ALC1_ALCSEL_DISABLED|ALC1_MAXGAIN(0x07)|ALC1_ALCL(alc_tenthdb2hw(level)));
+    }
+}
+
+void audiohw_set_alc(int level, unsigned int hold, int decay, int attack, bool enable)
+{
+    /* level in thenth of dB -28.5dB - -6dB in 1.5dB steps
+     * hold time in 15 steps 0ms,2.67ms,5.33ms,...,43691ms
+     * decay time in 10 steps 24ms,48ms,96ms,...,24580ms
+     * attack time in 10 steps 6ms,12ms,24ms,...,6140ms
+     */
+
+    if(enable)
+    {
+        wmcodec_write(ALC1, ALC1_ALCSEL_STEREO|ALC1_MAXGAIN(0x07)|
+                      ALC1_ALCL(alc_tenthdb2hw(level)));
+        wmcodec_write(ALC2, ALC2_ALCZ|ALC2_HLD(hold));
+        wmcodec_write(ALC3, ALC3_DCY(decay)|
+                      ALC3_ATK(attack));
+    }
+    else
+    {
+        wmcodec_write(ALC1, ALC1_ALCSEL_DISABLED|ALC1_MAXGAIN(0x07)|
+                      ALC1_ALCL(alc_tenthdb2hw(level)));
+    }
+}
+
+void audiohw_set_alc_level(int level)
+{
+    wmcodec_write(ALC1, ALC1_ALCSEL_STEREO|ALC1_MAXGAIN(0x07)|
+                  ALC1_ALCL(alc_tenthdb2hw(level)));
+}
+#endif
 void audiohw_set_recsrc(int source, bool recording)
 {
     /* INPUT1 - FM radio
@@ -307,17 +446,30 @@ void audiohw_set_recsrc(int source, bool recording)
      * turn on output buffer(s)
      * 
      * if recording == true we route input signal to PGA
-     * and monitoring picks up signal after PGA in analog domain
+     * and monitoring picks up signal after PGA and ADC
      * turn on ADC, PGA, DAC, output buffer(s)
      */
     
     switch(source)
     {
     case AUDIO_SRC_PLAYBACK:
-        /* mute PGA, disable all audio paths but DAC and output stage*/
-        wmcodec_write(LINVOL, LINVOL_LINMUTE | LINVOL_LINVOL(23)); /* 0dB */
-        wmcodec_write(RINVOL, RINVOL_RINMUTE | RINVOL_RINVOL(23)); /* 0dB */
+        /* turn off DAC and ADC in order to setup Enchance 3D function
+         * for playback. This does not turn on enchancement but
+         * the switch between playback/record has to be done with
+         * DAC and ADC off
+         */
+#ifdef AUDIOHW_HAVE_DEPTH_3D
         wmcodec_write(PWRMGMT1, PWRMGMT1_VREF | PWRMGMT1_VMIDSEL_50K);
+        wmcodec_write(PWRMGMT2, 0x00);
+        wmcodec_write(ENHANCE_3D, ENHANCE_3D_MODE3D_PLAYBACK);
+#endif
+        /* mute PGA, disable all audio paths but DAC and output stage*/
+        wmcodec_write(LINVOL, LINVOL_LINMUTE | LINVOL_LINVOL(0x17)); /* 0dB */
+        wmcodec_write(RINVOL, RINVOL_RINMUTE | RINVOL_RINVOL(0x17)); /* 0dB */
+
+        wmcodec_write(LOUT1, LOUT1_BITS);
+        wmcodec_write(ROUT1, ROUT1_BITS);
+
         wmcodec_write(PWRMGMT2, PWRMGMT2_DACL | PWRMGMT2_DACR |
                       PWRMGMT2_LOUT1 | PWRMGMT2_ROUT1);
 
@@ -332,14 +484,25 @@ void audiohw_set_recsrc(int source, bool recording)
     case AUDIO_SRC_FMRADIO:
         if(recording)
         {
-            /* Set input volume to PGA */
-            wmcodec_write(LINVOL, LINVOL_LINVOL(23));
-            wmcodec_write(RINVOL, RINVOL_RINVOL(23));
+            /* turn off DAC and ADC in order to setup Enchance 3D function
+             * for playback. This does not turn on enchancement but
+             * the switch between playback/record has to be done with
+             * DAC and ADC off
+             */
+#ifdef AUDIOHW_HAVE_DEPTH_3D
+              wmcodec_write(PWRMGMT1, PWRMGMT1_VREF | PWRMGMT1_VMIDSEL_50K);
+              wmcodec_write(PWRMGMT2, 0x00);
+              wmcodec_write(ENHANCE_3D, ENHANCE_3D_MODE3D_RECORD);
+#endif
 
             /* Turn on PGA and ADC */
             wmcodec_write(PWRMGMT1, PWRMGMT1_VREF | PWRMGMT1_VMIDSEL_50K |
                           PWRMGMT1_AINL | PWRMGMT1_AINR | 
                           PWRMGMT1_ADCL | PWRMGMT1_ADCR);
+
+            /* Set input volume to PGA 0dB*/
+            wmcodec_write(LINVOL, LINVOL_LIVU|LINVOL_LINVOL(0x17));
+            wmcodec_write(RINVOL, RINVOL_RIVU|RINVOL_RINVOL(0x17));
 
             /* Setup input source for PGA as INPUT1 
              * MICBOOST disabled
@@ -356,38 +519,45 @@ void audiohw_set_recsrc(int source, bool recording)
             wmcodec_write(PWRMGMT2, PWRMGMT2_DACL | PWRMGMT2_DACR |
                           PWRMGMT2_LOUT1 | PWRMGMT2_ROUT1);
 
-            /* analog monitor */
-            wmcodec_write(LEFTMIX1, LEFTMIX1_LMIXSEL_ADCLIN |
-                          LEFTMIX1_LD2LO);
-            wmcodec_write(RIGHTMIX2, RIGHTMIX2_RMIXSEL_ADCRIN |
-                          RIGHTMIX2_RD2RO);
+            /* route DAC signal to output mixer */
+            wmcodec_write(LEFTMIX1, LEFTMIX1_LD2LO);
+            wmcodec_write(RIGHTMIX2, RIGHTMIX2_RD2RO);
         }
         else
         {
-
             /* turn off ADC, PGA */
             wmcodec_write(PWRMGMT1, PWRMGMT1_VREF | PWRMGMT1_VMIDSEL_50K);
+
+            wmcodec_write(LOUT1, LOUT1_BITS);
+            wmcodec_write(ROUT1, ROUT1_BITS);
 
            /* turn on DAC and output stage */
             wmcodec_write(PWRMGMT2, PWRMGMT2_DACL | PWRMGMT2_DACR |
                           PWRMGMT2_LOUT1 | PWRMGMT2_ROUT1);
 
            /* setup monitor mode by routing input signal to outmix 
-             * at 0dB volume
-             */
+            * at 0dB volume
+            */
             wmcodec_write(LEFTMIX1, LEFTMIX1_LI2LO | LEFTMIX1_LMIXSEL_LINPUT1 |
                           LEFTMIX1_LI2LOVOL(0x20) | LEFTMIX1_LD2LO);
-            wmcodec_write(RIGHTMIX2, RIGHTMIX2_RI2RO | RIGHTMIX2_RMIXSEL_RINPUT1 |
+            wmcodec_write(RIGHTMIX1, RIGHTMIX1_RMIXSEL_RINPUT1);
+            wmcodec_write(RIGHTMIX2, RIGHTMIX2_RI2RO |
                           RIGHTMIX2_RI2ROVOL(0x20) | RIGHTMIX2_RD2RO);
         }
         break;
 
     case AUDIO_SRC_LINEIN:
-        /* Set input volume to PGA */
-        wmcodec_write(LINVOL, LINVOL_LINVOL(23));
-        wmcodec_write(RINVOL, RINVOL_RINVOL(23));
+#ifdef AUDIOHW_HAVE_DEPTH_3D
+        wmcodec_write(PWRMGMT1, PWRMGMT1_VREF | PWRMGMT1_VMIDSEL_50K);
+        wmcodec_write(PWRMGMT2, 0x00);
+        wmcodec_write(ENHANCE_3D, ENHANCE_3D_MODE3D_RECORD);
+#endif
 
-        /* Turn on PGA, ADC, DAC */
+        /* Set input volume to PGA */
+        wmcodec_write(LINVOL, LINVOL_LIVU | LINVOL_LINVOL(23));
+        wmcodec_write(RINVOL, RINVOL_RIVU | RINVOL_RINVOL(23));
+
+        /* Turn on PGA, ADC */
         wmcodec_write(PWRMGMT1, PWRMGMT1_VREF | PWRMGMT1_VMIDSEL_50K |
                       PWRMGMT1_AINL | PWRMGMT1_AINR | 
                       PWRMGMT1_ADCL | PWRMGMT1_ADCR);
@@ -406,18 +576,21 @@ void audiohw_set_recsrc(int source, bool recording)
          * default is LADC -> LDATA, RADC -> RDATA
          * so we don't touch this
          */
-
-        /* digital monitor */
-        wmcodec_write(LEFTMIX1, LEFTMIX1_LMIXSEL_ADCLIN |
-                      LEFTMIX1_LD2LO);
-        wmcodec_write(RIGHTMIX2, RIGHTMIX2_RMIXSEL_ADCRIN |
-                      RIGHTMIX2_RD2RO);
+        /* route DAC signal to output mixer */
+        wmcodec_write(LEFTMIX1, LEFTMIX1_LD2LO);
+        wmcodec_write(RIGHTMIX2, RIGHTMIX2_RD2RO);
         break;
 
     case AUDIO_SRC_MIC:
+#ifdef AUDIOHW_HAVE_DEPTH_3D
+          wmcodec_write(PWRMGMT1, PWRMGMT1_VREF | PWRMGMT1_VMIDSEL_50K);
+          wmcodec_write(PWRMGMT2, 0x00);
+          wmcodec_write(ENHANCE_3D, ENHANCE_3D_MODE3D_RECORD);
+#endif
+
         /* Set input volume to PGA */
-        wmcodec_write(LINVOL, LINVOL_LINVOL(23));
-        wmcodec_write(RINVOL, RINVOL_RINVOL(23));
+        wmcodec_write(LINVOL, LINVOL_LIVU | LINVOL_LINVOL(23));
+        wmcodec_write(RINVOL, RINVOL_RIVU | RINVOL_RINVOL(23));
 
         /* Turn on PGA and ADC, turn off DAC */
         wmcodec_write(PWRMGMT1, PWRMGMT1_VREF | PWRMGMT1_VMIDSEL_50K |
@@ -439,21 +612,19 @@ void audiohw_set_recsrc(int source, bool recording)
          * so we don't touch this
          */
 
-        /* analog monitor */
-        wmcodec_write(LEFTMIX1, LEFTMIX1_LMIXSEL_ADCLIN |
-                      LEFTMIX1_LD2LO);
-        wmcodec_write(RIGHTMIX2, RIGHTMIX2_RMIXSEL_ADCRIN |
-                      RIGHTMIX2_RD2RO);
-        break;
+        /* route DAC signal to output mixer */
+        wmcodec_write(LEFTMIX1, LEFTMIX1_LD2LO);
+        wmcodec_write(RIGHTMIX2, RIGHTMIX2_RD2RO);
 
     } /* switch(source) */
 }
 
 /* Setup PGA gain */
-void audiohw_set_recvol(int left, int right, int type)
+void audiohw_set_recvol(int vol_l, int vol_r, int type)
 {
     (void)type;
-    wmcodec_write(LINVOL, LINVOL_LINVOL(recvol2hw(left)));
-    wmcodec_write(RINVOL, RINVOL_RINVOL(recvol2hw(right)));
+    wmcodec_write(LINVOL, LINVOL_LIZC|LINVOL_LINVOL(recvol2hw(vol_l)));
+    wmcodec_write(RINVOL, RINVOL_RIZC|RINVOL_RIVU|RINVOL_RINVOL(recvol2hw(vol_r)));
 }
-#endif
+#endif /* HAVE_RECORDING */
+#endif /* HAVE_WM8750 */

@@ -1,4 +1,4 @@
-#             __________               __   ___.
+﻿#             __________               __   ___.
 #   Open      \______   \ ____   ____ |  | _\_ |__   _______  ___
 #   Source     |       _//  _ \_/ ___\|  |/ /| __ \ /  _ \  \/  /
 #   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
@@ -27,10 +27,10 @@
     *: "Yes"
   </source>
   <dest>
-    *: "是"
+    *: "开启"
   </dest>
   <voice>
-    *: "是"
+    *: "开启"
   </voice>
 </phrase>
 <phrase>
@@ -41,10 +41,10 @@
     *: "No"
   </source>
   <dest>
-    *: "不"
+    *: "关闭"
   </dest>
   <voice>
-    *: "不"
+    *: "关闭"
   </voice>
 </phrase>
 <phrase>
@@ -55,10 +55,10 @@
     *: "On"
   </source>
   <dest>
-    *: "开"
+    *: "开启"
   </dest>
   <voice>
-    *: "开"
+    *: "开启"
   </voice>
 </phrase>
 <phrase>
@@ -69,10 +69,10 @@
     *: "Off"
   </source>
   <dest>
-    *: "关"
+    *: "关闭"
   </dest>
   <voice>
-    *: "关"
+    *: "关闭"
   </voice>
 </phrase>
 <phrase>
@@ -83,10 +83,10 @@
     *: "Always"
   </source>
   <dest>
-    *: "总是"
+    *: "总是开启"
   </dest>
   <voice>
-    *: "总是"
+    *: "总是开启"
   </voice>
 </phrase>
 <phrase>
@@ -97,10 +97,10 @@
     *: "Loading..."
   </source>
   <dest>
-    *: "读取中..."
+    *: "读取中,请稍后..."
   </dest>
   <voice>
-    *: "读取中"
+    *: "读取中 请稍后"
   </voice>
 </phrase>
 <phrase>
@@ -113,6 +113,7 @@
   </source>
   <dest>
     *: none
+    ondavx*:"拨动电源开关关机"
     soft_shutdown: "按下OFF关机"
   </dest>
   <voice>
@@ -132,23 +133,6 @@
   </dest>
   <voice>
     *: "关机中"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_RESTARTING_PLAYBACK
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    swcodec: ""
-  </source>
-  <dest>
-    *: none
-    swcodec: ""
-  </dest>
-  <voice>
-    *: none
-    swcodec: ""
   </voice>
 </phrase>
 <phrase>
@@ -176,10 +160,10 @@
     *: "Failed"
   </source>
   <dest>
-    *: "已失败"
+    *: "操作失败"
   </dest>
   <voice>
-    *: "已失败"
+    *: "操作失败"
   </voice>
 </phrase>
 <phrase>
@@ -204,10 +188,10 @@
     *: "Sound Settings"
   </source>
   <dest>
-    *: "声音的设置"
+    *: "声音设置"
   </dest>
   <voice>
-    *: "声音的设置"
+    *: "声音设置"
   </voice>
 </phrase>
 <phrase>
@@ -246,10 +230,10 @@
     *: "Browse Theme Files"
   </source>
   <dest>
-    *: "浏览主题"
+    *: "主题"
   </dest>
   <voice>
-    *: "浏览主题"
+    *: "主题"
   </voice>
 </phrase>
 <phrase>
@@ -279,11 +263,11 @@
   </source>
   <dest>
     *: none
-    recording: "录音"
+    recording: "录音界面"
   </dest>
   <voice>
     *: none
-    recording: "录音"
+    recording: "录音界面"
   </voice>
 </phrase>
 <phrase>
@@ -451,10 +435,10 @@
     *: "Karaoke"
   </source>
   <dest>
-    *: "卡啦OK"
+    *: "卡啦OK模式"
   </dest>
   <voice>
-    *: "卡啦 OK "
+    *: "卡啦 OK模式"
   </voice>
 </phrase>
 <phrase>
@@ -549,11 +533,11 @@
   </source>
   <dest>
     *: none
-    masf: "MDB启用"
+    masf: "启用MDB"
   </dest>
   <voice>
     *: none
-    masf: "MDB启用"
+    masf: "启用MDB"
   </voice>
 </phrase>
 <phrase>
@@ -570,7 +554,7 @@
   </dest>
   <voice>
     *: none
-    masf: "MDB强度"
+    masf: "MDB的强度"
   </voice>
 </phrase>
 <phrase>
@@ -587,7 +571,7 @@
   </dest>
   <voice>
     *: none
-    masf: "MDB泛音"
+    masf: "MDB的泛音"
   </voice>
 </phrase>
 <phrase>
@@ -604,7 +588,7 @@
   </dest>
   <voice>
     *: none
-    masf: "MDB中心频率"
+    masf: "MDB的中心频率"
   </voice>
 </phrase>
 <phrase>
@@ -621,7 +605,7 @@
   </dest>
   <voice>
     *: none
-    masf: "MDB形状"
+    masf: "MDB的形状"
   </voice>
 </phrase>
 <phrase>
@@ -767,7 +751,7 @@
     *: "浏览.cfg文件"
   </dest>
   <voice>
-    *: "浏览.cfg文件"
+    *: "浏览设置文件"
   </voice>
 </phrase>
 <phrase>
@@ -792,10 +776,10 @@
     *: "Cleared"
   </source>
   <dest>
-    *: "已清除"
+    *: "所有设置已恢复出厂状态"
   </dest>
   <voice>
-    *: "已清除"
+    *: "所有设置已经恢复到出厂时的状态"
   </voice>
 </phrase>
 <phrase>
@@ -958,7 +942,7 @@
   </source>
   <dest>
     *: none
-    swcodec: "编辑模式:%s"
+    swcodec: "编辑:%s"
   </dest>
   <voice>
     *: none
@@ -1134,10 +1118,10 @@
     *: "Recursively Insert Directories"
   </source>
   <dest>
-    *: "递归插入子目录"
+    *: "顺序插入子目录"
   </dest>
   <voice>
-    *: "递归插入子目录"
+    *: "顺序插入子目录"
   </voice>
 </phrase>
 <phrase>
@@ -1148,10 +1132,10 @@
     *: "Warn When Erasing Dynamic Playlist"
   </source>
   <dest>
-    *: "确认删除动态播放列表"
+    *: "删除动态播放列表时要求确认"
   </dest>
   <voice>
-    *: "确认删除动态播放列表"
+    *: "删除动态播放列表时要求确认"
   </voice>
 </phrase>
 <phrase>
@@ -1162,10 +1146,10 @@
     *: "Version"
   </source>
   <dest>
-    *: "版本"
+    *: "RB版本"
   </dest>
   <voice>
-    *: "版本"
+    *: "Rockbox的版本"
   </voice>
 </phrase>
 <phrase>
@@ -1232,7 +1216,7 @@
     *: "A-B"
   </source>
   <dest>
-    *: "A-B段"
+    *: "A-B重复段"
   </dest>
   <voice>
     *: "AB段"
@@ -1352,11 +1336,11 @@
   </source>
   <dest>
     *: none
-    swcodec: "改歌的声音"
+    swcodec: "曲目更换提示音"
   </dest>
   <voice>
     *: none
-    swcodec: "改歌的声音"
+    swcodec: "曲目更换时发出提示音"
   </voice>
 </phrase>
 <phrase>
@@ -1428,48 +1412,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_ID3_ORDER
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_ID3_V1_FIRST
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_ID3_V2_FIRST
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
-  </voice>
-</phrase>
-<phrase>
   id: LANG_NEXT_FOLDER
   desc: in settings_menu. Should we allow move to next/prev folder from last/first track of current one
   user: core
@@ -1536,10 +1478,10 @@
     *: "Updating in background"
   </source>
   <dest>
-    *: "后台更新中"
+    *: "后台更新中..."
   </dest>
   <voice>
-    *: "后台更新中"
+    *: "后台更新中..."
   </voice>
 </phrase>
 <phrase>
@@ -1564,10 +1506,10 @@
     *: "Gather Runtime Data"
   </source>
   <dest>
-    *: "收集运行数据"
+    *: "记录音乐播放记录"
   </dest>
   <voice>
-    *: "收集运行数据"
+    *: "记录音乐播放记录"
   </voice>
 </phrase>
 <phrase>
@@ -1592,10 +1534,10 @@
     *: "Sort Directories"
   </source>
   <dest>
-    *: "目录排序"
+    *: "目录排序方式"
   </dest>
   <voice>
-    *: "目录排序"
+    *: "排序目录的方式"
   </voice>
 </phrase>
 <phrase>
@@ -1606,10 +1548,10 @@
     *: "Sort Files"
   </source>
   <dest>
-    *: "文件排序"
+    *: "文件排序方式"
   </dest>
   <voice>
-    *: "文件排序"
+    *: "排序文件的方式"
   </voice>
 </phrase>
 <phrase>
@@ -1690,10 +1632,10 @@
     *: "Supported"
   </source>
   <dest>
-    *: "Rockbox支持的"
+    *: "仅显示Rockbox支持的"
   </dest>
   <voice>
-    *: "Rockbox支持的"
+    *: "仅显示Rockbox支持的文件"
   </voice>
 </phrase>
 <phrase>
@@ -1704,10 +1646,10 @@
     *: "Music"
   </source>
   <dest>
-    *: "音乐文件"
+    *: "仅显示音乐文件"
   </dest>
   <voice>
-    *: "音乐文件"
+    *: "仅显示音乐文件"
   </voice>
 </phrase>
 <phrase>
@@ -1748,11 +1690,11 @@
   </source>
   <dest>
     *: none
-    lcd_bitmap: "浏览字体"
+    lcd_bitmap: "字体"
   </dest>
   <voice>
     *: none
-    lcd_bitmap: "浏览字体"
+    lcd_bitmap: "字体"
   </voice>
 </phrase>
 <phrase>
@@ -1763,10 +1705,10 @@
     *: "While Playing Screen"
   </source>
   <dest>
-    *: "浏览WPS(正在播放界面)文件"
+    *: "音乐播放界面"
   </dest>
   <voice>
-    *: "浏览WPS(正在播放界面)文件"
+    *: "音乐播放界面"
   </voice>
 </phrase>
 <phrase>
@@ -1779,11 +1721,11 @@
   </source>
   <dest>
     *: none
-    remote: "浏览RWPS(线控正在播放界面)文件"
+    remote: "音乐播放界面(线控)"
   </dest>
   <voice>
     *: none
-    remote: "浏览RWPS(线控正在播放界面)文件"
+    remote: "线控音乐播放界面"
   </voice>
 </phrase>
 <phrase>
@@ -1845,7 +1787,7 @@
   </dest>
   <voice>
     *: none
-    lcd_bitmap: "状态栏或滚动条"
+    lcd_bitmap: "状态栏与滚动条"
   </voice>
 </phrase>
 <phrase>
@@ -1873,10 +1815,10 @@
     *: "Default Codepage"
   </source>
   <dest>
-    *: "默认代码页"
+    *: "默认文字编码"
   </dest>
   <voice>
-    *: "默认代码页"
+    *: "默认文字编码"
   </voice>
 </phrase>
 <phrase>
@@ -2135,10 +2077,10 @@
     *: "Idle Poweroff"
   </source>
   <dest>
-    *: "闲置自动关机"
+    *: "闲置自动关机时长"
   </dest>
   <voice>
-    *: "闲置自动关机"
+    *: "闲置自动关机时长"
   </voice>
 </phrase>
 <phrase>
@@ -2242,7 +2184,7 @@
     *: "Yes - Recent only"
   </source>
   <dest>
-    *: "是-保存到最近的书签"
+    *: "保存到最近的书签"
   </dest>
   <voice>
     *: "是 保存到最近的书签"
@@ -2256,7 +2198,7 @@
     *: "Ask - Recent only"
   </source>
   <dest>
-    *: "每次询问-保存到最近的书签"
+    *: "保存到最近的书签(每次询问)"
   </dest>
   <voice>
     *: "每次询问 保存到最近的书签"
@@ -2284,10 +2226,10 @@
     *: "Maintain a List of Recent Bookmarks?"
   </source>
   <dest>
-    *: "维护最近书签列表"
+    *: "在主界面显示最近书签列表"
   </dest>
   <voice>
-    *: "是否维护最近书签列表"
+    *: "是否在主界面显示最近书签列表"
   </voice>
 </phrase>
 <phrase>
@@ -2520,11 +2462,11 @@
   </source>
   <dest>
     *: none
-    recording: "预录时长"
+    recording: "预录制时长"
   </dest>
   <voice>
     *: none
-    recording: "预录时长"
+    recording: "预录制时长"
   </voice>
 </phrase>
 <phrase>
@@ -2542,23 +2484,6 @@
   <voice>
     *: none
     recording: "目录"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_RECORD_CURRENT_DIR
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: none
-    recording: ""
-  </source>
-  <dest>
-    *: none
-    recording: deprecated
-  </dest>
-  <voice>
-    *: none
-    recording: ""
   </voice>
 </phrase>
 <phrase>
@@ -2605,7 +2530,7 @@
   </source>
   <dest>
     *: none
-    remote: "只是主机"
+    remote: "仅主机"
   </dest>
   <voice>
     *: none
@@ -2622,7 +2547,7 @@
   </source>
   <dest>
     *: none
-    remote: "只是线控"
+    remote: "仅线控"
   </dest>
   <voice>
     *: none
@@ -2808,20 +2733,6 @@
   <voice>
     *: none
     crossfade: "混合"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_REPLAYGAIN_ENABLE
-  desc: deprecated
-  user:
-  <source>
-    *: none
-  </source>
-  <dest>
-    *: none
-  </dest>
-  <voice>
-    *: none
   </voice>
 </phrase>
 <phrase>
@@ -3032,7 +2943,7 @@
     *: "首次按键仅开启背光"
   </dest>
   <voice>
-    *: "首次按键仅开启背光"
+    *: "首次按键仅开启背光而不响应按键功能"
   </voice>
 </phrase>
 <phrase>
@@ -3160,15 +3071,15 @@
   user: core
   <source>
     *: none
-    lcd_non-mono: "Background Colour"
+    lcd_color: "Background Colour"
   </source>
   <dest>
     *: none
-    lcd_non-mono: "背景颜色"
+    lcd_color: "背景颜色"
   </dest>
   <voice>
     *: none
-    lcd_non-mono: "背景颜色"
+    lcd_color: "背景颜色"
   </voice>
 </phrase>
 <phrase>
@@ -3177,15 +3088,15 @@
   user: core
   <source>
     *: none
-    lcd_non-mono: "Foreground Colour"
+    lcd_color: "Foreground Colour"
   </source>
   <dest>
     *: none
-    lcd_non-mono: "字体颜色"
+    lcd_color: "字体颜色"
   </dest>
   <voice>
     *: none
-    lcd_non-mono: "字体颜色"
+    lcd_color: "字体颜色"
   </voice>
 </phrase>
 <phrase>
@@ -3194,15 +3105,15 @@
   user: core
   <source>
     *: none
-    lcd_non-mono: "Reset Colours"
+    lcd_color: "Reset Colours"
   </source>
   <dest>
     *: none
-    lcd_non-mono: "重置颜色"
+    lcd_color: "重置颜色"
   </dest>
   <voice>
     *: none
-    lcd_non-mono: "重置颜色"
+    lcd_color: "重置颜色"
   </voice>
 </phrase>
 <phrase>
@@ -3307,59 +3218,20 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_JUMP_SCROLL
-  desc: (archosplayer) menu alternative for jump scroll
-  user: core
-  <source>
-    *: "Jump Scroll"
-  </source>
-  <dest>
-    *: "跳跃滚动"
-  </dest>
-  <voice>
-    *: "跳跃滚动"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_ONE_TIME
-  desc: (archosplayer) the jump scroll shall be done "one time"
-  user: core
-  <source>
-    *: "One time"
-  </source>
-  <dest>
-    *: "一次"
-  </dest>
-  <voice>
-    *: "一次"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_JUMP_SCROLL_DELAY
-  desc: (archosplayer) Delay before making a jump scroll
-  user: core
-  <source>
-    *: "Jump Scroll Delay"
-  </source>
-  <dest>
-    *: "跳跃滚动时滞"
-  </dest>
-  <voice>
-    *: "跳跃滚动时滞"
-  </voice>
-</phrase>
-<phrase>
   id: LANG_SCREEN_SCROLL_VIEW
   desc: should lines scroll out of the screen
   user: core
   <source>
-    *: "Screen Scrolls Out Of View"
+    *: none
+    lcd_bitmap: "Screen Scrolls Out Of View"
   </source>
   <dest>
-    *: "允许屏幕滚动"
+    *: none
+    lcd_bitmap: "允许列表查看时滚动全屏"
   </dest>
   <voice>
-    *: "允许屏幕滚动"
+    *: none
+    lcd_bitmap: "允许列表查看时滚动整个屏幕"
   </voice>
 </phrase>
 <phrase>
@@ -3367,13 +3239,16 @@
   desc: Pixels to advance per Screen scroll
   user: core
   <source>
-    *: "Screen Scroll Step Size"
+    *: none
+    lcd_bitmap: "Screen Scroll Step Size"
   </source>
   <dest>
-    *: "屏幕滚动步长"
+    *: none
+    lcd_bitmap: "屏幕滚动步长"
   </dest>
   <voice>
-    *: "屏幕滚动步长"
+    *: none
+    lcd_bitmap: "屏幕滚动步长"
   </voice>
 </phrase>
 <phrase>
@@ -3524,20 +3399,6 @@
   <voice>
     *: "峰值释放速度"
     masd: none
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_PM_UNITS_PER_READ
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
   </voice>
 </phrase>
 <phrase>
@@ -3988,7 +3849,7 @@
     *: "File/directory exists. Overwrite?"
   </source>
   <dest>
-    *: "文件/目录已存在.覆盖?"
+    *: "文件/目录已存在,是否覆盖?"
   </dest>
   <voice>
     *: "文件/目录已存在 覆盖吗"
@@ -4061,10 +3922,10 @@
     *: "Deleted"
   </source>
   <dest>
-    *: "已刪除"
+    *: "已刪除文件"
   </dest>
   <voice>
-    *: "已刪除"
+    *: "文件已经被刪除"
   </voice>
 </phrase>
 <phrase>
@@ -4105,11 +3966,11 @@
   </source>
   <dest>
     *: none
-    pitchscreen: "音调"
+    pitchscreen: "音调/速度"
   </dest>
   <voice>
     *: none
-    pitchscreen: "音调"
+    pitchscreen: "音调与速度"
   </voice>
 </phrase>
 <phrase>
@@ -4274,7 +4135,7 @@
     *: "Searching... %d found (%s)"
   </source>
   <dest>
-    *: "寻找中...已找到%d个(%s)"
+    *: "搜索中...已找到%d个(%s)"
   </dest>
   <voice>
     *: ""
@@ -4532,7 +4393,7 @@
     *: "Create a Bookmark?"
   </source>
   <dest>
-    *: "创建书签?"
+    *: "是否创建书签?"
   </dest>
   <voice>
     *: "创建书签吗"
@@ -4643,41 +4504,7 @@
   </source>
   <dest>
     *: none
-    recording: "预录"
-  </dest>
-  <voice>
-    *: none
-    recording: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_RECORDING_LEFT
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    recording: ""
-  </source>
-  <dest>
-    *: none
-    recording: ""
-  </dest>
-  <voice>
-    *: none
-    recording: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_RECORDING_RIGHT
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    recording: ""
-  </source>
-  <dest>
-    *: none
-    recording: ""
+    recording: "预录制"
   </dest>
   <voice>
     *: none
@@ -4716,11 +4543,11 @@
   </source>
   <dest>
     *: none
-    recording: "一次"
+    recording: "仅一次"
   </dest>
   <voice>
     *: none
-    recording: "一次"
+    recording: "仅一次"
   </voice>
 </phrase>
 <phrase>
@@ -4797,11 +4624,11 @@
   user: core
   <source>
     *: none
-    alarm: "Alarm Time: %02d:%02d"
+    alarm: "Alarm Time:"
   </source>
   <dest>
     *: none
-    alarm: "闹铃时间:%02d:%02d"
+    alarm: "闹铃时间:"
   </dest>
   <voice>
     *: none
@@ -4818,11 +4645,11 @@
   </source>
   <dest>
     *: none
-    alarm: "离闹铃响起还有:%d:%02d"
+    alarm: "离闹铃还有:%d:%02d"
   </dest>
   <voice>
     *: none
-    alarm: "离闹铃响起还有%d:%02d"
+    alarm: "离闹钟响起还有%d:%02d"
   </voice>
 </phrase>
 <phrase>
@@ -4835,7 +4662,7 @@
   </source>
   <dest>
     *: none
-    alarm: "闹铃已设"
+    alarm: "已设置闹铃"
   </dest>
   <voice>
     *: none
@@ -4914,7 +4741,7 @@
   </source>
   <dest>
     *: none
-    lcd_color: "红绿蓝"
+    lcd_color: "RGB模式"
   </dest>
   <voice>
     *: none
@@ -4931,7 +4758,7 @@
   </source>
   <dest>
     *: none
-    lcd_color: "红绿蓝:%02X%02X%02X"
+    lcd_color: "RGB色彩:%02X%02X%02X"
   </dest>
   <voice>
     *: none
@@ -4944,15 +4771,15 @@
   user: core
   <source>
     *: none
-    lcd_non-mono: "Invalid colour"
+    lcd_color: "Invalid colour"
   </source>
   <dest>
     *: none
-    lcd_non-mono: "颜色无效"
+    lcd_color: "无效的颜色"
   </dest>
   <voice>
     *: none
-    lcd_non-mono: ""
+    lcd_color: ""
   </voice>
 </phrase>
 <phrase>
@@ -5175,7 +5002,7 @@
   </source>
   <dest>
     *: none
-    rtc: "星期日"
+    rtc: "周日"
   </dest>
   <voice>
     *: none
@@ -5192,7 +5019,7 @@
   </source>
   <dest>
     *: none
-    rtc: "星期一"
+    rtc: "周一"
   </dest>
   <voice>
     *: none
@@ -5209,7 +5036,7 @@
   </source>
   <dest>
     *: none
-    rtc: "星期二"
+    rtc: "周二"
   </dest>
   <voice>
     *: none
@@ -5226,7 +5053,7 @@
   </source>
   <dest>
     *: none
-    rtc: "星期三"
+    rtc: "周三"
   </dest>
   <voice>
     *: none
@@ -5243,7 +5070,7 @@
   </source>
   <dest>
     *: none
-    rtc: "星期四"
+    rtc: "周四"
   </dest>
   <voice>
     *: none
@@ -5260,7 +5087,7 @@
   </source>
   <dest>
     *: none
-    rtc: "星期五"
+    rtc: "周五"
   </dest>
   <voice>
     *: none
@@ -5277,7 +5104,7 @@
   </source>
   <dest>
     *: none
-    rtc: "星期六"
+    rtc: "周六"
   </dest>
   <voice>
     *: none
@@ -6689,21 +6516,7 @@
     *: ""
   </dest>
   <voice>
-    *: "现在播放屏幕"
-  </voice>
-</phrase>
-<phrase>
-  id: VOICE_EXT_TXT
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: deprecated
-  </dest>
-  <voice>
-    *: ""
+    *: "音乐播放界面"
   </voice>
 </phrase>
 <phrase>
@@ -6776,7 +6589,7 @@
   </dest>
   <voice>
     *: none
-    remote: "线控现在播放屏幕"
+    remote: "线控音乐播放界面"
   </voice>
 </phrase>
 <phrase>
@@ -6791,20 +6604,6 @@
   </dest>
   <voice>
     *: "按键"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_PLAYLIST_SHUFFLE
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
   </voice>
 </phrase>
 <phrase>
@@ -6885,10 +6684,10 @@
     *: "Recursively?"
   </source>
   <dest>
-    *: "递归子目录?"
+    *: "顺序插入子目录中的文件?"
   </dest>
   <voice>
-    *: "递归子目录吗"
+    *: "顺序插入子目录中的文件吗"
   </voice>
 </phrase>
 <phrase>
@@ -6899,10 +6698,10 @@
     *: "Erase dynamic playlist?"
   </source>
   <dest>
-    *: "擦除动态播放列表?"
+    *: "确认要擦除动态播放列表?"
   </dest>
   <voice>
-    *: "擦除动态播放列表吗"
+    *: "确认要擦除动态播放列表吗"
   </voice>
 </phrase>
 <phrase>
@@ -6987,20 +6786,6 @@
   </dest>
   <voice>
     *: "无效的播放列表控制文件"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_FM_STATION
-  desc: deprecated
-  user:
-  <source>
-    *: none
-  </source>
-  <dest>
-    *: none
-  </dest>
-  <voice>
-    *: none
   </voice>
 </phrase>
 <phrase>
@@ -7373,10 +7158,10 @@
     *: "Boot changed"
   </source>
   <dest>
-    *: "引导文件已改变"
+    *: "引导文件已经更新"
   </dest>
   <voice>
-    *: "引导文件已改变"
+    *: "引导文件已经被更新"
   </voice>
 </phrase>
 <phrase>
@@ -7387,10 +7172,10 @@
     *: "Reboot now?"
   </source>
   <dest>
-    *: "现在重启?"
+    *: "现在就重启?"
   </dest>
   <voice>
-    *: "现在重启吗"
+    *: "现在就重启吗"
   </voice>
 </phrase>
 <phrase>
@@ -7503,10 +7288,10 @@
     *: "Show Indices"
   </source>
   <dest>
-    *: "显示索引"
+    *: "显示曲目序号"
   </dest>
   <voice>
-    *: "显示索引"
+    *: "显示曲目序号"
   </voice>
 </phrase>
 <phrase>
@@ -7531,10 +7316,10 @@
     *: "Track Name Only"
   </source>
   <dest>
-    *: "只显示曲名"
+    *: "只显示曲目名"
   </dest>
   <voice>
-    *: "只显示曲名"
+    *: "只显示曲目名"
   </voice>
 </phrase>
 <phrase>
@@ -7601,7 +7386,7 @@
     *: "Incompatible model"
   </source>
   <dest>
-    *: "不兼容机型"
+    *: "不兼容型号的插件"
   </dest>
   <voice>
     *: ""
@@ -7615,7 +7400,7 @@
     *: "Incompatible version"
   </source>
   <dest>
-    *: "不兼容版本"
+    *: "不兼容版本的插件"
   </dest>
   <voice>
     *: ""
@@ -7636,20 +7421,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_FILETYPES_EXTENSION_FULL
-  desc: Extension array full
-  user: core
-  <source>
-    *: "Extension array full"
-  </source>
-  <dest>
-    *: "文件扩展名队列已满"
-  </dest>
-  <voice>
-    *: "文件扩展名队列已满"
-  </voice>
-</phrase>
-<phrase>
   id: LANG_FILETYPES_FULL
   desc: Filetype array full
   user: core
@@ -7661,20 +7432,6 @@
   </dest>
   <voice>
     *: "文件类型队列已满"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_FILETYPES_PLUGIN_NAME_LONG
-  desc: Viewer plugin name too long
-  user: core
-  <source>
-    *: "Plugin name too long"
-  </source>
-  <dest>
-    *: "插件名称太长"
-  </dest>
-  <voice>
-    *: "插件名称太长"
   </voice>
 </phrase>
 <phrase>
@@ -7755,7 +7512,7 @@
   </source>
   <dest>
     *: none
-    radio: "找不到设置，自动扫描?"
+    radio: "找不到设置,自动扫描?"
   </dest>
   <voice>
     *: none
@@ -7855,10 +7612,10 @@
     *: "Database is not ready"
   </source>
   <dest>
-    *: "媒体库尚未准备好"
+    *: "媒体库尚未初始化!"
   </dest>
   <voice>
-    *: "媒体库尚未准备好"
+    *: "媒体库尚未被初始化"
   </voice>
 </phrase>
 <phrase>
@@ -7883,10 +7640,10 @@
     *: "Invalid Filename!"
   </source>
   <dest>
-    *: "无效文件名!"
+    *: "文件名无效!"
   </dest>
   <voice>
-    *: "无效文件名"
+    *: "无效的文件名"
   </voice>
 </phrase>
 <phrase>
@@ -7946,91 +7703,6 @@
   </dest>
   <voice>
     *: "导出修改"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_SET_BOOL_YES
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_SET_BOOL_NO
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_ON
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_OFF
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_VOLUME
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    recording: ""
-  </source>
-  <dest>
-    *: none
-    recording: ""
-  </dest>
-  <voice>
-    *: none
-    recording: ""
   </voice>
 </phrase>
 <phrase>
@@ -8099,142 +7771,6 @@
   <voice>
     *: none
     swcodec: "截止频率"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_SHUFFLE
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_REPEAT
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_REPEAT_ONE
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_REPEAT_AB
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_FILTER
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_FILTER_SUPPORTED
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_FILTER_MUSIC
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_FILTER_PLAYLIST
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
   </voice>
 </phrase>
 <phrase>
@@ -8340,176 +7876,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_SYSFONT_FLIP_DISPLAY
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_SCROLL_BAR
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_STATUS_BAR
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_RECORDING_TIME
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    recording: ""
-  </source>
-  <dest>
-    *: none
-    recording: ""
-  </dest>
-  <voice>
-    *: none
-    recording: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_RECORD_TIMESPLIT_REC
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    recording: ""
-  </source>
-  <dest>
-    *: none
-    recording: ""
-  </dest>
-  <voice>
-    *: none
-    recording: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_RECORDING_SIZE
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    recording: ""
-  </source>
-  <dest>
-    *: none
-    recording: ""
-  </dest>
-  <voice>
-    *: none
-    recording: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_RECORD_PRERECORD
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    recording: ""
-  </source>
-  <dest>
-    *: none
-    recording: ""
-  </dest>
-  <voice>
-    *: none
-    recording: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_RECORDING_LEFT
-  desc: in the recording screen
-  user: core
-  <source>
-    *: none
-    recording: "Gain Left"
-  </source>
-  <dest>
-    *: none
-    recording: "左声道增益"
-  </dest>
-  <voice>
-    *: none
-    recording: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_RECORDING_RIGHT
-  desc: in the recording screen
-  user: core
-  <source>
-    *: none
-    recording: "Gain Right"
-  </source>
-  <dest>
-    *: none
-    recording: "右声道增益"
-  </dest>
-  <voice>
-    *: none
-    recording: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_DISK_FULL
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    recording: ""
-  </source>
-  <dest>
-    *: none
-    recording: ""
-  </dest>
-  <voice>
-    *: none
-    recording,iriverh100,iriverh120,iriverh300,iaudiom5,iaudiox5,ipod4g,ipodcolor,ipodnano1g,ipodvideo,sansae200*,sansac200*: ""
-  </voice>
-</phrase>
-<phrase>
   id: LANG_SYSFONT_DIRBROWSE_F1
   desc: in dir browser, F1 button bar text
   user: core
@@ -8561,125 +7927,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_SYSFONT_AGC_SAFETY
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    agc: ""
-  </source>
-  <dest>
-    *: none
-    agc: ""
-  </dest>
-  <voice>
-    *: none
-    agc: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_AGC_VOICE
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    agc: ""
-  </source>
-  <dest>
-    *: none
-    agc: ""
-  </dest>
-  <voice>
-    *: none
-    agc: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_AGC_MEDIUM
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    agc: ""
-  </source>
-  <dest>
-    *: none
-    agc: ""
-  </dest>
-  <voice>
-    *: none
-    agc: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_AGC_LIVE
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    agc: ""
-  </source>
-  <dest>
-    *: none
-    agc: ""
-  </dest>
-  <voice>
-    *: none
-    agc: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_AGC_DJSET
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    agc: ""
-  </source>
-  <dest>
-    *: none
-    agc: ""
-  </dest>
-  <voice>
-    *: none
-    agc: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_RECORDING_AGC_MAXGAIN
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    agc: ""
-  </source>
-  <dest>
-    *: none
-    agc: ""
-  </dest>
-  <voice>
-    *: none
-    agc: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_EQUALIZER_HARDWARE_BANDWIDTH_NARROW
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    ipodvideo: ""
-  </source>
-  <dest>
-    *: none
-    ipodvideo: ""
-  </dest>
-  <voice>
-    *: none
-    ipodvideo: ""
-  </voice>
-</phrase>
-<phrase>
   id: LANG_AFMT_PCM_WAV
   desc: audio format description
   user: core
@@ -8707,24 +7954,7 @@
     *: ""
   </dest>
   <voice>
-    *: "单位每时钟"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_RECORD_AGC_PRESET
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    agc: ""
-  </source>
-  <dest>
-    *: none
-    agc: ""
-  </dest>
-  <voice>
-    *: none
-    agc: ""
+    *: "单位/时长"
   </voice>
 </phrase>
 <phrase>
@@ -8807,7 +8037,7 @@
     *: "Scanning disk..."
   </source>
   <dest>
-    *: "扫描文件中..."
+    *: "正在扫描文件..."
   </dest>
   <voice>
     *: "扫描文件中"
@@ -8890,23 +8120,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_SYSFONT_ALL
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
   id: LANG_LCD_SLEEP_AFTER_BACKLIGHT_OFF
   desc: In display settings, time to switch LCD chip into power saving state
   user: core
@@ -8978,11 +8191,11 @@
   </source>
   <dest>
     *: none
-    usb_charging_enable: "USB连接时充电"
+    usb_charging_enable: "连接USB时充电"
   </dest>
   <voice>
     *: none
-    usb_charging_enable: "USB连接时充电"
+    usb_charging_enable: "连接USB时充电"
   </voice>
 </phrase>
 <phrase>
@@ -9051,20 +8264,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_SETTINGS_PARTITION
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
-  </voice>
-</phrase>
-<phrase>
   id: LANG_FM_EUROPE
   desc: fm tuner region europe
   user: core
@@ -9082,23 +8281,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_EQUALIZER_HARDWARE_ENABLED
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    ipodvideo: ""
-  </source>
-  <dest>
-    *: none
-    ipodvideo: ""
-  </dest>
-  <voice>
-    *: none
-    ipodvideo: ""
-  </voice>
-</phrase>
-<phrase>
   id: LANG_WARNING_BATTERY_LOW
   desc: general warning
   user: core
@@ -9106,10 +8288,10 @@
     *: "WARNING! Low Battery!"
   </source>
   <dest>
-    *: "请注意:电量低!"
+    *: "电量低,请注意!"
   </dest>
   <voice>
-    *: "请注意 电量低"
+    *: "电量低 请注意"
   </voice>
 </phrase>
 <phrase>
@@ -9192,20 +8374,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_SETTINGS_SAVE_FAILED
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
-  </voice>
-</phrase>
-<phrase>
   id: LANG_LISTACCEL_ACCEL_SPEED
   desc: list acceleration speed
   user: core
@@ -9263,11 +8431,11 @@
   </source>
   <dest>
     *: none
-    crossfade: "乱序与曲目跳转"
+    crossfade: "乱序或曲目跳转时"
   </dest>
   <voice>
     *: none
-    crossfade: "乱序与曲目跳转"
+    crossfade: "乱序或曲目跳转时"
   </voice>
 </phrase>
 <phrase>
@@ -9327,11 +8495,11 @@
   </source>
   <dest>
     *: none
-    recording: "不能写入录音目录"
+    recording: "无法写入录音目录"
   </dest>
   <voice>
     *: none
-    recording: "不能写入录音目录"
+    recording: "无法写入录音目录"
   </voice>
 </phrase>
 <phrase>
@@ -9542,10 +8710,10 @@
     *: "Add to Shortcuts"
   </source>
   <dest>
-    *: "添加到方式"
+    *: "添加到快捷方式"
   </dest>
   <voice>
-    *: "添加到方式"
+    *: "添加到快捷方式"
   </voice>
 </phrase>
 <phrase>
@@ -9616,15 +8784,15 @@
   user: core
   <source>
     *: none
-    lcd_bitmap: "Gain"
+    swcodec: "Gain"
   </source>
   <dest>
     *: none
-    lcd_bitmap: "增益"
+    swcodec: "增益"
   </dest>
   <voice>
     *: none
-    lcd_bitmap: "增益"
+    swcodec: "增益"
   </voice>
 </phrase>
 <phrase>
@@ -9902,23 +9070,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_SYSFONT_RECORDING_FILENAME
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    recording: ""
-  </source>
-  <dest>
-    *: none
-    recording: ""
-  </dest>
-  <voice>
-    *: none
-    recording: ""
-  </voice>
-</phrase>
-<phrase>
   id: LANG_AGC_SAFETY
   desc: AGC preset
   user: core
@@ -9959,11 +9110,11 @@
   </source>
   <dest>
     *: none
-    headphone_detection: "耳机拔出后暂停"
+    headphone_detection: "拔出耳机后自动暂停"
   </dest>
   <voice>
     *: none
-    headphone_detection: "耳机拔出后暂停"
+    headphone_detection: "拔出耳机后自动暂停"
   </voice>
 </phrase>
 <phrase>
@@ -9988,10 +9139,10 @@
     *: "Playlist Catalog"
   </source>
   <dest>
-    *: "播放列表录"
+    *: "播放列表选项"
   </dest>
   <voice>
-    *: "播放列表录"
+    *: "播放列表选项"
   </voice>
 </phrase>
 <phrase>
@@ -10033,10 +9184,10 @@
     *: "Battery empty! RECHARGE!"
   </source>
   <dest>
-    *: "电池没电,请充电!"
+    *: "电池电量低,请充电!"
   </dest>
   <voice>
-    *: "电池没电 请充电"
+    *: "电池电量低 请充电"
   </voice>
 </phrase>
 <phrase>
@@ -10085,23 +9236,6 @@
   <voice>
     *: none
     radio: "美国 加拿大"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_RECORDING_AGC_PRESET
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    agc: ""
-  </source>
-  <dest>
-    *: none
-    agc: ""
-  </dest>
-  <voice>
-    *: none
-    agc: ""
   </voice>
 </phrase>
 <phrase>
@@ -10326,7 +9460,7 @@
     *: "Discnum"
   </source>
   <dest>
-    *: "碟片编号"
+    *: "CD编号"
   </dest>
   <voice>
     *: ""
@@ -10409,40 +9543,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_SYSFONT_SPLIT_SIZE
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    recording: ""
-  </source>
-  <dest>
-    *: none
-    recording: ""
-  </dest>
-  <voice>
-    *: none
-    recording: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_EQUALIZER_HARDWARE
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    ipodvideo: ""
-  </source>
-  <dest>
-    *: none
-    ipodvideo: ""
-  </dest>
-  <voice>
-    *: none
-    ipodvideo: ""
-  </voice>
-</phrase>
-<phrase>
   id: LANG_BOOKMARK_DONT_RESUME
   desc: top item in the list when asking user about bookmark auto load
   user: core
@@ -10450,10 +9550,10 @@
     *: "<Don't Resume>"
   </source>
   <dest>
-    *: "<不恢复书签>"
+    *: "<不从书签处恢复播放>"
   </dest>
   <voice>
-    *: "<不恢复书签>"
+    *: "<不从书签处恢复播放>"
   </voice>
 </phrase>
 <phrase>
@@ -10578,23 +9678,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_EQUALIZER_BANDWIDTH
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    ipodvideo: ""
-  </source>
-  <dest>
-    *: none
-    ipodvideo: ""
-  </dest>
-  <voice>
-    *: none
-    ipodvideo: ""
-  </voice>
-</phrase>
-<phrase>
   id: LANG_VOICE_DIR_TALK
   desc: Item of voice menu, whether to use directory .talk clips
   user: core
@@ -10675,24 +9758,7 @@
     *: "<无效书签>"
   </dest>
   <voice>
-    *: "<无效书签>"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_RECORD_AGC_CLIPTIME
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    agc: ""
-  </source>
-  <dest>
-    *: none
-    agc: ""
-  </dest>
-  <voice>
-    *: none
-    agc: ""
+    *: "这个书签无效"
   </voice>
 </phrase>
 <phrase>
@@ -10813,27 +9879,10 @@
     *: "Only Unknown Types"
   </source>
   <dest>
-    *: "未知格式才显示"
+    *: "格式未知时才显示"
   </dest>
   <voice>
-    *: "未知格式才显示"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_EQUALIZER_HARDWARE_BANDWIDTH_WIDE
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    ipodvideo: ""
-  </source>
-  <dest>
-    *: none
-    ipodvideo: ""
-  </dest>
-  <voice>
-    *: none
-    ipodvideo: ""
+    *: "格式未知时才显示"
   </voice>
 </phrase>
 <phrase>
@@ -10851,20 +9900,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_CURRENT_TIME
-  desc: deprecated
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
-  </voice>
-</phrase>
-<phrase>
   id: LANG_CLEAR_TIME
   desc: in run time screen
   user: core
@@ -10872,7 +9907,7 @@
     *: "Clear Time?"
   </source>
   <dest>
-    *: "将时间清零?"
+    *: "将运行时间清零?"
   </dest>
   <voice>
     *: "是否将时间清零"
@@ -10889,7 +9924,7 @@
     *: "Last.fm日志"
   </dest>
   <voice>
-    *: "Last.fm日志"
+    *: "开启Last.fm日志"
   </voice>
 </phrase>
 <phrase>
@@ -11059,20 +10094,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_USBSTACK
-  desc: deprecated
-  user:
-  <source>
-    *: none
-  </source>
-  <dest>
-    *: none
-  </dest>
-  <voice>
-    *: none
-  </voice>
-</phrase>
-<phrase>
   id: LANG_PM_CLIPCOUNTER
   desc: in settings, for recording peak meter
   user: core
@@ -11107,20 +10128,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_USBSTACK_HOST
-  desc: deprecated
-  user:
-  <source>
-    *: none
-  </source>
-  <dest>
-    *: none
-  </dest>
-  <voice>
-    *: none
-  </voice>
-</phrase>
-<phrase>
   id: VOICE_OH
   desc: spoken only, for wall clock announce
   user: core
@@ -11138,34 +10145,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_USBSTACK_MODE
-  desc: deprecated
-  user:
-  <source>
-    *: none
-  </source>
-  <dest>
-    *: none
-  </dest>
-  <voice>
-    *: none
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_USBSTACK_DEVICE
-  desc: deprecated
-  user:
-  <source>
-    *: none
-  </source>
-  <dest>
-    *: none
-  </dest>
-  <voice>
-    *: none
-  </voice>
-</phrase>
-<phrase>
   id: VOICE_PM
   desc: spoken only, for wall clock announce
   user: core
@@ -11180,37 +10159,6 @@
   <voice>
     *: none
     rtc: "下午"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_USBSTACK_DEVICE_DRIVER
-  desc: deprecated
-  user:
-  <source>
-    *: none
-  </source>
-  <dest>
-    *: none
-  </dest>
-  <voice>
-    *: none
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_PM_CLIPCOUNT
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    recording: ""
-  </source>
-  <dest>
-    *: none
-    recording: ""
-  </dest>
-  <voice>
-    *: none
-    recording: ""
   </voice>
 </phrase>
 <phrase>
@@ -11626,20 +10574,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_ENABLE_STUDY_MODE
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
-  </voice>
-</phrase>
-<phrase>
   id: LANG_TOUCHPAD_SENSITIVITY
   desc: touchpad sensitivity setting
   user: core
@@ -11730,34 +10664,6 @@
   <voice>
     *: none
     recording: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_STUDY_MODE
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_STUDY_HOP_STEP
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
   </voice>
 </phrase>
 <phrase>
@@ -11885,20 +10791,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_DISABLE_STUDY_MODE
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
-  </voice>
-</phrase>
-<phrase>
   id: LANG_RECORDING_AGC_PRESET
   desc: automatic gain control in record settings and screen
   user: core
@@ -11995,20 +10887,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_ALBUMART
-  desc: deprecated
-  user:
-  <source>
-    *: none
-  </source>
-  <dest>
-    *: none
-  </dest>
-  <voice>
-    *: none
-  </voice>
-</phrase>
-<phrase>
   id: LANG_RECORDING_MONO_MODE
   desc: in the recording settings
   user: core
@@ -12071,23 +10949,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_BOTTOM
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: none
-    quickscreen: ""
-  </source>
-  <dest>
-    *: none
-    quickscreen: ""
-  </dest>
-  <voice>
-    *: none
-    quickscreen: ""
-  </voice>
-</phrase>
-<phrase>
   id: LANG_BOTTOM_QS_ITEM
   desc: used for the submenu name for the quickscreen items
   user: core
@@ -12102,23 +10963,6 @@
   <voice>
     *: none
     quickscreen: "设为快屏下键"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_QS_ITEMS
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: none
-    quickscreen: ""
-  </source>
-  <dest>
-    *: none
-    quickscreen: ""
-  </dest>
-  <voice>
-    *: none
-    quickscreen: ""
   </voice>
 </phrase>
 <phrase>
@@ -12262,10 +11106,10 @@
     *: "As whole numbers"
   </source>
   <dest>
-    *: "以整个数字排"
+    *: "以整体数字排序"
   </dest>
   <voice>
-    *: "以整个数字排"
+    *: "以整体数字排序"
   </voice>
 </phrase>
 <phrase>
@@ -12321,10 +11165,10 @@
     *: "Prevent Track Skipping"
   </source>
   <dest>
-    *: "h"
+    *: "禁止曲目跳转"
   </dest>
   <voice>
-    *: "不要让歌化"
+    *: "禁止曲目跳转"
   </voice>
 </phrase>
 <phrase>
@@ -12371,11 +11215,11 @@
   </source>
   <dest>
     *: none
-    touchscreen: "触屏模式选择"
+    touchscreen: "触屏模式"
   </dest>
   <voice>
     *: none
-    touchscreen: "触屏模式选择"
+    touchscreen: "选择触屏模式"
   </voice>
 </phrase>
 <phrase>
@@ -12393,20 +11237,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_CUSTOM_STATUSBAR
-  desc: deprecated
-  user:
-  <source>
-    *: none
-  </source>
-  <dest>
-    *: none
-  </dest>
-  <voice>
-    *: none
-  </voice>
-</phrase>
-<phrase>
   id: VOICE_EXT_SBS
   desc: spoken only, for file extension
   user: core
@@ -12417,7 +11247,7 @@
     *: ""
   </dest>
   <voice>
-    *: "状态栏样式"
+    *: "状态栏"
   </voice>
 </phrase>
 <phrase>
@@ -12430,25 +11260,11 @@
   </source>
   <dest>
     *: none
-    swcodec: "编译时间"
+    swcodec: "Release Time"
   </dest>
   <voice>
     *: none
-    swcodec: "编译时间"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_REMOTE_CUSTOM_STATUSBAR
-  desc: deprecated
-  user:
-  <source>
-    *: none
-  </source>
-  <dest>
-    *: none
-  </dest>
-  <voice>
-    *: none
+    swcodec: "Release Time"
   </voice>
 </phrase>
 <phrase>
@@ -12495,11 +11311,11 @@
   </source>
   <dest>
     *: none
-    lcd_bitmap: "浏览SBS(状态栏样式)文件"
+    lcd_bitmap: "状态栏"
   </dest>
   <voice>
     *: none
-    lcd_bitmap: "浏览SBS(状态栏样式)文件"
+    lcd_bitmap: "状态栏"
   </voice>
 </phrase>
 <phrase>
@@ -12512,11 +11328,11 @@
   </source>
   <dest>
     *: none
-    lcd_bitmap: "Scroll Bar Position"
+    lcd_bitmap: "滚动栏位置"
   </dest>
   <voice>
     *: none
-    lcd_bitmap: "Scroll bar position"
+    lcd_bitmap: "滚动栏位置"
   </voice>
 </phrase>
 <phrase>
@@ -12529,11 +11345,11 @@
   </source>
   <dest>
     *: none
-    remote: "Remote Statusbar"
+    remote: "线控状态栏"
   </dest>
   <voice>
     *: none
-    remote: "Remote Statusbar"
+    remote: "线控状态栏"
   </voice>
 </phrase>
 <phrase>
@@ -12541,13 +11357,16 @@
   desc: spoken only, for file extension
   user: core
   <source>
-    *: ""
+    *: none
+    remote: ""
   </source>
   <dest>
-    *: ""
+    *: none
+    remote: ""
   </dest>
   <voice>
-    *: "remote statusbar skin"
+    *: none
+    remote: "remote statusbar skin"
   </voice>
 </phrase>
 <phrase>
@@ -12577,11 +11396,11 @@
   </source>
   <dest>
     *: none
-    swcodec: "Auto"
+    swcodec: "自动"
   </dest>
   <voice>
     *: none
-    swcodec: "Auto"
+    swcodec: "自动"
   </voice>
 </phrase>
 <phrase>
@@ -12592,10 +11411,10 @@
     *: "Insert Last Shuffled"
   </source>
   <dest>
-    *: "Insert Last Shuffled"
+    *: "随机插入到播放列表最后"
   </dest>
   <voice>
-    *: "Insert Last Shuffled"
+    *: "随机插入到播放列表的最后位置"
   </voice>
 </phrase>
 <phrase>
@@ -12623,10 +11442,10 @@
     *: "Next:"
   </source>
   <dest>
-    *: "Next:"
+    *: "下一曲:"
   </dest>
   <voice>
-    *: "Next:"
+    *: "下一曲:"
   </voice>
 </phrase>
 <phrase>
@@ -12656,11 +11475,11 @@
   </source>
   <dest>
     *: none
-    usb_hid: "USB Keypad Mode"
+    usb_hid: "USB键盘模式"
   </dest>
   <voice>
     *: none
-    usb_hid: "USB Keypad Mode"
+    usb_hid: "USB键盘模式"
   </voice>
 </phrase>
 <phrase>
@@ -12690,7 +11509,7 @@
   </source>
   <dest>
     *: none
-    quickscreen: "Set as Top Quickscreen Item"
+    quickscreen: "设为快屏上键"
   </dest>
   <voice>
     *: none
@@ -12724,11 +11543,11 @@
   </source>
   <dest>
     *: none
-    lcd_bitmap: "浏览RSBS(线控状态栏样式)文件"
+    lcd_bitmap: "线控状态栏"
   </dest>
   <voice>
     *: none
-    lcd_bitmap: "浏览RSBS(线控状态栏样式)文件"
+    lcd_bitmap: "线控状态栏"
   </voice>
 </phrase>
 <phrase>
@@ -12737,15 +11556,15 @@
   user: core
   <source>
     *: none
-    usb_hid: "Browser Mode"
+    usb_hid: "Browser"
   </source>
   <dest>
     *: none
-    usb_hid: "Browser Mode"
+    usb_hid: "浏览器模式"
   </dest>
   <voice>
     *: none
-    usb_hid: "Browser Mode"
+    usb_hid: "浏览器模式"
   </voice>
 </phrase>
 <phrase>
@@ -12758,7 +11577,7 @@
   </source>
   <dest>
     *: none
-    usb_hid: "USB HID"
+    usb_hid: "开启USB HID"
   </dest>
   <voice>
     *: none
@@ -12806,11 +11625,11 @@
   </source>
   <dest>
     *: none
-    radio: "Other"
+    radio: "其他地区"
   </dest>
   <voice>
     *: none
-    radio: "Other"
+    radio: "其他地区"
   </voice>
 </phrase>
 <phrase>
@@ -12840,11 +11659,11 @@
   </source>
   <dest>
     *: none
-    radio: "Italy"
+    radio: "意大利"
   </dest>
   <voice>
     *: none
-    radio: "Italy"
+    radio: "意大利"
   </voice>
 </phrase>
 <phrase>
@@ -12857,11 +11676,11 @@
   </source>
   <dest>
     *: none
-    touchscreen: "Calibrate"
+    touchscreen: "校准触摸屏"
   </dest>
   <voice>
     *: none
-    touchscreen: "Calibrate"
+    touchscreen: "校准触摸屏"
   </voice>
 </phrase>
 <phrase>
@@ -12891,11 +11710,11 @@
   </source>
   <dest>
     *: none
-    morse_input: "Use Morse Code Input"
+    morse_input: "使用莫尔斯电码输入"
   </dest>
   <voice>
     *: none
-    morse_input: "Use Morse Code Input"
+    morse_input: "使用莫尔斯电码输入"
   </voice>
 </phrase>
 <phrase>
@@ -12908,11 +11727,11 @@
   </source>
   <dest>
     *: none
-    touchscreen: "Reset Calibration"
+    touchscreen: "重置校准"
   </dest>
   <voice>
     *: none
-    touchscreen: "Reset Calibration"
+    touchscreen: "重置触摸屏校准"
   </voice>
 </phrase>
 <phrase>
@@ -12938,15 +11757,15 @@
   user: core
   <source>
     *: none
-    usb_hid: "Mouse Mode"
+    usb_hid: "Mouse"
   </source>
   <dest>
     *: none
-    usb_hid: "Mouse Mode"
+    usb_hid: "鼠标模式"
   </dest>
   <voice>
     *: none
-    usb_hid: "Mouse Mode"
+    usb_hid: "鼠标模式"
   </voice>
 </phrase>
 <phrase>
@@ -12972,15 +11791,15 @@
   user: core
   <source>
     *: none
-    usb_hid: "Multimedia Mode"
+    usb_hid: "Multimedia"
   </source>
   <dest>
     *: none
-    usb_hid: "Multimedia Mode"
+    usb_hid: "多媒体模式"
   </dest>
   <voice>
     *: none
-    usb_hid: "Multimedia Mode"
+    usb_hid: "多媒体模式"
   </voice>
 </phrase>
 <phrase>
@@ -12991,10 +11810,10 @@
     *: "Custom"
   </source>
   <dest>
-    *: "Custom"
+    *: "自定义"
   </dest>
   <voice>
-    *: "Custom"
+    *: "自定义"
   </voice>
 </phrase>
 <phrase>
@@ -13007,11 +11826,11 @@
   </source>
   <dest>
     *: none
-    lcd_bitmap: "Scroll Bar Width"
+    lcd_bitmap: "滚动栏宽度"
   </dest>
   <voice>
     *: none
-    lcd_bitmap: "Scroll bar width"
+    lcd_bitmap: "滚动栏宽度"
   </voice>
 </phrase>
 <phrase>
@@ -13052,11 +11871,11 @@
   </source>
   <dest>
     *: none
-    crossfade: "Automatic Track Change Only"
+    crossfade: "仅在自动跳变曲目时"
   </dest>
   <voice>
     *: none
-    crossfade: "Automatic Track Change Only"
+    crossfade: "仅在曲目自动跳变时"
   </voice>
 </phrase>
 <phrase>
@@ -13067,10 +11886,10 @@
     *: "Bottom"
   </source>
   <dest>
-    *: "Bottom"
+    *: "底部"
   </dest>
   <voice>
-    *: "Bottom"
+    *: "屏幕底部"
   </voice>
 </phrase>
 <phrase>
@@ -13083,11 +11902,11 @@
   </source>
   <dest>
     *: none
-    swcodec: "Timestretch"
+    swcodec: "音调/音速"
   </dest>
   <voice>
     *: none
-    swcodec: "Timestretch"
+    swcodec: "音调/音速"
   </voice>
 </phrase>
 <phrase>
@@ -13148,11 +11967,11 @@
   </source>
   <dest>
     *: none
-    touchscreen: "Touchscreen Settings"
+    touchscreen: "触屏设置"
   </dest>
   <voice>
     *: none
-    touchscreen: "Touchscreen Settings"
+    touchscreen: "触摸屏设置"
   </voice>
 </phrase>
 <phrase>
@@ -13163,10 +11982,10 @@
     *: "Top"
   </source>
   <dest>
-    *: "Top"
+    *: "顶部"
   </dest>
   <voice>
-    *: "Top"
+    *: "屏幕顶部"
   </voice>
 </phrase>
 <phrase>
@@ -13223,15 +12042,15 @@
   user: core
   <source>
     *: none
-    usb_hid: "Presentation Mode"
+    usb_hid: "Presentation"
   </source>
   <dest>
     *: none
-    usb_hid: "Presentation Mode"
+    usb_hid: "幻灯片演示模式"
   </dest>
   <voice>
     *: none
-    usb_hid: "Presentation Mode"
+    usb_hid: "幻灯片演示模式"
   </voice>
 </phrase>
 <phrase>
@@ -13282,3 +12101,350 @@
     remote: "主菜单(Main Screen)"
   </voice>
 </phrase>
+<phrase>
+  id: LANG_KBD_OK
+  desc: in keyboad
+  user: core
+  <source>
+    *: none
+    touchscreen: "OK"
+  </source>
+  <dest>
+    *: none
+    touchscreen: "完成"
+  </dest>
+  <voice>
+    *: none
+    touchscreen: "提交并退出重命名"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_HOTKEY_WPS
+  desc: hotkey menu
+  user: core
+  <source>
+    *: none
+    hotkey: "WPS Hotkey"
+  </source>
+  <dest>
+    *: none
+    hotkey: "音乐播放界面热键"
+  </dest>
+  <voice>
+    *: none
+    hotkey: "音乐播放界面热键"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_REMOTE_RADIOSCREEN
+  desc: in the theme menu
+  user: core
+  <source>
+    *: none
+    radio_remote: "Remote Radio Screen"
+  </source>
+  <dest>
+    *: none
+    radio_remote: "线控FM界面"
+  </dest>
+  <voice>
+    *: none
+    radio_remote: "线控FM界面"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_HW_EQ_GAIN
+  desc: in sound_menu, hardware equalizer tone controls filter gain
+  user: core
+  <source>
+    *: none
+    gigabeats: "Band %d Gain"
+  </source>
+  <dest>
+    *: none
+    gigabeats: "频段 %d 增益"
+  </dest>
+  <voice>
+    *: none
+    gigabeats: "频段 %d 增益"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_LINEOUT_ONOFF
+  desc: in system settings menu
+  user: core
+  <source>
+    *: none
+    lineout_poweroff: "Line Out"
+  </source>
+  <dest>
+    *: none
+    lineout_poweroff: "线路输出"
+  </dest>
+  <voice>
+    *: none
+    lineout_poweroff: "线路输出"
+  </voice>
+</phrase>
+<phrase>
+  id: VOICE_EXT_FMS
+  desc: spoken only, for file extension
+  user: core
+  <source>
+    *: none
+    radio: ""
+  </source>
+  <dest>
+    *: none
+    radio: ""
+  </dest>
+  <voice>
+    *: none
+    radio: "FM界面皮肤文件"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_BOOKMARK_SETTINGS_AUTOUPDATE
+  desc: prompt for user to decide whether to update bookmarks
+  user: core
+  <source>
+    *: "Update on Stop"
+  </source>
+  <dest>
+    *: "在播放停止时创建"
+  </dest>
+  <voice>
+    *: "在播放停止时创建书签"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_KBD_DELETE
+  desc: in keyboad
+  user: core
+  <source>
+    *: none
+    touchscreen: "Del"
+  </source>
+  <dest>
+    *: none
+    touchscreen: "删除"
+  </dest>
+  <voice>
+    *: none
+    touchscreen: "删除"
+  </voice>
+</phrase>
+<phrase>
+  id: VOICE_EXT_RFMS
+  desc: spoken only, for file extension
+  user: core
+  <source>
+    *: none
+    radio_remote: ""
+  </source>
+  <dest>
+    *: none
+    radio_remote: ""
+  </dest>
+  <voice>
+    *: none
+    radio_remote: "线控FM界面皮肤文件"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_HOTKEY_FILE_BROWSER
+  desc: hotkey menu
+  user: core
+  <source>
+    *: none
+    hotkey: "File Browser Hotkey"
+  </source>
+  <dest>
+    *: none
+    hotkey: "文件浏览器热键"
+  </dest>
+  <voice>
+    *: none
+    hotkey: "文件浏览器的热键"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_RESUME_REWIND
+  desc: in playback settings menu
+  user: core
+  <source>
+    *: none
+    swcodec: "Rewind Before Resume"
+  </source>
+  <dest>
+    *: none
+    swcodec: "恢复播放时自动快退时长"
+  </dest>
+  <voice>
+    *: none
+    swcodec: "恢复播放时自动快退时长"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_TAGNAVI_UNTAGGED
+  desc: "<untagged>" entry in tag browser
+  user: core
+  <source>
+    *: "<Untagged>"
+  </source>
+  <dest>
+    *: "<无标签/元数据>"
+  </dest>
+  <voice>
+    *: "没有标签或者元数据"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_DEPTH_3D
+  desc: in sound_menu, amount of 3D enhancement effect
+  user: core
+  <source>
+    *: none
+    gigabeats: "3-D Enhancement"
+  </source>
+  <dest>
+    *: none
+    gigabeats: "3D音场"
+  </dest>
+  <voice>
+    *: none
+    gigabeats: "三D音场"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_KBD_CANCEL
+  desc: in keyboad
+  user: core
+  <source>
+    *: none
+    touchscreen: "Cancel"
+  </source>
+  <dest>
+    *: none
+    touchscreen: "取消"
+  </dest>
+  <voice>
+    *: none
+    touchscreen: "放弃并退出重命名"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_ID3_COMPOSER
+  desc: in tag viewer
+  user: core
+  <source>
+    *: "Composer"
+  </source>
+  <dest>
+    *: "Composer"
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_HW_EQ_FREQUENCY
+  desc: in sound_menu, hardware equalizer tone controls shelf filter cutoff frequency
+  user: core
+  <source>
+    *: none
+    gigabeats: "Band %d Frequency"
+  </source>
+  <dest>
+    *: none
+    gigabeats: "频段 %d 频率"
+  </dest>
+  <voice>
+    *: none
+    gigabeats: "频段 %d 的频率"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_HW_EQ_WIDTH
+  desc: in sound_menu, hardware equalizer tone controls peak bandwith setting
+  user: core
+  <source>
+    *: none
+    gigabeats: "Band %d Width"
+  </source>
+  <dest>
+    *: none
+    gigabeats: "频段 %d 宽度"
+  </dest>
+  <voice>
+    *: none
+    gigabeats: "频段 %d 的宽度"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_FM_STATION_HEADER
+  desc: in radio screen
+  user: core
+  <source>
+    *: none
+    radio: "Station:"
+  </source>
+  <dest>
+    *: none
+    radio: "广播频道:"
+  </dest>
+  <voice>
+    *: none
+    radio: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_RADIOSCREEN
+  desc: in the theme menu
+  user: core
+  <source>
+    *: none
+    radio: "Radio Screen"
+  </source>
+  <dest>
+    *: none
+    radio: "FM广播界面"
+  </dest>
+  <voice>
+    *: none
+    radio: "FM广播界面"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_ONPLAY_PICTUREFLOW
+  desc: Onplay pictureflow
+  user: core
+  <source>
+    *: "PictureFlow"
+  </source>
+  <dest>
+    *: "PictureFlow"
+  </dest>
+  <voice>
+    *: "运行picture flow"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_HOTKEY
+  desc: hotkey menu
+  user: core
+  <source>
+    *: none
+    hotkey: "Hotkey"
+  </source>
+  <dest>
+    *: none
+    hotkey: "热键"
+  </dest>
+  <voice>
+    *: none
+    hotkey: "热键"
+  </voice>
+</phrase>
+
+c

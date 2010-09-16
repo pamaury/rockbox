@@ -1,0 +1,39 @@
+<RCC>
+    <qresource prefix="/resources">
+        <file alias="windowicon.png">resources/windowicon.png</file>
+        <file>resources/document-new.png</file>
+        <file>resources/document-open.png</file>
+        <file>resources/document-save.png</file>
+        <file alias="configkeys">resources/configkeys</file>
+        <file alias="deviceoptions">resources/deviceoptions</file>
+        <file>resources/zoomeven.png</file>
+        <file>resources/zoomin.png</file>
+        <file>resources/zoomout.png</file>
+        <file>resources/play.png</file>
+        <file>resources/ffwd.png</file>
+        <file>resources/pause.png</file>
+        <file>resources/rwnd.png</file>
+        <file>resources/cursor.png</file>
+        <file>resources/lines.png</file>
+        <file alias="tagdb">resources/tagdb</file>
+        <file>resources/document-save-as.png</file>
+        <file>resources/edit-redo.png</file>
+        <file>resources/edit-undo.png</file>
+        <file>resources/edit-copy.png</file>
+        <file>resources/edit-cut.png</file>
+        <file>resources/edit-paste.png</file>
+        <file>resources/edit-find-replace.png</file>
+        <file>resources/applications-system.png</file>
+    </qresource>
+    <qresource prefix="/render">
+        <file alias="scenebg.png">resources/render/scenebg.png</file>
+        <file alias="albumart.png">resources/render/albumart.png</file>
+        <file alias="statusbar.png">resources/render/statusbar.png</file>
+    </qresource>
+    <qresource prefix="/fonts">
+        <file alias="08-Schumacher-Clean.fnt">resources/fonts/08-Schumacher-Clean.fnt</file>
+    </qresource>
+    <qresource prefix="/targets">
+        <file alias="targetdb">resources/targetdb</file>
+    </qresource>
+</RCC>

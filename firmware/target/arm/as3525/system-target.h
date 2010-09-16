@@ -27,6 +27,8 @@
 
 #include "clock-target.h" /* CPUFREQ_* are defined here */
 
+#define STORAGE_WANTS_ALIGN
+
 /* We can use a interrupt-based mechanism on the fuzev2 */
 #define INCREASED_SCROLLWHEEL_POLLING \
     (defined(HAVE_SCROLLWHEEL) && (CONFIG_CPU == AS3525))
@@ -38,10 +40,14 @@
 #define KERNEL_TIMER_FREQ TIMER_FREQ
 #endif
 
-#ifdef BOOTLOADER
-#define AS3525_UNCACHED_ADDR(a) (a)
-#else
 #define AS3525_UNCACHED_ADDR(a) ((typeof(a)) ((uintptr_t)(a) + 0x10000000))
+#define AS3525_PHYSICAL_ADDR(a) \
+    ((typeof(a)) ((((uintptr_t)(a)) & (MEM*0x100000)) \
+        ? (((uintptr_t)(a)) - IRAM_ORIG) \
+        : ((uintptr_t)(a))))
+
+#if defined(SANSA_FUZEV2) || defined(SANSA_CLIPPLUS)
+extern int amsv2_variant;
 #endif
 
 #ifdef SANSA_C200V2
@@ -53,66 +59,9 @@ extern int c200v2_variant;
 #define TIMER_PERIOD (KERNEL_TIMER_FREQ/HZ)
 #endif
 
-/*
- * This function is not overly accurate, so rather call it with an usec more
- * than less (see below comment)
- * 
- * if inlined it expands to a really small and fast function if it's called
- * with compile time constants */
-static inline void udelay(unsigned usecs) __attribute__((always_inline));
-static inline void udelay(unsigned usecs)
+void udelay(unsigned usecs);
+static inline void mdelay(unsigned msecs)
 {
-    unsigned now;
-    int end;
-    
-    /**
-     * we're limited to 0.666us multiplies due to the odd timer frequency (1.5MHz),
-     * to avoid calculating which is safer (need to round up for small values)
-     * and saves spending time in the divider we have a lut for
-     * small us values, it should be roughly us*3/2
-     **/
-    static const unsigned char udelay_lut[] =
-    {
-         0,  2,  3,  5,  6,  8,  9, 11, 12, 14,
-        15, 17, 18, 20, 21, 23, 24, 26, 27, 29,
-    };
-
-
-    now = TIMER2_VALUE;
-    /* we don't want to handle multiple overflows, so limit the numbers
-     * (if you want to wait more than a tick just poll current_tick, or
-     * call sleep()) */
-    if (UNLIKELY(usecs >= (TIMER_PERIOD*2/3)))
-        panicf("%s(): %d too high!", __func__, usecs);
-    if (UNLIKELY(usecs <= 0))
-        return;
-    if (usecs < ARRAYLEN(udelay_lut))
-    {   /* the timer decrements */
-        end = now - udelay_lut[usecs];
-    }
-    else
-    {   /* to usecs */
-        int delay = usecs * 3 / 2; /* us * 0.666 = us*timer_period */
-        end = now - delay;
-    }
-
-    unsigned old;
-
-    /* underrun ? */
-    if (end < 0)
-    {
-        do {
-            old = now;
-            now = TIMER2_VALUE;
-        } while(now <= old);  /* if the new value is higher then we wrapped */
-
-        end += TIMER_PERIOD;
-    }
-
-    do {
-        /* if timer wraps then we missed our end value */
-        old = now;
-        now = TIMER2_VALUE;
-    } while(now > (unsigned)end && now <= old);
+    udelay(1000 * msecs);
 }
 #endif /* SYSTEM_TARGET_H */

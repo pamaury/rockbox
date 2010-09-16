@@ -43,6 +43,7 @@
 #include "file.h"
 
 #include "common.h"
+#include "version.h"
 
 #include <stdarg.h>
 
@@ -77,8 +78,6 @@ int usb_screen(void)
 {
    return 0;
 }
-
-char version[] = APPSVERSION;
 
 static inline bool _charger_inserted(void)
 {
@@ -118,18 +117,12 @@ static void start_mpio_firmware(void)
     asm(" jmp 8");
 }
 
-static void __reset(void)
-{
-    asm(" move.w #0x2700,%sr");
-    __reset_cookie();
-    asm(" movec.l %d0,%vbr");
-    asm(" move.l (0), %sp");
-    asm(" movea.l (4),%a0");
-    asm(" jmp (%a0)");
-}
-
 static void __shutdown(void)
 {
+    if (_charger_inserted())
+    /* if AC power do nothing */
+        return;
+
     /* We need to gracefully spin down the disk to prevent clicks. */
     if (ide_powered())
     {
@@ -144,15 +137,7 @@ static void __shutdown(void)
     _backlight_off();
     __reset_cookie();
 
-    if (_charger_inserted())
-    {
-        /* reset instead of power_off() */
-        __reset();
-    }
-    else
-    {
         power_off();
-    }
 }
 
 /* Print the battery voltage (and a warning message). */
@@ -187,6 +172,9 @@ static void rb_boot(void)
 {
     int rc;
 
+    /* boost to speedup rb image loading */
+    cpu_boost(true);
+
     rc = storage_init();
     if(rc)
     {
@@ -219,6 +207,7 @@ static void rb_boot(void)
         return;
     }
 
+    cpu_boost(false);
     start_rockbox();
 }
 
@@ -233,7 +222,7 @@ static void bootmenu(void)
     /* backbone of menu */
     /* run the loader */
     printf("Rockbox boot loader");
-    printf("Ver: %s", version);
+    printf("Ver: " RBVERSION);
 
     check_battery();
 
@@ -268,11 +257,13 @@ static void bootmenu(void)
 
         lcd_update();
 
+        button = BUTTON_NONE;
         button = button_get_w_tmo(HZ);
 
         switch (button)
         {
             case BUTTON_PREV:
+            case BUTTON_RC_PREV:
                 if (option > rockbox)
                     option--;
                 else
@@ -280,6 +271,7 @@ static void bootmenu(void)
                 break;
 
             case BUTTON_NEXT:
+            case BUTTON_RC_NEXT:
                 if (option < shutdown)
                     option++;
                 else
@@ -287,6 +279,7 @@ static void bootmenu(void)
                 break;
 
             case BUTTON_PLAY:
+            case BUTTON_RC_PLAY:
             case (BUTTON_PLAY|BUTTON_REC):
                 reset_screen();
 
@@ -322,6 +315,9 @@ void main(void)
     int button;
     unsigned int event = EVENT_NONE;
     unsigned int last_event = EVENT_NONE;
+
+    /* this is default mode after power_init() */
+    bool high_current_charging = true;
 
     power_init();
 
@@ -361,7 +357,7 @@ void main(void)
         event = EVENT_NONE;
         button = button_get_w_tmo(HZ);
 
-        if ( button & BUTTON_PLAY )
+        if ( (button & BUTTON_PLAY) || (button & BUTTON_RC_PLAY) )
             event |= EVENT_ON;
  
         if ( usb_detect() == USB_INSERTED )
@@ -377,6 +373,7 @@ void main(void)
             case (EVENT_ON | EVENT_AC):
             /* hold is handled in button driver */
                     cpu_idle_mode(false);
+                    ide_power_enable(true);
 
                     if (button == (BUTTON_PLAY|BUTTON_REC))
                         bootmenu();
@@ -386,13 +383,21 @@ void main(void)
                 break;
 
             case EVENT_AC:
-                /* turn on charging */
+                /* AC plug in */
                 if (!(last_event & EVENT_AC))
-                    or_l((1<<15),&GPIO_OUT);
+                {
+                    /* reset charging circuit */
+                    and_l(~(1<<23), &GPIO_ENABLE);
+                }
 
                 /* USB unplug */
                 if (last_event & EVENT_USB)
+                {
                     usb_enable(false);
+                    sleep(HZ);
+                    ide_power_enable(false);
+                    sleep(HZ);
+                }
                    
                 if(!_battery_full())
                 {
@@ -401,18 +406,39 @@ void main(void)
 
                     blink_toggle = !blink_toggle;
                 }
-                else
+                else /* end of charge condition */
                 {
-                    lcd_putstring_centered(complete_msg);
+                    /* put LTC1733 into shutdown mode */
+                    or_l((1<<23), &GPIO_ENABLE);
+
+                    if (high_current_charging)
+                    {
+                        /* switch to low current mode */
+                        and_l(~(1<<15), &GPIO_OUT);
+
+                        /* reset charging circuit */
+                        and_l(~(1<<23), &GPIO_ENABLE);
+
+                        high_current_charging = false;
+                    }
+                    else
+                    {
+                        lcd_putstring_centered(complete_msg);
+                    }
                 }
                 check_battery();
                 break;
 
             case EVENT_USB:
             case (EVENT_USB | EVENT_AC):
+                /* AC plug in while in USB mode */
                 if (!(last_event & EVENT_AC))
-                    or_l((1<<15),&GPIO_OUT);
+                {
+                    /* reset charger circuit */
+                    and_l(~(1<<23), &GPIO_ENABLE);
+                }
 
+                /* USB plug in */
                 if (!(last_event & EVENT_USB))
                 {
                     /* init USB */
@@ -420,7 +446,8 @@ void main(void)
                     sleep(HZ/20);
                     usb_enable(true);
                 }
-
+                
+                /* display blinking USB indicator */
                 line = 0;
 
                 if (blink_toggle)
@@ -432,7 +459,17 @@ void main(void)
                 break;
 
             default:
-                /* spurious wakeup */
+                /* USB unplug */
+                if (last_event & EVENT_USB)
+                {
+                    /* disable USB */
+                    usb_enable(false);
+                    sleep(HZ);
+                    ide_power_enable(false);
+                    sleep(HZ);
+                }
+
+                /* spurious wakeup ?*/
                 __shutdown();
                 break;
         }

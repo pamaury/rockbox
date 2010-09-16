@@ -366,15 +366,11 @@
 #if LCD_DEPTH < 8
 #define USEGSLIB
 #include <lib/grey.h>
-#define MYLCD(fn) grey_ub_ ## fn
-#define MYLCD_UPDATE()
-#define MYXLCD(fn) grey_ub_ ## fn
 #else
 #include <lib/xlcd.h>
-#define MYLCD(fn) rb->lcd_ ## fn
-#define MYLCD_UPDATE() rb->lcd_update();
-#define MYXLCD(fn) xlcd_ ## fn
 #endif
+
+#include <lib/mylcd.h>
 
 /* Min memory allowing us to use the plugin buffer
  * and thus not stopping the music
@@ -390,7 +386,7 @@
 #define PLUGIN_ABORT    11
 #define PLUGIN_OUTOFMEM 12
 
-#if !defined(SIMULATOR) && defined(HAVE_DISK_STORAGE)
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE) && defined(HAVE_DISK_STORAGE)
 #define DISK_SPINDOWN
 #endif
 #if PLUGIN_BUFFER_SIZE >= MIN_MEM

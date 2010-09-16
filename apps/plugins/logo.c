@@ -21,7 +21,7 @@
 #include "plugin.h"
 #include "lib/playergfx.h"
 
-PLUGIN_HEADER
+
 
 #ifdef HAVE_LCD_BITMAP
 #define DISPLAY_WIDTH LCD_WIDTH
@@ -217,7 +217,14 @@ const unsigned char rockbox16x7[] = {
 #define LP_R_DEC_Y BUTTON_RC_SOURCE
 #define LP_R_INC_Y BUTTON_RC_BITRATE
 
-#elif (CONFIG_REMOTE_KEYPAD==MROBE_REMOTE)
+#elif CONFIG_REMOTE_KEYPAD == IAUDIO_REMOTE
+#define LP_R_QUIT BUTTON_RC_REC
+#define LP_R_DEC_X BUTTON_RC_REW
+#define LP_R_INC_X BUTTON_RC_FF
+#define LP_R_DEC_Y BUTTON_RC_VOL_DOWN
+#define LP_R_INC_Y BUTTON_RC_VOL_UP
+
+#elif (CONFIG_REMOTE_KEYPAD == MROBE_REMOTE)
 #define LP_R_QUIT BUTTON_RC_HEART
 #define LP_R_DEC_X BUTTON_RC_REW
 #define LP_R_INC_X BUTTON_RC_FF

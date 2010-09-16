@@ -22,7 +22,11 @@
 #include "dir.h"
 #include "stdlib.h"
 #include "string.h"
+#include "debug.h"
+#include "file.h"
+#include "filefuncs.h"
 
+#ifndef __PCTOOL__
 #ifdef HAVE_MULTIVOLUME
 /* returns on which volume this is, and copies the reduced name
    (sortof a preprocessor for volume-decorated pathnames) */
@@ -50,3 +54,47 @@ int strip_volume(const char* name, char* namecopy)
     return volume;
 }
 #endif /* #ifdef HAVE_MULTIVOLUME */
+
+/* Test file existence, using dircache of possible */
+bool file_exists(const char *file)
+{
+    int fd;
+
+#ifdef DEBUG
+    if (!file || strlen(file) <= 0)
+    {
+        DEBUGF("%s(): Invalid parameter!\n");
+        return false;
+    }
+#endif
+
+#ifdef HAVE_DIRCACHE
+    if (dircache_is_enabled())
+        return (dircache_get_entry_ptr(file) != NULL);
+#endif
+
+    fd = open(file, O_RDONLY);
+    if (fd < 0)
+        return false;
+    close(fd);
+    return true;
+}
+
+bool dir_exists(const char *path)
+{
+    DIR* d = opendir(path);
+    if (!d)
+        return false;
+    closedir(d);
+    return true;
+}
+
+#endif /* __PCTOOL__ */
+
+#if (CONFIG_PLATFORM & (PLATFORM_NATIVE|PLATFORM_SDL))
+struct dirinfo dir_get_info(DIR* parent, struct dirent *entry)
+{
+    (void)parent;
+    return entry->info;
+}
+#endif

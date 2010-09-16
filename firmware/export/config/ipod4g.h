@@ -106,7 +106,7 @@
 /* Define this if you have the WM8975 audio codec */
 #define HAVE_WM8975
 
-#define AB_REPEAT_ENABLE 1
+#define AB_REPEAT_ENABLE
 #define ACTION_WPSAB_SINGLE ACTION_WPS_BROWSE
 
 /* define this if you have a disk storage, i.e. something
@@ -115,6 +115,12 @@
 
 /* Define this for LCD backlight available */
 #define HAVE_BACKLIGHT
+#define HAVE_BACKLIGHT_BRIGHTNESS
+
+/* Main LCD backlight brightness range and defaults */
+#define MIN_BRIGHTNESS_SETTING      1
+#define MAX_BRIGHTNESS_SETTING      31
+#define DEFAULT_BRIGHTNESS_SETTING  20
 
 /* define this if the unit uses a scrollwheel for navigation */
 #define HAVE_SCROLLWHEEL
@@ -139,6 +145,10 @@
 
 /* define this if the unit can be powered or charged via USB */
 #define HAVE_USB_POWER
+
+/* define this if the unit can have USB charging disabled by user -
+ * if USB/MAIN power is discernable and hardware doesn't compel charging */
+#define HAVE_USB_CHARGING_ENABLE
 
 /* define current usage levels */
 #define CURRENT_NORMAL     100  /* MP3: ~10.5h out of 1100mAh battery  */

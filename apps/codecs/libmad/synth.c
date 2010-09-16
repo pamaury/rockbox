@@ -55,19 +55,11 @@ void mad_synth_init(struct mad_synth *synth)
  */
 void mad_synth_mute(struct mad_synth *synth)
 {
-  unsigned int ch, s, v;
-
-  for (ch = 0; ch < 2; ++ch) {
-    for (s = 0; s < 16; ++s) {
-      for (v = 0; v < 8; ++v) {
-        synth->filter[ch][0][0][s][v] = synth->filter[ch][0][1][s][v] =
-        synth->filter[ch][1][0][s][v] = synth->filter[ch][1][1][s][v] = 0;
-      }
-    }
-  }
+  memset(synth->filter, 0, sizeof(synth->filter));
 }
 
-#ifdef FPM_ARM
+#if 0 /* dct32 asm implementation is slower on current arm systems */
+/* #ifdef FPM_ARM */
 
 void dct32(mad_fixed_t const in[32], unsigned int slot,
            mad_fixed_t lo[16][8], mad_fixed_t hi[16][8]);
@@ -585,6 +577,144 @@ void synth_full(struct mad_synth *, struct mad_frame const *,
 
 /* optimised version of synth_full */
 # ifdef FPM_COLDFIRE_EMAC
+
+#define SYNTH_EMAC1(res, f1, pD) \
+    asm volatile( \
+    "movem.l (%0), %%d0-%%d7               \n\t" \
+    "move.l (%1), %%a5                     \n\t" \
+    "mac.l %%d0, %%a5, 56(%1), %%a5, %%acc0\n\t" \
+    "mac.l %%d1, %%a5, 48(%1), %%a5, %%acc0\n\t" \
+    "mac.l %%d2, %%a5, 40(%1), %%a5, %%acc0\n\t" \
+    "mac.l %%d3, %%a5, 32(%1), %%a5, %%acc0\n\t" \
+    "mac.l %%d4, %%a5, 24(%1), %%a5, %%acc0\n\t" \
+    "mac.l %%d5, %%a5, 16(%1), %%a5, %%acc0\n\t" \
+    "mac.l %%d6, %%a5,  8(%1), %%a5, %%acc0\n\t" \
+    "mac.l %%d7, %%a5,               %%acc0\n\t" \
+    : \
+    : "a" (*f1), "a" (*pD) \
+    : "d0", "d1", "d2", "d3", "d4", "d5", "d6", "d7", "a5"); \
+    asm volatile ( \
+    "movclr.l %%acc0, %0                   \n\t" \
+    : "=d" (res));
+    
+#define SYNTH_EMAC2(res, f1, f2, pD) \
+    asm volatile( \
+    "movem.l (%0), %%d0-%%d7                \n\t" \
+    "move.l 4(%1), %%a5                     \n\t" \
+    "msac.l %%d0, %%a5, 60(%1), %%a5, %%acc0\n\t" \
+    "msac.l %%d1, %%a5, 52(%1), %%a5, %%acc0\n\t" \
+    "msac.l %%d2, %%a5, 44(%1), %%a5, %%acc0\n\t" \
+    "msac.l %%d3, %%a5, 36(%1), %%a5, %%acc0\n\t" \
+    "msac.l %%d4, %%a5, 28(%1), %%a5, %%acc0\n\t" \
+    "msac.l %%d5, %%a5, 20(%1), %%a5, %%acc0\n\t" \
+    "msac.l %%d6, %%a5, 12(%1), %%a5, %%acc0\n\t" \
+    "msac.l %%d7, %%a5,   (%1), %%a5, %%acc0\n\t" \
+    "movem.l (%2), %%d0-%%d7                \n\t" \
+    "mac.l  %%d0, %%a5, 56(%1), %%a5, %%acc0\n\t" \
+    "mac.l  %%d1, %%a5, 48(%1), %%a5, %%acc0\n\t" \
+    "mac.l  %%d2, %%a5, 40(%1), %%a5, %%acc0\n\t" \
+    "mac.l  %%d3, %%a5, 32(%1), %%a5, %%acc0\n\t" \
+    "mac.l  %%d4, %%a5, 24(%1), %%a5, %%acc0\n\t" \
+    "mac.l  %%d5, %%a5, 16(%1), %%a5, %%acc0\n\t" \
+    "mac.l  %%d6, %%a5,  8(%1), %%a5, %%acc0\n\t" \
+    "mac.l  %%d7, %%a5,               %%acc0\n\t" \
+    : \
+    : "a" (*f1), "a" (*pD), "a" (*f2) \
+    : "d0", "d1", "d2", "d3", "d4", "d5", "d6", "d7", "a5", "memory"); \
+    asm volatile ( \
+    "movclr.l %%acc0, %0                    \n\t" \
+    : "=d" (res));
+    
+#define SYNTH_EMAC_ODD_SBSAMPLE(f1, f2, pD1, pD2, res1, res2) \
+    asm volatile ( \
+    "movem.l (%0), %%d0-%%d7                 \n\t" \
+    "move.l 4(%2), %%a5                      \n\t" \
+    "msac.l %%d0, %%a5,  60(%2), %%a5, %%acc0\n\t" \
+    "msac.l %%d1, %%a5,  52(%2), %%a5, %%acc0\n\t" \
+    "msac.l %%d2, %%a5,  44(%2), %%a5, %%acc0\n\t" \
+    "msac.l %%d3, %%a5,  36(%2), %%a5, %%acc0\n\t" \
+    "msac.l %%d4, %%a5,  28(%2), %%a5, %%acc0\n\t" \
+    "msac.l %%d5, %%a5,  20(%2), %%a5, %%acc0\n\t" \
+    "msac.l %%d6, %%a5,  12(%2), %%a5, %%acc0\n\t" \
+    "msac.l %%d7, %%a5, 112(%3), %%a5, %%acc0\n\t" \
+    "mac.l  %%d7, %%a5, 104(%3), %%a5, %%acc1\n\t" \
+    "mac.l  %%d6, %%a5,  96(%3), %%a5, %%acc1\n\t" \
+    "mac.l  %%d5, %%a5,  88(%3), %%a5, %%acc1\n\t" \
+    "mac.l  %%d4, %%a5,  80(%3), %%a5, %%acc1\n\t" \
+    "mac.l  %%d3, %%a5,  72(%3), %%a5, %%acc1\n\t" \
+    "mac.l  %%d2, %%a5,  64(%3), %%a5, %%acc1\n\t" \
+    "mac.l  %%d1, %%a5, 120(%3), %%a5, %%acc1\n\t" \
+    "mac.l  %%d0, %%a5,   8(%2), %%a5, %%acc1\n\t" \
+    "movem.l (%1), %%d0-%%d7                 \n\t" \
+    "mac.l  %%d7, %%a5,  16(%2), %%a5, %%acc0\n\t" \
+    "mac.l  %%d6, %%a5,  24(%2), %%a5, %%acc0\n\t" \
+    "mac.l  %%d5, %%a5,  32(%2), %%a5, %%acc0\n\t" \
+    "mac.l  %%d4, %%a5,  40(%2), %%a5, %%acc0\n\t" \
+    "mac.l  %%d3, %%a5,  48(%2), %%a5, %%acc0\n\t" \
+    "mac.l  %%d2, %%a5,  56(%2), %%a5, %%acc0\n\t" \
+    "mac.l  %%d1, %%a5,    (%2), %%a5, %%acc0\n\t" \
+    "mac.l  %%d0, %%a5,  60(%3), %%a5, %%acc0\n\t" \
+    "mac.l  %%d0, %%a5,  68(%3), %%a5, %%acc1\n\t" \
+    "mac.l  %%d1, %%a5,  76(%3), %%a5, %%acc1\n\t" \
+    "mac.l  %%d2, %%a5,  84(%3), %%a5, %%acc1\n\t" \
+    "mac.l  %%d3, %%a5,  92(%3), %%a5, %%acc1\n\t" \
+    "mac.l  %%d4, %%a5, 100(%3), %%a5, %%acc1\n\t" \
+    "mac.l  %%d5, %%a5, 108(%3), %%a5, %%acc1\n\t" \
+    "mac.l  %%d6, %%a5, 116(%3), %%a5, %%acc1\n\t" \
+    "mac.l  %%d7, %%a5,                %%acc1\n\t" \
+    :                                              \
+    : "a" (*f1), "a" (*f2), "a" (*pD1), "a" (*pD2) \
+    : "d0", "d1", "d2", "d3", "d4", "d5", "d6", "d7", "a5", "memory"); \
+    asm volatile( \
+    "movclr.l %%acc0, %0\n\t" \
+    "movclr.l %%acc1, %1\n\t" \
+    : "=d" (res1), "=d" (res2) );
+    
+#define SYNTH_EMAC_EVEN_SBSAMPLE(f1, f2, pD1, pD2, res1, res2) \
+    asm volatile ( \
+    "movem.l (%0), %%d0-%%d7                 \n\t" \
+    "move.l (%2), %%a5                       \n\t" \
+    "msac.l %%d0, %%a5,  56(%2), %%a5, %%acc0\n\t" \
+    "msac.l %%d1, %%a5,  48(%2), %%a5, %%acc0\n\t" \
+    "msac.l %%d2, %%a5,  40(%2), %%a5, %%acc0\n\t" \
+    "msac.l %%d3, %%a5,  32(%2), %%a5, %%acc0\n\t" \
+    "msac.l %%d4, %%a5,  24(%2), %%a5, %%acc0\n\t" \
+    "msac.l %%d5, %%a5,  16(%2), %%a5, %%acc0\n\t" \
+    "msac.l %%d6, %%a5,   8(%2), %%a5, %%acc0\n\t" \
+    "msac.l %%d7, %%a5, 116(%3), %%a5, %%acc0\n\t" \
+    "mac.l  %%d7, %%a5, 108(%3), %%a5, %%acc1\n\t" \
+    "mac.l  %%d6, %%a5, 100(%3), %%a5, %%acc1\n\t" \
+    "mac.l  %%d5, %%a5,  92(%3), %%a5, %%acc1\n\t" \
+    "mac.l  %%d4, %%a5,  84(%3), %%a5, %%acc1\n\t" \
+    "mac.l  %%d3, %%a5,  76(%3), %%a5, %%acc1\n\t" \
+    "mac.l  %%d2, %%a5,  68(%3), %%a5, %%acc1\n\t" \
+    "mac.l  %%d1, %%a5,  60(%3), %%a5, %%acc1\n\t" \
+    "mac.l  %%d0, %%a5,  12(%2), %%a5, %%acc1\n\t" \
+    "movem.l (%1), %%d0-%%d7                 \n\t" \
+    "mac.l  %%d7, %%a5,  20(%2), %%a5, %%acc0\n\t" \
+    "mac.l  %%d6, %%a5,  28(%2), %%a5, %%acc0\n\t" \
+    "mac.l  %%d5, %%a5,  36(%2), %%a5, %%acc0\n\t" \
+    "mac.l  %%d4, %%a5,  44(%2), %%a5, %%acc0\n\t" \
+    "mac.l  %%d3, %%a5,  52(%2), %%a5, %%acc0\n\t" \
+    "mac.l  %%d2, %%a5,  60(%2), %%a5, %%acc0\n\t" \
+    "mac.l  %%d1, %%a5,   4(%2), %%a5, %%acc0\n\t" \
+    "mac.l  %%d0, %%a5, 120(%3), %%a5, %%acc0\n\t" \
+    "mac.l  %%d0, %%a5,  64(%3), %%a5, %%acc1\n\t" \
+    "mac.l  %%d1, %%a5,  72(%3), %%a5, %%acc1\n\t" \
+    "mac.l  %%d2, %%a5,  80(%3), %%a5, %%acc1\n\t" \
+    "mac.l  %%d3, %%a5,  88(%3), %%a5, %%acc1\n\t" \
+    "mac.l  %%d4, %%a5,  96(%3), %%a5, %%acc1\n\t" \
+    "mac.l  %%d5, %%a5, 104(%3), %%a5, %%acc1\n\t" \
+    "mac.l  %%d6, %%a5, 112(%3), %%a5, %%acc1\n\t" \
+    "mac.l  %%d7, %%a5,                %%acc1\n\t" \
+    :                                              \
+    : "a" (*f1), "a" (*f2), "a" (*pD1), "a" (*pD2) \
+    : "d0", "d1", "d2", "d3", "d4", "d5", "d6", "d7", "a5", "memory"); \
+    asm volatile( \
+    "movclr.l %%acc0, %0\n\t" \
+    "movclr.l %%acc1, %1\n\t" \
+    : "=d" (res1), "=d" (res2) );
+
 static
 void synth_full(struct mad_synth *synth, struct mad_frame const *frame,
                 unsigned int nch, unsigned int ns)
@@ -620,31 +750,7 @@ void synth_full(struct mad_synth *synth, struct mad_frame const *frame,
 
       if(s & 1)
       {
-        asm volatile(
-        "movem.l (%1), %%d0-%%d7\n\t"
-        "move.l 4(%2), %%a5\n\t"
-        "msac.l %%d0, %%a5, 60(%2), %%a5, %%acc0\n\t"
-        "msac.l %%d1, %%a5, 52(%2), %%a5, %%acc0\n\t"
-        "msac.l %%d2, %%a5, 44(%2), %%a5, %%acc0\n\t"
-        "msac.l %%d3, %%a5, 36(%2), %%a5, %%acc0\n\t"
-        "msac.l %%d4, %%a5, 28(%2), %%a5, %%acc0\n\t"
-        "msac.l %%d5, %%a5, 20(%2), %%a5, %%acc0\n\t"
-        "msac.l %%d6, %%a5, 12(%2), %%a5, %%acc0\n\t"
-        "msac.l %%d7, %%a5,   (%2), %%a5, %%acc0\n\t"
-
-        "movem.l (%3), %%d0-%%d7\n\t"
-        "mac.l  %%d0, %%a5, 56(%2), %%a5, %%acc0\n\t"
-        "mac.l  %%d1, %%a5, 48(%2), %%a5, %%acc0\n\t"
-        "mac.l  %%d2, %%a5, 40(%2), %%a5, %%acc0\n\t"
-        "mac.l  %%d3, %%a5, 32(%2), %%a5, %%acc0\n\t"
-        "mac.l  %%d4, %%a5, 24(%2), %%a5, %%acc0\n\t"
-        "mac.l  %%d5, %%a5, 16(%2), %%a5, %%acc0\n\t"
-        "mac.l  %%d6, %%a5,  8(%2), %%a5, %%acc0\n\t"
-        "mac.l  %%d7, %%a5,               %%acc0\n\t"
-        "movclr.l %%acc0, %0\n\t"
-        : "=r" (hi0) : "a" (*fx), "a" (*D0ptr), "a" (*fe)
-        : "d0", "d1", "d2", "d3", "d4", "d5", "d6", "d7", "a5");
-
+        SYNTH_EMAC2(hi0, fx, fe, D0ptr);
         pcm[0] = hi0 << 3; /* shift result to libmad's fixed point format */
         pcm   += 16;
 
@@ -654,99 +760,19 @@ void synth_full(struct mad_synth *synth, struct mad_frame const *frame,
           ++D1ptr;
 
           /* D[32 - sb][i] == -D[sb][31 - i] */
-          asm volatile (
-          "movem.l (%0), %%d0-%%d7\n\t"
-          "move.l 4(%2), %%a5\n\t"
-          "msac.l %%d0, %%a5,  60(%2), %%a5, %%acc0\n\t"
-          "msac.l %%d1, %%a5,  52(%2), %%a5, %%acc0\n\t"
-          "msac.l %%d2, %%a5,  44(%2), %%a5, %%acc0\n\t"
-          "msac.l %%d3, %%a5,  36(%2), %%a5, %%acc0\n\t"
-          "msac.l %%d4, %%a5,  28(%2), %%a5, %%acc0\n\t"
-          "msac.l %%d5, %%a5,  20(%2), %%a5, %%acc0\n\t"
-          "msac.l %%d6, %%a5,  12(%2), %%a5, %%acc0\n\t"
-          "msac.l %%d7, %%a5, 112(%3), %%a5, %%acc0\n\t"
-          "mac.l  %%d7, %%a5, 104(%3), %%a5, %%acc1\n\t"
-          "mac.l  %%d6, %%a5,  96(%3), %%a5, %%acc1\n\t"
-          "mac.l  %%d5, %%a5,  88(%3), %%a5, %%acc1\n\t"
-          "mac.l  %%d4, %%a5,  80(%3), %%a5, %%acc1\n\t"
-          "mac.l  %%d3, %%a5,  72(%3), %%a5, %%acc1\n\t"
-          "mac.l  %%d2, %%a5,  64(%3), %%a5, %%acc1\n\t"
-          "mac.l  %%d1, %%a5, 120(%3), %%a5, %%acc1\n\t"
-          "mac.l  %%d0, %%a5,   8(%2), %%a5, %%acc1\n\t"
-          "movem.l (%1), %%d0-%%d7\n\t"
-          "mac.l  %%d7, %%a5,  16(%2), %%a5, %%acc0\n\t"
-          "mac.l  %%d6, %%a5,  24(%2), %%a5, %%acc0\n\t"
-          "mac.l  %%d5, %%a5,  32(%2), %%a5, %%acc0\n\t"
-          "mac.l  %%d4, %%a5,  40(%2), %%a5, %%acc0\n\t"
-          "mac.l  %%d3, %%a5,  48(%2), %%a5, %%acc0\n\t"
-          "mac.l  %%d2, %%a5,  56(%2), %%a5, %%acc0\n\t"
-          "mac.l  %%d1, %%a5,    (%2), %%a5, %%acc0\n\t"
-          "mac.l  %%d0, %%a5,  60(%3), %%a5, %%acc0\n\t"
-          "mac.l  %%d0, %%a5,  68(%3), %%a5, %%acc1\n\t"
-          "mac.l  %%d1, %%a5,  76(%3), %%a5, %%acc1\n\t"
-          "mac.l  %%d2, %%a5,  84(%3), %%a5, %%acc1\n\t"
-          "mac.l  %%d3, %%a5,  92(%3), %%a5, %%acc1\n\t"
-          "mac.l  %%d4, %%a5, 100(%3), %%a5, %%acc1\n\t"
-          "mac.l  %%d5, %%a5, 108(%3), %%a5, %%acc1\n\t"
-          "mac.l  %%d6, %%a5, 116(%3), %%a5, %%acc1\n\t"
-          "mac.l  %%d7, %%a5,                %%acc1\n\t"
-          : : "a" (*fo), "a" (*fe), "a" (*D0ptr), "a" (*D1ptr)
-          : "d0", "d1", "d2", "d3", "d4", "d5", "d6", "d7", "a5");
-
-          asm volatile(
-          "movclr.l %%acc0, %0\n\t"
-          "movclr.l %%acc1, %1\n\t"  : "=d" (hi0), "=d" (hi1) );
-
+          SYNTH_EMAC_ODD_SBSAMPLE(fo, fe, D0ptr, D1ptr, hi0, hi1);
           pcm[-sb] = hi0 << 3;
           pcm[ sb] = hi1 << 3;
         }
 
         ++D0ptr;
-        asm volatile(
-        "movem.l (%1), %%d0-%%d7\n\t"
-        "move.l 4(%2), %%a5\n\t"
-        "mac.l %%d0, %%a5, 60(%2), %%a5, %%acc0\n\t"
-        "mac.l %%d1, %%a5, 52(%2), %%a5, %%acc0\n\t"
-        "mac.l %%d2, %%a5, 44(%2), %%a5, %%acc0\n\t"
-        "mac.l %%d3, %%a5, 36(%2), %%a5, %%acc0\n\t"
-        "mac.l %%d4, %%a5, 28(%2), %%a5, %%acc0\n\t"
-        "mac.l %%d5, %%a5, 20(%2), %%a5, %%acc0\n\t"
-        "mac.l %%d6, %%a5, 12(%2), %%a5, %%acc0\n\t"
-        "mac.l %%d7, %%a5,               %%acc0\n\t"
-        "movclr.l %%acc0, %0\n\t"
-        : "=r" (hi0) : "a" (*fo), "a" (*D0ptr)
-        : "d0", "d1", "d2", "d3", "d4", "d5", "d6", "d7", "a5");
-
+        SYNTH_EMAC1(hi0, fo, D0ptr+1);
         pcm[0] = -(hi0 << 3);
       }
       else
       {
-        asm volatile(
-        "movem.l (%1), %%d0-%%d7\n\t"
-        "move.l (%2), %%a5\n\t"
-        "msac.l %%d0, %%a5, 56(%2), %%a5, %%acc0\n\t"
-        "msac.l %%d1, %%a5, 48(%2), %%a5, %%acc0\n\t"
-        "msac.l %%d2, %%a5, 40(%2), %%a5, %%acc0\n\t"
-        "msac.l %%d3, %%a5, 32(%2), %%a5, %%acc0\n\t"
-        "msac.l %%d4, %%a5, 24(%2), %%a5, %%acc0\n\t"
-        "msac.l %%d5, %%a5, 16(%2), %%a5, %%acc0\n\t"
-        "msac.l %%d6, %%a5,  8(%2), %%a5, %%acc0\n\t"
-        "msac.l %%d7, %%a5,  4(%2), %%a5, %%acc0\n\t"
-
-        "movem.l (%3), %%d0-%%d7\n\t"
-        "mac.l  %%d0, %%a5, 60(%2), %%a5, %%acc0\n\t"
-        "mac.l  %%d1, %%a5, 52(%2), %%a5, %%acc0\n\t"
-        "mac.l  %%d2, %%a5, 44(%2), %%a5, %%acc0\n\t"
-        "mac.l  %%d3, %%a5, 36(%2), %%a5, %%acc0\n\t"
-        "mac.l  %%d4, %%a5, 28(%2), %%a5, %%acc0\n\t"
-        "mac.l  %%d5, %%a5, 20(%2), %%a5, %%acc0\n\t"
-        "mac.l  %%d6, %%a5, 12(%2), %%a5, %%acc0\n\t"
-        "mac.l  %%d7, %%a5,               %%acc0\n\t"
-        "movclr.l %%acc0, %0\n\t"
-        : "=r" (hi0) : "a" (*fx), "a" (*D0ptr), "a" (*fe)
-        : "d0", "d1", "d2", "d3", "d4", "d5", "d6", "d7", "a5");
-
-        pcm[0] = hi0 << 3; /* shift result to libmad's fixed point format */
+        SYNTH_EMAC2(hi0, fe, fx, D0ptr);
+        pcm[0] = -(hi0 << 3); /* shift result to libmad's fixed point format */
         pcm   += 16;
 
         for (sb = 15; sb; sb--, fo++) {
@@ -755,69 +781,13 @@ void synth_full(struct mad_synth *synth, struct mad_frame const *frame,
           ++D1ptr;
 
           /* D[32 - sb][i] == -D[sb][31 - i] */
-          asm volatile (
-          "movem.l (%0), %%d0-%%d7\n\t"
-          "move.l (%2), %%a5\n\t"
-          "msac.l %%d0, %%a5,  56(%2), %%a5, %%acc0\n\t"
-          "msac.l %%d1, %%a5,  48(%2), %%a5, %%acc0\n\t"
-          "msac.l %%d2, %%a5,  40(%2), %%a5, %%acc0\n\t"
-          "msac.l %%d3, %%a5,  32(%2), %%a5, %%acc0\n\t"
-          "msac.l %%d4, %%a5,  24(%2), %%a5, %%acc0\n\t"
-          "msac.l %%d5, %%a5,  16(%2), %%a5, %%acc0\n\t"
-          "msac.l %%d6, %%a5,   8(%2), %%a5, %%acc0\n\t"
-          "msac.l %%d7, %%a5, 116(%3), %%a5, %%acc0\n\t"
-          "mac.l  %%d7, %%a5, 108(%3), %%a5, %%acc1\n\t"
-          "mac.l  %%d6, %%a5, 100(%3), %%a5, %%acc1\n\t"
-          "mac.l  %%d5, %%a5,  92(%3), %%a5, %%acc1\n\t"
-          "mac.l  %%d4, %%a5,  84(%3), %%a5, %%acc1\n\t"
-          "mac.l  %%d3, %%a5,  76(%3), %%a5, %%acc1\n\t"
-          "mac.l  %%d2, %%a5,  68(%3), %%a5, %%acc1\n\t"
-          "mac.l  %%d1, %%a5,  60(%3), %%a5, %%acc1\n\t"
-          "mac.l  %%d0, %%a5,  12(%2), %%a5, %%acc1\n\t"
-          "movem.l (%1), %%d0-%%d7\n\t"
-          "mac.l  %%d7, %%a5,  20(%2), %%a5, %%acc0\n\t"
-          "mac.l  %%d6, %%a5,  28(%2), %%a5, %%acc0\n\t"
-          "mac.l  %%d5, %%a5,  36(%2), %%a5, %%acc0\n\t"
-          "mac.l  %%d4, %%a5,  44(%2), %%a5, %%acc0\n\t"
-          "mac.l  %%d3, %%a5,  52(%2), %%a5, %%acc0\n\t"
-          "mac.l  %%d2, %%a5,  60(%2), %%a5, %%acc0\n\t"
-          "mac.l  %%d1, %%a5,   4(%2), %%a5, %%acc0\n\t"
-          "mac.l  %%d0, %%a5, 120(%3), %%a5, %%acc0\n\t"
-          "mac.l  %%d0, %%a5,  64(%3), %%a5, %%acc1\n\t"
-          "mac.l  %%d1, %%a5,  72(%3), %%a5, %%acc1\n\t"
-          "mac.l  %%d2, %%a5,  80(%3), %%a5, %%acc1\n\t"
-          "mac.l  %%d3, %%a5,  88(%3), %%a5, %%acc1\n\t"
-          "mac.l  %%d4, %%a5,  96(%3), %%a5, %%acc1\n\t"
-          "mac.l  %%d5, %%a5, 104(%3), %%a5, %%acc1\n\t"
-          "mac.l  %%d6, %%a5, 112(%3), %%a5, %%acc1\n\t"
-          "mac.l  %%d7, %%a5,                %%acc1\n\t"
-          : : "a" (*fo), "a" (*fe), "a" (*D0ptr), "a" (*D1ptr)
-          : "d0", "d1", "d2", "d3", "d4", "d5", "d6", "d7", "a5");
-
-          asm volatile(
-          "movclr.l %%acc0, %0\n\t"
-          "movclr.l %%acc1, %1\n\t"  : "=d" (hi0), "=d" (hi1) );
-
+          SYNTH_EMAC_EVEN_SBSAMPLE(fo, fe, D0ptr, D1ptr, hi0, hi1);
           pcm[-sb] = hi0 << 3;
           pcm[ sb] = hi1 << 3;
         }
 
         ++D0ptr;
-        asm volatile(
-        "movem.l (%1), %%d0-%%d7\n\t"
-        "move.l (%2), %%a5\n\t"
-        "mac.l %%d0, %%a5, 56(%2), %%a5, %%acc0\n\t"
-        "mac.l %%d1, %%a5, 48(%2), %%a5, %%acc0\n\t"
-        "mac.l %%d2, %%a5, 40(%2), %%a5, %%acc0\n\t"
-        "mac.l %%d3, %%a5, 32(%2), %%a5, %%acc0\n\t"
-        "mac.l %%d4, %%a5, 24(%2), %%a5, %%acc0\n\t"
-        "mac.l %%d5, %%a5, 16(%2), %%a5, %%acc0\n\t"
-        "mac.l %%d6, %%a5,  8(%2), %%a5, %%acc0\n\t"
-        "mac.l %%d7, %%a5,               %%acc0\n\t"
-        "movclr.l %%acc0, %0\n\t"
-        : "=r" (hi0) : "a" (*fo), "a" (*D0ptr)
-        : "d0", "d1", "d2", "d3", "d4", "d5", "d6", "d7", "a5");
-
+        SYNTH_EMAC1(hi0, fo, D0ptr);
         pcm[0] = -(hi0 << 3);
       }
       pcm  += 16;
@@ -829,55 +799,57 @@ void synth_full(struct mad_synth *synth, struct mad_frame const *frame,
 #elif defined(FPM_ARM)
 
 #define PROD_O(hi, lo, f, ptr) \
-  ({                             \
-    mad_fixed_t *__p = (f);        \
-    asm("ldmia   %2!, {r0, r1, r2, r3}\n\t" \
-        "ldr     r4, [%3,  #0]\n\t"   \
-        "smull   %0, %1, r0, r4\n\t"  \
-        "ldr     r4, [%3, #56]\n\t"   \
-        "smlal   %0, %1, r1, r4\n\t"  \
-        "ldr     r4, [%3, #48]\n\t"   \
-        "smlal   %0, %1, r2, r4\n\t"  \
-        "ldr     r4, [%3, #40]\n\t"   \
-        "smlal   %0, %1, r3, r4\n\t"  \
-        "ldmia   %2, {r0, r1, r2, r3}\n\t" \
-        "ldr     r4, [%3, #32]\n\t"   \
-        "smlal   %0, %1, r0, r4\n\t"  \
-        "ldr     r4, [%3, #24]\n\t"   \
-        "smlal   %0, %1, r1, r4\n\t"  \
-        "ldr     r4, [%3, #16]\n\t"   \
-        "smlal   %0, %1, r2, r4\n\t"  \
-        "ldr     r4, [%3, #8]\n\t"   \
-        "smlal   %0, %1, r3, r4\n\t"  \
+  ({                           \
+    mad_fixed_t *__p = (f);    \
+    asm volatile (             \
+        "ldmia   %2!, {r0, r1, r2, r3} \n\t" \
+        "ldr     r4, [%3,  #0]  \n\t" \
+        "smull   %0, %1, r0, r4 \n\t" \
+        "ldr     r4, [%3, #56]  \n\t" \
+        "smlal   %0, %1, r1, r4 \n\t" \
+        "ldr     r4, [%3, #48]  \n\t" \
+        "smlal   %0, %1, r2, r4 \n\t" \
+        "ldr     r4, [%3, #40]  \n\t" \
+        "smlal   %0, %1, r3, r4 \n\t" \
+        "ldmia   %2, {r0, r1, r2, r3} \n\t" \
+        "ldr     r4, [%3, #32]  \n\t" \
+        "smlal   %0, %1, r0, r4 \n\t" \
+        "ldr     r4, [%3, #24]  \n\t" \
+        "smlal   %0, %1, r1, r4 \n\t" \
+        "ldr     r4, [%3, #16]  \n\t" \
+        "smlal   %0, %1, r2, r4 \n\t" \
+        "ldr     r4, [%3, #8]   \n\t" \
+        "smlal   %0, %1, r3, r4 \n\t" \
         : "=&r" (lo), "=&r" (hi), "+r" (__p) \
         : "r" (ptr)     \
-        : "r0", "r1", "r2", "r3", "r4"); \
+        : "r0", "r1", "r2", "r3", "r4", "memory"); \
   })
 
 #define PROD_A(hi, lo, f, ptr) \
-  ({                             \
-    mad_fixed_t *__p = (f);        \
-    asm("ldmia   %2!, {r0, r1, r2, r3}\n\t" \
-        "ldr     r4, [%3,  #0]\n\t"   \
-        "smlal   %0, %1, r0, r4\n\t"  \
-        "ldr     r4, [%3, #56]\n\t"   \
-        "smlal   %0, %1, r1, r4\n\t"  \
-        "ldr     r4, [%3, #48]\n\t"   \
-        "smlal   %0, %1, r2, r4\n\t"  \
-        "ldr     r4, [%3, #40]\n\t"   \
-        "smlal   %0, %1, r3, r4\n\t"  \
-        "ldmia   %2, {r0, r1, r2, r3}\n\t" \
-        "ldr     r4, [%3, #32]\n\t"   \
-        "smlal   %0, %1, r0, r4\n\t"  \
-        "ldr     r4, [%3, #24]\n\t"   \
-        "smlal   %0, %1, r1, r4\n\t"  \
-        "ldr     r4, [%3, #16]\n\t"   \
-        "smlal   %0, %1, r2, r4\n\t"  \
-        "ldr     r4, [%3, #8]\n\t"   \
-        "smlal   %0, %1, r3, r4\n\t"  \
+  ({                           \
+    mad_fixed_t *__p = (f);    \
+    asm volatile (             \
+        "ldmia   %2!, {r0, r1, r2, r3} \n\t" \
+        "ldr     r4, [%3,  #0]  \n\t" \
+        "smlal   %0, %1, r0, r4 \n\t" \
+        "ldr     r4, [%3, #56]  \n\t" \
+        "smlal   %0, %1, r1, r4 \n\t" \
+        "ldr     r4, [%3, #48]  \n\t" \
+        "smlal   %0, %1, r2, r4 \n\t" \
+        "ldr     r4, [%3, #40]  \n\t" \
+        "smlal   %0, %1, r3, r4 \n\t" \
+        "ldmia   %2, {r0, r1, r2, r3} \n\t" \
+        "ldr     r4, [%3, #32]  \n\t" \
+        "smlal   %0, %1, r0, r4 \n\t" \
+        "ldr     r4, [%3, #24]  \n\t" \
+        "smlal   %0, %1, r1, r4 \n\t" \
+        "ldr     r4, [%3, #16]  \n\t" \
+        "smlal   %0, %1, r2, r4 \n\t" \
+        "ldr     r4, [%3, #8]   \n\t" \
+        "smlal   %0, %1, r3, r4 \n\t" \
         : "+r" (lo), "+r" (hi), "+r" (__p) \
-        : "r" (ptr)     \
-        : "r0", "r1", "r2", "r3", "r4"); \
+        : "r" (ptr) \
+        : "r0", "r1", "r2", "r3", "r4", "memory"); \
   })
 
 void synth_full_odd_sbsample (mad_fixed_t *pcm,
@@ -975,6 +947,44 @@ void synth_full(struct mad_synth *synth, struct mad_frame const *frame,
 
 # else /* not FPM_COLDFIRE_EMAC and not FPM_ARM */
 
+#define PROD_O(hi, lo, f, ptr, offset) \
+        ML0(hi, lo, (*f)[0], ptr[ 0+offset]); \
+        MLA(hi, lo, (*f)[1], ptr[14+offset]); \
+        MLA(hi, lo, (*f)[2], ptr[12+offset]); \
+        MLA(hi, lo, (*f)[3], ptr[10+offset]); \
+        MLA(hi, lo, (*f)[4], ptr[ 8+offset]); \
+        MLA(hi, lo, (*f)[5], ptr[ 6+offset]); \
+        MLA(hi, lo, (*f)[6], ptr[ 4+offset]); \
+        MLA(hi, lo, (*f)[7], ptr[ 2+offset]);
+        
+#define PROD_A(hi, lo, f, ptr, offset) \
+        MLA(hi, lo, (*f)[0], ptr[ 0+offset]); \
+        MLA(hi, lo, (*f)[1], ptr[14+offset]); \
+        MLA(hi, lo, (*f)[2], ptr[12+offset]); \
+        MLA(hi, lo, (*f)[3], ptr[10+offset]); \
+        MLA(hi, lo, (*f)[4], ptr[ 8+offset]); \
+        MLA(hi, lo, (*f)[5], ptr[ 6+offset]); \
+        MLA(hi, lo, (*f)[6], ptr[ 4+offset]); \
+        MLA(hi, lo, (*f)[7], ptr[ 2+offset]);
+        
+#define PROD_SB(hi, lo, ptr, offset, first_idx, last_idx) \
+        ML0(hi, lo, (*fe)[0], ptr[first_idx]); \
+        MLA(hi, lo, (*fe)[1], ptr[16+offset]); \
+        MLA(hi, lo, (*fe)[2], ptr[18+offset]); \
+        MLA(hi, lo, (*fe)[3], ptr[20+offset]); \
+        MLA(hi, lo, (*fe)[4], ptr[22+offset]); \
+        MLA(hi, lo, (*fe)[5], ptr[24+offset]); \
+        MLA(hi, lo, (*fe)[6], ptr[26+offset]); \
+        MLA(hi, lo, (*fe)[7], ptr[28+offset]); \
+        MLA(hi, lo, (*fo)[7], ptr[29-offset]); \
+        MLA(hi, lo, (*fo)[6], ptr[27-offset]); \
+        MLA(hi, lo, (*fo)[5], ptr[25-offset]); \
+        MLA(hi, lo, (*fo)[4], ptr[23-offset]); \
+        MLA(hi, lo, (*fo)[3], ptr[21-offset]); \
+        MLA(hi, lo, (*fo)[2], ptr[19-offset]); \
+        MLA(hi, lo, (*fo)[1], ptr[17-offset]); \
+        MLA(hi, lo, (*fo)[0], ptr[last_idx ]);
+
 static
 void synth_full(struct mad_synth *synth, struct mad_frame const *frame,
                 unsigned int nch, unsigned int ns)
@@ -1012,23 +1022,9 @@ void synth_full(struct mad_synth *synth, struct mad_frame const *frame,
       if(s & 1)
       {
         ptr = *D0ptr;
-        ML0(hi, lo, (*fx)[0], ptr[ 1]);
-        MLA(hi, lo, (*fx)[1], ptr[15]);
-        MLA(hi, lo, (*fx)[2], ptr[13]);
-        MLA(hi, lo, (*fx)[3], ptr[11]);
-        MLA(hi, lo, (*fx)[4], ptr[ 9]);
-        MLA(hi, lo, (*fx)[5], ptr[ 7]);
-        MLA(hi, lo, (*fx)[6], ptr[ 5]);
-        MLA(hi, lo, (*fx)[7], ptr[ 3]);
+        PROD_O(hi, lo, fx, ptr, 1)
         MLN(hi, lo);
-        MLA(hi, lo, (*fe)[0], ptr[ 0]);
-        MLA(hi, lo, (*fe)[1], ptr[14]);
-        MLA(hi, lo, (*fe)[2], ptr[12]);
-        MLA(hi, lo, (*fe)[3], ptr[10]);
-        MLA(hi, lo, (*fe)[4], ptr[ 8]);
-        MLA(hi, lo, (*fe)[5], ptr[ 6]);
-        MLA(hi, lo, (*fe)[6], ptr[ 4]);
-        MLA(hi, lo, (*fe)[7], ptr[ 2]);
+        PROD_A(hi, lo, fe, ptr, 0)
         pcm[0] = SHIFT(MLZ(hi, lo));
         pcm   += 16;
 
@@ -1040,76 +1036,26 @@ void synth_full(struct mad_synth *synth, struct mad_frame const *frame,
 
           /* D[32 - sb][i] == -D[sb][31 - i] */
           ptr = *D0ptr;
-          ML0(hi, lo, (*fo)[0], ptr[ 1]);
-          MLA(hi, lo, (*fo)[1], ptr[15]);
-          MLA(hi, lo, (*fo)[2], ptr[13]);
-          MLA(hi, lo, (*fo)[3], ptr[11]);
-          MLA(hi, lo, (*fo)[4], ptr[ 9]);
-          MLA(hi, lo, (*fo)[5], ptr[ 7]);
-          MLA(hi, lo, (*fo)[6], ptr[ 5]);
-          MLA(hi, lo, (*fo)[7], ptr[ 3]);
+          PROD_O(hi, lo, fo, ptr, 1)
           MLN(hi, lo);
-          MLA(hi, lo, (*fe)[7], ptr[ 2]);
-          MLA(hi, lo, (*fe)[6], ptr[ 4]);
-          MLA(hi, lo, (*fe)[5], ptr[ 6]);
-          MLA(hi, lo, (*fe)[4], ptr[ 8]);
-          MLA(hi, lo, (*fe)[3], ptr[10]);
-          MLA(hi, lo, (*fe)[2], ptr[12]);
-          MLA(hi, lo, (*fe)[1], ptr[14]);
-          MLA(hi, lo, (*fe)[0], ptr[ 0]);
+          PROD_A(hi, lo, fe, ptr, 0)
           pcm[-sb] = SHIFT(MLZ(hi, lo));
 
           ptr = *D1ptr;
-          ML0(hi, lo, (*fe)[0], ptr[31 - 16]);
-          MLA(hi, lo, (*fe)[1], ptr[31 - 14]);
-          MLA(hi, lo, (*fe)[2], ptr[31 - 12]);
-          MLA(hi, lo, (*fe)[3], ptr[31 - 10]);
-          MLA(hi, lo, (*fe)[4], ptr[31 -  8]);
-          MLA(hi, lo, (*fe)[5], ptr[31 -  6]);
-          MLA(hi, lo, (*fe)[6], ptr[31 -  4]);
-          MLA(hi, lo, (*fe)[7], ptr[31 -  2]);
-          MLA(hi, lo, (*fo)[7], ptr[31 -  3]);
-          MLA(hi, lo, (*fo)[6], ptr[31 -  5]);
-          MLA(hi, lo, (*fo)[5], ptr[31 -  7]);
-          MLA(hi, lo, (*fo)[4], ptr[31 -  9]);
-          MLA(hi, lo, (*fo)[3], ptr[31 - 11]);
-          MLA(hi, lo, (*fo)[2], ptr[31 - 13]);
-          MLA(hi, lo, (*fo)[1], ptr[31 - 15]);
-          MLA(hi, lo, (*fo)[0], ptr[31 -  1]);
+          PROD_SB(hi, lo, ptr, 1, 15, 30)
           pcm[sb] = SHIFT(MLZ(hi, lo));
         }
 
         ptr = *(D0ptr + 1);
-        ML0(hi, lo, (*fo)[0], ptr[ 1]);
-        MLA(hi, lo, (*fo)[1], ptr[15]);
-        MLA(hi, lo, (*fo)[2], ptr[13]);
-        MLA(hi, lo, (*fo)[3], ptr[11]);
-        MLA(hi, lo, (*fo)[4], ptr[ 9]);
-        MLA(hi, lo, (*fo)[5], ptr[ 7]);
-        MLA(hi, lo, (*fo)[6], ptr[ 5]);
-        MLA(hi, lo, (*fo)[7], ptr[ 3]);
+        PROD_O(hi, lo, fo, ptr, 1)
         pcm[0] = SHIFT(-MLZ(hi, lo));
       }
       else
       {
         ptr = *D0ptr;
-        ML0(hi, lo, (*fx)[0], ptr[ 0]);
-        MLA(hi, lo, (*fx)[1], ptr[14]);
-        MLA(hi, lo, (*fx)[2], ptr[12]);
-        MLA(hi, lo, (*fx)[3], ptr[10]);
-        MLA(hi, lo, (*fx)[4], ptr[ 8]);
-        MLA(hi, lo, (*fx)[5], ptr[ 6]);
-        MLA(hi, lo, (*fx)[6], ptr[ 4]);
-        MLA(hi, lo, (*fx)[7], ptr[ 2]);
+        PROD_O(hi, lo, fx, ptr, 0)
         MLN(hi, lo);
-        MLA(hi, lo, (*fe)[0], ptr[ 1]);
-        MLA(hi, lo, (*fe)[1], ptr[15]);
-        MLA(hi, lo, (*fe)[2], ptr[13]);
-        MLA(hi, lo, (*fe)[3], ptr[11]);
-        MLA(hi, lo, (*fe)[4], ptr[ 9]);
-        MLA(hi, lo, (*fe)[5], ptr[ 7]);
-        MLA(hi, lo, (*fe)[6], ptr[ 5]);
-        MLA(hi, lo, (*fe)[7], ptr[ 3]);
+        PROD_A(hi, lo, fe, ptr, 1)
         pcm[0] = SHIFT(MLZ(hi, lo));
         pcm   += 16;
 
@@ -1121,54 +1067,18 @@ void synth_full(struct mad_synth *synth, struct mad_frame const *frame,
 
           /* D[32 - sb][i] == -D[sb][31 - i] */
           ptr = *D0ptr;
-          ML0(hi, lo, (*fo)[0], ptr[ 0]);
-          MLA(hi, lo, (*fo)[1], ptr[14]);
-          MLA(hi, lo, (*fo)[2], ptr[12]);
-          MLA(hi, lo, (*fo)[3], ptr[10]);
-          MLA(hi, lo, (*fo)[4], ptr[ 8]);
-          MLA(hi, lo, (*fo)[5], ptr[ 6]);
-          MLA(hi, lo, (*fo)[6], ptr[ 4]);
-          MLA(hi, lo, (*fo)[7], ptr[ 2]);
+          PROD_O(hi, lo, fo, ptr, 0)
           MLN(hi, lo);
-          MLA(hi, lo, (*fe)[7], ptr[ 3]);
-          MLA(hi, lo, (*fe)[6], ptr[ 5]);
-          MLA(hi, lo, (*fe)[5], ptr[ 7]);
-          MLA(hi, lo, (*fe)[4], ptr[ 9]);
-          MLA(hi, lo, (*fe)[3], ptr[11]);
-          MLA(hi, lo, (*fe)[2], ptr[13]);
-          MLA(hi, lo, (*fe)[1], ptr[15]);
-          MLA(hi, lo, (*fe)[0], ptr[ 1]);
+          PROD_A(hi, lo, fe, ptr, 1)
           pcm[-sb] = SHIFT(MLZ(hi, lo));
 
           ptr = *D1ptr;
-          ML0(hi, lo, (*fe)[0], ptr[31 -  1]);
-          MLA(hi, lo, (*fe)[1], ptr[31 - 15]);
-          MLA(hi, lo, (*fe)[2], ptr[31 - 13]);
-          MLA(hi, lo, (*fe)[3], ptr[31 - 11]);
-          MLA(hi, lo, (*fe)[4], ptr[31 -  9]);
-          MLA(hi, lo, (*fe)[5], ptr[31 -  7]);
-          MLA(hi, lo, (*fe)[6], ptr[31 -  5]);
-          MLA(hi, lo, (*fe)[7], ptr[31 -  3]);
-          MLA(hi, lo, (*fo)[7], ptr[31 -  2]);
-          MLA(hi, lo, (*fo)[6], ptr[31 -  4]);
-          MLA(hi, lo, (*fo)[5], ptr[31 -  6]);
-          MLA(hi, lo, (*fo)[4], ptr[31 -  8]);
-          MLA(hi, lo, (*fo)[3], ptr[31 - 10]);
-          MLA(hi, lo, (*fo)[2], ptr[31 - 12]);
-          MLA(hi, lo, (*fo)[1], ptr[31 - 14]);
-          MLA(hi, lo, (*fo)[0], ptr[31 - 16]);
+          PROD_SB(hi, lo, ptr, 0, 30, 15)
           pcm[sb] = SHIFT(MLZ(hi, lo));
         }
 
         ptr = *(D0ptr + 1);
-        ML0(hi, lo, (*fo)[0], ptr[ 0]);
-        MLA(hi, lo, (*fo)[1], ptr[14]);
-        MLA(hi, lo, (*fo)[2], ptr[12]);
-        MLA(hi, lo, (*fo)[3], ptr[10]);
-        MLA(hi, lo, (*fo)[4], ptr[ 8]);
-        MLA(hi, lo, (*fo)[5], ptr[ 6]);
-        MLA(hi, lo, (*fo)[6], ptr[ 4]);
-        MLA(hi, lo, (*fo)[7], ptr[ 2]);
+        PROD_O(hi, lo, fo, ptr, 0)
         pcm[0] = SHIFT(-MLZ(hi, lo));
       }
 
@@ -1181,6 +1091,7 @@ void synth_full(struct mad_synth *synth, struct mad_frame const *frame,
 # endif
 # endif
 
+#if 0 /* rockbox: unused */
 /*
  * NAME:        synth->half()
  * DESCRIPTION: perform half frequency PCM synthesis
@@ -1318,6 +1229,7 @@ void synth_half(struct mad_synth *synth, struct mad_frame const *frame,
     }
   }
 }
+#endif /* unused */
 
 /*
  * NAME:        synth->frame()
@@ -1326,8 +1238,10 @@ void synth_half(struct mad_synth *synth, struct mad_frame const *frame,
 void mad_synth_frame(struct mad_synth *synth, struct mad_frame const *frame)
 {
   unsigned int nch, ns;
+#if 0 /* rockbox: unused */
   void (*synth_frame)(struct mad_synth *, struct mad_frame const *,
                       unsigned int, unsigned int);
+#endif
 
   nch = MAD_NCHANNELS(&frame->header);
   ns  = MAD_NSBSAMPLES(&frame->header);
@@ -1336,6 +1250,7 @@ void mad_synth_frame(struct mad_synth *synth, struct mad_frame const *frame)
   synth->pcm.channels   = nch;
   synth->pcm.length     = 32 * ns;
 
+#if 0 /* rockbox: unused */
   synth_frame = synth_full;
 
   if (frame->options & MAD_OPTION_HALFSAMPLERATE) {
@@ -1344,8 +1259,11 @@ void mad_synth_frame(struct mad_synth *synth, struct mad_frame const *frame)
 
     synth_frame = synth_half;
   }
-
+  
   synth_frame(synth, frame, nch, ns);
+#else
+  synth_full(synth, frame, nch, ns);
+#endif
 
   synth->phase = (synth->phase + ns) % 16;
 }

@@ -1,13 +1,16 @@
-fmradio.c
-io.c
+#ifdef SIMULATOR
 lcd-common.c
 #ifdef HAVE_LCD_CHARCELLS
 font-player.c
 lcd-playersim.c
-#endif
 sim_icons.c
-sim_tasks.c
-stubs.c
-powermgmt-sim.c
+#endif
+fmradio.c
 backlight-sim.c
+#endif
 
+io.c
+sim_tasks.c
+/* this is still needed for application since it has some stubs */
+powermgmt-sim.c
+stubs.c

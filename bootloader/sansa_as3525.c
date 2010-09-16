@@ -26,7 +26,12 @@
 #include <system.h>
 #include <inttypes.h>
 #include "config.h"
+#include "gcc_extensions.h"
 #include "lcd.h"
+#ifdef USE_ROCKBOX_USB
+#include "usb.h"
+#include "sysfont.h"
+#endif /* USE_ROCKBOX_USB */
 #include "backlight.h"
 #include "button-target.h"
 #include "common.h"
@@ -37,7 +42,36 @@
 
 int show_logo(void);
 
-void main(void) __attribute__((noreturn));
+#ifdef USE_ROCKBOX_USB
+static void usb_mode(void)
+{
+    if(usb_detect() != USB_INSERTED)
+    {
+        const char msg[] = "Plug USB cable";
+        reset_screen();
+        lcd_putsxy( (LCD_WIDTH - (SYSFONT_WIDTH * sizeof(msg))) / 2,
+                    (LCD_HEIGHT - SYSFONT_HEIGHT) / 2, msg);
+        lcd_update();
+
+        /* wait until USB is plugged */
+        while(usb_detect() != USB_INSERTED) ;
+    }
+
+    const char msg[] = "Bootloader USB mode";
+    reset_screen();
+    lcd_putsxy( (LCD_WIDTH - (SYSFONT_WIDTH * sizeof(msg))) / 2,
+                (LCD_HEIGHT - SYSFONT_HEIGHT) / 2, msg);
+    lcd_update();
+
+    while(usb_detect() == USB_INSERTED)
+        sleep(HZ);
+
+    reset_screen();
+    lcd_update();
+}
+#endif /* USE_ROCKBOX_USB */
+
+void main(void) NORETURN_ATTR;
 void main(void)
 {
     unsigned char* loadbuffer;
@@ -80,34 +114,54 @@ void main(void)
 
     ret = storage_init();
     if(ret < 0)
-        error(EATA,ret);
+        error(EATA, ret, true);
 
-    if(!disk_init(IF_MV(0)))
+#ifdef USE_ROCKBOX_USB
+    usb_init();
+    usb_start_monitoring();
+
+    /* Enter USB mode if USB is plugged and SELECT button is pressed */
+    if(btn & BUTTON_SELECT && usb_detect() == USB_INSERTED)
+        usb_mode();
+#endif /* USE_ROCKBOX_USB */
+
+    while(!disk_init(IF_MV(0)))
+#ifdef USE_ROCKBOX_USB
+        usb_mode();
+#else
         panicf("disk_init failed!");
+#endif
 
-    ret = disk_mount_all();
-
-    if(ret <= 0)
-        error(EDISK, ret);
+    while((ret = disk_mount_all()) <= 0)
+    {
+#ifdef USE_ROCKBOX_USB
+        error(EDISK, ret, false);
+        usb_mode();
+#else
+        error(EDISK, ret, true);
+#endif
+    }
 
     printf("Loading firmware");
 
     loadbuffer = (unsigned char*)DRAM_ORIG; /* DRAM */
     buffer_size = (int)(loadbuffer + (DRAM_SIZE) - TTB_SIZE);
 
-    ret = load_firmware(loadbuffer, BOOTFILE, buffer_size);
-    if(ret < 0)
-        error(EBOOTFILE, ret);
-
-    disable_irq(); /* disable irq until we have copied the new vectors */
-
-    if (ret == EOK)
+    while((ret = load_firmware(loadbuffer, BOOTFILE, buffer_size)) < 0)
     {
-        kernel_entry = (void*) loadbuffer;
-        printf("Executing");
-        kernel_entry();
-        printf("ERR: Failed to boot");
+#ifdef USE_ROCKBOX_USB
+        error(EBOOTFILE, ret, false);
+        usb_mode();
+#else
+        error(EBOOTFILE, ret, true);
+#endif
     }
+
+    kernel_entry = (void*) loadbuffer;
+    cpucache_invalidate();
+    printf("Executing");
+    kernel_entry();
+    printf("ERR: Failed to boot");
 
     /* never returns */
     while(1) ;

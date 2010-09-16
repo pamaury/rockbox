@@ -20,14 +20,14 @@
  ****************************************************************************/
 
 #include "plugin.h"
-#include "lib/pluginlib_exit.h"
 #include "lua.h"
 #include "lauxlib.h"
 #include "lualib.h"
 #include "rocklib.h"
 #include "rockmalloc.h"
+#include "luadir.h"
 
-PLUGIN_HEADER
+
 
 static const luaL_Reg lualibs[] = {
   {"",              luaopen_base},
@@ -39,6 +39,7 @@ static const luaL_Reg lualibs[] = {
   {LUA_IOLIBNAME,   luaopen_io},
   {LUA_LOADLIBNAME, luaopen_package},
   {LUA_MATHLIBNAME, luaopen_math},
+  {LUA_DIRLIBNAME,  luaopen_luadir},
   {NULL, NULL}
 };
 
@@ -145,8 +146,6 @@ enum plugin_status plugin_start(const void* parameter)
 {
     const char* filename;
     int status;
-
-    PLUGINLIB_EXIT_INIT
 
     if (parameter == NULL)
     {

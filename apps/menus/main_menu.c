@@ -33,6 +33,7 @@
 #include "misc.h"
 #include "exported_menus.h"
 #include "tree.h"
+#include "storage.h"
 #ifdef HAVE_RECORDING
 #include "recording.h"
 #endif
@@ -44,13 +45,10 @@
 #include "buffer.h"
 #include "splash.h"
 #include "debug_menu.h"
-#if defined(SIMULATOR) && defined(ROCKBOX_HAS_LOGF)
-#include "logfdisp.h"
-#endif
 #include "version.h"
 #include "time.h"
 #include "wps.h"
-#include "skin_engine/skin_buffer.h"
+#include "skin_buffer.h"
 
 static const struct browse_folder_info config = {ROCKBOX_DIR, SHOW_CFG};
 
@@ -112,9 +110,12 @@ MAKE_MENU(manage_settings, ID2P(LANG_MANAGE_MENU), NULL, Icon_Config,
 /***********************************/
 /*      INFO MENU                  */
 
+
 static bool show_credits(void)
 {
-    if (plugin_load(VIEWERS_DIR "/credits.rock",NULL) != PLUGIN_OK)
+    char credits[MAX_PATH] = { '\0' };
+    snprintf(credits, MAX_PATH, "%s/credits.rock", VIEWERS_DIR);
+    if (plugin_load(credits, NULL) != PLUGIN_OK)
     {
         /* show the rockbox logo and version untill a button is pressed */
         show_logo();
@@ -172,7 +173,7 @@ static const char* info_getname(int selected_item, void *data,
     {
         case INFO_VERSION:
             snprintf(buffer, buffer_len, "%s: %s", 
-                     str(LANG_VERSION), appsversion);
+                     str(LANG_VERSION), rbversion);
             break;
 
         case INFO_BUFFER: /* buffer */
@@ -259,7 +260,7 @@ static int info_speak_item(int selected_item, void * data)
     {
         case INFO_VERSION: /* version */
             talk_id(LANG_VERSION, false);
-            talk_spell(appsversion, true);
+            talk_spell(rbversion, true);
             break;
 
         case INFO_BUFFER: /* buffer */
@@ -341,24 +342,24 @@ static int info_action_callback(int action, struct gui_synclist *lists)
     if (action == ACTION_STD_CANCEL)
         return action;
     else if ((action == ACTION_STD_OK)
-#ifdef HAVE_MULTIVOLUME
-        || action == SYS_HOTSWAP_INSERTED
-        || action == SYS_HOTSWAP_EXTRACTED
+#ifdef HAVE_HOTSWAP
+        || action == SYS_FS_CHANGED
 #endif
         )
     {
-#ifndef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
         struct info_data *info = (struct info_data *)lists->data;
+        int i;
         info->new_data = true;
         splash(0, ID2P(LANG_SCANNING_DISK));
-        fat_recalc_free(IF_MV(0));
-#ifdef HAVE_MULTIVOLUME
-        if (fat_ismounted(1))
-            fat_recalc_free(1);
+        for (i = 0; i < NUM_VOLUMES; i++)
+        {
+#ifdef HAVE_HOTSWAP
+            if (fat_ismounted(i))
 #endif
-
+                fat_recalc_free(IF_MV(i));
+        }
 #else
-
         (void) lists;
 #endif
         gui_synclist_speak_item(lists);

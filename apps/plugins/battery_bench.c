@@ -22,7 +22,7 @@
 
 #include "version.h"
 #include "plugin.h"
-PLUGIN_HEADER
+
 
 #define BATTERY_LOG "/battery_bench.txt"
 #define BUF_SIZE 16000
@@ -236,24 +236,14 @@ PLUGIN_HEADER
 #endif
 
 /****************************** Plugin Entry Point ****************************/
-int main(void);
-bool exit_tsr(bool);
-void thread(void);
-
-
-enum plugin_status plugin_start(const void* parameter)
-{
-    (void)parameter;
-    
-    return main();
-}
+static long start_tick;
 
 /* Struct for battery information */
-struct batt_info
+static struct batt_info
 {
     /* the size of the struct elements is optimised to make the struct size
      * a power of 2 */
-    long ticks;
+    unsigned secs;
     int eta;
     unsigned int voltage;
     short level;
@@ -267,7 +257,7 @@ static struct event_queue thread_q;
 static bool in_usb_mode;
 static unsigned int buf_idx;
 
-bool exit_tsr(bool reenter)
+static bool exit_tsr(bool reenter)
 {
     long button;
     (void)reenter;
@@ -303,7 +293,7 @@ bool exit_tsr(bool reenter)
 #define HMS(x) (x)/3600,((x)%3600)/60,((x)%3600)%60 
 
 /* use long for aligning */
-unsigned long thread_stack[THREAD_STACK_SIZE/sizeof(long)];
+static unsigned long thread_stack[THREAD_STACK_SIZE/sizeof(long)];
 
 #if CONFIG_CHARGING || defined(HAVE_USB_POWER)
 static unsigned int charge_state(void)
@@ -329,7 +319,7 @@ static unsigned int charge_state(void)
 static void flush_buffer(void* data)
 {
     (void)data;
-    int fd, secs;
+    int fd;
     unsigned int i;
 
     /* don't access the disk when in usb mode, or when no data is available */
@@ -342,7 +332,6 @@ static void flush_buffer(void* data)
 
     for (i = 0; i < buf_idx; i++)
     {
-        secs = bat[i].ticks/HZ;
         rb->fdprintf(fd,
                 "%02d:%02d:%02d,  %05d,     %03d%%,     "
                 "%02d:%02d,         %04d,   "
@@ -357,7 +346,7 @@ static void flush_buffer(void* data)
 #endif
                 "\n",
 
-                HMS(secs), secs, bat[i].level,
+                HMS(bat[i].secs), bat[i].secs, bat[i].level,
                 bat[i].eta / 60, bat[i].eta % 60,
                 bat[i].voltage
 #if CONFIG_CHARGING
@@ -377,7 +366,7 @@ static void flush_buffer(void* data)
 }
 
 
-void thread(void)
+static void thread(void)
 {
     bool exit = false;
     char *exit_reason = "unknown";
@@ -393,7 +382,7 @@ void thread(void)
         /* add data to buffer */
         if (buf_idx < BUF_ELEMENTS)
         {
-            bat[buf_idx].ticks = *rb->current_tick;
+            bat[buf_idx].secs = (*rb->current_tick - start_tick) / HZ;
             bat[buf_idx].level = rb->battery_level();
             bat[buf_idx].eta = rb->battery_time();
             bat[buf_idx].voltage = rb->battery_voltage();
@@ -466,10 +455,12 @@ static void put_centered_str(const char* str, plcdfunc putsxy, int lcd_width, in
 }
 #endif
 
-int main(void)
+enum plugin_status plugin_start(const void* parameter)
 {
+    (void)parameter;
     int button, fd;
     bool on = false;
+    start_tick = *rb->current_tick;
 #ifdef HAVE_LCD_BITMAP
     int i;
     const char *msgs[] = { "Battery Benchmark","Check file", BATTERY_LOG,
@@ -529,28 +520,33 @@ int main(void)
         if (fd >= 0)
         {
             rb->fdprintf(fd,
-                "This plugin will log your battery performance in a\n"
-                "file (%s) every minute.\n"
-                "To properly test your battery:\n"
-                "1) Select and playback an album. "
-                "(Be sure to be more than the player's buffer)\n"
-                "2) Set to repeat.\n"
-                "3) Let the player run completely out of battery.\n"
-                "4) Recharge and copy (or whatever you want) the txt file to "
-                "your computer.\n"
-                "Now you can make graphs with the data of the battery log.\n"
-                "Do not enter another plugin during the test or else the "
-                "logging activity will end.\n\n"
-                "P.S: You can decide how you will make your tests.\n"
-                "Just don't open another plugin to be sure that your log "
+                "# This plugin will log your battery performance in a\n"
+                "# file (%s) every minute.\n"
+                "# To properly test your battery:\n"
+                "# 1) Select and playback an album. "
+                "# (Be sure to be more than the player's buffer)\n"
+                "# 2) Set to repeat.\n"
+                "# 3) Let the player run completely out of battery.\n"
+                "# 4) Recharge and copy (or whatever you want) the txt file to "
+                "# your computer.\n"
+                "# Now you can make graphs with the data of the battery log.\n"
+                "# Do not enter another plugin during the test or else the \n"
+                "# logging activity will end.\n\n"
+                "# P.S: You can decide how you will make your tests.\n"
+                "# Just don't open another plugin to be sure that your log "
                 "will continue.\n\n",BATTERY_LOG);
             rb->fdprintf(fd,
-                "Battery bench run for %s version %s\n\n"
-                ,MODEL_NAME,rb->appsversion);
+                "# Battery bench run for %s version %s\n\n"
+                ,MODEL_NAME,rb->rbversion);
+
+            rb->fdprintf(fd, "# Battery type: %d mAh      Buffer Entries: %d\n",
+                rb->global_settings->battery_capacity, (int)BUF_ELEMENTS);
+
+            rb->fdprintf(fd, "# Rockbox has been running for %02d:%02d:%02d\n",
+                HMS((unsigned)start_tick/HZ));
 
             rb->fdprintf(fd,
-                "Battery type: %d mAh      Buffer Entries: %d\n"
-                "  Time:,  Seconds:,  Level:,  Time Left:,  Voltage[mV]:"
+                "# Time:,  Seconds:,  Level:,  Time Left:,  Voltage[mV]:"
 #if CONFIG_CHARGING
                 ", C:"
 #endif
@@ -560,9 +556,7 @@ int main(void)
 #ifdef HAVE_USB_POWER
                 ", U:"
 #endif
-                "\n"
-                ,rb->global_settings->battery_capacity,
-                (int)BUF_ELEMENTS);
+                "\n");
             rb->close(fd);
         }
         else
@@ -575,10 +569,12 @@ int main(void)
     {
         rb->close(fd);
         fd = rb->open(BATTERY_LOG, O_RDWR | O_APPEND);
-        rb->fdprintf(fd, "\n--File already present. Resuming Benchmark--\n");
+        rb->fdprintf(fd, "\n# --File already present. Resuming Benchmark--\n");
         rb->fdprintf(fd,
-            "Battery bench run for %s version %s\n\n"
-            ,MODEL_NAME,rb->appsversion);
+            "# Battery bench run for %s version %s\n\n"
+            ,MODEL_NAME,rb->rbversion);
+        rb->fdprintf(fd, "# Rockbox has been running for %02d:%02d:%02d\n",
+            HMS((unsigned)start_tick/HZ));
         rb->close(fd);
     }
     

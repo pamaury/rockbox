@@ -25,6 +25,7 @@
 #include <inttypes.h>
 #include "config.h"
 #include "system.h"
+#include "screen_access.h"
 
 extern const unsigned char * const byte_units[];
 extern const unsigned char * const * const kbyte_units;
@@ -84,8 +85,6 @@ int hex_to_rgb(const char* hex, int* color);
 
 char* strrsplt(char* str, int c);
 char* skip_whitespace(char* const str);
-bool file_exists(const char *file);
-bool dir_exists(const char *path);
 
 /*
  * removes the extension of filename (if it doesn't start with a .)
@@ -94,16 +93,7 @@ bool dir_exists(const char *path);
 char *strip_extension(char* buffer, int buffer_size, const char *filename);
 
 #ifdef HAVE_LCD_BITMAP
-/* A simplified scanf */
-/*
- * Checks whether the value at position 'position' was really read
- * during a call to 'parse_list'
- *   - position: 0-based number of the value
- *   - valid_vals: value after the call to 'parse_list'
- */
-#define LIST_VALUE_PARSED(setvals, position) ((setvals) & BIT_N(position))
-const char* parse_list(const char *fmt, uint32_t *set_vals,
-                       const char sep, const char* str, ...);
+bool parse_color(enum screen_type screen, char *text, int *value);
 
 /* only used in USB HID and set_time screen */
 #if defined(USB_ENABLE_HID) || (CONFIG_RTC != 0)

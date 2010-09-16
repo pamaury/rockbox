@@ -43,50 +43,6 @@ static inline ogg_int32_t MULT31_SHIFT15(ogg_int32_t x, ogg_int32_t y) {
   return(hi);
 }
 
-#define XPROD32(a, b, t, v, x, y) \
-{ \
-  long l; \
-  asm(  "smull  %0, %1, %4, %6\n\t" \
-        "rsb    %3, %4, #0\n\t" \
-        "smlal  %0, %1, %5, %7\n\t" \
-        "smull  %0, %2, %5, %6\n\t" \
-        "smlal  %0, %2, %3, %7" \
-        : "=&r" (l), "=&r" (x), "=&r" (y), "=r" ((a)) \
-        : "3" ((a)), "r" ((b)), "r" ((t)), "r" ((v)) ); \
-}
-
-static inline void XPROD31(ogg_int32_t  a, ogg_int32_t  b,
-                           ogg_int32_t  t, ogg_int32_t  v,
-                           ogg_int32_t *x, ogg_int32_t *y)
-{
-  int x1, y1, l;
-  asm(  "smull  %0, %1, %4, %6\n\t"
-        "rsb    %3, %4, #0\n\t"
-        "smlal  %0, %1, %5, %7\n\t"
-        "smull  %0, %2, %5, %6\n\t"
-        "smlal  %0, %2, %3, %7"
-        : "=&r" (l), "=&r" (x1), "=&r" (y1), "=r" (a)
-        : "3" (a), "r" (b), "r" (t), "r" (v) );
-  *x = x1 << 1;
-  *y = y1 << 1;
-}
-
-static inline void XNPROD31(ogg_int32_t  a, ogg_int32_t  b,
-                            ogg_int32_t  t, ogg_int32_t  v,
-                            ogg_int32_t *x, ogg_int32_t *y)
-{
-  int x1, y1, l;
-  asm(  "smull  %0, %1, %3, %5\n\t"
-        "rsb    %2, %4, #0\n\t"
-        "smlal  %0, %1, %2, %6\n\t"
-        "smull  %0, %2, %4, %5\n\t"
-        "smlal  %0, %2, %3, %6"
-        : "=&r" (l), "=&r" (x1), "=&r" (y1)
-        : "r" (a), "r" (b), "r" (t), "r" (v) );
-  *x = x1 << 1;
-  *y = y1 << 1;
-}
-
 #ifndef _V_VECT_OPS
 #define _V_VECT_OPS
 
@@ -156,6 +112,32 @@ void vect_add_left_right(ogg_int32_t *x, const ogg_int32_t *y, int n)
   } while (n);
 }
 
+#if ARM_ARCH >= 6
+static inline 
+void vect_mult_fw(ogg_int32_t *data, LOOKUP_T *window, int n)
+{
+  /* Note, mult_fw uses MULT31 */
+  do{
+    asm volatile (
+                  "ldmia %[d], {r0, r1, r2, r3};"
+                  "ldmia %[w]!, {r4, r5, r6, r7};"
+                  "smmul r0, r4, r0;"
+                  "smmul r1, r5, r1;"
+                  "smmul r2, r6, r2;"
+                  "smmul r3, r7, r3;"
+                  "mov   r0, r0, lsl #1;"
+                  "mov   r1, r1, lsl #1;"
+                  "mov   r2, r2, lsl #1;"
+                  "mov   r3, r3, lsl #1;"
+                  "stmia %[d]!, {r0, r1, r2, r3};"
+                  : [d] "+r" (data), [w] "+r" (window)
+                  : : "r0", "r1", "r2", "r3",
+                  "r4", "r5", "r6", "r7",
+                  "memory" );
+    n -= 4;
+  } while (n);
+}
+#else
 static inline 
 void vect_mult_fw(ogg_int32_t *data, LOOKUP_T *window, int n)
 {
@@ -180,7 +162,30 @@ void vect_mult_fw(ogg_int32_t *data, LOOKUP_T *window, int n)
     n -= 4;
   } while (n);
 }
+#endif
 
+#if ARM_ARCH >= 6
+static inline
+void vect_mult_bw(ogg_int32_t *data, LOOKUP_T *window, int n)
+{
+  /* NOTE mult_bw uses MULT_32 i.e. doesn't shift result left at end */
+  /* On ARM, we can do the shift at the same time as the overlap-add */
+  do{
+    asm volatile ("ldmia %[d], {r0, r1, r2, r3};"
+                  "ldmda %[w]!, {r4, r5, r6, r7};"
+                  "smmul r0, r7, r0;"
+                  "smmul r1, r6, r1;"
+                  "smmul r2, r5, r2;"
+                  "smmul r3, r4, r3;"
+                  "stmia %[d]!, {r0, r1, r2, r3};"
+                  : [d] "+r" (data), [w] "+r" (window)
+                  : : "r0", "r1", "r2", "r3",
+                  "r4", "r5", "r6", "r7",
+                  "memory" );
+    n -= 4;
+  } while (n);
+}
+#else
 static inline
 void vect_mult_bw(ogg_int32_t *data, LOOKUP_T *window, int n)
 {
@@ -201,6 +206,7 @@ void vect_mult_bw(ogg_int32_t *data, LOOKUP_T *window, int n)
     n -= 4;
   } while (n);
 }
+#endif
 
 static inline void vect_copy(ogg_int32_t *x, const ogg_int32_t *y, int n)
 {

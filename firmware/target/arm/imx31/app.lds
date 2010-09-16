@@ -32,9 +32,14 @@ STARTUP(target/arm/imx31/crt0.o)
 /* Where the codec buffer ends, and the plugin buffer starts */
 #define ENDADDR (ENDAUDIOADDR + CODECSIZE)
 
+/* INIT section is the codec buffer */
+#define INITSIZE  CODECSIZE
+#define INITSTART ENDAUDIOADDR
+
 MEMORY
 {
     DRAM : ORIGIN = DRAMORIG, LENGTH = DRAMSIZE
+    INIT : ORIGIN = INITSTART, LENGTH = INITSIZE
     QHARRAY : ORIGIN = QHARRAY_PHYS_ADDR, LENGTH = QHARRAY_SIZE
 }
 
@@ -94,28 +99,42 @@ SECTIONS
         *(.eh_frame)
     }
 
+    /* NOLOAD sections at end start here. Any part of the binary image past
+     * this point is discarded or copied elsewhere. */
+    _noloaddram = .;
+
     .vectors 0x0 :
     {
         _vectorsstart = .;
-        *(.vectors);
+        *(.vectors)
         _vectorsend = .;
     } AT> DRAM
 
     _vectorscopy = LOADADDR(.vectors);
     
-    .stack (NOLOAD) :
+    .init :
     {
-       *(.stack)
-       stackbegin = .;
-       . += 0x2000;
-       stackend = .;
+        . = ALIGN(4);
+        _initstart = .;
+        *(.init)
+        *(.sdmacode)
+        _initend = .;
+    } > INIT AT> DRAM
+
+    _initcopy = LOADADDR(.init);
+
+    .stack _noloaddram (NOLOAD) :
+    {
+        . = ALIGN(4);
+        *(.stack)
+        stackbegin = .;
+        . += 0x2000;
+        stackend = .;
     } > DRAM
     
-    _sdmacodecopy = stackbegin;
-
     .bss (NOLOAD) :
     {
-       _edata = .;
+        _edata = .;
         *(.bss*)
         *(.ibss)
         *(COMMON)
@@ -156,13 +175,6 @@ SECTIONS
     {
         _pluginbuf = .;
         pluginbuf = .;
-    }
-    
-    .sdma _pluginbuf : AT( _sdmacodecopy )
-    {
-    	_sdmacodestart = .;
-    	*(.sdmacode);
-    	_sdmacodeend = .;
     }
     
     .qharray (NOLOAD) :

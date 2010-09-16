@@ -20,7 +20,7 @@
  ****************************************************************************/
 #include "plugin.h"
 
-PLUGIN_HEADER
+
 
 /* All swcodec targets have BUTTON_SELECT apart from the H10 and M3 */
 
@@ -44,11 +44,17 @@ PLUGIN_HEADER
 static int line = 0;
 static int max_line = 0;
 static int log_fd = -1;
-static char logfilename[MAX_PATH];
+
+static void log_close(void)
+{
+    if (log_fd >= 0)
+        rb->close(log_fd);
+}
 
 static bool log_init(bool use_logfile)
 {
     int h;
+    char logfilename[MAX_PATH];
 
     rb->lcd_getstringsize("A", NULL, &h);
     max_line = LCD_HEIGHT / h;
@@ -57,6 +63,7 @@ static bool log_init(bool use_logfile)
     rb->lcd_update();
 
     if (use_logfile) {
+        log_close();
         rb->create_numbered_filename(logfilename, "/", "test_codec_log_", ".txt",
                                      2 IF_CNFN_NUM_(, NULL));
         log_fd = rb->open(logfilename, O_RDWR|O_CREAT|O_TRUNC, 0666);
@@ -79,12 +86,6 @@ static void log_text(char *text, bool advance)
     }
 }
 
-static void log_close(void)
-{
-    if (log_fd >= 0)
-        rb->close(log_fd);
-}
-
 struct wavinfo_t
 {
   int fd;
@@ -98,7 +99,9 @@ struct wavinfo_t
 static void* audiobuf;
 static void* codec_mallocbuf;
 static size_t audiosize;
-static char str[MAX_PATH];
+static size_t audiobufsize;
+static int offset;
+static int fd;
 
 /* Our local implementation of the codec API */
 static struct codec_api ci;
@@ -119,6 +122,7 @@ static uint32_t crc32;
 static volatile unsigned int elapsed;
 static volatile bool codec_playing;
 static volatile long endtick;
+static volatile long rebuffertick;
 struct wavinfo_t wavinfo;
 
 static unsigned char wav_header[44] =
@@ -159,9 +163,8 @@ static inline void int2le16(unsigned char* buf, int16_t x)
   buf[1] = (x & 0xff00) >> 8;
 }
 
-/* 32KB should be enough */
-static unsigned char wavbuffer[32*1024];
-static unsigned char dspbuffer[32*1024];
+static unsigned char *wavbuffer;
+static unsigned char *dspbuffer;
 
 void init_wav(char* filename)
 {
@@ -207,7 +210,7 @@ void close_wav(void)
 /* Returns buffer to malloc array. Only codeclib should need this. */
 static void* codec_get_buffer(size_t *size)
 {
-   DEBUGF("codec_get_buffer(%d)\n",(int)size);
+   DEBUGF("codec_get_buffer(%"PRIuPTR")\n",(uintptr_t)size);
    *size = CODEC_SIZE;
    return codec_mallocbuf;
 }
@@ -260,6 +263,44 @@ static void pcmbuf_insert_null(const void *ch1, const void *ch2, int count)
 
     /* Prevent idle poweroff */
     rb->reset_poweroff_timer();
+}
+
+/*
+ *  Helper function used when the file is larger then the available memory. 
+ *  Rebuffers the file by setting the start of the audio buffer to be 
+ *  new_offset and filling from there.
+ */
+static int fill_buffer(int new_offset){
+    size_t n, bytestoread;
+    long temp = *rb->current_tick;
+    rb->lseek(fd,new_offset,SEEK_SET);
+    
+    if(new_offset + audiobufsize <= track.filesize)
+        bytestoread = audiobufsize;
+    else
+        bytestoread = track.filesize-new_offset;
+    
+    n = rb->read(fd, audiobuf,bytestoread);
+
+    if (n != bytestoread)
+    {
+        log_text("Read failed.",true);
+        DEBUGF("read fail:  got %d bytes, expected %d\n", (int)n, (int)audiobufsize);
+        rb->backlight_on();
+
+        if (fd >= 0)
+        {
+            rb->close(fd);
+        }
+
+        return -1;
+    }
+    offset = new_offset;
+    
+    /*keep track of how much time we spent buffering*/
+    rebuffertick += *rb->current_tick-temp;
+    
+    return 0;
 }
 
 /* WAV output or calculate crc32 of output*/
@@ -388,10 +429,18 @@ static size_t read_filebuf(void *ptr, size_t size)
    {
        return 0;
    } else {
-       /* TODO: Don't read beyond end of buffer */
-       rb->memcpy(ptr, audiobuf + ci.curpos, size);
-       ci.curpos += size;
-       return size;
+        size_t realsize = MIN(track.filesize-ci.curpos,size);
+        
+       /* check if we have enough bytes ready*/
+       if(realsize >(audiobufsize - (ci.curpos-offset)))
+       {
+           /*rebuffer so that we start at ci.curpos*/
+           fill_buffer(ci.curpos);
+        }
+       
+       rb->memcpy(ptr, audiobuf + (ci.curpos-offset), realsize);
+       ci.curpos += realsize;
+       return realsize;
    }
 }
 
@@ -404,9 +453,15 @@ static void* request_buffer(size_t *realsize, size_t reqsize)
 {
     *realsize = MIN(track.filesize-ci.curpos,reqsize);
 
-    return (audiobuf + ci.curpos);
+    /*check if we have enough bytes ready - requested > bufsize-currentbufpos*/
+    if(*realsize>(audiobufsize - (ci.curpos-offset)))
+    {
+        /*rebuffer so that we start at ci.curpos*/
+       fill_buffer(ci.curpos);
+    }
+    
+    return (audiobuf + (ci.curpos-offset));
 }
-
 
 /* Advance file buffer position by <amount> amount of bytes. */
 static void advance_buffer(size_t amount)
@@ -418,7 +473,7 @@ static void advance_buffer(size_t amount)
 /* Advance file buffer to a pointer location inside file buffer. */
 static void advance_buffer_loc(void *ptr)
 {
-    ci.curpos = ptr - audiobuf;
+    ci.curpos = ptr - (audiobuf - offset);
 }
 
 
@@ -576,20 +631,21 @@ static void codec_thread(void)
     res = rb->codec_load_file(codecname,&ci);
 
     /* Signal to the main thread that we are done */
-    endtick = *rb->current_tick;
+    endtick = *rb->current_tick - rebuffertick;
     codec_playing = false;
 }
 
 static enum plugin_status test_track(const char* filename)
 {
     size_t n;
-    int fd;
     enum plugin_status res = PLUGIN_ERROR;
     long starttick;
     long ticks;
     unsigned long speed;
     unsigned long duration;
     const char* ch;
+    char str[MAX_PATH];
+    offset=0;
 
     /* Display filename (excluding any path)*/
     ch = rb->strrchr(filename, '/');
@@ -620,20 +676,24 @@ static enum plugin_status test_track(const char* filename)
         log_text("Cannot read metadata",true);
         goto exit;
     }
-    
+
     if (track.filesize > audiosize)
     {
-        log_text("File too large",true);
-        goto exit;
+        audiobufsize=audiosize;
+        
+    } else 
+    {
+        audiobufsize=track.filesize;
     }
 
-    n = rb->read(fd, audiobuf, track.filesize);
+    n = rb->read(fd, audiobuf, audiobufsize);
 
-    if (n != track.filesize)
+    if (n != audiobufsize)
     {
         log_text("Read failed.",true);
         goto exit;
     }
+    
 
     /* Initialise the function pointers in the codec API */
     init_ci();
@@ -653,6 +713,7 @@ static enum plugin_status test_track(const char* filename)
     if (checksum)
         crc32 = 0xffffffff;
 
+    rebuffertick=0;
     starttick = *rb->current_tick;
 
     codec_playing = true;
@@ -670,12 +731,12 @@ static enum plugin_status test_track(const char* filename)
 
     /* Be sure it is done */
     rb->codec_thread_do_callback(NULL, NULL);
-
+    rb->backlight_on();
     log_text(str,true);
     
     if (checksum)
     {
-        rb->snprintf(str, sizeof(str), "CRC32 - %x", (unsigned)crc32);
+        rb->snprintf(str, sizeof(str), "CRC32 - %08x", (unsigned)crc32);
         log_text(str,true);
     }
     else if (wavinfo.fd < 0) 
@@ -696,7 +757,7 @@ static enum plugin_status test_track(const char* filename)
         rb->snprintf(str,sizeof(str),"%d.%02d%% realtime",(int)speed/100,(int)speed%100);
         log_text(str,true);
         
-#ifndef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
         /* show effective clockrate in MHz needed for realtime decoding */
         if (speed > 0)
         {
@@ -732,12 +793,16 @@ enum plugin_status plugin_start(const void* parameter)
     char* ch;
     char dirpath[MAX_PATH];
     char filename[MAX_PATH];
+    size_t buffer_size;
 
     if (parameter == NULL)
     {
         rb->splash(HZ*2, "No File");
         return PLUGIN_ERROR;
     }
+
+    wavbuffer = rb->plugin_get_buffer(&buffer_size);
+    dspbuffer = wavbuffer + buffer_size / 2;
 
     codec_mallocbuf = rb->plugin_get_audio_buffer(&audiosize);
     audiobuf = SKIPBYTES(codec_mallocbuf, CODEC_SIZE);
@@ -837,7 +902,8 @@ show_menu:
         if (dir) {
             entry = rb->readdir(dir);
             while (entry) {
-                if (!(entry->attribute & ATTR_DIRECTORY)) {
+                struct dirinfo info = rb->dir_get_info(dir, entry);
+                if (!(info.attribute & ATTR_DIRECTORY)) {
                     rb->snprintf(filename,sizeof(filename),"%s%s",dirpath,entry->d_name);
                     test_track(filename);
                     log_text("", true);
@@ -860,6 +926,7 @@ show_menu:
         }
         while (rb->button_get(true) != TESTCODEC_EXITBUTTON);
     }
+    rb->button_clear_queue();
     goto show_menu;
 
 exit:

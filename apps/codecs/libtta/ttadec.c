@@ -45,31 +45,31 @@
 /******************* static variables and structures *******************/
 
 static unsigned char isobuffers[ISO_BUFFERS_SIZE + 4] IBSS_ATTR;
-static unsigned char *iso_buffers_end = isobuffers + ISO_BUFFERS_SIZE;
-static unsigned int pcm_buffer_size;
+static unsigned char * const iso_buffers_end ICONST_ATTR = isobuffers + ISO_BUFFERS_SIZE;
+static unsigned int pcm_buffer_size IBSS_ATTR;
 
-static decoder tta[MAX_NCH] IBSS_ATTR;     /* decoder state */
+static decoder tta[MAX_NCH]     IBSS_ATTR; /* decoder state */
 /* Rockbox speciffic: cache is defined in get_samples() (non static value) */
 /* static int     cache[MAX_NCH];   // decoder cache */
 
-tta_info *ttainfo;               /* currently playing file info */
+tta_info *ttainfo               IBSS_ATTR; /* currently playing file info */
 
-static unsigned int fframes;     /* number of frames in file */
-static unsigned int framelen;    /* the frame length in samples */
-static unsigned int lastlen;     /* the length of the last frame in samples */
-static unsigned int data_pos;    /* currently playing frame index */
-static unsigned int data_cur;    /* the playing position in frame */
+static unsigned int fframes     IBSS_ATTR; /* number of frames in file */
+static unsigned int framelen    IBSS_ATTR; /* the frame length in samples */
+static unsigned int lastlen     IBSS_ATTR; /* the length of the last frame in samples */
+static unsigned int data_pos    IBSS_ATTR; /* currently playing frame index */
+static unsigned int data_cur    IBSS_ATTR; /* the playing position in frame */
 
-static int maxvalue;             /* output data max value */
+static int maxvalue             IBSS_ATTR; /* output data max value */
 
 /* Rockbox speciffic: seek_table is static size */
 static unsigned int seek_table[MAX_SEEK_TABLE_SIZE]; /* the playing position table */
 static unsigned int st_state;    /* seek table status */
 
-static unsigned int frame_crc32;
-static unsigned int bit_count;
-static unsigned int bit_cache;
-static unsigned char *bitpos;
+static unsigned int frame_crc32 IBSS_ATTR;
+static unsigned int bit_count   IBSS_ATTR;
+static unsigned int bit_cache   IBSS_ATTR;
+static unsigned char *bitpos    IBSS_ATTR;
 
 /* Rockbox speciffic: deletes read_id3_tags(). */
 /* static int read_id3_tags (tta_info *info); */
@@ -77,7 +77,7 @@ static unsigned char *bitpos;
 /********************* rockbox helper functions *************************/
 
 /* emulate stdio functions */
-static int fread(void *ptr, size_t size, size_t nobj)
+static size_t tta_fread(void *ptr, size_t size, size_t nobj)
 {
     size_t read_size;
     unsigned char *buffer = ci->request_buffer(&read_size, size * nobj);
@@ -90,7 +90,7 @@ static int fread(void *ptr, size_t size, size_t nobj)
     return read_size;
 }
 
-static int fseek(long offset, int origin)
+static int tta_fseek(long offset, int origin)
 {
     switch (origin)
     {
@@ -129,7 +129,7 @@ crc32 (unsigned char *buffer, unsigned int len) {
 #define GET_BINARY(value, bits) \
     while (bit_count < bits) { \
         if (bitpos == iso_buffers_end) { \
-            if (!fread(isobuffers, 1, ISO_BUFFERS_SIZE)) { \
+            if (!tta_fread(isobuffers, 1, ISO_BUFFERS_SIZE)) { \
                 ttainfo->STATE = READ_ERROR; \
                 return -1; \
             } \
@@ -149,7 +149,7 @@ crc32 (unsigned char *buffer, unsigned int len) {
     value = 0; \
     while (!(bit_cache ^ bit_mask[bit_count])) { \
         if (bitpos == iso_buffers_end) { \
-            if (!fread(isobuffers, 1, ISO_BUFFERS_SIZE)) { \
+            if (!tta_fread(isobuffers, 1, ISO_BUFFERS_SIZE)) { \
                 ttainfo->STATE = READ_ERROR; \
                 return -1; \
             } \
@@ -207,7 +207,7 @@ static int done_buffer_read(void) {
 
     if (rbytes < sizeof(int)) {
         ci->memcpy(isobuffers, bitpos, 4);
-        if (!fread(isobuffers + rbytes, 1, ISO_BUFFERS_SIZE - rbytes))
+        if (!tta_fread(isobuffers + rbytes, 1, ISO_BUFFERS_SIZE - rbytes))
             return -1;
         bitpos = isobuffers;
     }
@@ -249,10 +249,10 @@ int set_tta_info (tta_info *info)
     ci->memset (info, 0, sizeof(tta_info));
 
     /* skip id3v2 tags */
-    fseek(ci->id3->id3v2len, SEEK_SET);
+    tta_fseek(ci->id3->id3v2len, SEEK_SET);
 
     /* read TTA header */
-    if (fread (&ttahdr, 1, sizeof (ttahdr)) == 0) {
+    if (tta_fread (&ttahdr, 1, sizeof (ttahdr)) == 0) {
         info->STATE = READ_ERROR;
         return -1;
     }
@@ -374,7 +374,7 @@ int set_position (unsigned int pos, enum tta_seek_type type)
         return -1;
     }
     seek_pos = ttainfo->DATAPOS + seek_table[data_pos = pos];
-    if (fseek(seek_pos, SEEK_SET) < 0) {
+    if (tta_fseek(seek_pos, SEEK_SET) < 0) {
         ttainfo->STATE = READ_ERROR;
         return -1;
     }
@@ -391,6 +391,10 @@ int player_init (tta_info *info) {
     unsigned int checksum;
     unsigned int data_offset;
     unsigned int st_size;
+
+#ifdef CPU_COLDFIRE
+    coldfire_set_macsr(0); /* signed integer mode */
+#endif
 
     ttainfo = info;
 
@@ -414,7 +418,7 @@ int player_init (tta_info *info) {
     }
 
     /* read seek table */
-    if (!fread(seek_table, st_size, 1)) {
+    if (!tta_fread(seek_table, st_size, 1)) {
         ttainfo->STATE = READ_ERROR;
         return -1;
     }

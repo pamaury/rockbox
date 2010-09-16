@@ -224,8 +224,6 @@ static void init_menu_lists(const struct menu_item_ex *menu,
     get_menu_callback(menu,&menu_callback);
     if (callback && menu_callback)
         menu_callback(ACTION_ENTER_MENUITEM,menu);
-    gui_synclist_draw(lists);
-    gui_synclist_speak_item(lists);
 }
 
 static int talk_menu_item(int selected_item, void *data)
@@ -343,6 +341,7 @@ int do_menu(const struct menu_item_ex *start_menu, int *start_selected,
     const struct menu_item_ex *temp, *menu;
     int ret = 0, i;
     bool redraw_lists;
+    int old_audio_status = audio_status();
     FOR_NB_SCREENS(i)
         viewportmanager_theme_enable(i, !hide_theme, NULL);
 
@@ -365,12 +364,14 @@ int do_menu(const struct menu_item_ex *start_menu, int *start_selected,
 
     /* if hide_theme is true, assume parent has been fixed before passed into
      * this function, e.g. with viewport_set_defaults(parent, screen) */
-    init_menu_lists(menu, &lists, selected, true, parent);    
+    init_menu_lists(menu, &lists, selected, true, parent);
     vps = *(lists.parent);
     in_stringlist = ((menu->flags&MENU_TYPE_MASK) == MT_RETURN_ID);
     /* load the callback, and only reload it if menu changes */
     get_menu_callback(menu, &menu_callback);
 
+    gui_synclist_draw(&lists);
+    gui_synclist_speak_item(&lists);
 #ifdef HAVE_BUTTONBAR
     if (!hide_theme)
     {
@@ -380,6 +381,7 @@ int do_menu(const struct menu_item_ex *start_menu, int *start_selected,
 #endif
     while (!done)
     {
+        int new_audio_status;
         redraw_lists = false;
         if (!hide_theme)
         {
@@ -389,6 +391,15 @@ int do_menu(const struct menu_item_ex *start_menu, int *start_selected,
         }
         action = get_action(CONTEXT_MAINMENU,
                             list_do_action_timeout(&lists, HZ));
+
+        /* query audio status to see if it changed */
+        new_audio_status = audio_status();
+        if (old_audio_status != new_audio_status)
+        {   /* force a redraw if anything changed the audio status
+             * from outside */
+            redraw_lists = true;
+            old_audio_status = new_audio_status;
+        }
         /* HZ so the status bar redraws corectly */
 
         if (menu_callback)
@@ -409,8 +420,6 @@ int do_menu(const struct menu_item_ex *start_menu, int *start_selected,
         }
 
         if (gui_synclist_do_button(&lists, &action, LIST_WRAP_UNLESS_HELD))
-            continue;
-        if (action == ACTION_NONE)
             continue;
 #ifdef HAVE_QUICKSCREEN
         else if (action == ACTION_STD_QUICKSCREEN)
@@ -528,6 +537,7 @@ int do_menu(const struct menu_item_ex *start_menu, int *start_selected,
                 else
                     init_menu_lists(menu, &lists, 
                                     menu_stack_selected_item[stack_top], false, vps);
+                redraw_lists = true;
                 /* new menu, so reload the callback */
                 get_menu_callback(menu, &menu_callback);
             }
@@ -573,9 +583,8 @@ int do_menu(const struct menu_item_ex *start_menu, int *start_selected,
                         menu_stack[stack_top] = menu;
                         menu_stack_selected_item[stack_top] = selected;
                         stack_top++;
-                        init_menu_lists(temp, &lists, 0, true, vps);
-                        redraw_lists = false; /* above does the redraw */
                         menu = temp;
+                        init_menu_lists(menu, &lists, 0, true, vps);
                     }
                     break;
                 case MT_FUNCTION_CALL:
@@ -586,11 +595,6 @@ int do_menu(const struct menu_item_ex *start_menu, int *start_selected,
                                     temp->function->param);
                     else
                         return_value = temp->function->function();
-                    if (!(menu->flags&MENU_EXITAFTERTHISMENU) ||
-                            (temp->flags&MENU_EXITAFTERTHISMENU))
-                    {
-                        init_menu_lists(menu, &lists, selected, true, vps);
-                    }
                     if (temp->flags&MENU_FUNC_CHECK_RETVAL)
                     {
                         if (return_value != 0)
@@ -621,7 +625,6 @@ int do_menu(const struct menu_item_ex *start_menu, int *start_selected,
                         stack_top++;
                         menu = temp;
                         init_menu_lists(menu,&lists,0,false, vps);
-                        redraw_lists = false; /* above does the redraw */
                         in_stringlist = true;
                     }
                     break;

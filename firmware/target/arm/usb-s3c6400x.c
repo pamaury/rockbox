@@ -21,6 +21,8 @@
 
 #include "config.h"
 #include "usb.h"
+#include "usb-target.h"
+#include "usb_drv.h"
 
 #define OTGBASE 0x38800000
 #define PHYBASE 0x3C400000
@@ -47,7 +49,7 @@ struct ep_type
     struct wakeup complete;
 } ;
 
-static struct ep_type endpoints[5];
+static struct ep_type endpoints[USB_NUM_ENDPOINTS];
 static struct usb_ctrlrequest ctrlreq USB_DEVBSS_ATTR;
 
 int usb_drv_port_speed(void)
@@ -55,7 +57,7 @@ int usb_drv_port_speed(void)
     return (DSTS & 2) == 0 ? 1 : 0;
 }
 
-void reset_endpoints(int reinit)
+static void reset_endpoints(int reinit)
 {
     unsigned int i;
     for (i = 0; i < sizeof(endpoints)/sizeof(struct ep_type); i++)
@@ -104,7 +106,7 @@ int usb_drv_request_endpoint(int type, int dir)
     if (dir == USB_DIR_IN) ep = 1;
     else ep = 2;
 
-    while (ep < 5)
+    while (ep < USB_NUM_ENDPOINTS)
     {
         if (!endpoints[ep].active)
         {
@@ -146,6 +148,8 @@ static void usb_reset(void)
     while (GRSTCTL & 1);  /* Wait for OTG to ack reset */
     while (!(GRSTCTL & 0x80000000));  /* Wait for OTG AHB master idle */
 
+    GRXFSIZ = 0x00000200;  /* RX FIFO: 512 bytes */
+    GNPTXFSIZ = 0x02000200;  /* Non-periodic TX FIFO: 512 bytes */
     GAHBCFG = 0x27;  /* OTG AHB config: Unmask ints, burst length 4, DMA on */
     GUSBCFG = 0x1408;  /* OTG: 16bit PHY and some reserved bits */
 
@@ -153,6 +157,7 @@ static void usb_reset(void)
     DCTL = 0x800;  /* Soft Reconnect */
     DIEPMSK = 0x0D;  /* IN EP interrupt mask */
     DOEPMSK = 0x0D;  /* IN EP interrupt mask */
+    DAINTMSK = 0xFFFFFFFF;  /* Enable interrupts on all endpoints */
     GINTMSK = 0xC3000;  /* Interrupt mask: IN event, OUT event, bus reset */
 
     reset_endpoints(1);
@@ -162,14 +167,16 @@ static void usb_reset(void)
 void INT_USB_FUNC(void)
 {
     int i;
-    if (GINTSTS & 0x1000)  /* bus reset */
+    uint32_t ints = GINTSTS;
+    uint32_t epints;
+    if (ints & 0x1000)  /* bus reset */
     {
         DCFG = 4;  /* Address 0 */
         reset_endpoints(1);
         usb_core_bus_reset();
     }
 
-    if (GINTSTS & 0x2000)  /* enumeration done, we now know the speed */
+    if (ints & 0x2000)  /* enumeration done, we now know the speed */
     {
         /* Set up the maximum packet sizes accordingly */
         uint32_t maxpacket = usb_drv_port_speed() ? 512 : 64;
@@ -179,11 +186,11 @@ void INT_USB_FUNC(void)
         DOEPCTL4 = (DOEPCTL4 & ~0x000003FF) | maxpacket;
     }
 
-    if (GINTSTS & 0x40000)  /* IN EP event */
-        for (i = 0; i < 5; i ++)
-            if (i != 2 && i != 4 && DIEPINT(i))
+    if (ints & 0x40000)  /* IN EP event */
+        for (i = 0; i < 4; i += i + 1)  // 0, 1, 3
+            if ((epints = DIEPINT(i)))
             {
-                if (DIEPINT(i) & 1)  /* Transfer completed */
+                if (epints & 1)  /* Transfer completed */
                 {
                     invalidate_dcache();
                     int bytes = endpoints[i].size - (DIEPTSIZ(i) & 0x3FFFF);
@@ -196,9 +203,9 @@ void INT_USB_FUNC(void)
                         wakeup_signal(&endpoints[i].complete);
                     }
                 }
-                if (DIEPINT(i) & 4)  /* AHB error */
+                if (epints & 4)  /* AHB error */
                     panicf("USB: AHB error on IN EP%d", i);
-                if (DIEPINT(i) & 8)  /* Timeout */
+                if (epints & 8)  /* Timeout */
                 {
                     if (endpoints[i].busy)
                     {
@@ -208,14 +215,14 @@ void INT_USB_FUNC(void)
                         wakeup_signal(&endpoints[i].complete);
                     }
                 }
-                DIEPINT(i) = DIEPINT(i);
+                DIEPINT(i) = epints;
             }
 
-    if (GINTSTS & 0x80000)  /* OUT EP event */
-        for (i = 0; i < 5; i += 2)
-            if (DOEPINT(i))
+    if (ints & 0x80000)  /* OUT EP event */
+        for (i = 0; i < USB_NUM_ENDPOINTS; i += 2)
+            if ((epints = DOEPINT(i)))
             {
-                if (DOEPINT(i) & 1)  /* Transfer completed */
+                if (epints & 1)  /* Transfer completed */
                 {
                     invalidate_dcache();
                     int bytes = endpoints[i].size - (DOEPTSIZ(i) & 0x3FFFF);
@@ -228,9 +235,9 @@ void INT_USB_FUNC(void)
                         wakeup_signal(&endpoints[i].complete);
                     }
                 }
-                if (DOEPINT(i) & 4)  /* AHB error */
+                if (epints & 4)  /* AHB error */
                     panicf("USB: AHB error on OUT EP%d", i);
-                if (DOEPINT(i) & 8)  /* SETUP phase done */
+                if (epints & 8)  /* SETUP phase done */
                 {
                     invalidate_dcache();
                     if (i == 0)
@@ -253,10 +260,10 @@ void INT_USB_FUNC(void)
                     DOEPDMA0 = (uint32_t)&ctrlreq;
                     DOEPCTL0 |= 0x84000000;
                 }
-                DOEPINT(i) = DOEPINT(i);
+                DOEPINT(i) = epints;
             }
 
-    GINTSTS = GINTSTS;
+    GINTSTS = ints;
 }
 
 void usb_drv_set_address(int address)
@@ -268,7 +275,7 @@ void usb_drv_set_address(int address)
        into the USB core, which will then call this dummy function. */
 }
 
-void ep_send(int ep, void *ptr, int length)
+static void ep_send(int ep, const void *ptr, int length)
 {
     endpoints[ep].busy = true;
     endpoints[ep].size = length;
@@ -289,7 +296,7 @@ void ep_send(int ep, void *ptr, int length)
     DIEPCTL(ep) |= 0x84000000;  /* EPx OUT ENABLE CLEARNAK */
 }
 
-void ep_recv(int ep, void *ptr, int length)
+static void ep_recv(int ep, void *ptr, int length)
 {
     endpoints[ep].busy = true;
     endpoints[ep].size = length;

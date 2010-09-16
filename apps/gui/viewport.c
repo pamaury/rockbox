@@ -37,6 +37,11 @@
 #define FG_FALLBACK LCD_DEFAULT_FG
 #define BG_FALLBACK LCD_DEFAULT_BG
 #endif
+#ifdef HAVE_REMOTE_LCD
+#define REMOTE_FG_FALLBACK LCD_REMOTE_DEFAULT_FG
+#define REMOTE_BG_FALLBACK LCD_REMOTE_DEFAULT_BG
+#endif
+
 
 /* all below isn't needed for pc tools (i.e. checkwps/wps editor)
  * only viewport_parse_viewport() is */
@@ -51,8 +56,8 @@
 #include "language.h"
 #endif
 #include "statusbar-skinned.h"
+#include "skin_engine/skin_engine.h"
 #include "debug.h"
-#include "viewport.h"
 
 #define VPSTACK_DEPTH 16
 struct viewport_stack_item
@@ -114,7 +119,7 @@ static void toggle_theme(enum screen_type screen, bool force)
         /* remove the left overs from the previous screen.
          * could cause a tiny flicker. Redo your screen code if that happens */
 #if LCD_DEPTH > 1 || defined(HAVE_REMOTE_LCD) && LCD_REMOTE_DEPTH > 1
-        screens[screen].backdrop_show(sb_get_backdrop(screen));
+        skin_backdrop_show(sb_get_backdrop(screen));
 #endif
         if (LIKELY(after_boot[screen]) && (!was_enabled[screen] || force))
         {
@@ -164,6 +169,7 @@ static void toggle_theme(enum screen_type screen, bool force)
             screens[screen].set_viewport(NULL);
         }
         intptr_t force = first_boot?0:1;
+
         send_event(GUI_EVENT_ACTIONUPDATE, (void*)force);
     }
     else
@@ -177,7 +183,9 @@ static void toggle_theme(enum screen_type screen, bool force)
     send_event(GUI_EVENT_THEME_CHANGED, NULL);
     FOR_NB_SCREENS(i)
         was_enabled[i] = is_theme_enabled(i);
-
+#ifdef HAVE_TOUCHSCREEN
+    sb_bypass_touchregions(!is_theme_enabled(SCREEN_MAIN));
+#endif
     after_boot[screen] = true;
 }
 
@@ -303,13 +311,6 @@ static void set_default_align_flags(struct viewport *vp)
 #endif /* HAVE_LCD_BITMAP */
 #endif /* __PCTOOL__ */
 
-#ifdef HAVE_LCD_COLOR
-#define ARG_STRING(_depth) ((_depth) == 2 ? "dddddgg":"dddddcc")
-#else
-#define ARG_STRING(_depth) "dddddgg"
-#endif
-
-
 void viewport_set_fullscreen(struct viewport *vp,
                               const enum screen_type screen)
 {
@@ -371,106 +372,42 @@ void viewport_set_defaults(struct viewport *vp,
 
 
 #ifdef HAVE_LCD_BITMAP
-const char* viewport_parse_viewport(struct viewport *vp,
-                                    enum screen_type screen,
-                                    const char *bufptr,
-                                    const char separator)
+
+int get_viewport_default_colour(enum screen_type screen, bool fgcolour)
 {
-    /* parse the list to the viewport struct */
-    const char *ptr = bufptr;
-    int depth;
-    uint32_t set = 0;
-
-    enum {
-        PL_X = 0,
-        PL_Y,
-        PL_WIDTH,
-        PL_HEIGHT,
-        PL_FONT,
-        PL_FG,
-        PL_BG,
-    };
-    
-    /* Work out the depth of this display */
-    depth = screens[screen].depth;
-#if (LCD_DEPTH == 1) || (defined(HAVE_REMOTE_LCD) && LCD_REMOTE_DEPTH == 1)
-    if (depth == 1)
+    (void)screen; (void)fgcolour;
+#if (LCD_DEPTH > 1) || (defined(HAVE_REMOTE_LCD) && LCD_REMOTE_DEPTH > 1)
+    int colour;
+    if (fgcolour)
     {
-        if (!(ptr = parse_list("ddddd", &set, separator, ptr,
-                    &vp->x, &vp->y, &vp->width, &vp->height, &vp->font)))
-            return NULL;
+#if (defined(HAVE_REMOTE_LCD) && LCD_REMOTE_DEPTH > 1)
+        if (screen == SCREEN_REMOTE)
+            colour = REMOTE_FG_FALLBACK;
+        else
+#endif
+#if defined(HAVE_LCD_COLOR)
+            colour = global_settings.fg_color;
+#else
+            colour = FG_FALLBACK;
+#endif
     }
     else
-#endif
-#if (LCD_DEPTH > 1) || (defined(HAVE_REMOTE_LCD) && LCD_REMOTE_DEPTH > 1)
-    if (depth >= 2)
     {
-        if (!(ptr = parse_list(ARG_STRING(depth), &set, separator, ptr,
-                    &vp->x, &vp->y, &vp->width, &vp->height, &vp->font,
-                    &vp->fg_pattern,&vp->bg_pattern)))
-            return NULL;
-    }
-    else
+#if (defined(HAVE_REMOTE_LCD) && LCD_REMOTE_DEPTH > 1)
+        if (screen == SCREEN_REMOTE)
+            colour = REMOTE_BG_FALLBACK;
+        else
 #endif
-    {}
-#undef ARG_STRING
-
-    /* X and Y *must* be set */
-    if (!LIST_VALUE_PARSED(set, PL_X) || !LIST_VALUE_PARSED(set, PL_Y))
-        return NULL;
-    /* check for negative values */
-    if (vp->x < 0)
-        vp->x += screens[screen].lcdwidth;
-    if (vp->y < 0)
-        vp->y += screens[screen].lcdheight;
-        
-    /* fix defaults, 
-     * and negative width/height which means "extend to edge minus value */
-    if (!LIST_VALUE_PARSED(set, PL_WIDTH))
-        vp->width = screens[screen].lcdwidth - vp->x;
-    else if (vp->width < 0)
-        vp->width = (vp->width + screens[screen].lcdwidth) - vp->x;
-    if (!LIST_VALUE_PARSED(set, PL_HEIGHT))
-        vp->height = screens[screen].lcdheight - vp->y;
-    else if (vp->height < 0)
-        vp->height = (vp->height + screens[screen].lcdheight) - vp->y;
-
-#if (LCD_DEPTH > 1) || (defined(HAVE_REMOTE_LCD) && LCD_REMOTE_DEPTH > 1)
-    if (!LIST_VALUE_PARSED(set, PL_FG))
-        vp->fg_pattern = FG_FALLBACK;
-    if (!LIST_VALUE_PARSED(set, PL_BG))
-        vp->bg_pattern = BG_FALLBACK;
+#if defined(HAVE_LCD_COLOR)
+            colour = global_settings.bg_color;
+#else
+            colour = BG_FALLBACK;
+#endif
+    }
+    return colour;
+#else
+    return 0;
 #endif /* LCD_DEPTH > 1 || LCD_REMOTE_DEPTH > 1 */
-
-#ifdef HAVE_LCD_COLOR
-    vp->lss_pattern = global_settings.lss_color;
-    vp->lse_pattern = global_settings.lse_color;
-    vp->lst_pattern = global_settings.lst_color;
-#endif
-
-    /* Validate the viewport dimensions - we know that the numbers are
-       non-negative integers, ignore bars and assume the viewport takes them
-       * into account */
-    if ((vp->x >= screens[screen].lcdwidth) ||
-        ((vp->x + vp->width) > screens[screen].lcdwidth) ||
-        (vp->y >= screens[screen].lcdheight) ||
-        ((vp->y + vp->height) > screens[screen].lcdheight))
-    {
-        return NULL;
-    }
-
-    /* Default to using the user font if the font was an invalid number or '-'
-     * font 1 is *always* the UI font for the current screen
-     * 2 is always the first extra font    */
-    if (!LIST_VALUE_PARSED(set, PL_FONT))
-        vp->font = FONT_UI;
-
-    /* Set the defaults for fields not user-specified */
-    vp->drawmode = DRMODE_SOLID;
-#ifndef __PCTOOL__
-    set_default_align_flags(vp);
-#endif
-
-    return ptr;
 }
+
 #endif

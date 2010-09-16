@@ -7,14 +7,19 @@
 #define MODEL_NUMBER 20
 #define MODEL_NAME   "Sandisk Sansa c200 series"
 
-#define HW_SAMPR_CAPS       (SAMPR_CAP_44)
+#define HW_SAMPR_CAPS       (SAMPR_CAP_48 | SAMPR_CAP_44 | SAMPR_CAP_32)
 
 /* define this if you have recording possibility */
 #define HAVE_RECORDING
 
-#define REC_SAMPR_CAPS      (SAMPR_CAP_22)
+#define REC_SAMPR_CAPS      (SAMPR_CAP_24 | SAMPR_CAP_22 | SAMPR_CAP_16)
 #define REC_FREQ_DEFAULT    REC_FREQ_22 /* Default is not 44.1kHz */
 #define REC_SAMPR_DEFAULT   SAMPR_22
+
+/* because the samplerates don't match at each point, we must be able to
+ * tell PCM which set of rates to use. not needed if recording rates are
+ * a simple subset of playback rates and are equal values. */
+#define CONFIG_SAMPR_TYPES
 
 /* Define bitmask of input sources - recordable bitmask can be defined
    explicitly if different */
@@ -65,7 +70,7 @@
 #define HAVE_LCD_FLIP
 
 /* define this if you can invert the colours on your LCD */
-/* TODO: #define HAVE_LCD_INVERT */
+#define HAVE_LCD_INVERT
 
 /* Define this if your LCD can set contrast */
 #define HAVE_LCD_CONTRAST
@@ -107,7 +112,7 @@
 /* The number of bytes reserved for loadable plugins */
 #define PLUGIN_BUFFER_SIZE 0x80000
 
-#define AB_REPEAT_ENABLE 1
+#define AB_REPEAT_ENABLE
 
 /* FM Tuner */
 #define CONFIG_TUNER LV24020LP

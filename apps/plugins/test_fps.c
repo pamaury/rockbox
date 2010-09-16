@@ -22,10 +22,6 @@
 #include "lib/helper.h"
 #include "lib/grey.h"
 
-#ifdef HAVE_LCD_BITMAP
-
-PLUGIN_IRAM_DECLARE
-
 #if (CONFIG_KEYPAD == IPOD_4G_PAD) || (CONFIG_KEYPAD == IPOD_3G_PAD) || \
     (CONFIG_KEYPAD == IPOD_1G2G_PAD)
 #define FPS_QUIT BUTTON_MENU
@@ -45,7 +41,7 @@ PLUGIN_IRAM_DECLARE
 
 #define DURATION (2*HZ) /* longer duration gives more precise results */
 
-PLUGIN_HEADER
+
 
 /* Screen logging */
 static int line;
@@ -340,17 +336,16 @@ static void time_greyscale(void)
 /* plugin entry point */
 enum plugin_status plugin_start(const void* parameter)
 {
-#ifndef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
     char str[32];
     int cpu_freq;
 #endif
 
     /* standard stuff */
-    PLUGIN_IRAM_INIT(rb)
     (void)parameter;
     
     log_init();
-#ifndef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
     cpu_freq = *rb->cpu_frequency; /* remember CPU frequency */
 #endif
     backlight_force_on(); /* backlight control in lib/helper.c */
@@ -370,7 +365,7 @@ enum plugin_status plugin_start(const void* parameter)
     time_remote_update();
 #endif
 
-#ifndef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
     if (*rb->cpu_frequency != cpu_freq)
         rb->snprintf(str, sizeof(str), "CPU clock changed!");
     else
@@ -385,4 +380,3 @@ enum plugin_status plugin_start(const void* parameter)
 
     return PLUGIN_OK;
 }
-#endif

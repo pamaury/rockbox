@@ -60,7 +60,10 @@ static jmp_buf thread_jmpbufs[MAXTHREADS];
  * that enables us to simulate a cooperative environment even if
  * the host is preemptive */
 static SDL_mutex *m;
-static volatile bool threads_exit = false;
+#define THREADS_RUN                 0
+#define THREADS_EXIT                1
+#define THREADS_EXIT_COMMAND_DONE   2
+static volatile int threads_status = THREADS_RUN;
 
 extern long start_tick;
 
@@ -68,36 +71,61 @@ void sim_thread_shutdown(void)
 {
     int i;
 
+    /* This *has* to be a push operation from a thread not in the pool
+       so that they may be dislodged from their blocking calls. */
+
     /* Tell all threads jump back to their start routines, unlock and exit
        gracefully - we'll check each one in turn for it's status. Threads
        _could_ terminate via remove_thread or multiple threads could exit
        on each unlock but that is safe. */
 
     /* Do this before trying to acquire lock */
-    threads_exit = true;
+    threads_status = THREADS_EXIT;
 
     /* Take control */
     SDL_LockMutex(m);
 
+    /* Signal all threads on delay or block */
     for (i = 0; i < MAXTHREADS; i++)
     {
         struct thread_entry *thread = &threads[i];
-        /* exit all current threads, except the main one */
-        if (thread->context.t != NULL)
+        if (thread->context.s == NULL)
+            continue;
+        SDL_SemPost(thread->context.s);
+    }
+
+    /* Wait for all threads to finish and cleanup old ones. */
+    for (i = 0; i < MAXTHREADS; i++)
+    {
+        struct thread_entry *thread = &threads[i];
+        SDL_Thread *t = thread->context.t;
+
+        if (t != NULL)
         {
-            /* Signal thread on delay or block */
-            SDL_Thread *t = thread->context.t;
-            SDL_SemPost(thread->context.s);
             SDL_UnlockMutex(m);
             /* Wait for it to finish */
             SDL_WaitThread(t, NULL);
             /* Relock for next thread signal */
             SDL_LockMutex(m);
-        }        
+            /* Already waited and exiting thread would have waited .told,
+             * replacing it with t. */
+            thread->context.told = NULL;
+        }
+        else
+        {
+            /* Wait on any previous thread in this location-- could be one not quite
+             * finished exiting but has just unlocked the mutex. If it's NULL, the
+             * call returns immediately.
+             *
+             * See remove_thread below for more information. */
+            SDL_WaitThread(thread->context.told, NULL);
+        }
     }
 
     SDL_UnlockMutex(m);
-    SDL_DestroyMutex(m);
+
+    /* Signal completion of operation */
+    threads_status = THREADS_EXIT_COMMAND_DONE;
 }
 
 static void new_thread_id(unsigned int slot_num,
@@ -172,9 +200,28 @@ void init_threads(void)
         return;
     }
 
-    THREAD_SDL_DEBUGF("Main thread: %p\n", thread);
+    /* Tell all threads jump back to their start routines, unlock and exit
+       gracefully - we'll check each one in turn for it's status. Threads
+       _could_ terminate via remove_thread or multiple threads could exit
+       on each unlock but that is safe. */
 
-    return;
+    /* Setup jump for exit */
+    if (setjmp(thread_jmpbufs[0]) == 0)
+    {
+        THREAD_SDL_DEBUGF("Main thread: %p\n", thread);
+        return;
+    }
+
+    SDL_UnlockMutex(m);
+
+    /* Set to 'COMMAND_DONE' when other rockbox threads have exited. */
+    while (threads_status < THREADS_EXIT_COMMAND_DONE)
+        SDL_Delay(10);
+
+    SDL_DestroyMutex(m);
+
+    /* We're the main thead - perform exit - doesn't return. */
+    sim_do_exit();
 }
 
 void sim_thread_exception_wait(void)
@@ -182,7 +229,7 @@ void sim_thread_exception_wait(void)
     while (1)
     {
         SDL_Delay(HZ/10);
-        if (threads_exit)
+        if (threads_status != THREADS_RUN)
             thread_exit();
     }
 }
@@ -193,7 +240,7 @@ void sim_thread_lock(void *me)
     SDL_LockMutex(m);
     cores[CURRENT_CORE].running = (struct thread_entry *)me;
 
-    if (threads_exit)
+    if (threads_status != THREADS_RUN)
         thread_exit();
 }
 
@@ -334,7 +381,7 @@ void switch_thread(void)
 
     cores[CURRENT_CORE].running = current;
 
-    if (threads_exit)
+    if (threads_status != THREADS_RUN)
         thread_exit();
 }
 
@@ -437,7 +484,7 @@ int runthread(void *data)
             cores[CURRENT_CORE].running = current;
         }
 
-        if (!threads_exit)
+        if (threads_status == THREADS_RUN)
         {
             current->context.start();
             THREAD_SDL_DEBUGF("Thread Done: %d (%s)\n",
@@ -522,7 +569,20 @@ void remove_thread(unsigned int thread_id)
 
     t = thread->context.t;
     s = thread->context.s;
+
+    /* Wait the last thread here and keep this one or SDL will leak it since
+     * it doesn't free its own library allocations unless a wait is performed.
+     * Such behavior guards against the memory being invalid by the time
+     * SDL_WaitThread is reached and also against two different threads having
+     * the same pointer. It also makes SDL_WaitThread a non-concurrent function.
+     *
+     * However, see more below about SDL_KillThread.
+     */
+    SDL_WaitThread(thread->context.told, NULL);
+
     thread->context.t = NULL;
+    thread->context.s = NULL;
+    thread->context.told = t;
 
     if (thread != current)
     {
@@ -560,6 +620,9 @@ void remove_thread(unsigned int thread_id)
         longjmp(thread_jmpbufs[current - threads], 1);
     }
 
+    /* SDL_KillThread frees the old pointer too because it uses SDL_WaitThread
+     * to wait for the host to remove it. */
+    thread->context.told = NULL;
     SDL_KillThread(t);
     restore_irq(oldlevel);
 }
@@ -567,6 +630,11 @@ void remove_thread(unsigned int thread_id)
 void thread_exit(void)
 {
     remove_thread(THREAD_ID_CURRENT);
+    /* This should never and must never be reached - if it is, the
+     * state is corrupted */
+    THREAD_PANICF("thread_exit->K:*R",
+                  thread_id_entry(THREAD_ID_CURRENT));
+    while (1);
 }
 
 void thread_wait(unsigned int thread_id)

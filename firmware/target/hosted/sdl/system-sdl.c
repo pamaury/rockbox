@@ -26,6 +26,7 @@
 #include <inttypes.h>
 #include "system.h"
 #include "thread-sdl.h"
+#include "system-sdl.h"
 #include "sim-ui-defines.h"
 #include "lcd-sdl.h"
 #ifdef HAVE_LCD_BITMAP
@@ -54,6 +55,8 @@ bool            sim_alarm_wakeup = false;
 const char     *sim_root_dir = NULL;
 extern int      display_zoom;
 
+static SDL_Thread *evt_thread = NULL;
+
 #ifdef DEBUG
 bool debug_audio = false;
 #endif
@@ -64,26 +67,6 @@ int wps_verbose_level = 3;
 
 void sys_poweroff(void)
 {
-    /* Order here is relevent to prevent deadlocks and use of destroyed
-       sync primitives by kernel threads */
-    sim_thread_shutdown();
-    sim_kernel_shutdown();
-    SDL_Quit();
-}
-
-/*
- * Button read loop */
-void gui_message_loop(void);
-
-/*
- * This callback let's the main thread run again after SDL has been initialized
- **/
-static uint32_t cond_signal(uint32_t interval, void *param)
-{
-    (void)interval;
-    SDL_cond *c = (SDL_cond*)param;
-    /* remove timer, CondSignal returns 0 on success */
-    return SDL_CondSignal(c);
 }
 
 /*
@@ -99,7 +82,7 @@ static int sdl_event_thread(void * param)
 {
     SDL_InitSubSystem(SDL_INIT_VIDEO);
 
-    SDL_Surface *picture_surface;
+    SDL_Surface *picture_surface = NULL;
     int width, height;
 
     /* Try and load the background image. If it fails go without */
@@ -143,40 +126,50 @@ static int sdl_event_thread(void * param)
     if (background && picture_surface != NULL)
         SDL_BlitSurface(picture_surface, NULL, gui_surface, NULL);
 
-    /* calling SDL_CondSignal() right away here doesn't work reliably so
-     * post-pone it a bit */
-    SDL_AddTimer(100, cond_signal, param);
+    /* let system_init proceed */
+    SDL_SemPost((SDL_sem *)param);
+
     /*
      * finally enter the button loop */
-    while(1)
-        gui_message_loop();
+    gui_message_loop();
+
+    if(picture_surface)
+        SDL_FreeSurface(picture_surface);
+
+    /* Order here is relevent to prevent deadlocks and use of destroyed
+       sync primitives by kernel threads */
+    sim_thread_shutdown();
+    sim_kernel_shutdown();
 
     return 0;
 }
 
+void sim_do_exit(void)
+{
+    /* wait for event thread to finish */
+    SDL_WaitThread(evt_thread, NULL);
+
+    SDL_Quit();
+    exit(EXIT_SUCCESS);
+}
 
 void system_init(void)
 {
-    SDL_cond *c;
-    SDL_mutex *m;
+    SDL_sem *s;
+
     if (SDL_Init(SDL_INIT_TIMER))
         panicf("%s", SDL_GetError());
-    atexit(sys_poweroff);
 
-    c = SDL_CreateCond();
-    m = SDL_CreateMutex();
+    s = SDL_CreateSemaphore(0); /* 0-count so it blocks */
 
-    SDL_CreateThread(sdl_event_thread, c);
+    evt_thread = SDL_CreateThread(sdl_event_thread, s);
 
-    /* Lock mutex and wait for sdl_event_thread to run so that it can
-     * initialize the surfaces and video subsystem needed for SDL events */
-    SDL_LockMutex(m);
-    SDL_CondWait(c, m);
-    SDL_UnlockMutex(m);
+    /* wait for sdl_event_thread to run so that it can initialize the surfaces
+     * and video subsystem needed for SDL events */
+    SDL_SemWait(s);
 
     /* cleanup */
-    SDL_DestroyCond(c);
-    SDL_DestroyMutex(m);
+    SDL_DestroySemaphore(s);
 }
 
 void system_exception_wait(void)

@@ -22,8 +22,8 @@
 //#include "ivorbiscodec.h"
 //#include "os_types.h"
 
-//#include "asm_arm.h"
-//#include "asm_mcf5249.h"
+#include "asm_arm.h"
+#include "asm_mcf5249.h"
 
 
 /* Some prototypes that were not defined elsewhere */
@@ -42,7 +42,7 @@
 /* 64 bit multiply */
 /* #include <sys/types.h> */
 
-#if ROCKBOX_LITTLE_ENDIAN == 1
+#ifdef ROCKBOX_LITTLE_ENDIAN
 union magic {
   struct {
     int32_t lo;
@@ -50,7 +50,7 @@ union magic {
   } halves;
   int64_t whole;
 };
-#elif ROCKBOX_BIG_ENDIAN == 1
+#elif defined(ROCKBOX_BIG_ENDIAN)
 union magic {
   struct {
     int32_t hi;

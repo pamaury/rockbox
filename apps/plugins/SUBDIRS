@@ -1,5 +1,6 @@
 /* For all targets */
 shortcuts
+text_viewer
 
 /* For various targets... */
 
@@ -16,9 +17,7 @@ clock
     && (LCD_PIXELFORMAT != HORIZONTAL_PACKING) /* TODO */ \
     && (LCD_PIXELFORMAT != VERTICAL_INTERLEAVED) /* TODO */ \
     && (defined(HAVE_LCD_COLOR) || (LCD_HEIGHT == 64) && (LCD_DEPTH == 1) || \
-                                   (LCD_HEIGHT == 128) && (LCD_DEPTH == 2)) \
-    &&  (PLUGIN_BUFFER_SIZE >= 0x60000 /* it needs a lot of RAM */ || \
-         PLUGIN_BUFFER_SIZE <= 0x10000) /* but we can use overlays */
+                                   (LCD_HEIGHT == 128) && (LCD_DEPTH == 2))
 rockboy
 #endif
 
@@ -30,10 +29,7 @@ pictureflow
 fft
 #endif
 
-#if PLUGIN_BUFFER_SIZE > 0x20000 || PLUGIN_BUFFER_SIZE <= 0x10000 /* overlay */
 chessbox
-#endif
-
 fractals
 imageviewer
 sudoku
@@ -46,7 +42,7 @@ frotz
 #endif
 
 #ifndef OLYMPUS_MROBE_500
-#if PLUGIN_BUFFER_SIZE > 0x40000 || PLUGIN_BUFFER_SIZE <= 0x10000 /* overlay */
+#if PLUGIN_BUFFER_SIZE > 0x40000 || PLUGIN_BUFFER_SIZE <= 0x20000 /* overlay */
 zxbox
 #endif
 #endif
@@ -59,9 +55,9 @@ zxbox
 pacbox
 #endif
 
-#if (defined(HAVE_LCD_COLOR) || defined(MROBE_100) || \
-    (LCD_DEPTH == 2) && !defined(ARCHOS_AV300)) && (MEMORYSIZE > 2) && \
-    !defined(RB_PROFILE)
+#if (defined(HAVE_LCD_COLOR) || defined(MROBE_100) || defined(SANSA_CLIPPLUS) \
+    || defined(SANSA_CLIPV2) || (LCD_DEPTH == 2)) \
+    && (MEMORYSIZE > 2 && !defined(RB_PROFILE))
 doom
 #endif
 
@@ -73,7 +69,10 @@ midi
 #endif
 
 /* beatbox */
-#if defined(IRIVER_H300_SERIES) || defined(IRIVER_H100_SERIES)
+#if defined(IRIVER_H300_SERIES) || defined(IRIVER_H100_SERIES) || \
+    (CONFIG_KEYPAD == SANSA_FUZE_PAD) || (CONFIG_KEYPAD == SANSA_E200_PAD) || \
+    (CONFIG_KEYPAD == IPOD_4G_PAD) || (CONFIG_KEYPAD == IPOD_3G_PAD) || \
+    (CONFIG_KEYPAD == IPOD_1G2G_PAD)
 /* PDBox is confirmed to run on these player models. */
 pdbox
 #endif

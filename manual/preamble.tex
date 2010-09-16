@@ -21,6 +21,7 @@
 
 \documentclass[a4paper,11pt]{scrreprt}
 \usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
 % This manual used to use Palatino as font. This caused issues with small caps
 % (textsc), so do not use that font as default one anymore.
 
@@ -149,22 +150,40 @@
 % we want them.
 % Note: use this only for screenshots!
 % Note: leave caption empty to supress it.
+% Resulting file names in the source should consist of up to 3 parts
+% "filename-\genericimg-[\specimg|\seriesimg]"  (the third is optional)
+% filename is specified by the use of this macro in the tex file
+% \genericimg will be generated using the display's resolution (see above)
+% \specimg or \seriesimg are possible options set in the platform files
+% Files will be used in the following order: 1.filename contains \specimg part
+% 2. filename contains \seriesimg part, 3. filename without the third part
+
+% set seriesimg if it isn't defined in the platform file to not break manuals
+\ifdefined\seriesimg
+\else
+    \newcommand{\seriesimg}{\specimg}
+\fi
+
 \newcommand{\screenshot}[3]{
   \begin{figure}[H]
     \begin{center}
       \IfFileExists{#1-\genericimg-\specimg.png}
         {\includegraphics[width=\screenshotsize]{#1-\genericimg-\specimg.png}
          \typeout{Note: device specific image used}}
-        {\IfFileExists{#1-\genericimg.png}
-          {\includegraphics[width=\screenshotsize]{#1-\genericimg.png}}
-          {\IfFileExists{#1}
-            {\includegraphics[width=\screenshotsize]{#1}
-             \typeout{Warning: deprecated plain image name used}}%
-            {\typeout{Missing image: #1 (\genericimg) (\specimg)}%
-             \color{red}{\textbf{WARNING!} Image not found}%
+        {\IfFileExists{#1-\genericimg-\seriesimg.png}
+          {\includegraphics[width=\screenshotsize]{#1-\genericimg-\seriesimg.png}
+           \typeout{Note: series specific image used}}
+          {\IfFileExists{#1-\genericimg.png}
+            {\includegraphics[width=\screenshotsize]{#1-\genericimg.png}}
+            {\IfFileExists{#1}
+              {\includegraphics[width=\screenshotsize]{#1}
+               \typeout{Warning: deprecated plain image name used}}%
+              {\typeout{Missing image: #1 (\genericimg) (\specimg)}%
+               \color{red}{\textbf{WARNING!} Image not found}%
             }
           }
         }
+      }
       \if\blank{#3}\else{\label{#3}}\fi\if\blank{#2}\else{%
         \caption{#2}}\fi
     \end{center}
@@ -196,10 +215,8 @@
 % command to mark a text block as intended especially for blind people
 % Usage: \blind{text}
 \ifpdfoutput{
-\newcommand{\blind}[1]{
-  \ifinner\else\par\noindent\fi
-  \ifinner#1\else\marginpar{\raisebox{-6pt}{\Huge\ForwardToEnd}}#1\par\fi%
-}}
+\newcommand{\blind}[1]{\mbox{}\marginpar{\raisebox{-1ex}{\Huge{\ForwardToEnd}}}#1}
+}
 {\newcommand{\blind}[1]{\ifinner\else\par\noindent\fi#1}}
 
 % make table floats use "H" (as for screenshots) as default positioning
@@ -247,6 +264,7 @@
   \endtabularx
 }
 
+\newcommand{\tabnlindent}{\newline\mbox{ }\mbox{ }}
 
 
 
@@ -267,7 +285,7 @@
     \endcenter%
   }
   \center
-\tabularx{\textwidth}{lX}\toprule\rowcolor{tblhdrbgcolor} % here is the table width defined
+\tabularx{\textwidth}{Xp{.7\textwidth}}\toprule\rowcolor{tblhdrbgcolor} % here is the table width defined
   \taghead
 }{%
   \endtabularx

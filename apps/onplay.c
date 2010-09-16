@@ -26,7 +26,6 @@
 
 #include "debug.h"
 #include "lcd.h"
-#include "dir.h"
 #include "file.h"
 #include "audio.h"
 #include "menu.h"
@@ -63,6 +62,7 @@
 #include "statusbar-skinned.h"
 #include "pitchscreen.h"
 #include "viewport.h"
+#include "filefuncs.h"
 
 static int context;
 static char* selected_file = NULL;
@@ -106,7 +106,7 @@ static int bookmark_menu_callback(int action,
         case ACTION_REQUEST_MENUITEM:
             if (this_item == &bookmark_load_menu_item)
             {
-                if (bookmark_exist() == 0)
+                if (!bookmark_exists())
                     return ACTION_EXIT_MENUITEM;
             }
             /* hide the bookmark menu if there is no playback */
@@ -484,14 +484,14 @@ static int remove_dir(char* dirname, int len)
         entry = readdir(dir);
         if (!entry)
             break;
-
+        struct dirinfo info = dir_get_info(dir, entry);
         dirname[dirlen] ='\0';
         /* inform the user which dir we're deleting */
         splash(0, dirname);
 
         /* append name to current directory */
         snprintf(dirname+dirlen, len-dirlen, "/%s", entry->d_name);
-        if (entry->attribute & ATTR_DIRECTORY)
+        if (info.attribute & ATTR_DIRECTORY)
         {   /* remove a subdirectory */
             if (!strcmp((char *)entry->d_name, ".") ||
                 !strcmp((char *)entry->d_name, ".."))
@@ -783,6 +783,7 @@ static bool clipboard_pastedirectory(char *src, int srclen, char *target,
         if (!entry)
             break;
 
+        struct dirinfo info = dir_get_info(srcdir, entry);
         /* append name to current directory */
         snprintf(src+srcdirlen, srclen-srcdirlen, "/%s", entry->d_name);
         snprintf(target+targetdirlen, targetlen-targetdirlen, "/%s",
@@ -790,7 +791,7 @@ static bool clipboard_pastedirectory(char *src, int srclen, char *target,
 
         DEBUGF("Copy %s to %s\n", src, target);
 
-        if (entry->attribute & ATTR_DIRECTORY)
+        if (info.attribute & ATTR_DIRECTORY)
         {   /* copy/move a subdirectory */
             if (!strcmp((char *)entry->d_name, ".") ||
                 !strcmp((char *)entry->d_name, ".."))
@@ -929,6 +930,10 @@ static int ratingitem_callback(int action,const struct menu_item_ex *this_item)
 MENUITEM_FUNCTION(rating_item, 0, ID2P(LANG_MENU_SET_RATING),
                   set_rating_inline, NULL,
                   ratingitem_callback, Icon_Questionmark);
+#endif                  
+#ifdef HAVE_PICTUREFLOW_INTEGRATION                  
+MENUITEM_RETURNVALUE(pictureflow_item, ID2P(LANG_ONPLAY_PICTUREFLOW), 
+                  GO_TO_PICTUREFLOW, NULL, Icon_NOICON);                  
 #endif
 
 static bool view_cue(void)
@@ -1012,7 +1017,7 @@ MENUITEM_FUNCTION(add_to_faves_item, MENU_FUNC_USEPARAM, ID2P(LANG_ADD_TO_FAVES)
 #if LCD_DEPTH > 1
 static bool set_backdrop(void)
 {
-    /* load the image */
+    /* load the image 
     if(sb_set_backdrop(SCREEN_MAIN, selected_file)) {
         splash(HZ, str(LANG_BACKDROP_LOADED));
         set_file(selected_file, (char *)global_settings.backdrop_file,
@@ -1021,7 +1026,10 @@ static bool set_backdrop(void)
     } else {
         splash(HZ, str(LANG_BACKDROP_FAILED));
         return false;
-    }
+    }*/
+    set_file(selected_file, (char *)global_settings.backdrop_file,
+        MAX_FILENAME);
+    skin_backdrop_load_setting();
     return true;
 }
 MENUITEM_FUNCTION(set_backdrop_item, 0, ID2P(LANG_SET_AS_BACKDROP),
@@ -1131,7 +1139,11 @@ MAKE_ONPLAYMENU( wps_onplay_menu, ID2P(LANG_ONPLAY_MENU_TITLE),
 #ifdef HAVE_TAGCACHE
            &rating_item,
 #endif
-           &bookmark_menu, &browse_id3_item, &list_viewers_item,
+           &bookmark_menu, 
+#ifdef HAVE_PICTUREFLOW_INTEGRATION
+           &pictureflow_item,
+#endif           
+           &browse_id3_item, &list_viewers_item,
            &delete_file_item, &view_cue_item,
 #ifdef HAVE_PITCHSCREEN
            &pitch_screen_item,
@@ -1244,6 +1256,11 @@ static struct hotkey_assignment hotkey_items[] = {
     { HOTKEY_INSERT_SHUFFLED,   LANG_INSERT_SHUFFLED,
             HOTKEY_FUNC(playlist_insert_shuffled, NULL),
             ONPLAY_OK },
+#ifdef HAVE_PICTUREFLOW_INTEGRATION
+    { HOTKEY_PICTUREFLOW, LANG_ONPLAY_PICTUREFLOW,
+            HOTKEY_FUNC(NULL, NULL),
+            ONPLAY_PICTUREFLOW },
+#endif
 };
 
 /* Return the language ID for this action */
@@ -1316,6 +1333,7 @@ int onplay(char* file, int attr, int from, bool hotkey)
     else
         menu = &tree_onplay_menu;
     menu_selection = do_menu(menu, NULL, NULL, false);
+    
     switch (menu_selection)
     {
         case GO_TO_WPS:
@@ -1325,6 +1343,10 @@ int onplay(char* file, int attr, int from, bool hotkey)
             return ONPLAY_MAINMENU;
         case GO_TO_PLAYLIST_VIEWER:
             return ONPLAY_PLAYLIST;
+#ifdef HAVE_PICTUREFLOW_INTEGRATION
+        case GO_TO_PICTUREFLOW:
+            return ONPLAY_PICTUREFLOW;
+#endif
         default:
             return onplay_result;
     }

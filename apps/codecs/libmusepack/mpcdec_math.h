@@ -57,90 +57,76 @@
    #define MPC_SHR_RND(X, Y)       ((X+(1<<(Y-1)))>>Y)
 
    #if defined(CPU_COLDFIRE)
-
-      #define MPC_MULTIPLY(X,Y)      mpc_multiply((X), (Y))
-      #define MPC_MULTIPLY_EX(X,Y,Z) mpc_multiply_ex((X), (Y), (Z))
-      
-      static inline MPC_SAMPLE_FORMAT mpc_multiply(MPC_SAMPLE_FORMAT x,
-                                                   MPC_SAMPLE_FORMAT y)
-      {
-          MPC_SAMPLE_FORMAT t1, t2;
-          asm volatile (
-              "mac.l   %[x],%[y],%%acc0\n" /* multiply */
-              "mulu.l  %[y],%[x]   \n"     /* get lower half, avoid emac stall */
-              "movclr.l %%acc0,%[t1]   \n" /* get higher half */
-              "moveq.l #17,%[t2]   \n"
-              "asl.l   %[t2],%[t1] \n"     /* hi <<= 17, plus one free */
-              "moveq.l #14,%[t2]   \n"
-              "lsr.l   %[t2],%[x]  \n"     /* (unsigned)lo >>= 14 */
-              "or.l    %[x],%[t1]  \n"     /* combine result */
-              : /* outputs */
-              [t1]"=&d"(t1),
-              [t2]"=&d"(t2),
-              [x] "+d" (x)
-              : /* inputs */
-              [y] "d"  (y)
-          );
-          return t1;
-      }
-
-      static inline MPC_SAMPLE_FORMAT mpc_multiply_ex(MPC_SAMPLE_FORMAT x,
-                                                      MPC_SAMPLE_FORMAT y,
-                                                      unsigned shift)
-      {
-          MPC_SAMPLE_FORMAT t1, t2;
-          asm volatile (
-              "mac.l   %[x],%[y],%%acc0\n" /* multiply */
-              "mulu.l  %[y],%[x]   \n"     /* get lower half, avoid emac stall */
-              "movclr.l %%acc0,%[t1]   \n" /* get higher half */
-              "moveq.l #31,%[t2]   \n"
-              "sub.l   %[sh],%[t2] \n"     /* t2 = 31 - shift */
-              "ble.s   1f          \n"
-              "asl.l   %[t2],%[t1] \n"     /* hi <<= 31 - shift */
-              "lsr.l   %[sh],%[x]  \n"     /* (unsigned)lo >>= shift */
-              "or.l    %[x],%[t1]  \n"     /* combine result */
-              "bra.s   2f          \n"
-          "1:                      \n"
-              "neg.l   %[t2]       \n"     /* t2 = shift - 31 */
-              "asr.l   %[t2],%[t1] \n"     /* hi >>= t2 */
-          "2:                      \n"
-              : /* outputs */
-              [t1]"=&d"(t1),
-              [t2]"=&d"(t2),
-              [x] "+d" (x)
-              : /* inputs */
-              [y] "d"  (y),
-              [sh]"d"  (shift)
-          );
-          return t1;
-      }
-   #elif defined(CPU_ARM)
-      // borrowed and adapted from libMAD
+      /* Calculate: result = (X*Y)>>14 */
       #define MPC_MULTIPLY(X,Y) \
          ({ \
-            MPC_SAMPLE_FORMAT low; \
-            MPC_SAMPLE_FORMAT high; \
-            asm volatile (                   /* will calculate: result = (X*Y)>>14 */ \
-               "smull  %0,%1,%2,%3 \n\t"     /* multiply with result %0 [0..31], %1 [32..63] */ \
-               "mov %0, %0, lsr #14 \n\t"    /* %0 = %0 >> 14 */ \
-               "orr %0, %0, %1, lsl #18 \n\t"/* result = %0 OR (%1 << 18) */ \
-               : "=&r"(low), "=&r" (high) \
-               : "r"(X),"r"(Y)); \
-            low; \
+            MPC_SAMPLE_FORMAT t1; \
+            MPC_SAMPLE_FORMAT t2; \
+            asm volatile ( \
+               "mac.l   %[x],%[y],%%acc0\n\t" /* multiply */ \
+               "mulu.l  %[y],%[x]       \n\t" /* get lower half, avoid emac stall */ \
+               "movclr.l %%acc0,%[t1]   \n\t" /* get higher half */ \
+               "moveq.l #17,%[t2]       \n\t" \
+               "asl.l   %[t2],%[t1]     \n\t" /* hi <<= 17, plus one free */ \
+               "moveq.l #14,%[t2]       \n\t" \
+               "lsr.l   %[t2],%[x]      \n\t" /* (unsigned)lo >>= 14 */ \
+               "or.l    %[x],%[t1]      \n"   /* combine result */ \
+               : [t1]"=&d"(t1), [t2]"=&d"(t2) \
+               : [x]"d"((X)), [y] "d"((Y))); \
+            t1; \
          })
-      
-      // borrowed and adapted from libMAD
+
+      /* Calculate: result = (X*Y)>>Z */
       #define MPC_MULTIPLY_EX(X,Y,Z) \
          ({ \
-            MPC_SAMPLE_FORMAT low; \
-            MPC_SAMPLE_FORMAT high; \
-            asm volatile (                   /* will calculate: result = (X*Y)>>Z */ \
-               "smull  %0,%1,%2,%3 \n\t"     /* multiply with result %0 [0..31], %1 [32..63] */ \
-               "mov %0, %0, lsr %4 \n\t"     /* %0 = %0 >> Z */ \
-               "orr %0, %0, %1, lsl %5 \n\t" /* result = %0 OR (%1 << (32-Z)) */ \
-               : "=&r"(low), "=&r" (high) \
-               : "r"(X),"r"(Y),"r"(Z),"r"(32-Z)); \
-            low; \
+            MPC_SAMPLE_FORMAT t1; \
+            MPC_SAMPLE_FORMAT t2; \
+            asm volatile ( \
+               "mac.l   %[x],%[y],%%acc0\n\t" /* multiply */ \
+               "mulu.l  %[y],%[x]       \n\t" /* get lower half, avoid emac stall */ \
+               "movclr.l %%acc0,%[t1]   \n\t" /* get higher half */ \
+               "moveq.l #31,%[t2]       \n\t" \
+               "sub.l   %[sh],%[t2]     \n\t" /* t2 = 31 - shift */ \
+               "ble.s   1f              \n\t" \
+               "asl.l   %[t2],%[t1]     \n\t" /* hi <<= 31 - shift */ \
+               "lsr.l   %[sh],%[x]      \n\t" /* (unsigned)lo >>= shift */ \
+               "or.l    %[x],%[t1]      \n\t" /* combine result */ \
+               "bra.s   2f              \n\t" \
+            "1:                         \n\t" \
+               "neg.l   %[t2]           \n\t" /* t2 = shift - 31 */ \
+               "asr.l   %[t2],%[t1]     \n\t" /* hi >>= t2 */ \
+            "2:                         \n" \
+               : [t1]"=&d"(t1), [t2]"=&d"(t2) \
+               : [x] "d"((X)), [y] "d"((Y)), [sh]"d"((Z))); \
+            t1; \
+         })
+   #elif defined(CPU_ARM)
+      /* Calculate: result = (X*Y)>>14 */
+      #define MPC_MULTIPLY(X,Y) \
+         ({ \
+            MPC_SAMPLE_FORMAT lo; \
+            MPC_SAMPLE_FORMAT hi; \
+            asm volatile ( \
+               "smull %[lo], %[hi], %[x], %[y] \n\t" /* multiply */ \
+               "mov   %[lo], %[lo], lsr #14    \n\t" /* lo >>= 14 */ \
+               "orr   %[lo], %[lo], %[hi], lsl #18"  /* lo |= (hi << 18) */ \
+               : [lo]"=&r"(lo), [hi]"=&r"(hi) \
+               : [x]"r"(X), [y]"r"(Y)); \
+            lo; \
+         })
+      
+      /* Calculate: result = (X*Y)>>Z */
+      #define MPC_MULTIPLY_EX(X,Y,Z) \
+         ({ \
+            MPC_SAMPLE_FORMAT lo; \
+            MPC_SAMPLE_FORMAT hi; \
+            asm volatile ( \
+               "smull %[lo], %[hi], %[x], %[y] \n\t"   /* multiply */ \
+               "mov   %[lo], %[lo], lsr %[shr] \n\t"   /* lo >>= Z */ \
+               "orr   %[lo], %[lo], %[hi], lsl %[shl]" /* lo |= (hi << (32-Z)) */ \
+               : [lo]"=&r"(lo), [hi]"=&r"(hi) \
+               : [x]"r"(X), [y]"r"(Y), [shr]"r"(Z), [shl]"r"(32-Z)); \
+            lo; \
          })
    #else /* libmusepack standard */
 
@@ -181,23 +167,23 @@
                MPC_SAMPLE_FORMAT t; \
                asm volatile ( \
                   "mac.l %[A], %[B], %%acc0\n\t" \
-                  "movclr.l %%acc0, %[t]\n\t" \
-                  "asr.l #1, %[t]\n\t" \
+                  "movclr.l %%acc0, %[t]   \n\t" \
+                  "asr.l #1, %[t]          \n\t" \
                   : [t] "=d" (t) \
                   : [A] "r" ((X)), [B] "r" ((Y))); \
                t; \
             })
       #elif defined(CPU_ARM)
-         // borrowed and adapted from libMAD
+         /* Calculate: result = (X*Y)>>32, without need for >>32 */
          #define MPC_MULTIPLY_FRACT(X,Y) \
             ({ \
-               MPC_SAMPLE_FORMAT low; \
-               MPC_SAMPLE_FORMAT high; \
-               asm volatile (                /* will calculate: result = (X*Y)>>32 */ \
-                  "smull  %0,%1,%2,%3 \n\t"  /* multiply with result %0 [0..31], %1 [32..63] */ \
-                  : "=&r"(low), "=&r" (high) /* result = %1 [32..63], saves the >>32 */ \
-                  : "r"(X),"r"(Y)); \
-               high; \
+               MPC_SAMPLE_FORMAT lo; \
+               MPC_SAMPLE_FORMAT hi; \
+               asm volatile ( \
+                  "smull %[lo], %[hi], %[x], %[y]" /* hi = result */ \
+                  : [lo]"=&r"(lo), [hi]"=&r"(hi) \
+                  : [x]"r"(X), [y]"r"(Y)); \
+               hi; \
             })
       #else
          #define MPC_MULTIPLY_FRACT(X,Y) MPC_MULTIPLY_EX(X,Y,32)

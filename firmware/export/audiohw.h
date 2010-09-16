@@ -66,9 +66,13 @@
 #elif defined(HAVE_AK4537)
 #include "ak4537.h"
 #endif
-#if defined(HAVE_SDL_AUDIO)
+#if (CONFIG_PLATFORM & PLATFORM_HOSTED)
 /* #include <SDL_audio.h> gives errors in other code areas,
  * we don't really need it here, so don't. but it should maybe be fixed */
+#ifndef SIMULATOR /* simulator gets values from the target .h files */
+#define VOLUME_MIN  -990
+#define VOLUME_MAX  0
+#endif
 #endif
 
 
@@ -373,7 +377,7 @@ void audiohw_postinit(void);
  */
 void audiohw_close(void);
 
-#if defined(AUDIOHW_HAVE_CLIPPING) || defined(HAVE_SDL_AUDIO)
+#if defined(AUDIOHW_HAVE_CLIPPING) || defined(HAVE_SDL_AUDIO) || defined(ANDROID)
  /**
  * Set new volume value
  * @param val to set.
@@ -525,17 +529,13 @@ void audiohw_disable_recording(void);
  */
 void audiohw_set_recvol(int left, int right, int type);
 
-#endif /*HAVE_RECORDING*/
-
-#if defined(HAVE_RECORDING) || defined(HAVE_FMRADIO_IN)
-
 /**
  * Enable or disable recording monitor.
  * @param enable ture or false.
  */
 void audiohw_set_monitor(bool enable);
 
-#endif /* HAVE_RECORDING || HAVE_FMRADIO_IN */
+#endif /* HAVE_RECORDING */
 
 #if CONFIG_CODEC != SWCODEC
 

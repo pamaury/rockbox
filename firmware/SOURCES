@@ -3,6 +3,7 @@ events.c
 backlight.c
 buffer.c
 general.c
+load_code.c
 powermgmt.c
 system.c
 usb.c
@@ -10,14 +11,16 @@ usb.c
 logf.c
 #endif /* ROCKBOX_HAS_LOGF */
 kernel.c
-#ifndef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
 #ifdef RB_PROFILE
 profile.c
 #endif /* RB_PROFILE */
+#if !defined(BOOTLOADER) || defined(CPU_SH)
 rolo.c
+#endif /* !defined(BOOTLOADER) || defined(CPU_SH) */
 thread.c
 timer.c
-#endif /* SIMULATOR */
+#endif /* PLATFORM_NATIVE */
 #ifdef HAVE_SDL
 target/hosted/sdl/button-sdl.c
 target/hosted/sdl/kernel-sdl.c
@@ -33,50 +36,79 @@ target/hosted/sdl/lcd-sdl.c
 target/hosted/sdl/system-sdl.c
 target/hosted/sdl/thread-sdl.c
 target/hosted/sdl/timer-sdl.c
+#ifdef HAVE_TOUCHSCREEN
+target/hosted/sdl/key_to_touch-sdl.c
+#endif
+#ifdef APPLICATION
+target/hosted/sdl/app/button-application.c
+#endif
 #endif
 panic.c
 debug.c
 
 /* Standard library */
-#if !defined(SIMULATOR) || defined(__MINGW32__) || defined(__CYGWIN__)
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE) || defined(__MINGW32__) || defined(__CYGWIN__)
 libc/errno.c
 libc/strtok.c
 /* alsa on linux requires a more advanced sprintf, i.e. not ours */
 libc/sprintf.c
-#endif /* !SIMULATOR || __MINGW32__ || __CYGWIN__ */
-#if !defined(SIMULATOR)
+#endif /* PLATFORM_NATIVE || __MINGW32__ || __CYGWIN__ */
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE) || defined(HAVE_ROCKBOX_C_LIBRARY)
 libc/atoi.c
+
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
+/* our ctype.[ch] comes from newlib and is incompitble with most desktop's ctype */
 libc/ctype.c
-libc/memcmp.c
+#endif
+
 libc/memchr.c
+libc/memcmp.c
+
+#if !defined(CPU_SH) && !defined(CPU_COLDFIRE) && !defined(CPU_ARM)
+#if !defined(CPU_MIPS)
+libc/memcpy.c
+libc/memset.c
+#endif /* CPU_MIPS */
+libc/memmove.c
+#endif /* CPU_* */
+
 libc/qsort.c
 libc/random.c
 libc/strcat.c
 libc/strchr.c
 libc/strcmp.c
 libc/strcpy.c
+
+#if !defined(CPU_SH) && !defined(CPU_COLDFIRE)
+libc/strlen.c
+#endif
+
 libc/strncmp.c
 libc/strrchr.c
 libc/strstr.c
 libc/mktime.c
-#endif /* !defined(SIMULATOR)*/
+#endif /* CONFIG_PLATFORM || HAVE_ROCKBOX_C_LIBRARY */
 
 /* Common */
+common/version.c
 common/config.c
 common/crc32.c
 #ifdef MI4_FORMAT
 common/crc32-mi4.c
 #endif
-#ifndef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
 common/dir_uncached.c
 common/file.c
-#endif /* SIMULATOR */
+common/disk.c
+#endif /* PLATFORM_NATIVE */
 #ifdef HAVE_DIRCACHE
 common/dircache.c
 #endif /* HAVE_DIRCACHE */
-common/disk.c
 common/filefuncs.c
 common/format.c
+#ifdef APPLICATION
+common/rbpaths.c
+#endif
 common/strcasecmp.c
 common/strcasestr.c
 common/strnatcmp.c
@@ -140,21 +172,21 @@ backlight-sw-fading.c
 /* Misc. */
 drivers/led.c
 drivers/button.c
-#ifndef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
 #ifdef HAVE_DAC3550A
 drivers/dac.c
 #endif
 #ifdef HAVE_SERIAL
 drivers/serial.c
 #endif
-#endif /* SIMULATOR */
+#endif /* PLATFORM_NATIVE */
 #ifdef HAVE_TOUCHSCREEN
 drivers/touchscreen.c
 #endif
 
 
 /* Storage */
-#ifndef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
 #if (CONFIG_STORAGE & STORAGE_MMC)
 drivers/ata_mmc.c
 #endif
@@ -179,9 +211,9 @@ drivers/ramdisk.c
 storage.c
 drivers/fat.c
 #if (CONFIG_STORAGE & STORAGE_MMC) || (CONFIG_STORAGE & STORAGE_SD)
-hotswap.c
+sdmmc.c
 #endif
-#endif /* SIMULATOR */
+#endif /* PLATFORM_NATIVE */
 
 /* EEPROM */
 #ifdef HAVE_EEPROM
@@ -192,7 +224,7 @@ eeprom_settings.c
 #endif /* HAVE_EEPROM */
 
 /* RTC */
-#ifndef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
 #if (CONFIG_RTC == RTC_M41ST84W)
 drivers/rtc/rtc_m41st84w.c
 #elif (CONFIG_RTC == RTC_PCF50606)
@@ -222,13 +254,13 @@ drivers/rtc/rtc_s35390a.c
 #elif (CONFIG_RTC == RTC_D2)
 drivers/rtc/rtc_d2.c
 #endif /* (CONFIG_RTC == RTC_) */
-#endif /* SIMULATOR */
+#endif /* PLATFORM_NATIVE */
 
 #ifndef BOOTLOADER
 /* Tuner */
 #if CONFIG_TUNER
 tuner.c
-#ifndef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
 #if (CONFIG_TUNER & LV24020LP)
 drivers/tuner/lv24020lp.c
 #endif /* (CONFIG_TUNER & LV24020LP) */
@@ -248,7 +280,10 @@ drivers/tuner/si4700.c
 #if (CONFIG_TUNER & IPOD_REMOTE_TUNER)
 drivers/tuner/ipod_remote_tuner.c
 #endif /* (CONFIG_TUNER & IPOD_REMOTE_TUNER) */
-#endif /*SIMULATOR */
+#if (CONFIG_TUNER & RDA5802)
+drivers/tuner/rda5802.c
+#endif /* (CONFIG_TUNER & RDA5802) */
+#endif /* PLATFORM_NATIVE */
 #endif /* CONFIG_TUNER */
 #endif /* BOOTLOADER */
 
@@ -279,7 +314,7 @@ drivers/mas.c
 #endif /* SWCODEC */
 
 /* Audio codec */
-#if !defined(SIMULATOR) && !defined(BOOTLOADER)
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE) && !defined(BOOTLOADER)
 #if defined(HAVE_UDA1380)
 drivers/audio/uda1380.c
 #elif defined(HAVE_WM8751) \
@@ -313,7 +348,7 @@ drivers/audio/sdl.c
 #if CONFIG_CODEC == SWCODEC
 target/hosted/sdl/pcm-sdl.c
 #endif
-#endif /* !defined(SIMULATOR) && !defined(BOOTLOADER) */
+#endif /* (CONFIG_PLATFORM & PLATFORM_NATIVE) && !defined(BOOTLOADER) */
 
 /* USB Stack */
 #if !defined(SIMULATOR)
@@ -414,14 +449,15 @@ target/coldfire/i2c-coldfire.c
 target/arm/support-arm.S
 target/arm/memcpy-arm.S
 target/arm/memmove-arm.S
-libc/strlen.c
 #ifndef SIMULATOR
 target/arm/memset-arm.S
 target/arm/memset16-arm.S
 #ifdef HAVE_PRIORITY_SCHEDULING
 target/arm/ffs-arm.S
 #endif
+#if CONFIG_PLATFORM & PLATFORM_NATIVE
 target/arm/system-arm.c
+#endif
 #if CONFIG_I2C == I2C_PP5024 || CONFIG_I2C == I2C_PP5020 || CONFIG_I2C == I2C_PP5002
 target/arm/i2c-pp.c
 #elif CONFIG_I2C == I2C_PNX0101
@@ -441,7 +477,9 @@ target/arm/pnx0101/timer-pnx0101.c
 #endif
 
 #if CONFIG_CPU == AS3525 || CONFIG_CPU == AS3525v2
+target/arm/bits-armv4.S
 target/arm/as3525/system-as3525.c
+target/arm/as3525/memory-init.S
 target/arm/as3525/kernel-as3525.c
 target/arm/as3525/timer-as3525.c
 #if CONFIG_CPU == AS3525
@@ -456,8 +494,8 @@ target/arm/as3525/power-as3525.c
 target/arm/as3525/usb-as3525.c
 target/arm/as3525/dma-pl081.c
 target/arm/as3525/ascodec-as3525.c
-#ifndef BOOTLOADER
 target/arm/mmu-arm.S
+#ifndef BOOTLOADER
 drivers/generic_i2c.c
 target/arm/adc-as3514.c
 target/arm/as3525/audio-as3525.c
@@ -507,11 +545,7 @@ target/arm/crt0.S
 #endif /* SIMULATOR */
 
 #elif defined(CPU_MIPS)
-#undef mips
-/*target/mips/strlen.S*/
-libc/memmove.c
 common/memset16.c
-libc/strlen.c
 target/mips/ffs-mips.S
 target/mips/memcpy-mips.S
 target/mips/memset-mips.S
@@ -525,15 +559,11 @@ target/mips/ingenic_jz47xx/crt0.S
 #ifdef HAVE_PRIORITY_SCHEDULING
 common/ffs.c
 #endif
-libc/memcpy.c
-libc/memmove.c
-libc/memset.c
 common/memset16.c
-libc/strlen.c
-#ifndef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
 crt0.S
 drivers/i2c.c
-#endif /* SIMULATOR */
+#endif /* PLATFORM_NATIVE */
 
 #endif /* defined(CPU_*) */
 
@@ -881,6 +911,7 @@ target/arm/usb-fw-pp502x.c
 
 #ifdef GIGABEAT_F
 #ifndef SIMULATOR
+target/arm/bits-armv4.S
 target/arm/lcd-as-memframe.S
 target/arm/mmu-arm.S
 target/arm/s3c2440/adc-s3c2440.c
@@ -906,6 +937,7 @@ target/arm/s3c2440/gigabeat-fx/wmcodec-meg-fx.c
 
 #ifdef GIGABEAT_S
 #ifndef SIMULATOR
+target/arm/bits-armv6.S
 target/arm/lcd-as-memframe.S
 target/arm/mmu-armv6.S
 target/arm/imx31/ata-imx31.c
@@ -1257,6 +1289,7 @@ target/arm/as3525/sansa-clipplus/backlight-clip.c
 target/arm/powermgmt-ascodec.c
 target/arm/as3525/sansa-clipplus/powermgmt-clipplus.c
 target/arm/as3525/sansa-clipplus/lcd-as-clip-plus.S
+target/arm/as3525/tuner-as3525v2.c
 #endif /* !BOOTLOADER */
 #endif /* !SIMULATOR */
 #endif /* SANSA_CLIPPLUS */
@@ -1328,7 +1361,8 @@ target/arm/as3525/sansa-m200v4/powermgmt-m200v4.c
 #ifdef SANSA_FUZE
 #ifndef SIMULATOR
 target/arm/as3525/button-e200v2-fuze.c
-target/arm/as3525/sansa-fuze/lcd-fuze.c
+target/arm/as3525/lcd-fuze.c
+target/arm/as3525/sansa-fuze/lcd-fuzev1.c
 target/arm/as3525/backlight-e200v2-fuze.c
 target/arm/as3525/dbop-as3525.c
 #ifndef BOOTLOADER
@@ -1341,6 +1375,8 @@ target/arm/as3525/lcd-as-e200v2-fuze-fuzev2.S
 
 #ifdef SANSA_FUZEV2
 #ifndef SIMULATOR
+target/arm/as3525/tuner-as3525v2.c
+target/arm/as3525/lcd-fuze.c
 target/arm/as3525/sansa-fuzev2/lcd-fuzev2.c
 target/arm/as3525/sansa-fuzev2/backlight-fuzev2.c
 target/arm/as3525/sansa-fuzev2/button-fuzev2.c
@@ -1538,6 +1574,7 @@ target/arm/at91sam/lyre_proto1/timer-lyre_proto1.c
 
 #if defined(MINI2440)
 #ifndef SIMULATOR
+target/arm/bits-armv4.S
 target/arm/lcd-as-memframe.S
 target/arm/mmu-arm.S
 target/arm/s3c2440/debug-s3c2440.c
@@ -1615,6 +1652,8 @@ target/arm/samsung/yh925/powermgmt-yh925.c
 
 #ifdef SAMSUNG_YPS3
 /* TODO: currently including all files for the bootloader DFU test program */
+tuner.c
+drivers/tuner/si4700.c
 target/arm/s5l8700/adc-s5l8700.c
 target/arm/s5l8700/i2c-s5l8700.c
 target/arm/s5l8700/kernel-s5l8700.c
@@ -1666,4 +1705,21 @@ target/coldfire/wmcodec-coldfire.c
 target/coldfire/mpio/fmradio_i2c-mpio.c
 #endif /* BOOTLOADER */
 #endif /* SIMULATOR */
+#endif
+
+
+#if (CONFIG_PLATFORM & PLATFORM_ANDROID)
+target/hosted/android/fs-android.c
+target/hosted/android/lcd-android.c
+target/hosted/android/lc-android.c
+target/hosted/android/button-android.c
+target/hosted/android/kernel-android.c
+target/hosted/android/pcm-android.c
+target/hosted/android/powermgmt-android.c
+target/hosted/android/system-android.c
+#ifdef APPLICATION
+target/hosted/android/app/button-application.c
+#endif
+drivers/audio/android.c
+thread.c
 #endif

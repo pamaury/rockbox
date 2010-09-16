@@ -25,6 +25,7 @@
 #include <limits.h>
 #include "inttypes.h"
 #include "config.h"
+#include "rbpaths.h"
 #include "action.h"
 #include "crc32.h"
 #include "sound.h"
@@ -110,7 +111,6 @@ long lasttime = 0;
 [8-NVRAM_BLOCK_SIZE] data
 */
 #define NVRAM_DATA_START 8
-#define NVRAM_FILE ROCKBOX_DIR "/nvram.bin"
 static char nvram_buffer[NVRAM_BLOCK_SIZE];
 
 static bool read_nvram_data(char* buf, int max_len)
@@ -118,13 +118,17 @@ static bool read_nvram_data(char* buf, int max_len)
     unsigned crc32 = 0xffffffff;
     int var_count = 0, i = 0, buf_pos = 0;
 #ifndef HAVE_RTC_RAM
-    int fd = open(NVRAM_FILE,O_RDONLY);
+    char path[MAX_PATH];
+    int fd = open(get_user_file_path(NVRAM_FILE, IS_FILE|NEED_WRITE,
+                  path, sizeof(path)), O_RDONLY);
+    int bytes;
     if (fd < 0)
         return false;
     memset(buf,0,max_len);
-    if (read(fd,buf,max_len) < 8) /* min is 8 bytes,magic, ver, vars, crc32 */
-        return false;
+    bytes = read(fd,buf,max_len);
     close(fd);
+    if (bytes < 8) /* min is 8 bytes,magic, ver, vars, crc32 */
+        return false;
 #else
     memset(buf,0,max_len);
     /* read rtc block */
@@ -170,6 +174,7 @@ static bool write_nvram_data(char* buf, int max_len)
     char var_count = 0;
 #ifndef HAVE_RTC_RAM
     int fd;
+    char path[MAX_PATH];
 #endif
     memset(buf,0,max_len);
     /* magic, version */
@@ -193,7 +198,8 @@ static bool write_nvram_data(char* buf, int max_len)
                     max_len-NVRAM_DATA_START-1,0xffffffff);
     memcpy(&buf[4],&crc32,4);
 #ifndef HAVE_RTC_RAM
-    fd = open(NVRAM_FILE,O_CREAT|O_TRUNC|O_WRONLY, 0666);
+    fd = open(get_user_file_path(NVRAM_FILE, IS_FILE|NEED_WRITE,
+                  path, sizeof(path)),O_CREAT|O_TRUNC|O_WRONLY, 0666);
     if (fd >= 0)
     {
         int len = write(fd,buf,max_len);
@@ -224,8 +230,12 @@ void settings_load(int which)
         read_nvram_data(nvram_buffer,NVRAM_BLOCK_SIZE);
     if (which&SETTINGS_HD)
     {
-        settings_load_config(CONFIGFILE,false);
-        settings_load_config(FIXEDSETTINGSFILE,false);
+        const char *file;
+        char path[MAX_PATH];
+        file = get_user_file_path(CONFIGFILE, IS_FILE|NEED_WRITE, path, sizeof(path));
+        settings_load_config(file, false);
+        file = get_user_file_path(FIXEDSETTINGSFILE, IS_FILE, path, sizeof(path));
+        settings_load_config(file, false);
     }
 }
 
@@ -332,10 +342,9 @@ bool settings_load_config(const char* file, bool apply)
                         char storage[MAX_PATH];
                         if (settings[i].filename_setting->prefix)
                         {
-                            int len = strlen(settings[i].filename_setting->prefix);
-                            if (!strncasecmp(value,
-                                             settings[i].filename_setting->prefix,
-                                             len))
+                            const char *dir = settings[i].filename_setting->prefix;
+                            size_t len = strlen(dir);
+                            if (!strncasecmp(value, dir, len))
                             {
                                 strlcpy(storage, &value[len], MAX_PATH);
                             }
@@ -536,7 +545,7 @@ static bool settings_write_config(const char* filename, int options)
     if (fd < 0)
         return false;
     fdprintf(fd, "# .cfg file created by rockbox %s - "
-                 "http://www.rockbox.org\r\n\r\n", appsversion);
+                 "http://www.rockbox.org\r\n\r\n", rbversion);
     for(i=0; i<nb_settings; i++)
     {
         if (settings[i].cfg_name == NULL)
@@ -587,8 +596,11 @@ static void flush_global_status_callback(void *data)
 static void flush_config_block_callback(void *data)
 {
     (void)data;
+    char path[MAX_PATH];
     write_nvram_data(nvram_buffer,NVRAM_BLOCK_SIZE);
-    settings_write_config(CONFIGFILE, SETTINGS_SAVE_CHANGED);
+    settings_write_config(
+            get_user_file_path(CONFIGFILE, IS_FILE|NEED_WRITE, path, sizeof(path)),
+            SETTINGS_SAVE_CHANGED);
 }
 
 /*
@@ -632,8 +644,8 @@ int settings_save(void)
 
 bool settings_save_config(int options)
 {
-    char filename[MAX_PATH];
-    char *folder, *namebase;
+    char filename[MAX_PATH], path[MAX_PATH];
+    const char *folder, *namebase;
     switch (options)
     {
         case SETTINGS_SAVE_THEME:
@@ -661,6 +673,8 @@ bool settings_save_config(int options)
             namebase = "config";
             break;
     }
+
+    folder = get_user_file_path(folder, NEED_WRITE, path, sizeof(path));
     create_numbered_filename(filename, folder, namebase, ".cfg", 2
                              IF_CNFN_NUM_(, NULL));
 
@@ -771,8 +785,6 @@ void sound_settings_apply(void)
 
 void settings_apply(bool read_disk)
 {
-    
-    char buf[64];
 #ifdef HAVE_LCD_BITMAP
     int rc;
 #endif
@@ -835,12 +847,16 @@ void settings_apply(bool read_disk)
 #ifdef HAVE_DISK_STORAGE
     storage_spindown(global_settings.disk_spindown);
 #endif
-#if (CONFIG_CODEC == MAS3507D) && !defined(SIMULATOR)
+#if (CONFIG_CODEC == MAS3507D) && (CONFIG_PLATFORM & PLATFORM_NATIVE)
     dac_line_in(global_settings.line_in);
 #endif
     set_poweroff_timeout(global_settings.poweroff);
 
+#if defined(BATTERY_CAPACITY_INC) && BATTERY_CAPACITY_INC > 0
+    /* only call if it's really exchangable */
     set_battery_capacity(global_settings.battery_capacity);
+#endif
+
 #if BATTERY_TYPES_COUNT > 1
     set_battery_type(global_settings.battery_type);
 #endif
@@ -866,11 +882,15 @@ void settings_apply(bool read_disk)
 
     if (read_disk)
     {
+        char buf[MAX_PATH];
 #ifdef HAVE_LCD_BITMAP
+        char dir[MAX_PATH];
+        const char *font_path = get_user_file_path(FONT_DIR, 0, dir, sizeof(dir));
         /* fonts need to be loaded before the WPS */
         if (global_settings.font_file[0]
             && global_settings.font_file[0] != '-') {
-            snprintf(buf, sizeof buf, FONT_DIR "/%s.fnt",
+            
+            snprintf(buf, sizeof buf, "%s/%s.fnt", font_path,
                      global_settings.font_file);
             CHART2(">font_load ", global_settings.font_file);
             rc = font_load(NULL, buf);
@@ -883,7 +903,7 @@ void settings_apply(bool read_disk)
 #ifdef HAVE_REMOTE_LCD        
         if ( global_settings.remote_font_file[0]
             && global_settings.remote_font_file[0] != '-') {
-            snprintf(buf, sizeof buf, FONT_DIR "/%s.fnt",
+            snprintf(buf, sizeof buf, "%s/%s.fnt", font_path,
                      global_settings.remote_font_file);
             CHART2(">font_load_remoteui ", global_settings.remote_font_file);
             rc = font_load_remoteui(buf);
@@ -895,7 +915,8 @@ void settings_apply(bool read_disk)
             font_load_remoteui(NULL);
 #endif
         if ( global_settings.kbd_file[0]) {
-            snprintf(buf, sizeof buf, ROCKBOX_DIR "/%s.kbd",
+            snprintf(buf, sizeof buf, "%s/%s.kbd",
+                     get_user_file_path(ROCKBOX_DIR, 0, dir, sizeof(dir)),
                      global_settings.kbd_file);
             CHART(">load_kbd");
             load_kbd(buf);
@@ -903,8 +924,9 @@ void settings_apply(bool read_disk)
         }
         else
             load_kbd(NULL);
-#endif
-
+#endif /* HAVE_LCD_BITMAP */
+        /* no get_user_file_path() here because we don't really support
+         * langs that don't come with rockbox */
         if ( global_settings.lang_file[0]) {
             snprintf(buf, sizeof buf, LANG_DIR "/%s.lng",
                      global_settings.lang_file);
@@ -942,9 +964,6 @@ void settings_apply(bool read_disk)
     lcd_scroll_step(global_settings.scroll_step);
     gui_list_screen_scroll_step(global_settings.screen_scroll_step);
     gui_list_screen_scroll_out_of_view(global_settings.offset_out_of_view);
-#else
-    lcd_jump_scroll(global_settings.jump_scroll);
-    lcd_jump_scroll_delay(global_settings.jump_scroll_delay);
 #endif
     lcd_bidir_scroll(global_settings.bidir_limit);
     lcd_scroll_delay(global_settings.scroll_delay);
@@ -1182,6 +1201,7 @@ bool set_option(const char* string, const void* variable, enum optiontype type,
     if (!option_screen(&item, NULL, false, NULL))
     {
         if (type == BOOL)
+
             *(bool*)variable = (temp == 1);
         else
             *(int*)variable = temp;
@@ -1190,33 +1210,36 @@ bool set_option(const char* string, const void* variable, enum optiontype type,
     return true;
 }
 
-
-void set_file(const char* filename, char* setting, int maxlen)
+/*
+ * Takes filename, removes the directory and the extension,
+ * and then copies the basename into setting, unless the basename exceeds maxlen
+ **/
+void set_file(const char* filename, char* setting, const int maxlen)
 {
     const char* fptr = strrchr(filename,'/');
+    const char* extptr;
     int len;
     int extlen = 0;
-    const char* ptr;
 
     if (!fptr)
         return;
 
     fptr++;
 
-    len = strlen(fptr);
-    ptr = fptr + len;
-    while ((*ptr != '.') && (ptr != fptr)) {
-        extlen++;
-        ptr--;
-    }
-    if(ptr == fptr) extlen = 0;
+    extptr = strrchr(fptr, '.');
 
-    if (strncasecmp(ROCKBOX_DIR, filename, strlen(ROCKBOX_DIR)) ||
-        (len-extlen > maxlen))
+    if (!extptr || extptr < fptr)
+        extlen = 0;
+    else
+        extlen = strlen(extptr);
+
+    len = strlen(fptr) - extlen + 1;
+
+    /* error if filename isn't in ROCKBOX_DIR */
+    if (len > maxlen)
         return;
 
-    strlcpy(setting, fptr, len-extlen+1);
-
+    strlcpy(setting, fptr, len);
     settings_save();
 }
 

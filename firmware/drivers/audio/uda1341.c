@@ -217,13 +217,16 @@ void audiohw_set_treble(int value)
     else    
         uda_regs [UDA_REG_ID_CTRL2] &= ~UDA_MUTE_ON;
     
-    udacodec_write (UDA_REG_DATA0, UDA_DATA_CTRL2 | uda_regs [UDA_REG_ID_CTRL2] );*/
+    udacodec_write (UDA_REG_DATA0, UDA_DATA_CTRL2 | uda_regs [UDA_REG_ID_CTRL2] );
 }
+*/
 
+#ifdef AUDIOHW_HAVE_PRESCALER
 void audiohw_set_prescaler(int val)
 {
     (void)val;
 }
+#endif /* AUDIOHW_HAVE_PRESCALER */
 
 /**
  * Sets left and right master volume  (1(max) to 62(muted))

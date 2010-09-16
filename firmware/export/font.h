@@ -28,7 +28,7 @@
  */
 #include "config.h"
 
-#if defined(HAVE_LCD_BITMAP) || defined(SIMULATOR)
+#if defined(HAVE_LCD_BITMAP) || (CONFIG_PLATFORM & PLATFORM_HOSTED)
 #ifndef __PCTOOL__
 #include "font_cache.h"
 #include "sysfont.h"
@@ -121,6 +121,7 @@ void font_init(void) INIT_ATTR;
 int font_load_remoteui(const char* path);
 #endif
 int font_load(struct font* pf, const char *path);
+int font_glyphs_to_bufsize(const char *path, int glyphs);
 void font_unload(int font_id);
 
 struct font* font_get(int font);

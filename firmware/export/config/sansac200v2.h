@@ -65,7 +65,7 @@
 #define HAVE_LCD_FLIP
 
 /* define this if you can invert the colours on your LCD */
-/* TODO: #define HAVE_LCD_INVERT */
+#define HAVE_LCD_INVERT
 
 /* Define this if your LCD can set contrast */
 #define HAVE_LCD_CONTRAST
@@ -107,9 +107,9 @@
 #define CODEC_SIZE 0x48000
 
 /* The number of bytes reserved for loadable plugins */
-#define PLUGIN_BUFFER_SIZE 0x60000
+#define PLUGIN_BUFFER_SIZE 0x14000
 
-#define AB_REPEAT_ENABLE 1
+#define AB_REPEAT_ENABLE
 
 /* FM Tuner - suspected to be the SI4702 */
 #define CONFIG_TUNER SI4700
@@ -154,6 +154,9 @@
 #define CURRENT_BACKLIGHT  25
 #define CURRENT_RECORD     CURRENT_NORMAL
 
+/* maximum charging current */
+#define CURRENT_MAX_CHG   200
+
 /* The start address index for ROM builds */
 #define ROM_START 0x00000000
 
@@ -167,17 +170,18 @@
 #define HAVE_MULTIDRIVE
 #define NUM_DRIVES 2
 #define HAVE_HOTSWAP
-
-#define USB_HANDLED_BY_OF
+#endif /* BOOTLOADER */
 
 #define CONFIG_USBOTG USBOTG_AS3525
 
 /* enable these for the experimental usb stack */
 #define HAVE_USBSTACK
+//#define USB_HANDLED_BY_OF
+#define USE_ROCKBOX_USB
+//#define USB_ENABLE_SERIAL
 #define USB_VENDOR_ID 0x0781
 #define USB_PRODUCT_ID 0x7452
-
-#endif /* BOOTLOADER */
+#define HAVE_USB_HID_MOUSE
 
 /* Define this if you have adjustable CPU frequency */
 #define HAVE_ADJUSTABLE_CPU_FREQ

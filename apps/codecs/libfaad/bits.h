@@ -55,15 +55,11 @@ typedef struct _bitfile
     void *buffer;
 } bitfile;
 
-
-#if defined (_WIN32) && !defined(_WIN32_WCE) && !defined(__MINGW32__)
-#define BSWAP(a) __asm mov eax,a __asm bswap eax __asm mov a, eax
-#elif defined(LINUX) || defined(DJGPP) || defined(__MINGW32__)
-#define BSWAP(a) __asm__ ( "bswapl %0\n" : "=r" (a) : "0" (a) )
-#else
+/* rockbox: use asm optimized swap32()
 #define BSWAP(a) \
     ((a) = ( ((a)&0xff)<<24) | (((a)&0xff00)<<8) | (((a)>>8)&0xff00) | (((a)>>24)&0xff))
-#endif
+*/
+#define BSWAP(a) swap32(a)
 
 static uint32_t bitmask[] = {
     0x0, 0x1, 0x3, 0x7, 0xF, 0x1F, 0x3F, 0x7F, 0xFF, 0x1FF,
@@ -81,7 +77,6 @@ void faad_initbits_rev(bitfile *ld, void *buffer,
                        uint32_t bits_in_buffer);
 uint8_t faad_byte_align(bitfile *ld);
 uint32_t faad_get_processed_bits(bitfile *ld);
-void faad_flushbits_ex(bitfile *ld, uint32_t bits);
 void faad_rewindbits(bitfile *ld);
 uint8_t *faad_getbitbuffer(bitfile *ld, uint32_t bits
                        DEBUGDEC);
@@ -90,32 +85,34 @@ void *faad_origbitbuffer(bitfile *ld);
 uint32_t faad_origbitbuffer_size(bitfile *ld);
 #endif
 
-/* circumvent memory alignment errors on ARM */
 static INLINE uint32_t getdword(void *mem)
 {
-#ifdef ARM
-    uint32_t tmp;
 #ifndef ARCH_IS_BIG_ENDIAN
-    ((uint8_t*)&tmp)[0] = ((uint8_t*)mem)[3];
-    ((uint8_t*)&tmp)[1] = ((uint8_t*)mem)[2];
-    ((uint8_t*)&tmp)[2] = ((uint8_t*)mem)[1];
-    ((uint8_t*)&tmp)[3] = ((uint8_t*)mem)[0];
+    return BSWAP(*(uint32_t*)mem);
 #else
-    ((uint8_t*)&tmp)[0] = ((uint8_t*)mem)[0];
-    ((uint8_t*)&tmp)[1] = ((uint8_t*)mem)[1];
-    ((uint8_t*)&tmp)[2] = ((uint8_t*)mem)[2];
-    ((uint8_t*)&tmp)[3] = ((uint8_t*)mem)[3];
+    return *(uint32_t*)mem;
 #endif
+}
 
-    return tmp;
-#else
+static INLINE void faad_flushbits_ex(bitfile *ld, uint32_t bits)
+{
     uint32_t tmp;
-    tmp = *(uint32_t*)mem;
-#ifndef ARCH_IS_BIG_ENDIAN
-    BSWAP(tmp);
-#endif
-    return tmp;
-#endif
+
+    ld->bufa = ld->bufb;
+    if (ld->no_more_reading == 0)
+    {
+        tmp = getdword(ld->tail);
+        ld->tail++;
+    } else {
+        tmp = 0;
+    }
+    ld->bufb = tmp;
+    ld->bits_left += (32 - bits);
+    ld->bytes_used += 4;
+    if (ld->bytes_used == ld->buffer_size)
+        ld->no_more_reading = 1;
+    if (ld->bytes_used > ld->buffer_size)
+        ld->error = 1;
 }
 
 static INLINE uint32_t faad_showbits(bitfile *ld, uint32_t bits)

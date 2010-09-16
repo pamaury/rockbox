@@ -37,6 +37,7 @@ include $(APPSDIR)/codecs/libspeex/libspeex.make
 include $(APPSDIR)/codecs/libtremor/libtremor.make
 include $(APPSDIR)/codecs/libwavpack/libwavpack.make
 include $(APPSDIR)/codecs/libwma/libwma.make
+include $(APPSDIR)/codecs/libwmapro/libwmapro.make
 include $(APPSDIR)/codecs/libcook/libcook.make
 include $(APPSDIR)/codecs/librm/librm.make
 include $(APPSDIR)/codecs/libatrac/libatrac.make
@@ -47,19 +48,13 @@ include $(APPSDIR)/codecs/libtta/libtta.make
 CODECFLAGS = $(CFLAGS) -fstrict-aliasing -I$(APPSDIR)/codecs \
 	-I$(APPSDIR)/codecs/lib -DCODEC
 
-ifndef SIMVER
+ifndef APP_TYPE
   CONFIGFILE := $(FIRMDIR)/export/config/$(MODELNAME).h
   CODEC_LDS := $(APPSDIR)/plugins/plugin.lds # codecs and plugins use same file
   CODECLINK_LDS := $(CODECDIR)/codec.link
 endif
 
 CODEC_CRT0 := $(CODECDIR)/codec_crt0.o
-
-CODECLIBS := $(DEMACLIB) $(A52LIB) $(ALACLIB) $(ASAPLIB) \
-	$(FAADLIB) $(FFMPEGFLACLIB) $(M4ALIB) $(MADLIB) $(MUSEPACKLIB) \
-	$(SPCLIB) $(SPEEXLIB) $(TREMORLIB) $(WAVPACKLIB) $(WMALIB) $(COOKLIB) \
-	$(ATRACLIB) \
-	$(CODECLIB)
 
 $(CODECS): $(CODEC_CRT0) $(CODECLINK_LDS)
 
@@ -83,7 +78,7 @@ $(CODECDIR)/shorten.codec : $(CODECDIR)/libffmpegFLAC.a
 $(CODECDIR)/ape-pre.map : $(CODECDIR)/libdemac-pre.a
 $(CODECDIR)/ape.codec : $(CODECDIR)/libdemac.a
 $(CODECDIR)/wma.codec : $(CODECDIR)/libwma.a $(CODECDIR)/libasf.a
-$(CODECDIR)/wmapro.codec : $(CODECDIR)/libwma.a $(CODECDIR)/libasf.a
+$(CODECDIR)/wmapro.codec : $(CODECDIR)/libwmapro.a $(CODECDIR)/libasf.a
 $(CODECDIR)/wavpack_enc.codec: $(CODECDIR)/libwavpack.a
 $(CODECDIR)/asap.codec : $(CODECDIR)/libasap.a
 $(CODECDIR)/cook.codec : $(CODECDIR)/libcook.a $(CODECDIR)/librm.a
@@ -116,12 +111,13 @@ $(CODECDIR)/%.o: $(ROOTDIR)/apps/codecs/%.S
 	$(call PRINTS,CC $(subst $(ROOTDIR)/,,$<))$(CC) \
 		-I$(dir $<) $(CODECFLAGS) -c $< -o $@
 
-ifdef SIMVER
+ifdef APP_TYPE
  CODECLDFLAGS = $(SHARED_FLAG) # <-- from Makefile
 else
  CODECLDFLAGS = -T$(CODECLINK_LDS) -Wl,--gc-sections -Wl,-Map,$(CODECDIR)/$*.map
  CODECFLAGS += -UDEBUG -DNDEBUG
 endif
+CODECLDFLAGS += $(GLOBAL_LDOPTS)
 
 $(CODECDIR)/%-pre.map: $(CODEC_CRT0) $(CODECLINK_LDS) $(CODECDIR)/%.o $(CODECLIB)
 	$(call PRINTS,LD $(@F))$(CC) $(CODECFLAGS) -o $(CODECDIR)/$*-pre.elf \
@@ -130,12 +126,12 @@ $(CODECDIR)/%-pre.map: $(CODEC_CRT0) $(CODECLINK_LDS) $(CODECDIR)/%.o $(CODECLIB
 		$(CODECLIB) \
 		-lgcc $(subst .map,-pre.map,$(CODECLDFLAGS))
 
-$(CODECDIR)/%.codec: $(CODECDIR)/%.o
+$(CODECDIR)/%.codec: $(CODECDIR)/%.o $(LIBSETJMP)
 	$(call PRINTS,LD $(@F))$(CC) $(CODECFLAGS) -o $(CODECDIR)/$*.elf \
 		$(filter %.o, $^) \
 		$(filter %.a, $+) \
 		-lgcc $(CODECLDFLAGS)
-ifdef SIMVER
+ifdef APP_TYPE
 	$(SILENT)cp $(CODECDIR)/$*.elf $@
 else
 	$(SILENT)$(OC) -O binary $(CODECDIR)/$*.elf $@

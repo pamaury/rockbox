@@ -21,13 +21,13 @@
 #ifndef _DIRCACHE_H
 #define _DIRCACHE_H
 
+#include "config.h"
 #include "dir_uncached.h"
 
 #ifdef HAVE_DIRCACHE
 
 #define DIRCACHE_RESERVE  (1024*64)
 #define DIRCACHE_LIMIT    (1024*1024*6)
-#define DIRCACHE_FILE     ROCKBOX_DIR"/dircache.dat"
 
 #define DIRCACHE_APPFLAG_TAGCACHE  0x0001
 
@@ -36,7 +36,7 @@ struct travel_data {
     struct dircache_entry *first;
     struct dircache_entry *ce;
     struct dircache_entry *down_entry;
-#ifdef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_HOSTED)
     DIR_UNCACHED *dir, *newdir;
     struct dirent_uncached *entry;
 #else
@@ -64,25 +64,19 @@ struct fdbind_queue {
 
 /* Exported structures. */
 struct dircache_entry {
+    struct dirinfo info;
     struct dircache_entry *next;
     struct dircache_entry *up;
     struct dircache_entry *down;
-    int attribute;
-    long size;
     long startcluster;
-    unsigned short wrtdate;
-    unsigned short wrttime;
     unsigned long name_len;
     char *d_name;
 };
 
 struct dirent_cached {
+    struct dirinfo info;
     char *d_name;
-    int attribute;
-    long size;
     long startcluster;
-    unsigned short wrtdate; /*  Last write date */ 
-    unsigned short wrttime; /*  Last write time */
 };
 
 typedef struct {

@@ -20,7 +20,8 @@
  ****************************************************************************/
 #include "config.h" /* for HAVE_MULTIDRIVE */
 #include "fat.h"
-#include "hotswap.h"
+#include "sdmmc.h"
+#include "gcc_extensions.h"
 #ifdef HAVE_HOTSWAP
 #include "sd-pp-target.h"
 #endif
@@ -1105,7 +1106,7 @@ sd_write_error:
     }
 }
 
-static void sd_thread(void) __attribute__((noreturn));
+static void sd_thread(void) NORETURN_ATTR;
 static void sd_thread(void)
 {
     struct queue_event ev;
@@ -1190,27 +1191,6 @@ void sd_enable(bool on)
     }
 }
 
-#ifdef HAVE_HOTSWAP
-void card_enable_monitoring_target(bool on)
-{
-    if (on)
-    {
-#ifdef SANSA_E200
-        GPIO_SET_BITWISE(GPIOA_INT_EN, 0x80);
-#elif defined(SANSA_C200)
-        GPIO_SET_BITWISE(GPIOL_INT_EN, 0x08);
-#endif
-    }
-    else
-    {
-#ifdef SANSA_E200
-        GPIO_CLEAR_BITWISE(GPIOA_INT_EN, 0x80);
-#elif defined(SANSA_C200)
-        GPIO_CLEAR_BITWISE(GPIOL_INT_EN, 0x08);
-#endif
-    }
-}
-#endif
 
 int sd_init(void)
 {
@@ -1275,6 +1255,9 @@ int sd_init(void)
         GPIOA_INT_LEV = (0x80 << 8) | (~GPIOA_INPUT_VAL & 0x80);
 
         GPIOA_INT_CLR = 0x80;
+
+        /* enable the card detect interrupt */
+        GPIO_SET_BITWISE(GPIOA_INT_EN, 0x80);
 #elif defined SANSA_C200
         CPU_INT_EN = HI_MASK;
         CPU_HI_INT_EN = GPIO2_MASK;
@@ -1282,6 +1265,9 @@ int sd_init(void)
         GPIOL_INT_LEV = (0x08 << 8) | (~GPIOL_INPUT_VAL & 0x08);
 
         GPIOL_INT_CLR = 0x08;
+    
+        /* enable the card detect interrupt */
+        GPIO_SET_BITWISE(GPIOL_INT_EN, 0x08);
 #endif
 #endif
     }

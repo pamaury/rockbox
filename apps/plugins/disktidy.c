@@ -21,7 +21,8 @@
 #include "plugin.h"
 #include "errno.h"
 
-PLUGIN_HEADER
+
+static int removed = 0; /* number of items removed */
 
 /* function return values */
 enum tidy_return
@@ -158,17 +159,14 @@ bool tidy_remove_item(char *item, int attr)
     return ret;
 }
 
-void tidy_lcd_status(const char *name, int *removed)
+void tidy_lcd_status(const char *name)
 {
-    char text[24]; /* "Cleaned up nnnnn items" */
-
     /* display status text */
     rb->lcd_clear_display();
     rb->lcd_puts(0, 0, "Working ...");
     rb->lcd_puts(0, 1, name);
-    rb->snprintf(text, 24, "Cleaned up %d items", *removed);
 #ifdef HAVE_LCD_BITMAP
-    rb->lcd_puts(0, 2, text);
+    rb->lcd_putsf(0, 2, "Cleaned up %d items", removed);
 #endif
     rb->lcd_update();
 }
@@ -205,7 +203,7 @@ void tidy_path_remove_entry(char *path, int old_path_length, int *path_length)
 }
 
 /* path is assumed to be array of size MAX_PATH */
-enum tidy_return tidy_removedir(char *path, int *path_length, int *removed)
+enum tidy_return tidy_removedir(char *path, int *path_length)
 {
     /* delete directory */
     struct dirent *entry;
@@ -215,7 +213,7 @@ enum tidy_return tidy_removedir(char *path, int *path_length, int *removed)
     int old_path_length = *path_length;
 
     /* display status text */
-    tidy_lcd_status(path, removed);
+    tidy_lcd_status(path);
 
     rb->yield();
 
@@ -246,19 +244,21 @@ enum tidy_return tidy_removedir(char *path, int *path_length, int *removed)
                 /* silent error */
                 continue;
 
-            if (entry->attribute & ATTR_DIRECTORY)
+            
+            struct dirinfo info = rb->dir_get_info(dir, entry);
+            if (info.attribute & ATTR_DIRECTORY)
             {
                 /* dir ignore "." and ".." */
                 if ((rb->strcmp(entry->d_name, ".") != 0) && \
                     (rb->strcmp(entry->d_name, "..") != 0))
                 {
-                    tidy_removedir(path, path_length, removed);
+                    tidy_removedir(path, path_length);
                 }
             }
             else
             {
                 /* file */
-                *removed += 1;
+                removed++;
                 rb->remove(path);
             }
             
@@ -267,7 +267,7 @@ enum tidy_return tidy_removedir(char *path, int *path_length, int *removed)
         }
         rb->closedir(dir);
         /* rmdir */
-        *removed += 1;
+        removed++;
         rb->rmdir(path);
     }
     else
@@ -278,7 +278,7 @@ enum tidy_return tidy_removedir(char *path, int *path_length, int *removed)
 }
 
 /* path is assumed to be array of size MAX_PATH */
-enum tidy_return tidy_clean(char *path, int *path_length, int *removed)
+enum tidy_return tidy_clean(char *path, int *path_length)
 {
     /* deletes junk files and dirs left by system */
     struct dirent *entry;
@@ -289,7 +289,7 @@ enum tidy_return tidy_clean(char *path, int *path_length, int *removed)
     int old_path_length = *path_length;
 
     /* display status text */
-    tidy_lcd_status(path, removed);
+    tidy_lcd_status(path);
 
     rb->yield();
 
@@ -299,6 +299,7 @@ enum tidy_return tidy_clean(char *path, int *path_length, int *removed)
         while((status == TIDY_RETURN_OK) && ((entry = rb->readdir(dir)) != 0))
         /* walk directory */
         {
+            struct dirinfo info = rb->dir_get_info(dir, entry);
             /* check for user input and usb connect */
             button = rb->get_action(CONTEXT_STD, TIMEOUT_NOBLOCK);
             if (button == ACTION_STD_CANCEL)
@@ -314,7 +315,7 @@ enum tidy_return tidy_clean(char *path, int *path_length, int *removed)
 
             rb->yield();
 
-            if (entry->attribute & ATTR_DIRECTORY)
+            if (info.attribute & ATTR_DIRECTORY)
             {
                 /* directory ignore "." and ".." */
                 if ((rb->strcmp(entry->d_name, ".") != 0) && \
@@ -328,17 +329,17 @@ enum tidy_return tidy_clean(char *path, int *path_length, int *removed)
                         /* silent error */
                         continue;
 
-                    if (tidy_remove_item(entry->d_name, entry->attribute))
+                    if (tidy_remove_item(entry->d_name, info.attribute))
                     {
                         /* delete dir */
-                        tidy_removedir(path, path_length, removed);
+                        tidy_removedir(path, path_length);
                         del = 1;
                     }
 
                     if (del == 0)
                     {
                         /* dir not deleted so clean it */
-                        status = tidy_clean(path, path_length, removed);
+                        status = tidy_clean(path, path_length);
                     }
                     
                     /* restore path */
@@ -349,7 +350,7 @@ enum tidy_return tidy_clean(char *path, int *path_length, int *removed)
             {
                 /* file */
                 del = 0;
-                if (tidy_remove_item(entry->d_name, entry->attribute))
+                if (tidy_remove_item(entry->d_name, info.attribute))
                 {
                     /* get absolute path */
                     /* returns an error if path is too long */
@@ -357,7 +358,7 @@ enum tidy_return tidy_clean(char *path, int *path_length, int *removed)
                         /* silent error */
                         continue;
 
-                    *removed += 1; /* increment removed files counter */
+                    removed++; /* increment removed files counter */
                     /* delete file */
                     rb->remove(path);
                     del = 1;
@@ -379,9 +380,7 @@ enum tidy_return tidy_clean(char *path, int *path_length, int *removed)
 enum tidy_return tidy_do(void)
 {
     /* clean disk and display num of items removed */
-    int removed = 0;
     enum tidy_return status;
-    char text[24]; /* "Cleaned up nnnnn items" */
     char path[MAX_PATH];
     int path_length;
 
@@ -391,7 +390,7 @@ enum tidy_return tidy_do(void)
 
     rb->strcpy(path, "/");
     path_length = rb->strlen(path);
-    status = tidy_clean(path, &path_length, &removed);
+    status = tidy_clean(path, &path_length);
 
 #ifdef HAVE_ADJUSTABLE_CPU_FREQ
     rb->cpu_boost(false);
@@ -400,13 +399,12 @@ enum tidy_return tidy_do(void)
     if ((status == TIDY_RETURN_OK) || (status == TIDY_RETURN_ABORT))
     {
         rb->lcd_clear_display();
-        rb->snprintf(text, 24, "Cleaned up %d items", removed);
         if (status == TIDY_RETURN_ABORT)
         {
             rb->splash(HZ, "User aborted");
             rb->lcd_clear_display();
         }
-        rb->splash(HZ*2, text);
+        rb->splashf(HZ*2, "Cleaned up %d items", removed);
     }
     return status;
 }

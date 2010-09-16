@@ -29,60 +29,59 @@ CODEC_HEADER
 #define MPA_SYNTH_ON_COP
 #endif
 
-struct mad_stream stream IBSS_ATTR;
-struct mad_frame frame IBSS_ATTR;
-struct mad_synth synth IBSS_ATTR;
+static struct mad_stream stream IBSS_ATTR;
+static struct mad_frame frame IBSS_ATTR;
+static struct mad_synth synth IBSS_ATTR;
 
 #ifdef MPA_SYNTH_ON_COP
-volatile short die IBSS_ATTR = 0;          /*thread should die*/
+static volatile short die IBSS_ATTR = 0;          /*thread should die*/
 
 #if (CONFIG_CPU == PP5024) || (CONFIG_CPU == PP5022)
-mad_fixed_t sbsample_prev[2][36][32] IBSS_ATTR;
+static mad_fixed_t sbsample_prev[2][36][32] IBSS_ATTR;
 #else
-mad_fixed_t sbsample_prev[2][36][32] SHAREDBSS_ATTR; 
+static mad_fixed_t sbsample_prev[2][36][32] SHAREDBSS_ATTR; 
 #endif
 
-struct semaphore synth_done_sem IBSS_ATTR;
-struct semaphore synth_pending_sem IBSS_ATTR;
+static struct semaphore synth_done_sem IBSS_ATTR;
+static struct semaphore synth_pending_sem IBSS_ATTR;
 #endif
 
 #define INPUT_CHUNK_SIZE   8192
 
-mad_fixed_t mad_frame_overlap[2][32][18] IBSS_ATTR;
-mad_fixed_t sbsample[2][36][32] IBSS_ATTR;
+static mad_fixed_t mad_frame_overlap[2][32][18] IBSS_ATTR;
+static mad_fixed_t sbsample[2][36][32] IBSS_ATTR;
 
-unsigned char mad_main_data[MAD_BUFFER_MDLEN] IBSS_ATTR;
+static unsigned char mad_main_data[MAD_BUFFER_MDLEN] IBSS_ATTR;
 /* TODO: what latency does layer 1 have? */
-int mpeg_latency[3] = { 0, 481, 529 };
-int mpeg_framesize[3] = {384, 1152, 1152};
+static int mpeg_latency[3] = { 0, 481, 529 };
+static int mpeg_framesize[3] = {384, 1152, 1152};
 
 static void init_mad(void)
 {
     ci->memset(&stream, 0, sizeof(struct mad_stream));
-    ci->memset(&frame, 0, sizeof(struct mad_frame));
-    ci->memset(&synth, 0, sizeof(struct mad_synth));
-
-    ci->memset(&sbsample, 0, sizeof(sbsample));
+    ci->memset(&frame , 0, sizeof(struct mad_frame));
+    ci->memset(&synth , 0, sizeof(struct mad_synth));
 
 #ifdef MPA_SYNTH_ON_COP
     frame.sbsample_prev = &sbsample_prev;
-    ci->memset(&sbsample_prev, 0, sizeof(sbsample_prev));
+    frame.sbsample      = &sbsample;
 #else
     frame.sbsample_prev = &sbsample;
+    frame.sbsample      = &sbsample;
 #endif
 
-    frame.sbsample=&sbsample;
-
+    /* We do this so libmad doesn't try to call codec_calloc(). This needs to
+     * be called before mad_stream_init(), mad_frame_inti() and 
+     * mad_synth_init(). */
+    frame.overlap    = &mad_frame_overlap;
+    stream.main_data = &mad_main_data;
+    
+    /* Call mad initialization. Those will zero the arrays frame.overlap,
+     * frame.sbsample and frame.sbsample_prev. Therefore there is no need to 
+     * zero them here. */
     mad_stream_init(&stream);
     mad_frame_init(&frame);
     mad_synth_init(&synth);
-
-    /* We do this so libmad doesn't try to call codec_calloc() */
-    ci->memset(mad_frame_overlap, 0, sizeof(mad_frame_overlap));
-    frame.overlap = &mad_frame_overlap;
-    stream.main_data = &mad_main_data;
-    
-    
 }
 
 static int get_file_pos(int newtime)
@@ -202,7 +201,7 @@ static void set_elapsed(struct mp3entry* id3)
  * Run the synthesis filter on the COProcessor 
  */
 
-static int mad_synth_thread_stack[DEFAULT_STACK_SIZE/sizeof(int)/2] IBSS_ATTR;
+static int mad_synth_thread_stack[DEFAULT_STACK_SIZE/sizeof(int)] IBSS_ATTR;
 
 static const unsigned char * const mad_synth_thread_name = "mp3dec";
 static unsigned int mad_synth_thread_id = 0;
@@ -419,8 +418,7 @@ next_track:
         }
 
         if (mad_frame_decode(&frame, &stream)) {
-            if (stream.error == MAD_FLAG_INCOMPLETE 
-                || stream.error == MAD_ERROR_BUFLEN) {
+            if (stream.error == MAD_ERROR_BUFLEN) {
                 /* This makes the codec support partially corrupted files */
                 if (file_end == 30)
                     break;

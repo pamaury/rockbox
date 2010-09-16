@@ -21,7 +21,7 @@
 #include "plugin.h"
 #include "lib/helper.h"
 
-PLUGIN_HEADER
+
 
 static const char* const credits[] = {
 #include "credits.raw" /* generated list of names from docs/CREDITS */
@@ -331,10 +331,8 @@ static void roll_credits(void)
             rb->lcd_putsxy(CREDITS_TARGETPOS, 0, elapsednames);
             
             for(i=0; i<NUM_VISIBLE_LINES; i++)
-            {
-                rb->snprintf(name, sizeof(name), "%s", credits[j+i]);
-                rb->lcd_putsxy(0, font_h*(i+1), name);
-            }
+                rb->lcd_putsxyf(0, font_h*(i+1), "%s", credits[j+i]);
+
             rb->lcd_update();
 
             rb->yield();

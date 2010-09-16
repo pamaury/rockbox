@@ -28,6 +28,7 @@ extern int tenthdb2master(int db);
 
 extern void audiohw_set_master_vol(int vol_l, int vol_r);
 extern void audiohw_set_lineout_vol(int vol_l, int vol_r);
+extern void audiohw_set_sampr_dividers(int fsel);
 
 /* Register Descriptions */
 
@@ -96,6 +97,10 @@ extern void audiohw_set_lineout_vol(int vol_l, int vol_r);
 #define AS3514_SUPERVISOR 0x24
 #endif
 
+#ifdef HAVE_AS3543
+#define AS3543_WAKEUP     0x22
+#endif
+
 /* AS3543 has 2 IRQ_ENRD registers at 0x23 and 0x24, but we don't use them
  * We call the real IRQ_ENRD2 register, IRQ_ENRD0, to stay compatible with
  * as3514, because the bits we use are the same
@@ -113,10 +118,22 @@ extern void audiohw_set_lineout_vol(int vol_l, int vol_r);
 #define AS3514_ADC_0      0x2e
 #define AS3514_ADC_1      0x2f
 
+#ifdef HAVE_AS3543
+#define AS3514_UID_0      0x38
+#define AS3514_UID_LEN    8
+#else
 #define AS3514_UID_0      0x30
+#define AS3514_UID_LEN    16
+#endif
 
+/*different volume ranges for different AMS chips*/
+#if CONFIG_CPU == AS3525v2 
+/* Headphone volume goes from -81.0 ... +6dB */
+#define VOLUME_MIN -810
+#else
 /* Headphone volume goes from -73.5 ... +6dB */
 #define VOLUME_MIN -735
+#endif
 #define VOLUME_MAX   60
 
 /*** Audio Registers ***/

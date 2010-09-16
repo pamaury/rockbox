@@ -26,8 +26,9 @@
 #include "lib/highscore.h"
 #include "lib/playback_control.h"
 #include "lib/playergfx.h"
+#include "lib/mylcd.h"
 
-PLUGIN_HEADER
+
 
 #if (CONFIG_KEYPAD == IPOD_4G_PAD) || \
     (CONFIG_KEYPAD == IPOD_3G_PAD) || \
@@ -599,8 +600,6 @@ PLUGIN_HEADER
 #define LINES_X LABEL_X
 #endif
 
-#define MYLCD(fn) rb->lcd_ ## fn
-
 extern const fb_data rockblox_background[];
 
 #else /* HAVE_LCD_CHARCELLS */
@@ -613,8 +612,6 @@ extern const fb_data rockblox_background[];
 #define BOARD_Y      0
 #define PREVIEW_X    15
 #define PREVIEW_Y    1
-
-#define MYLCD(fn) pgfx_ ## fn
 
 #endif
 
@@ -813,25 +810,18 @@ static void init_board (void)
 /* show the score, level and lines */
 static void show_details (void)
 {
-    char str[25];               /* for strings */
-
 #ifdef HAVE_LCD_BITMAP
 #if LCD_DEPTH >= 2
     rb->lcd_set_foreground (LCD_BLACK);
     rb->lcd_set_background (LCD_WHITE);
 #endif
-    rb->snprintf (str, sizeof (str), "%d", rockblox_status.score);
-    rb->lcd_putsxy (LABEL_X, SCORE_Y, str);
-    rb->snprintf (str, sizeof (str), "%d", rockblox_status.level);
-    rb->lcd_putsxy (LEVEL_X, LEVEL_Y, str);
-    rb->snprintf (str, sizeof (str), "%d", rockblox_status.lines);
-    rb->lcd_putsxy (LINES_X, LINES_Y, str);
+    rb->lcd_putsxyf (LABEL_X, SCORE_Y, "%d", rockblox_status.score);
+    rb->lcd_putsxyf (LEVEL_X, LEVEL_Y, "%d", rockblox_status.level);
+    rb->lcd_putsxyf (LINES_X, LINES_Y, "%d", rockblox_status.lines);
 #else  /* HAVE_LCD_CHARCELLS */
-    rb->snprintf (str, sizeof (str), "L%d/%d", rockblox_status.level,
+    rb->lcd_putsf (5, 0, "L%d/%d", rockblox_status.level,
             rockblox_status.lines);
-    rb->lcd_puts (5, 0, str);
-    rb->snprintf (str, sizeof (str), "S%d", rockblox_status.score);
-    rb->lcd_puts (5, 1, str);
+    rb->lcd_putsf (5, 1, "S%d", rockblox_status.score);
 #endif
 }
 
@@ -839,14 +829,10 @@ static void show_details (void)
 static void show_highscores (void)
 {
     int i;
-    char str[25];               /* for strings */
 
     for (i = 0; i<NUM_SCORES; i++)
-    {
-        rb->snprintf (str, sizeof (str), "%06d" _SPACE "L%1d",
-                      highscores[i].score, highscores[i].level);
-        rb->lcd_putsxy (HIGH_LABEL_X, HIGH_SCORE_Y + (10 * i), str);
-    }
+        rb->lcd_putsxyf (HIGH_LABEL_X, HIGH_SCORE_Y + (10 * i),
+            "%06d" _SPACE "L%1d", highscores[i].score, highscores[i].level);
 }
 #endif
 
@@ -983,14 +969,14 @@ static void refresh_board (void)
 #if LCD_DEPTH >= 2
     rb->lcd_set_foreground (LCD_BLACK);
 #elif LCD_DEPTH == 1
-    MYLCD(set_drawmode) (DRMODE_SOLID | DRMODE_INVERSEVID);
+    mylcd_set_drawmode (DRMODE_SOLID | DRMODE_INVERSEVID);
 #endif
 
-    MYLCD(fillrect) (BOARD_X, BOARD_Y, BOARD_WIDTH * BLOCK_WIDTH,
-                     BOARD_HEIGHT * BLOCK_HEIGHT);
+    mylcd_fillrect (BOARD_X, BOARD_Y, BOARD_WIDTH * BLOCK_WIDTH,
+                    BOARD_HEIGHT * BLOCK_HEIGHT);
 
 #if LCD_DEPTH == 1
-    MYLCD(set_drawmode) (DRMODE_SOLID);
+    mylcd_set_drawmode (DRMODE_SOLID);
 #endif
 
     for (i = 0; i < BOARD_WIDTH; i++)
@@ -1067,7 +1053,7 @@ static void refresh_board (void)
         pgfx_drawpixel (BOARD_X + x, BOARD_Y + y);
 #endif
     }
-    MYLCD(update) ();
+    mylcd_update ();
 }
 
 static bool canMoveTo (int x, int y, int newOrientation)
@@ -1092,14 +1078,14 @@ static void draw_next_block (void)
 #if LCD_DEPTH >= 2
     rb->lcd_set_foreground (LCD_BLACK);
 #elif LCD_DEPTH == 1
-    MYLCD(set_drawmode) (DRMODE_SOLID | DRMODE_INVERSEVID);
+    mylcd_set_drawmode (DRMODE_SOLID | DRMODE_INVERSEVID);
 #endif
 
     /* 4x4 */
-    MYLCD(fillrect) (PREVIEW_X, PREVIEW_Y, BLOCK_WIDTH * 4, BLOCK_HEIGHT * 4);
+    mylcd_fillrect (PREVIEW_X, PREVIEW_Y, BLOCK_WIDTH * 4, BLOCK_HEIGHT * 4);
 
 #if LCD_DEPTH == 1
-    MYLCD(set_drawmode) (DRMODE_SOLID);
+    mylcd_set_drawmode (DRMODE_SOLID);
 #endif
 
     /* draw the lightgray rectangles */

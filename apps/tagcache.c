@@ -73,6 +73,7 @@
 #include "buffer.h"
 #include "crc32.h"
 #include "misc.h"
+#include "filefuncs.h"
 #include "settings.h"
 #include "dir.h"
 #include "structec.h"
@@ -292,15 +293,17 @@ static bool is_dircache_intact(void)
 static int open_tag_fd(struct tagcache_header *hdr, int tag, bool write)
 {
     int fd;
-    char buf[MAX_PATH];
+    char buf[MAX_PATH], path[MAX_PATH];
+    const char * file;
     int rc;
     
     if (TAGCACHE_IS_NUMERIC(tag) || tag < 0 || tag >= TAG_COUNT)
         return -1;
     
     snprintf(buf, sizeof buf, TAGCACHE_FILE_INDEX, tag);
+    file = get_user_file_path(buf, IS_FILE | NEED_WRITE, path, sizeof(path));
     
-    fd = open(buf, write ? O_RDWR : O_RDONLY);
+    fd = open(file, write ? O_RDWR : O_RDONLY);
     if (fd < 0)
     {
         logf("tag file open failed: tag=%d write=%d file=%s", tag, write, buf);
@@ -325,8 +328,12 @@ static int open_master_fd(struct master_header *hdr, bool write)
 {
     int fd;
     int rc;
+    char path[MAX_PATH];
     
-    fd = open(TAGCACHE_FILE_MASTER, write ? O_RDWR : O_RDONLY);
+    fd = open(get_user_file_path(TAGCACHE_FILE_MASTER,
+                                 IS_FILE|NEED_WRITE,
+                                 path, sizeof(path)),
+                    write ? O_RDWR : O_RDONLY);
     if (fd < 0)
     {
         logf("master file open failed for R/W");
@@ -668,9 +675,11 @@ static bool open_files(struct tagcache_search *tcs, int tag)
 {
     if (tcs->idxfd[tag] < 0)
     {
-        char fn[MAX_PATH];
+        char fn[MAX_PATH], path[MAX_PATH];
+        const char *file;
 
         snprintf(fn, sizeof fn, TAGCACHE_FILE_INDEX, tag);
+        file = get_user_file_path(fn, IS_FILE | NEED_WRITE, path, sizeof(path));
         tcs->idxfd[tag] = open(fn, O_RDONLY);
     }
     
@@ -1159,14 +1168,17 @@ static void remove_files(void)
     tc_stat.ready = false;
     tc_stat.ramcache = false;
     tc_stat.econ = false;
-    remove(TAGCACHE_FILE_MASTER);
+    remove(get_user_file_path(TAGCACHE_FILE_MASTER, NEED_WRITE|IS_FILE,
+                              buf, sizeof(buf)));
     for (i = 0; i < TAG_COUNT; i++)
     {
+        char buf2[MAX_PATH];
         if (TAGCACHE_IS_NUMERIC(i))
             continue;
-        
+
+        /* database_%d.tcd -> database_0.tcd */
         snprintf(buf, sizeof buf, TAGCACHE_FILE_INDEX, i);
-        remove(buf);
+        remove(get_user_file_path(buf, NEED_WRITE | IS_FILE, buf2, sizeof(buf2)));
     }
 }
 
@@ -1317,10 +1329,11 @@ bool tagcache_search_add_clause(struct tagcache_search *tcs,
     
     if (!TAGCACHE_IS_NUMERIC(clause->tag) && tcs->idxfd[clause->tag] < 0)
     {
-        char buf[MAX_PATH];
-
-        snprintf(buf, sizeof buf, TAGCACHE_FILE_INDEX, clause->tag);        
-        tcs->idxfd[clause->tag] = open(buf, O_RDONLY);
+        char buf[MAX_PATH], path[MAX_PATH];
+        const char *file;
+        snprintf(buf, sizeof buf, TAGCACHE_FILE_INDEX, clause->tag);
+        file = get_user_file_path(buf, IS_FILE | NEED_WRITE, path, sizeof(path));
+        tcs->idxfd[clause->tag] = open(file, O_RDONLY);
     }
     
     tcs->clause[tcs->clause_count] = clause;
@@ -2344,7 +2357,8 @@ static int build_index(int index_type, struct tagcache_header *h, int tmpfd)
     struct master_header   tcmh;
     struct index_entry idxbuf[IDX_BUF_DEPTH];
     int idxbuf_pos;
-    char buf[TAG_MAXLEN+32];
+    char buf[TAG_MAXLEN+32], path[MAX_PATH];
+    const char *file;
     int fd = -1, masterfd;
     bool error = false;
     int init;
@@ -2492,7 +2506,8 @@ static int build_index(int index_type, struct tagcache_header *h, int tmpfd)
          * anything whether the index type is sorted or not.
          */
         snprintf(buf, sizeof buf, TAGCACHE_FILE_INDEX, index_type);
-        fd = open(buf, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+        file = get_user_file_path(buf, IS_FILE | NEED_WRITE, path, sizeof(path));
+        fd = open(file, O_WRONLY | O_CREAT | O_TRUNC, 0666);
         if (fd < 0)
         {
             logf("%s open fail", buf);
@@ -2512,18 +2527,21 @@ static int build_index(int index_type, struct tagcache_header *h, int tmpfd)
         }
     }
 
+    file = get_user_file_path(TAGCACHE_FILE_MASTER,
+                                            IS_FILE|NEED_WRITE,
+                                            buf, sizeof(buf));
     /* Loading the tag lookup file as "master file". */
     logf("Loading index file");
-    masterfd = open(TAGCACHE_FILE_MASTER, O_RDWR);
+    masterfd = open(file, O_RDWR);
 
     if (masterfd < 0)
     {
         logf("Creating new DB");
-        masterfd = open(TAGCACHE_FILE_MASTER, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+        masterfd = open(file, O_WRONLY | O_CREAT | O_TRUNC, 0666);
 
         if (masterfd < 0)
         {
-            logf("Failure to create index file (%s)", TAGCACHE_FILE_MASTER);
+            logf("Failure to create index file (%s)", file);
             close(fd);
             return -2;
         }
@@ -2831,6 +2849,8 @@ static bool commit(void)
 {
     struct tagcache_header tch;
     struct master_header   tcmh;
+    char path[MAX_PATH];
+    const char *file;
     int i, len, rc;
     int tmpfd;
     int masterfd;
@@ -2844,7 +2864,10 @@ static bool commit(void)
     while (write_lock)
         sleep(1);
 
-    tmpfd = open(TAGCACHE_FILE_TEMP, O_RDONLY);
+    file = get_user_file_path(TAGCACHE_FILE_TEMP,
+                            IS_FILE|NEED_WRITE, path, sizeof(path));
+
+    tmpfd = open(file, O_RDONLY);
     if (tmpfd < 0)
     {
         logf("nothing to commit");
@@ -2858,9 +2881,9 @@ static bool commit(void)
     
     if (tch.magic != TAGCACHE_MAGIC || rc != len)
     {
-        logf("incorrect header");
+        logf("incorrect tmpheader");
         close(tmpfd);
-        remove(TAGCACHE_FILE_TEMP);
+        remove(file);
         return false;
     }
 
@@ -2868,12 +2891,16 @@ static bool commit(void)
     {
         logf("nothing to commit");
         close(tmpfd);
-        remove(TAGCACHE_FILE_TEMP);
+        remove(file);
         return true;
     }
 
+    /* Fully initialize existing headers (if any) before going further. */
+    tc_stat.ready = check_all_headers();
+    
 #ifdef HAVE_EEPROM_SETTINGS
-    remove(TAGCACHE_STATEFILE);
+    remove(get_user_file_path(TAGCACHE_STATEFILE, IS_FILE | NEED_WRITE,
+                path, sizeof(path)));
 #endif
     
     /* At first be sure to unload the ramcache! */
@@ -2963,7 +2990,7 @@ static bool commit(void)
     }
     
     close(tmpfd);
-    remove(TAGCACHE_FILE_TEMP);
+    remove(file);
     
     tc_stat.commit_step = 0;
     
@@ -3383,15 +3410,18 @@ bool tagcache_import_changelog(void)
     struct tagcache_header tch;
     int clfd;
     long masterfd;
-    char buf[2048];
+    char buf[MAX(MAX_PATH, 2048)];
+    const char *file;
     
     if (!tc_stat.ready)
         return false;
     
     while (read_lock)
         sleep(1);
-    
-    clfd = open(TAGCACHE_FILE_CHANGELOG, O_RDONLY);
+
+    file = get_user_file_path(TAGCACHE_FILE_CHANGELOG,
+                                   IS_FILE|NEED_WRITE, buf, sizeof(buf));
+    clfd = open(file, O_RDONLY);
     if (clfd < 0)
     {
         logf("failure to open changelog");
@@ -3433,7 +3463,8 @@ bool tagcache_create_changelog(struct tagcache_search *tcs)
 {
     struct master_header myhdr;
     struct index_entry idx;
-    char buf[TAG_MAXLEN+32];
+    const char *file;
+    char buf[MAX(TAG_MAXLEN+32, MAX_PATH)];
     char temp[32];
     int clfd;
     int i, j;
@@ -3445,7 +3476,9 @@ bool tagcache_create_changelog(struct tagcache_search *tcs)
         return false;
     
     /* Initialize the changelog */
-    clfd = open(TAGCACHE_FILE_CHANGELOG, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+    file = get_user_file_path(TAGCACHE_FILE_CHANGELOG, IS_FILE | NEED_WRITE,
+                              buf, sizeof(buf));
+    clfd = open(file, O_WRONLY | O_CREAT | O_TRUNC, 0666);
     if (clfd < 0)
     {
         logf("failure to open changelog");
@@ -3763,11 +3796,15 @@ static bool allocate_tagcache(void)
 static bool tagcache_dumpload(void)
 {
     struct statefile_header shdr;
+    char path[MAX_PATH];
+    const char *file;
     int fd, rc;
     long offpos;
     int i;
-    
-    fd = open(TAGCACHE_STATEFILE, O_RDONLY);
+
+    file = get_user_file_path(TAGCACHE_STATEFILE, IS_FILE | NEED_WRITE,
+                                    path, sizeof(path));
+    fd = open(file, O_RDONLY);
     if (fd < 0)
     {
         logf("no tagcache statedump");
@@ -3813,12 +3850,16 @@ static bool tagcache_dumpload(void)
 static bool tagcache_dumpsave(void)
 {
     struct statefile_header shdr;
+    char path[MAX_PATH];
+    const char *file;
     int fd;
     
     if (!tc_stat.ramcache)
         return false;
     
-    fd = open(TAGCACHE_STATEFILE, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+    file = get_user_file_path(TAGCACHE_STATEFILE, IS_FILE | NEED_WRITE,
+                                    path, sizeof(path));
+    fd = open(file, O_WRONLY | O_CREAT | O_TRUNC, 0666);
     if (fd < 0)
     {
         logf("failed to create a statedump");
@@ -3844,7 +3885,8 @@ static bool load_tagcache(void)
     long bytesleft = tc_stat.ramcache_allocated;
     struct index_entry *idx;
     int rc, fd;
-    char *p;
+    char *p, path[MAX_PATH];
+    const char *file;
     int i, tag;
 
 # ifdef HAVE_DIRCACHE
@@ -3855,8 +3897,11 @@ static bool load_tagcache(void)
 # endif
     
     logf("loading tagcache to ram...");
-    
-    fd = open(TAGCACHE_FILE_MASTER, O_RDONLY);
+
+    file = get_user_file_path(TAGCACHE_FILE_MASTER,
+                              IS_FILE|NEED_WRITE,
+                              path, sizeof(path));
+    fd = open(file, O_RDONLY);
     if (fd < 0)
     {
         logf("tagcache open failed");
@@ -4066,12 +4111,14 @@ static bool load_tagcache(void)
 static bool check_deleted_files(void)
 {
     int fd;
-    char buf[TAG_MAXLEN+32];
+    char buf[TAG_MAXLEN+32], path[MAX_PATH];
+    const char *file;
     struct tagfile_entry tfe;
     
     logf("reverse scan...");
     snprintf(buf, sizeof buf, TAGCACHE_FILE_INDEX, tag_filename);
-    fd = open(buf, O_RDONLY);
+    file = get_user_file_path(buf, IS_FILE | NEED_WRITE, path, sizeof(path));
+    fd = open(file, O_RDONLY);
     
     if (fd < 0)
     {
@@ -4175,6 +4222,8 @@ static bool check_dir(const char *dirname, int add_files)
             success = true;
             break ;
         }
+
+        struct dirinfo info = dir_get_info(dir, entry);
         
         if (!strcmp((char *)entry->d_name, ".") ||
             !strcmp((char *)entry->d_name, ".."))
@@ -4187,14 +4236,14 @@ static bool check_dir(const char *dirname, int add_files)
                  entry->d_name);
         
         processed_dir_count++;
-        if (entry->attribute & ATTR_DIRECTORY)
+        if (info.attribute & ATTR_DIRECTORY)
             check_dir(curpath, add_files);
         else if (add_files)
         {
             tc_stat.curentry = curpath;
             
             /* Add a new entry to the temporary db file. */
-            add_tagcache(curpath, (entry->wrtdate << 16) | entry->wrttime
+            add_tagcache(curpath, (info.wrtdate << 16) | info.wrttime
 #if defined(HAVE_TC_RAMCACHE) && defined(HAVE_DIRCACHE)
                          , dir->internal_entry
 #endif
@@ -4229,6 +4278,8 @@ void tagcache_build(const char *path)
 {
     struct tagcache_header header;
     bool ret;
+    char buf[MAX_PATH];
+    const char *file;
 
     curpath[0] = '\0';
     data_size = 0;
@@ -4241,19 +4292,21 @@ void tagcache_build(const char *path)
 #endif
     
     logf("updating tagcache");
+
+    file = get_user_file_path(TAGCACHE_FILE_TEMP,
+                                    IS_FILE|NEED_WRITE, buf, sizeof(buf));
     
-    cachefd = open(TAGCACHE_FILE_TEMP, O_RDONLY);
-    if (cachefd >= 0)
+
+    if (file_exists(file))
     {
         logf("skipping, cache already waiting for commit");
-        close(cachefd);
         return ;
     }
     
-    cachefd = open(TAGCACHE_FILE_TEMP, O_RDWR | O_CREAT | O_TRUNC, 0666);
+    cachefd = open(file, O_RDWR | O_CREAT | O_TRUNC, 0666);
     if (cachefd < 0)
     {
-        logf("master file open failed: %s", TAGCACHE_FILE_TEMP);
+        logf("master file open failed: %s", file);
         return ;
     }
 
@@ -4297,7 +4350,7 @@ void tagcache_build(const char *path)
 #endif
     if (commit())
     {
-        remove(TAGCACHE_FILE_TEMP);
+        remove(file);
         logf("tagcache built!");
     }
 #ifdef __PCTOOL__
@@ -4342,7 +4395,12 @@ void tagcache_unload_ramcache(void)
 {
     tc_stat.ramcache = false;
     /* Just to make sure there is no statefile present. */
-    // remove(TAGCACHE_STATEFILE);
+
+#if 0
+    char path[MAX_PATH];
+    remove(get_user_file_path(TAGCACHE_STATEFILE, IS_FILE | NEED_WRITE,
+                path, sizeof(path)));
+#endif
 }
 #endif
 
@@ -4351,6 +4409,7 @@ static void tagcache_thread(void)
 {
     struct queue_event ev;
     bool check_done = false;
+    char path[MAX_PATH];
 
     /* If the previous cache build/update was interrupted, commit
      * the changes first in foreground. */
@@ -4361,10 +4420,14 @@ static void tagcache_thread(void)
     
 #ifdef HAVE_TC_RAMCACHE
 # ifdef HAVE_EEPROM_SETTINGS
-    if (firmware_settings.initialized && firmware_settings.disk_clean)
+    if (firmware_settings.initialized && firmware_settings.disk_clean
+        && global_settings.tagcache_ram)
+    {
         check_done = tagcache_dumpload();
+    }
 
-    remove(TAGCACHE_STATEFILE);
+    remove(get_user_file_path(TAGCACHE_STATEFILE, IS_FILE | NEED_WRITE,
+                path, sizeof(path)));
 # endif
     
     /* Allocate space for the tagcache if found on disk. */
@@ -4376,9 +4439,12 @@ static void tagcache_thread(void)
     tc_stat.initialized = true;
     
     /* Don't delay bootup with the header check but do it on background. */
-    sleep(HZ);
-    tc_stat.ready = check_all_headers();
-    tc_stat.readyvalid = true;
+    if (!tc_stat.ready)
+    {
+        sleep(HZ);
+        tc_stat.ready = check_all_headers();
+        tc_stat.readyvalid = true;
+    }
     
     while (1)
     {
@@ -4394,7 +4460,8 @@ static void tagcache_thread(void)
             
             case Q_REBUILD:
                 remove_files();
-                remove(TAGCACHE_FILE_TEMP);
+                remove(get_user_file_path(TAGCACHE_FILE_TEMP,
+                                IS_FILE|NEED_WRITE, path, sizeof(path)));
                 tagcache_build("/");
                 break;
             
@@ -4442,7 +4509,7 @@ static void tagcache_thread(void)
             case SYS_POWEROFF:
                 break ;
                 
-#ifndef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
             case SYS_USB_CONNECTED:
                 logf("USB: TagCache");
                 usb_acknowledge(SYS_USB_CONNECTED_ACK);

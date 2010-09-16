@@ -82,6 +82,8 @@
 #define SYS_CAR_ADAPTER_RESUME    MAKE_SYS_EVENT(SYS_EVENT_CLS_MISC, 0)
 #define SYS_IAP_PERIODIC          MAKE_SYS_EVENT(SYS_EVENT_CLS_MISC, 1)
 #define SYS_IAP_HANDLEPKT         MAKE_SYS_EVENT(SYS_EVENT_CLS_MISC, 2)
+#define SYS_CALL_INCOMING         MAKE_SYS_EVENT(SYS_EVENT_CLS_MISC, 3)
+#define SYS_CALL_HUNG_UP          MAKE_SYS_EVENT(SYS_EVENT_CLS_MISC, 4)
 
 #define IS_SYSEVENT(ev)           ((ev & SYS_EVENT) == SYS_EVENT)
 
@@ -201,17 +203,13 @@ static inline void call_tick_tasks(void)
 }
 #endif
 
-#if defined(SIMULATOR) && !defined(PLUGIN) && !defined(CODEC)
-#define sleep(x) sim_sleep(x)
-#endif
-
 /* kernel functions */
 extern void kernel_init(void) INIT_ATTR;
 extern void yield(void);
-extern void sleep(int ticks);
+extern unsigned sleep(unsigned ticks);
 int tick_add_task(void (*f)(void));
 int tick_remove_task(void (*f)(void));
-extern void tick_start(unsigned int interval_in_ms);
+extern void tick_start(unsigned int interval_in_ms) INIT_ATTR;
 
 #ifdef INCLUDE_TIMEOUT_API
 struct timeout;

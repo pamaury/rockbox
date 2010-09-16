@@ -1,6 +1,10 @@
 #ifndef __M_FIXED_H__
 #define __M_FIXED_H__
 
+#ifdef ROCKBOX
+#include "plugin.h"
+#endif
+
 typedef int t_sample;
 
 #define t_fixed int
@@ -12,8 +16,29 @@ typedef int t_sample;
 
 /* fixed point multiplication and division */
 
+#if defined(ROCKBOX) && !defined(SIMULATOR)
+#if defined(CPU_ARM)
+#define mult(A,B) \
+     ({ \
+        t_fixed lo; \
+        t_fixed hi; \
+        asm volatile ( \
+           "smull %[lo], %[hi], %[x], %[y] \n\t"   /* multiply */ \
+           "mov   %[lo], %[lo], lsr %[shr] \n\t"   /* lo >>= fix1 */ \
+           "orr   %[lo], %[lo], %[hi], lsl %[shl]" /* lo |= (hi << (32-fix1)) */ \
+           : [lo]"=&r"(lo), [hi]"=&r"(hi) \
+           : [x]"r"(A), [y]"r"(B), [shr]"r"(fix1), [shl]"r"(32-fix1)); \
+        lo; \
+     })
+#define idiv(a,b) ((((long long) (a) )<<fix1)/(long long) (b) )
+#else /* CPU_... */
 #define mult(a,b) (long long)(((long long) (a) * (long long) (b))>>fix1)
 #define idiv(a,b) ((((long long) (a) )<<fix1)/(long long) (b) )
+#endif /* CPU_... */
+#else /* ROCKBOX && !SIMULATOR */
+#define mult(a,b) (long long)(((long long) (a) * (long long) (b))>>fix1)
+#define idiv(a,b) ((((long long) (a) )<<fix1)/(long long) (b) )
+#endif /* ROCKBOX && !SIMULATOR */
 
 /* conversion macros */
 

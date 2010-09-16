@@ -44,7 +44,7 @@
 #endif
 #include "logf.h"
 #include "lcd-remote.h"
-#ifdef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_HOSTED)
 #include <time.h>
 #endif
 
@@ -73,7 +73,7 @@ enum charge_state_type charge_state = DISCHARGING;
 #endif
 #endif /* CONFIG_CHARGING */
 
-#ifndef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
 static int shutdown_timeout = 0;
 /*
  * Average battery voltage and charger voltage, filtered via a digital
@@ -218,7 +218,7 @@ void set_sleep_timer(int seconds)
 
 int get_sleep_timer(void)
 {
-    if (sleeptimer_active)
+    if (sleeptimer_active && (sleeptimer_endtick >= current_tick))
         return (sleeptimer_endtick - current_tick) / HZ;
     else
         return 0;
@@ -414,6 +414,12 @@ static int runcurrent(void)
     if (remote_detect())
         current += CURRENT_REMOTE;
 #endif
+
+#if defined(HAVE_ATA_POWER_OFF) && defined(CURRENT_ATA)
+    if (ide_powered())
+        current += CURRENT_ATA;
+#endif
+
 #endif /* BOOTLOADER */
     
     return current;
@@ -830,7 +836,7 @@ void cancel_shutdown(void)
 
     shutdown_timeout = 0;
 }
-#endif /* SIMULATOR */
+#endif /* PLATFORM_NATIVE */
 
 /* Send system battery level update events on reaching certain significant
    levels. This must be called after battery_percent has been updated. */

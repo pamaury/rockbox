@@ -60,7 +60,7 @@ mdct_butterfly_8:
     add     r11, r12, r7                @ y7 = (x7 + x3) + (x5 + x1)
     stmia   r0!, {r1, r2, r3, r4, r5, r6, r10, r11}
 
-    mov     pc, lr
+    bx      lr
 
 mdct_butterfly_16:
 @ inputs: r0,r1   &lr
@@ -127,7 +127,7 @@ mdct_butterfly_16:
     @ mdct_butterfly_8 increments r0 by another #8*4 here
     @ at end, r0 has been incremented by #16*4
 
-    ldr     pc, [sp], #4
+    ldrpc
 
 mdct_butterfly_32:
     stmdb   sp!, {r4-r11, lr}
@@ -257,7 +257,7 @@ mdct_butterfly_32:
     @ and we wanted to advance by #16*4 anyway, so just call again
     bl      mdct_butterfly_16
 
-    ldmia   sp!, {r4-r11, pc}
+    ldmpc   regs=r4-r11
 
     @ mdct_butterfly_generic_loop(x1, x2, T0, step, Ttop)
 mdct_butterfly_generic_loop:
@@ -433,5 +433,5 @@ mdct_butterfly_generic_loop:
     cmp     r2, r4
     bhi     1b
 
-    ldmia   sp!, {r4-r11, pc}
+    ldmpc   regs=r4-r11
 

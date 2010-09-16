@@ -316,18 +316,28 @@ static void si4700_sleep(int snooze)
     }
 }
 
+bool si4700_detect(void)
+{
+    bool detected;
+
+    tuner_power(true);
+    detected = (si4700_read_reg(DEVICEID) == 0x1242);
+    tuner_power(false);
+
+    return detected;
+}
+
 void si4700_init(void)
 {
-    tuner_power(true);
-
-    /* read all registers */
-    si4700_read(16);
-    si4700_sleep(0);
-
     /* check device id */
-    if (cache[DEVICEID] == 0x1242)
-    {
+    if (si4700_detect()) {
         tuner_present = true;
+
+        tuner_power(true);
+
+        /* read all registers */
+        si4700_read(16);
+        si4700_sleep(0);
 
 #ifdef USE_INTERNAL_OSCILLATOR
         /* Enable the internal oscillator
@@ -335,11 +345,10 @@ void si4700_init(void)
         si4700_write_set(TEST1, TEST1_XOSCEN | 0x100);
         sleep(HZ/2);
 #endif
+
+        si4700_sleep(1);
+        tuner_power(false);
     }
-
-    si4700_sleep(1);
-
-    tuner_power(false);
 }
 
 static void si4700_set_frequency(int freq)
@@ -361,19 +370,21 @@ static void si4700_set_frequency(int freq)
     int space = SYSCONFIG2_SPACEr(cache[SYSCONFIG2]);
     int band = SYSCONFIG2_BANDr(cache[SYSCONFIG2]);
     int chan = (freq - bands[band]) / spacings[space];
+    int readchan;
 
     curr_frequency = freq;
-
-    si4700_write_reg(CHANNEL, CHANNEL_CHANw(chan) | CHANNEL_TUNE);
 
     do
     {
         /* tuning should be done within 60 ms according to the datasheet */
+        si4700_write_reg(CHANNEL, CHANNEL_CHANw(chan) | CHANNEL_TUNE);
         sleep(HZ * 60 / 1000);
-    }
-    while ((si4700_read_reg(STATUSRSSI) & STATUSRSSI_STC) == 0); /* STC high? */
 
-    si4700_write_clear(CHANNEL, CHANNEL_TUNE); /* Set TUNE low */
+        /* get tune result */
+        readchan = si4700_read_reg(READCHAN) & READCHAN_READCHAN;
+
+        si4700_write_clear(CHANNEL, CHANNEL_TUNE);
+    } while (!((cache[STATUSRSSI] & STATUSRSSI_STC) && (readchan == chan)));
 }
 
 static int si4700_tuned(void)
@@ -389,14 +400,17 @@ static int si4700_tuned(void)
 
 static void si4700_set_region(int region)
 {
-    const struct si4700_region_data *rd = &si4700_region_data[region];
-    uint16_t bandspacing = SYSCONFIG2_BANDw(rd->band) |
-                           SYSCONFIG2_SPACEw(rd->spacing);
+    const struct fm_region_data *rd = &fm_region_data[region];
+
+    int band = (rd->freq_min == 76000000) ? 2 : 0;
+    int spacing = (100000 / rd->freq_step);
+    int deemphasis = (rd->deemphasis == 50) ? SYSCONFIG1_DE : 0;
+
+    uint16_t bandspacing = SYSCONFIG2_BANDw(band) |
+                           SYSCONFIG2_SPACEw(spacing);
     uint16_t oldbs = cache[SYSCONFIG2] & (SYSCONFIG2_BAND | SYSCONFIG2_SPACE);
 
-    si4700_write_masked(SYSCONFIG1,
-                        rd->deemphasis ? SYSCONFIG1_DE : 0,
-                        SYSCONFIG1_DE);
+    si4700_write_masked(SYSCONFIG1, deemphasis, SYSCONFIG1_DE);
     si4700_write_masked(SYSCONFIG2, bandspacing,
                         SYSCONFIG2_BAND | SYSCONFIG2_SPACE);
 
@@ -411,7 +425,9 @@ int si4700_set(int setting, int value)
     switch(setting)
     {
         case RADIO_SLEEP:
-            si4700_sleep(value);
+            if (value != 2)
+                si4700_sleep(value);
+            /* else actually it's 'pause' */
             break;
 
         case RADIO_FREQUENCY:

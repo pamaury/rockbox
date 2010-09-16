@@ -64,6 +64,8 @@
 #include <CoreFoundation/CoreFoundation.h>
 #include <SystemConfiguration/SystemConfiguration.h>
 #include <CoreServices/CoreServices.h>
+#include <IOKit/IOKitLib.h>
+#include <IOKit/usb/IOUSBLib.h>
 #endif
 
 #include "utils.h"
@@ -116,16 +118,16 @@ QString System::userPermissionsString(void)
     int perm = userPermissions();
     switch(perm) {
         case GUEST:
-            result = QObject::tr("Guest");
+            result = tr("Guest");
             break;
         case ADMIN:
-            result = QObject::tr("Admin");
+            result = tr("Admin");
             break;
         case USER:
-            result = QObject::tr("User");
+            result = tr("User");
             break;
         default:
-            result = QObject::tr("Error");
+            result = tr("Error");
             break;
     }
     return result;
@@ -227,7 +229,7 @@ QMap<uint32_t, QString> System::listUsbDevices(void)
     QMap<uint32_t, QString> usbids;
     // usb pid detection
     qDebug() << "[System] Searching for USB devices";
-#if defined(Q_OS_LINUX) || defined(Q_OS_MACX)
+#if defined(Q_OS_LINUX)
 #if defined(LIBUSB1)
     libusb_device **devs;
     int res;
@@ -254,7 +256,7 @@ QMap<uint32_t, QString> System::listUsbDevices(void)
                 libusb_close(dh);
             }
             if(name.isEmpty())
-                name = QObject::tr("(no description available)");
+                name = tr("(no description available)");
             if(id) {
                 usbids.insert(id, name);
                 qDebug("[System] USB: 0x%08x, %s", id, name.toLocal8Bit().data());
@@ -297,9 +299,9 @@ QMap<uint32_t, QString> System::listUsbDevices(void)
                         if(res > 0)
                             name += QString::fromAscii(string);
                     }
+                    usb_close(dev);
                 }
-                usb_close(dev);
-                if(name.isEmpty()) name = QObject::tr("(no description available)");
+                if(name.isEmpty()) name = tr("(no description available)");
 
                 if(id) {
                     usbids.insert(id, name);
@@ -311,6 +313,84 @@ QMap<uint32_t, QString> System::listUsbDevices(void)
         b = b->next;
     }
 #endif
+#endif
+
+#if defined(Q_OS_MACX)
+    kern_return_t result = KERN_FAILURE;
+    CFMutableDictionaryRef usb_matching_dictionary;
+    io_iterator_t usb_iterator = IO_OBJECT_NULL;
+    usb_matching_dictionary = IOServiceMatching(kIOUSBDeviceClassName);
+    result = IOServiceGetMatchingServices(kIOMasterPortDefault, usb_matching_dictionary,
+                                          &usb_iterator);
+    if(result) {
+        qDebug() << "[System] USB: IOKit: Could not get matching services.";
+        return usbids;
+    }
+
+    io_object_t usbCurrentObj;
+    while((usbCurrentObj = IOIteratorNext(usb_iterator))) {
+        uint32_t id;
+        QString name;
+        /* get vendor ID */
+        CFTypeRef vidref = NULL;
+        int vid = 0;
+        vidref = IORegistryEntryCreateCFProperty(usbCurrentObj, CFSTR("idVendor"),
+                                kCFAllocatorDefault, 0);
+        CFNumberGetValue((CFNumberRef)vidref, kCFNumberIntType, &vid);
+        CFRelease(vidref);
+
+        /* get product ID */
+        CFTypeRef pidref = NULL;
+        int pid = 0;
+        pidref = IORegistryEntryCreateCFProperty(usbCurrentObj, CFSTR("idProduct"),
+                                kCFAllocatorDefault, 0);
+        CFNumberGetValue((CFNumberRef)pidref, kCFNumberIntType, &pid);
+        CFRelease(pidref);
+        id = vid << 16 | pid;
+
+        /* get product vendor */
+        char vendor_buf[256];
+        CFIndex vendor_buflen = 256;
+        CFTypeRef vendor_name_ref = NULL;
+
+        vendor_name_ref = IORegistryEntrySearchCFProperty(usbCurrentObj,
+                                 kIOServicePlane, CFSTR("USB Vendor Name"),
+                                 kCFAllocatorDefault, 0);
+        if(vendor_name_ref != NULL) {
+            CFStringGetCString((CFStringRef)vendor_name_ref, vendor_buf, vendor_buflen,
+                               kCFStringEncodingUTF8);
+            name += QString::fromUtf8(vendor_buf) + " ";
+            CFRelease(vendor_name_ref);
+        }
+        else {
+            name += QObject::tr("(unknown vendor name) ");
+        }
+
+        /* get product name */
+        char product_buf[256];
+        CFIndex product_buflen = 256;
+        CFTypeRef product_name_ref = NULL;
+
+        product_name_ref = IORegistryEntrySearchCFProperty(usbCurrentObj,
+                                kIOServicePlane, CFSTR("USB Product Name"),
+                                kCFAllocatorDefault, 0);
+        if(product_name_ref != NULL) {
+            CFStringGetCString((CFStringRef)product_name_ref, product_buf, product_buflen,
+                               kCFStringEncodingUTF8);
+            name += QString::fromUtf8(product_buf);
+            CFRelease(product_name_ref);
+        }
+        else {
+            name += QObject::tr("(unknown product name)");
+        }
+
+        if(id) {
+            usbids.insert(id, name);
+            qDebug() << "[System] USB:" << QString("0x%1").arg(id, 8, 16) << name;
+        }
+
+    }
+    IOObjectRelease(usb_iterator);
 #endif
 
 #if defined(Q_OS_WIN32)
@@ -336,20 +416,7 @@ QMap<uint32_t, QString> System::listUsbDevices(void)
         // get device desriptor first
         // for some reason not doing so results in bad things (tm)
         while(!SetupDiGetDeviceRegistryProperty(deviceInfo, &infoData,
-            SPDRP_DEVICEDESC,&data, (PBYTE)buffer, buffersize, &buffersize)) {
-            if(GetLastError() == ERROR_INSUFFICIENT_BUFFER) {
-                if(buffer) free(buffer);
-                // double buffer size to avoid problems as per KB888609
-                buffer = (LPTSTR)malloc(buffersize * 2);
-            }
-            else {
-                break;
-            }
-        }
-
-        // now get the hardware id, which contains PID and VID.
-        while(!SetupDiGetDeviceRegistryProperty(deviceInfo, &infoData,
-            SPDRP_LOCATION_INFORMATION,&data, (PBYTE)buffer, buffersize, &buffersize)) {
+            SPDRP_DEVICEDESC, &data, (PBYTE)buffer, buffersize, &buffersize)) {
             if(GetLastError() == ERROR_INSUFFICIENT_BUFFER) {
                 if(buffer) free(buffer);
                 // double buffer size to avoid problems as per KB888609
@@ -361,8 +428,9 @@ QMap<uint32_t, QString> System::listUsbDevices(void)
         }
         description = QString::fromWCharArray(buffer);
 
+        // now get the hardware id, which contains PID and VID.
         while(!SetupDiGetDeviceRegistryProperty(deviceInfo, &infoData,
-            SPDRP_HARDWAREID,&data, (PBYTE)buffer, buffersize, &buffersize)) {
+            SPDRP_HARDWAREID, &data, (PBYTE)buffer, buffersize, &buffersize)) {
             if(GetLastError() == ERROR_INSUFFICIENT_BUFFER) {
                 if(buffer) free(buffer);
                 // double buffer size to avoid problems as per KB888609
@@ -374,7 +442,11 @@ QMap<uint32_t, QString> System::listUsbDevices(void)
         }
 
         unsigned int vid, pid;
-        if(_stscanf(buffer, _TEXT("USB\\Vid_%x&Pid_%x"), &vid, &pid) == 2) {
+        // convert buffer text to upper case to avoid depending on the case of
+        // the keys (W7 uses different casing than XP at least).
+        int len = _tcslen(buffer);
+        while(len--) buffer[len] = _totupper(buffer[len]);
+        if(_stscanf(buffer, _TEXT("USB\\VID_%x&PID_%x"), &vid, &pid) == 2) {
             uint32_t id;
             id = vid << 16 | pid;
             usbids.insert(id, description);

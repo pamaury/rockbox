@@ -22,6 +22,7 @@
 #define _POWERMGMT_H_
 
 #include <stdbool.h>
+#include "config.h"
 
 #define POWER_HISTORY_LEN 2*60   /* 2 hours of samples, one per minute */
 
@@ -74,7 +75,7 @@ extern unsigned int power_thread_inputs;
 #include "powermgmt-target.h"
 #endif
 
-#ifndef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
 
 /* Generic current values that are intentionally meaningless - config header
  * should define proper numbers.*/
@@ -129,7 +130,7 @@ extern const unsigned short percent_to_volt_charge[11];
 /* Start up power management thread */
 void powermgmt_init(void) INIT_ATTR;
 
-#endif /* SIMULATOR */
+#endif /* PLATFORM_NATIVE */
 
 /* Returns battery statust */
 int battery_level(void); /* percent */

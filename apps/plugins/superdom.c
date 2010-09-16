@@ -22,7 +22,7 @@
 #include "lib/playback_control.h"
 #include "lib/display_text.h"
 #include "pluginbitmaps/superdom_boarditems.h"
-PLUGIN_HEADER
+
 
 extern const fb_data superdom_boarditems[];
 char buf[255];
@@ -238,7 +238,8 @@ struct settings {
 
 struct resources humanres;
 struct resources compres;
-enum { GS_PROD, GS_MOVE, GS_WAR } gamestate;
+enum { GS_PROD, GS_MOVE, GS_WAR };
+int gamestate;
 
 struct cursor{
     int x;
@@ -499,13 +500,9 @@ void update_score(void) {
     rb->lcd_fillrect(5,LCD_HEIGHT-20,105,20);
     rb->lcd_set_drawmode(DRMODE_SOLID);
     strength = calc_strength(COLOUR_LIGHT, cursor.x, cursor.y);
-    rb->snprintf(buf, sizeof(buf), "Your power: %d.%d", 
-                    strength/10, strength%10);
-    rb->lcd_putsxy(5,LCD_HEIGHT-20, buf);
+    rb->lcd_putsxyf(5,LCD_HEIGHT-20,"Your power: %d.%d",strength/10,strength%10);
     strength = calc_strength(COLOUR_DARK, cursor.x, cursor.y);
-    rb->snprintf(buf, sizeof(buf), "Comp power: %d.%d", 
-                    strength/10, strength%10);
-    rb->lcd_putsxy(5,LCD_HEIGHT-10, buf);
+    rb->lcd_putsxyf(5,LCD_HEIGHT-10,"Comp power: %d.%d",strength/10,strength%10);
     rb->lcd_setfont(FONT_UI);
 }
 
@@ -732,8 +729,7 @@ int get_number(char* param, int* value, int max) {
                     button_labels[i][j]);
         }
     }
-    rb->snprintf(buf,sizeof(buf), "%d", *value);
-    rb->lcd_putsxy(NUM_MARGIN_X+10, NUM_MARGIN_Y+4*NUM_BOX_HEIGHT+10, buf);
+    rb->lcd_putsxyf(NUM_MARGIN_X+10, NUM_MARGIN_Y+4*NUM_BOX_HEIGHT+10,"%d",*value);
     rb->lcd_getstringsize(param, &width, &height);
     if(width < LCD_WIDTH)
         rb->lcd_putsxy((LCD_WIDTH-width)/2, (NUM_MARGIN_Y-height)/2, param);
@@ -771,9 +767,8 @@ int get_number(char* param, int* value, int max) {
                 rb->lcd_fillrect(0, NUM_MARGIN_Y+4*NUM_BOX_HEIGHT+10,
                                 LCD_WIDTH, 30);
                 rb->lcd_set_drawmode(DRMODE_SOLID);
-                rb->snprintf(buf,sizeof(buf), "%d", *value);
-                rb->lcd_putsxy(NUM_MARGIN_X+10, 
-                                NUM_MARGIN_Y+4*NUM_BOX_HEIGHT+10, buf);
+                rb->lcd_putsxyf(NUM_MARGIN_X+10,NUM_MARGIN_Y+4*NUM_BOX_HEIGHT+10,
+                               "%d", *value);
                 break;
             case SUPERDOM_CANCEL:
                 *value = 0;
@@ -1403,10 +1398,8 @@ int select_square(void) {
     update_score();
 #if LCD_WIDTH >= 220
     rb->lcd_setfont(FONT_SYSFIXED);
-    rb->snprintf(buf, sizeof(buf), "Cash: %d", humanres.cash);
-    rb->lcd_putsxy(125, LCD_HEIGHT-20, buf);
-    rb->snprintf(buf, sizeof(buf), "Food: %d", humanres.food);
-    rb->lcd_putsxy(125, LCD_HEIGHT-10, buf);
+    rb->lcd_putsxyf(125, LCD_HEIGHT-20,"Cash: %d", humanres.cash);
+    rb->lcd_putsxyf(125, LCD_HEIGHT-10,"Food: %d", humanres.food);
     rb->lcd_setfont(FONT_UI);
 #endif
     rb->lcd_update();

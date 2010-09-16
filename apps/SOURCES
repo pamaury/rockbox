@@ -89,19 +89,21 @@ gui/statusbar.c
 #ifdef HAVE_LCD_BITMAP
 gui/statusbar-skinned.c
 #endif
-gui/theme_settings.c
 gui/yesno.c
 gui/viewport.c
 
 gui/skin_engine/skin_backdrops.c
-gui/skin_engine/skin_buffer.c
-gui/skin_engine/wps_debug.c
 gui/skin_engine/skin_display.c
+gui/skin_engine/skin_engine.c
 #ifdef HAVE_LCD_BITMAP
 gui/skin_engine/skin_fonts.c
 #endif
 gui/skin_engine/skin_parser.c
+gui/skin_engine/skin_render.c
 gui/skin_engine/skin_tokens.c
+#ifdef HAVE_TOUCHSCREEN
+gui/skin_engine/skin_touchsupport.c
+#endif
 
 #if (LCD_DEPTH > 1) || (defined(HAVE_REMOTE_LCD) && (LCD_REMOTE_DEPTH > 1))
 gui/backdrop.c
@@ -158,9 +160,7 @@ dsp.c
 tdspeed.c
 #ifdef HAVE_RECORDING
 enc_config.c
-#ifndef SIMULATOR
 recorder/pcm_record.c
-#endif /* SIMULATOR */
 #endif
 eq.c	 	
 #if defined(CPU_COLDFIRE)
@@ -293,4 +293,8 @@ keymaps/keymap-mini2440.c
 keymaps/keymap-vibe500.c
 #elif CONFIG_KEYPAD == MPIO_HD200_PAD
 keymaps/keymap-mpio-hd200.c
+#elif CONFIG_KEYPAD == ANDROID_PAD
+keymaps/keymap-android.c
+#elif CONFIG_KEYPAD == SDL_PAD
+keymaps/keymap-sdl.c
 #endif

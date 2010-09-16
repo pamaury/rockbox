@@ -27,7 +27,7 @@
 #if defined(HAVE_LCD_BITMAP) && (LCD_DEPTH < 4)
 #include "lib/grey.h"
 
-PLUGIN_HEADER
+
 
 /* variable button definitions */
 #if CONFIG_KEYPAD == RECORDER_PAD
@@ -120,7 +120,6 @@ PLUGIN_HEADER
 /******************************* Globals ***********************************/
 
 GREY_INFO_STRUCT
-static char pbuf[32];         /* global printf buffer */
 static unsigned char *gbuf;
 static size_t gbuf_size = 0;
 
@@ -298,9 +297,7 @@ int main(void)
 
     time = *rb->current_tick - time;  /* end time measurement */
 
-    rb->snprintf(pbuf, sizeof(pbuf), "Shades: 129, %d.%02ds", 
-                 time / 100, time % 100);
-    rb->lcd_puts(0, 0, pbuf);
+    rb->lcd_putsf(0, 0, "Shades: 129, %d.%02ds", time / 100, time % 100);
     grey_deferred_lcd_update();       /* schedule an lcd_update() */
 #ifdef HAVE_ADJUSTABLE_CPU_FREQ
     rb->cpu_boost(false);
@@ -316,9 +313,7 @@ int main(void)
 
         button = rb->button_get(true);
 
-        if (rb->default_event_handler_ex(button, cleanup, NULL) 
-            == SYS_USB_CONNECTED)
-            return PLUGIN_USB_CONNECTED;
+        exit_on_usb(button);
 
         if (button & GREYSCALE_SHIFT)
         {
@@ -369,8 +364,6 @@ int main(void)
             case GREYSCALE_RC_OFF:
 #endif
             case GREYSCALE_OFF:
-
-                cleanup(NULL);
                 return PLUGIN_OK;
         }
     }
@@ -382,6 +375,7 @@ enum plugin_status plugin_start(const void* parameter)
 {
     (void)parameter;
 
+    atexit(cleanup);
     return main();
 }
 

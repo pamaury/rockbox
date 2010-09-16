@@ -27,7 +27,7 @@
 #include "system.h"
 #include "i2c.h"
 #include "mas.h"  
-#ifndef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
 #if CONFIG_CPU == PNX0101
 #include "pnx0101.h"
 #endif
@@ -186,17 +186,17 @@ static int tenthdb2reg(int db)
  * by 12 dB after processing.
  */
 
-/* all values in tenth of dB    MAS3507D    UDA1380  */
-int current_volume = 0;    /* -780..+180  -840..   0 */
-int current_balance = 0;   /* -960..+960  -840..+840 */
+/* all values in tenth of dB          MAS3507D    UDA1380  */
+static int current_volume = 0;    /* -780..+180  -840..   0 */
+static int current_balance = 0;   /* -960..+960  -840..+840 */
 #ifdef AUDIOHW_HAVE_TREBLE
-int current_treble = 0;    /* -150..+150     0.. +60 */
+static int current_treble = 0;    /* -150..+150     0.. +60 */
 #endif
 #ifdef AUDIOHW_HAVE_BASS
-int current_bass = 0;      /* -150..+150     0..+240 */
+static int current_bass = 0;      /* -150..+150     0..+240 */
 #endif
 #ifdef AUDIOHW_HAVE_EQ
-int current_eq_band_gain[AUDIOHW_EQ_BAND_NUM];
+static int current_eq_band_gain[AUDIOHW_EQ_BAND_NUM];
 #endif
 
 static void set_prescaled_volume(void)
@@ -259,7 +259,7 @@ static void set_prescaled_volume(void)
     dsp_callback(DSP_CALLBACK_SET_SW_VOLUME, 0);
 #endif
 
-#ifndef SIMULATOR
+#ifndef HAVE_SDL_AUDIO
 #if CONFIG_CODEC == MAS3507D
     dac_volume(tenthdb2reg(l), tenthdb2reg(r), false);
 #elif defined(HAVE_UDA1380) || defined(HAVE_WM8975) || defined(HAVE_WM8758) \
@@ -275,19 +275,19 @@ static void set_prescaled_volume(void)
 
 #elif defined(HAVE_TLV320) || defined(HAVE_WM8978) || defined(HAVE_WM8985)
     audiohw_set_headphone_vol(tenthdb2master(l), tenthdb2master(r));
-#elif defined(HAVE_JZ4740_CODEC) || defined(HAVE_SDL_AUDIO)
+#elif defined(HAVE_JZ4740_CODEC) || defined(HAVE_SDL_AUDIO) || defined(ANDROID)
     audiohw_set_volume(current_volume);
 #endif
-#else /* SIMULATOR */
+#else /* HAVE_SDL_AUDIO */
     audiohw_set_volume(current_volume);
-#endif /* !SIMULATOR */
+#endif /* !HAVE_SDL_AUDIO */
 }
 #endif /* (CONFIG_CODEC == MAS3507D) || defined HAVE_UDA1380 */
 
 
 #if (CONFIG_CODEC == MAS3587F) || (CONFIG_CODEC == MAS3539F)
-unsigned long mdb_shape_shadow = 0;
-unsigned long loudness_shadow = 0;
+static unsigned long mdb_shape_shadow = 0;
+static unsigned long loudness_shadow = 0;
 #endif
 
 void sound_set_volume(int value)
@@ -722,7 +722,7 @@ void sound_set(int setting, int value)
   && !defined(HAVE_WM8758) && !defined(HAVE_TSC2100) \
   && !defined (HAVE_WM8711) && !defined (HAVE_WM8721) \
   && !defined (HAVE_WM8731) && !defined (HAVE_WM8978) \
-  && !defined(HAVE_AK4537)) || defined(SIMULATOR)
+  && !defined(HAVE_AK4537)) || (CONFIG_PLATFORM & PLATFORM_HOSTED)
 int sound_val2phys(int setting, int value)
 {
 #if CONFIG_CODEC == MAS3587F
@@ -828,7 +828,7 @@ int sound_val2phys(int setting, int value)
     return value;
 #endif
 }
-#endif /* !defined(HAVE_AS3514) || defined(SIMULATOR) */
+#endif /* CONFIG_CODECs || PLATFORM_HOSTED */
 
 #if (CONFIG_CODEC == MAS3587F) || (CONFIG_CODEC == MAS3539F)
 /* This function works by telling the decoder that we have another

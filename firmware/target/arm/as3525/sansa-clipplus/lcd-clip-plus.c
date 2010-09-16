@@ -26,9 +26,9 @@
 #include "system.h"
 #include "cpu.h"
 
-void lcd_hw_init(void)
+int lcd_hw_init(void)
 {
-    CGU_PERI |= CGU_SSP_CLOCK_ENABLE;
+    bitset32(&CGU_PERI, CGU_SSP_CLOCK_ENABLE);
 
     SSP_CPSR = AS3525_SSP_PRESCALER;    /* OF = 0x10 */
     SSP_CR0 = (1<<7) | (1<<6) | 7;  /* Motorola SPI frame format, 8 bits */
@@ -37,8 +37,11 @@ void lcd_hw_init(void)
 
     GPIOA_DIR |= (1<<5);
     GPIOB_DIR |= (1<<2) | (1<<7);
+    GPIOB_DIR &= ~(1<<3);
     GPIOB_PIN(7) = 0;
     GPIOA_PIN(5) = (1<<5);
+
+    return GPIOB_PIN(3) ? 1 : 0;
 }
 
 void lcd_write_command(int byte)
@@ -65,3 +68,9 @@ void lcd_write_data(const fb_data* p_bytes, int count)
         SSP_DATA = *p_bytes++;
     }
 }
+
+void lcd_enable_power(bool onoff)
+{
+    (void) onoff;
+}
+

@@ -6,35 +6,35 @@
 % for the html output.
 \ifpdfoutput{\newcommand{\localendhead}{\endhead}}%
     {\newcommand{\localendhead}{}}
-  \rowcolors{1}{tblevenrowbgcolor}{tbloddrowbgcolor}
-  \begin{longtable}{@{}>{\raggedright}p{.35\textwidth}@{}>{\raggedright}p{.4\textwidth}@{}p{.25\textwidth}@{}}
+  \rowcolors{2}{tbloddrowbgcolor}{tblevenrowbgcolor}
+  \begin{longtable}{>{\raggedright}p{.3\textwidth}>{\raggedright}p{.4\textwidth}p{.2\textwidth}}
     \toprule
-    \rowcolor{white} \textbf{Setting} & \textbf{Allowed Values} & \textbf{Unit}\\
+    \rowcolor{tblhdrbgcolor}\tblhdrstrut\textbf{Setting} & \textbf{Allowed Values} & \textbf{Unit}\\
     \midrule\localendhead % endhead breaks with htlatex
     volume      & \opt{masd}{-78 to +18}%
                   \opt{masf}{-100 -to +12}%
                   \opt{h100,h300}{-84 to 0}%
                   \opt{ipodnano}{-72 to +6}%
                   \opt{ipodnano2g}{-74 to +6}%
-                  \opt{ipodvideo}{-89 to +6}%
-                  \opt{x5}{-73 to +6}
+                  \opt{ipodvideo,cowond2}{-89 to +6}%
+                  \opt{iaudiom3,iaudiom5,iaudiox5}{-73 to +6}
                   \opt{e200,e200v2}{-74 to +6}
                   \opt{ipodcolor,vibe500}{-74 to +6}%
                                         & dB\\
-    \nopt{x5}{%
-      bass      & \opt{masd}{-15 to +15}%
+    bass        & \opt{masd}{-15 to +15}%
                   \opt{masf}{-12 to +12}%
                   \opt{h100,h300}{0 to +24}%
                   \opt{ipod}{-6 to +9}%
-                  \opt{e200,e200v2,vibe500}{-24 to +24}%
+                  \opt{iaudiom3,iaudiom5,iaudiox5,e200,e200v2,vibe500}{%
+                      -24 to +24}%
                                         & dB\\
-      treble    & \opt{masd}{-15 to +15}%
+    treble      & \opt{masd}{-15 to +15}%
                   \opt{masf}{-12 to +12}%
                   \opt{h100,h300}{0 to +6}%
                   \opt{ipod}{-6 to +9}%
-                  \opt{e200,e200v2,vibe500}{-24 to +24}%
+                  \opt{iaudiom3,iaudiom5,iaudiox5,e200,e200v2,vibe500}{%
+                      -24 to +24}%
                                         & dB\\
-    }%
     balance         & -100 to +100      & \%\\
     channels        & stereo, mono, custom, mono left, mono right, karaoke
                                         & N/A\\
@@ -126,8 +126,8 @@
     \opt{hotkey}{
     hotkey wps      & off, view playlist, show track info,
         pitchscreen, open with, delete  & N/A\\
-    hotkey tree     & off, open with, delete, insert,
-        insert shuffled                 & N/A\\
+    \nopt{touchscreen}{hotkey tree     & off, open with, delete, insert,
+        insert shuffled                 & N/A\\}
     }
     sort files      & alpha, oldest, newest, type & N/A\\
     sort dirs       & alpha, oldest, newest & N/A\\
@@ -141,7 +141,7 @@
     folder navigation & off, on, random & N/A\\
     gather runtime data & off, on       & N/A\\
     \opt{usb_charging_enable}{
-      usb charging  & on, off           & N/A\\
+      usb charging  & on, off, force    & N/A\\
     }
     skip length     & outro, track, 1s, 2s, 3s, 5s, 7s, 10s, 15s, 20s, 1min,
             90s, 2min, 3min, 5min, 10min, 15min & N/A\\

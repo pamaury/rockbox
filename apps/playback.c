@@ -48,6 +48,7 @@
 #include "metadata.h"
 #include "splash.h"
 #include "talk.h"
+#include "panic.h"
 
 #ifdef HAVE_RECORDING
 #include "pcm_record.h"
@@ -468,7 +469,7 @@ unsigned char *audio_get_recording_buffer(size_t *buffer_size)
 
 bool audio_load_encoder(int afmt)
 {
-#ifndef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
     const char *enc_fn = get_codec_filename(afmt | CODEC_TYPE_ENCODER);
     if (!enc_fn)
         return false;
@@ -493,7 +494,7 @@ bool audio_load_encoder(int afmt)
 
 void audio_remove_encoder(void)
 {
-#ifndef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
     /* force encoder codec unload (if currently loaded) */
     if (ci.enc_codec_loaded <= 0)
         return;
@@ -524,7 +525,6 @@ struct mp3entry* audio_current_track(void)
         {
             bufread(tracks[cur_idx].cuesheet_hid, sizeof(struct cuesheet), curr_cue);
             thistrack_id3->cuesheet = curr_cue;
-            cue_spoof_id3(thistrack_id3->cuesheet, thistrack_id3);
         }
         return thistrack_id3;
     }
@@ -538,7 +538,6 @@ struct mp3entry* audio_current_track(void)
         {
             bufread(tracks[cur_idx].cuesheet_hid, sizeof(struct cuesheet), curr_cue);
             othertrack_id3->cuesheet = curr_cue;
-            cue_spoof_id3(othertrack_id3->cuesheet, othertrack_id3);
         }
         return othertrack_id3;
     }
@@ -1115,6 +1114,7 @@ static bool audio_loadcodec(bool start_play)
    actually loaded by the buffering thread. */
 static bool audio_load_track(size_t offset, bool start_play)
 {
+    char name_buf[MAX_PATH + 1];
     const char *trackname;
     int fd = -1;
 
@@ -1142,7 +1142,8 @@ static bool audio_load_track(size_t offset, bool start_play)
 
     logf("Buffering track: r%d/w%d", track_ridx, track_widx);
     /* Get track name from current playlist read position. */
-    while ((trackname = playlist_peek(last_peek_offset)) != NULL)
+    while ((trackname = playlist_peek(last_peek_offset, name_buf,
+        sizeof(name_buf))) != NULL)
     {
         /* Handle broken playlists. */
         fd = open(trackname, O_RDONLY);
@@ -1852,22 +1853,18 @@ static void audio_reset_buffer(void)
 
     /* Initially set up file buffer as all space available */
     malloc_buf = audiobuf + talk_get_bufsize();
-    /* Align the malloc buf to line size. Especially important to cf
-       targets that do line reads/writes. */
-    malloc_buf = (unsigned char *)(((uintptr_t)malloc_buf + 15) & ~15);
-    filebuf    = malloc_buf; /* filebuf line align implied */
-    filebuflen = audiobufend - filebuf;
 
-    filebuflen &= ~15;
+    /* Align the malloc buf to line size.
+     * Especially important to cf targets that do line reads/writes.
+     * Also for targets which need aligned DMA storage buffers */
+    malloc_buf = (unsigned char *)(((uintptr_t)malloc_buf + (CACHEALIGN_SIZE - 1)) & ~(CACHEALIGN_SIZE - 1));
+    filebuf    = malloc_buf; /* filebuf line align implied */
+    filebuflen = (audiobufend - filebuf) & ~(CACHEALIGN_SIZE - 1);
 
     /* Subtract whatever the pcm buffer says it used plus the guard buffer */
     const size_t pcmbuf_size = pcmbuf_init(filebuf + filebuflen) +GUARD_BUFSIZE;
-
-#ifdef DEBUG
     if(pcmbuf_size > filebuflen)
-        panicf("Not enough memory for pcmbuf_init() : %d > %d",
-                (int)pcmbuf_size, (int)filebuflen);
-#endif
+        panicf("%s(): EOM (%zu > %zu)", __func__, pcmbuf_size, filebuflen);
 
     filebuflen -= pcmbuf_size;
 
@@ -2010,7 +2007,7 @@ static void audio_thread(void)
                 LOGFQUEUE("audio < Q_AUDIO_TRACK_CHANGED");
                 audio_finalise_track_change();
                 break;
-#ifndef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
             case SYS_USB_CONNECTED:
                 LOGFQUEUE("audio < SYS_USB_CONNECTED");
                 if (playing)

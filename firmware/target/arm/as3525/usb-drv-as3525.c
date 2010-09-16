@@ -7,7 +7,7 @@
  *                     \/            \/     \/    \/            \/
  * $Id$
  *
- * Copyright © 2009 Rafaël Carré
+ * Copyright © 2010 Tobias Diedrich
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -22,6 +22,7 @@
 #include "system.h"
 #include "usb.h"
 #include "usb_drv.h"
+#include "usb-target.h"
 #include "as3525.h"
 #include "clock-target.h"
 #include "ascodec.h"
@@ -29,272 +30,16 @@
 #include <stdbool.h>
 #include "panic.h"
 /*#define LOGF_ENABLE*/
-#define LOGF_ENABLE
 #include "logf.h"
 #include "usb_ch9.h"
 #include "usb_core.h"
 #include "string.h"
 
-#if defined(USE_ROCKBOX_USB)
-
-#define USB_NUM_EPS         4
-
-typedef struct {
-    volatile unsigned long offset[4096];
-} __regbase;
-
-/*
- * This generates better code.
- * Stripped object size with __regbase construct:  5192
- * Stripped object size with *((volatile int)(x)): 5228
- */
-#define USB_REG(x)    ((__regbase *)(USB_BASE))->offset[(x)>>2]
-
-/* 4 input endpoints */
-#define USB_IEP_CTRL(i)         USB_REG(0x0000 + i*0x20)
-#define USB_IEP_STS(i)          USB_REG(0x0004 + i*0x20)
-/* txfsize: bits 0-15 */
-#define USB_IEP_TXFSIZE(i)      USB_REG(0x0008 + i*0x20)
-/* mps: bits 0-10 (max 2047) */
-#define USB_IEP_MPS(i)          USB_REG(0x000C + i*0x20)
-#define USB_IEP_DESC_PTR(i)     USB_REG(0x0014 + i*0x20)
-#define USB_IEP_STS_MASK(i)     USB_REG(0x0018 + i*0x20)
-
-/* 4 output endpoints */
-#define USB_OEP_CTRL(i)         USB_REG(0x0200 + i*0x20)
-#define USB_OEP_STS(i)          USB_REG(0x0204 + i*0x20)
-/* 'rx packet frame number' */
-#define USB_OEP_RXFR(i)         USB_REG(0x0208 + i*0x20)
-/* mps: bits 0-10 (max 2047), bits 23-31 are fifo size */
-#define USB_OEP_MPS(i)          USB_REG(0x020C + i*0x20)
-#define USB_OEP_SUP_PTR(i)      USB_REG(0x0210 + i*0x20)
-#define USB_OEP_DESC_PTR(i)     USB_REG(0x0214 + i*0x20)
-#define USB_OEP_STS_MASK(i)     USB_REG(0x0218 + i*0x20)
-
-/* more general macro */
-/* d: true => IN, false => OUT */
-#define USB_EP_CTRL(i,d)        USB_REG(0x0000 + i*0x20 + (!d)*0x0200)
-#define USB_EP_STS(i,d)         USB_REG(0x0004 + i*0x20 + (!d)*0x0200)
-#define USB_EP_TXFSIZE(i,d)     USB_REG(0x0008 + i*0x20 + (!d)*0x0200)
-#define USB_EP_MPS(i,d)         USB_REG(0x000C + i*0x20 + (!d)*0x0200)
-#define USB_EP_DESC_PTR(i,d)    USB_REG(0x0014 + i*0x20 + (!d)*0x0200)
-#define USB_EP_STS_MASK(i,d)    USB_REG(0x0018 + i*0x20 + (!d)*0x0200)
-
-#define USB_DEV_CFG             USB_REG(0x0400)
-#define USB_DEV_CTRL            USB_REG(0x0404)
-#define USB_DEV_STS             USB_REG(0x0408)
-#define USB_DEV_INTR            USB_REG(0x040C)
-#define USB_DEV_INTR_MASK       USB_REG(0x0410)
-#define USB_DEV_EP_INTR         USB_REG(0x0414)
-#define USB_DEV_EP_INTR_MASK    USB_REG(0x0418)
-
-/* NOTE: Not written to in OF, most lied in host mode? */
-#define USB_PHY_EP0_INFO        USB_REG(0x0504)
-#define USB_PHY_EP1_INFO        USB_REG(0x0508)
-#define USB_PHY_EP2_INFO        USB_REG(0x050C)
-#define USB_PHY_EP3_INFO        USB_REG(0x0510)
-#define USB_PHY_EP4_INFO        USB_REG(0x0514)
-#define USB_PHY_EP5_INFO        USB_REG(0x0518)
-
-/* 4 channels */
-#define USB_HOST_CH_SPLT(i)     USB_REG(0x1000 + i*0x20)
-#define USB_HOST_CH_STS(i)      USB_REG(0x1004 + i*0x20)
-#define USB_HOST_CH_TXFSIZE(i)  USB_REG(0x1008 + i*0x20)
-#define USB_HOST_CH_REQ(i)      USB_REG(0x100C + i*0x20)
-#define USB_HOST_CH_PER_INFO(i) USB_REG(0x1010 + i*0x20)
-#define USB_HOST_CH_DESC_PTR(i) USB_REG(0x1014 + i*0x20)
-#define USB_HOST_CH_STS_MASK(i) USB_REG(0x1018 + i*0x20)
-
-#define USB_HOST_CFG            USB_REG(0x1400)
-#define USB_HOST_CTRL           USB_REG(0x1404)
-#define USB_HOST_INTR           USB_REG(0x140C)
-#define USB_HOST_INTR_MASK      USB_REG(0x1410)
-#define USB_HOST_CH_INTR        USB_REG(0x1414)
-#define USB_HOST_CH_INTR_MASK   USB_REG(0x1418)
-#define USB_HOST_FRAME_INT      USB_REG(0x141C)
-#define USB_HOST_FRAME_REM      USB_REG(0x1420)
-#define USB_HOST_FRAME_NUM      USB_REG(0x1424)
-
-#define USB_HOST_PORT0_CTRL_STS USB_REG(0x1500)
-
-#define USB_OTG_CSR             USB_REG(0x2000)
-#define USB_I2C_CSR             USB_REG(0x2004)
-#define USB_GPIO_CSR            USB_REG(0x2008)
-#define USB_SNPSID_CSR          USB_REG(0x200C)
-#define USB_USERID_CSR          USB_REG(0x2010)
-#define USB_USER_CONF1          USB_REG(0x2014)
-#define USB_USER_CONF2          USB_REG(0x2018)
-#define USB_USER_CONF3          USB_REG(0x201C)
-#define USB_USER_CONF4          USB_REG(0x2020)
-/* USER_CONF5 seems to the same as USBt least on read */
-#define USB_USER_CONF5          USB_REG(0x2024)
-
-/* write bits 31..16 */
-#define USB_GPIO_IDDIG_SEL        (1<<30)
-#define USB_GPIO_FS_DATA_EXT      (1<<29)
-#define USB_GPIO_FS_SE0_EXT       (1<<28)
-#define USB_GPIO_FS_XCVR_OWNER    (1<<27)
-#define USB_GPIO_TX_ENABLE_N      (1<<26)
-#define USB_GPIO_TX_BIT_STUFF_EN  (1<<25)
-#define USB_GPIO_BSESSVLD_EXT     (1<<24)
-#define USB_GPIO_ASESSVLD_EXT     (1<<23)
-#define USB_GPIO_VBUS_VLD_EXT     (1<<22)
-#define USB_GPIO_VBUS_VLD_EXT_SEL (1<<21)
-#define USB_GPIO_XO_ON            (1<<20)
-#define USB_GPIO_CLK_SEL11        (3<<18)
-#define USB_GPIO_CLK_SEL10        (2<<18)
-#define USB_GPIO_CLK_SEL01        (1<<18)
-#define USB_GPIO_CLK_SEL00        (0<<18)
-#define USB_GPIO_XO_EXT_CLK_ENBN  (1<<17)
-#define USB_GPIO_XO_REFCLK_ENB    (1<<16)
-/* readronly bits 15..0 */
-#define USB_GPIO_PHY_VBUSDRV      (1<< 1)
-#define USB_GPIO_HS_INTR          (1<< 0)
-
-/* Device Control Register and bit fields */
-#define USB_DEV_CTRL_REMOTE_WAKEUP      0x00000001  // set remote wake-up signal
-#define USB_DEV_CTRL_RDE                0x00000004  // receive dma enable
-#define USB_DEV_CTRL_DESC_UPDATE        0x00000010  // descriptor update
-#define USB_DEV_CTRL_THRES_ENABLE       0x00000080  // threshold enable
-#define USB_DEV_CTRL_BURST_CONTROL      0x00000100  // burst control
-#define USB_DEV_CTRL_SOFT_DISCONN       0x00000400  // soft disconnect
-#define USB_DEV_CTRL_APCSR_DONE         0x00002000  // app Prog CSR Done
-#define USB_DEV_CTRL_MASK_BURST_LEN     0x000f0000  // mask for burst length
-#define USB_DEV_CTRL_MASK_THRESHOLD_LEN 0xff000000  // mask for threshold length
-
-/* settings of burst length for maskBurstLen_c field */
-#define USB_DEV_CTRL_BLEN_1DWORD        0x00000000
-#define USB_DEV_CTRL_BLEN_2DWORDS       0x00010000
-#define USB_DEV_CTRL_BLEN_4DWORDS       0x00020000
-#define USB_DEV_CTRL_BLEN_8DWORDS       0x00030000
-#define USB_DEV_CTRL_BLEN_16DWORDS      0x00040000
-#define USB_DEV_CTRL_BLEN_32DWORDS      0x00050000
-#define USB_DEV_CTRL_BLEN_64DWORDS      0x00060000
-#define USB_DEV_CTRL_BLEN_128DWORDS     0x00070000
-#define USB_DEV_CTRL_BLEN_256DWORDS     0x00080000
-#define USB_DEV_CTRL_BLEN_512DWORDS     0x00090000
-
-/* settings of threshold length for maskThresholdLen_c field */
-#define USB_DEV_CTRL_TLEN_1DWORD        0x00000000
-#define USB_DEV_CTRL_TLEN_HALFMAXSIZE   0x01000000
-#define USB_DEV_CTRL_TLEN_4THMAXSIZE    0x02000000
-#define USB_DEV_CTRL_TLEN_8THMAXSIZE    0x03000000
-
-#define USB_DEV_CFG_HS                  0x00000000
-#define USB_DEV_CFG_FS                  0x00000001 /* 30 or 60MHz */
-#define USB_DEV_CFG_LS                  0x00000002
-#define USB_DEV_CFG_FS_48               0x00000003 /* 48MHz */
-#define USB_DEV_CFG_REMOTE_WAKEUP       0x00000004
-#define USB_DEV_CFG_SELF_POWERED        0x00000008
-#define USB_DEV_CFG_SYNC_FRAME          0x00000010
-#define USB_DEV_CFG_PI_16BIT            0x00000000
-#define USB_DEV_CFG_PI_8BIT             0x00000020
-#define USB_DEV_CFG_UNI_DIR             0x00000000
-#define USB_DEV_CFG_BI_DIR              0x00000040
-#define USB_DEV_CFG_STAT_ACK            0x00000000
-#define USB_DEV_CFG_STAT_STALL          0x00000080
-
-/* Device Status Register and bit fields */
-#define USB_DEV_STS_MASK_CFG            0x0000000f
-#define USB_DEV_STS_MASK_IF             0x000000f0
-#define USB_DEV_STS_MASK_ALT_SET        0x00000f00
-#define USB_DEV_STS_SUSPEND_STAT        0x00001000
-#define USB_DEV_STS_MASK_SPD            0x00006000 /* Enumerated Speed */
-#define USB_DEV_STS_SPD_HS                0x00000000
-#define USB_DEV_STS_SPD_FS                0x00002000
-#define USB_DEV_STS_SPD_LS                0x00004000
-#define USB_DEV_STS_RXF_EMPTY           0x00008000
-#define USB_DEV_STS_MASK_FRM_NUM        0xfffc0000 /* SOF frame number */
-
-
-/* Device Intr Register and bit fields */
-#define USB_DEV_INTR_SET_CONFIG         0x00000001  /* set configuration cmd rcvd */
-#define USB_DEV_INTR_SET_INTERFACE      0x00000002  /* set interface command rcvd */
-#define USB_DEV_INTR_EARLY_SUSPEND      0x00000004  /* idle on usb for 3ms */
-#define USB_DEV_INTR_USB_RESET          0x00000008  /* usb bus reset req */
-#define USB_DEV_INTR_USB_SUSPEND        0x00000010  /* usb bus suspend req */
-#define USB_DEV_INTR_SOF                0x00000020  /* SOF seen on bus */
-#define USB_DEV_INTR_ENUM_DONE          0x00000040  /* usb speed enum done */
-#define USB_DEV_INTR_OTG                0x00000080  /* otg status change? */
-#define USB_DEV_INTR_BUSERR             0x00000080  /* AHB DMA error */
-
-/* EP Control Register Fields */
-#define USB_EP_CTRL_STALL               0x00000001
-#define USB_EP_CTRL_FLUSH               0x00000002     /* EP In data fifo Flush */
-#define USB_EP_CTRL_SNOOP_MODE          0x00000004     // snoop mode for out endpoint
-#define USB_EP_CTRL_PD                  0x00000008     /* EP Poll Demand */
-#define USB_EP_CTRL_EPTYPE_MASK         0x00000030     // bit 5-4: endpoint types
-#define USB_EP_TYPE_CONTROL               0x00000000   // control endpoint
-#define USB_EP_TYPE_ISO                   0x00000010   // isochronous endpoint
-#define USB_EP_TYPE_BULK                  0x00000020   // bulk endpoint
-#define USB_EP_TYPE_INTERRUPT             0x00000030   // interrupt endpoint
-#define USB_EP_CTRL_NAK                 0x00000040     /* EP NAK Status */
-#define USB_EP_CTRL_SNAK                0x00000080     /* EP Set NAK Bit */
-#define USB_EP_CTRL_CNAK                0x00000100     /* EP Clr NAK Bit */
-#define USB_EP_CTRL_ACT                 0x00000400     /* EP Clr NAK Bit */
-
-/* bit fields in EP Status Register */
-#define USB_EP_STAT_OUT_RCVD            0x00000010     /* OUT token received */
-#define USB_EP_STAT_SETUP_RCVD          0x00000020     /* SETUP token received */
-#define USB_EP_STAT_IN                  0x00000040     /* IN token received? */
-#define USB_EP_STAT_BNA                 0x00000080     /* Buffer Not Available */
-#define USB_EP_STAT_BUFF_ERROR          0x00000100
-#define USB_EP_STAT_HERR                0x00000200     /* Host Error */
-#define USB_EP_STAT_AHB_ERROR           0x00000200
-#define USB_EP_STAT_TDC                 0x00000400     /* Transmit DMA Complete */
-
-/*-------------------------*/
-/* DMA Related Definitions */
-/*-------------------------*/
-
-/* dma status */
-#define USB_DMA_DESC_BUFF_STS           0x80000000    /* Buffer Status */
-#define USB_DMA_DESC_BS_HST_RDY         0x80000000    /* Host Ready */
-#define USB_DMA_DESC_BS_DMA_DONE        0x00000000    /* DMA Done */
-#define USB_DMA_DESC_ZERO_LEN           0x40000000    /* zero length packet */
-#define USB_DMA_DESC_EARY_INTR          0x20000000    /* early interrupt */
-#define USB_DMA_DESC_RXTX_STS           0x10000000
-#define USB_DMA_DESC_RTS_SUCC           0x00000000    /* Success */
-#define USB_DMA_DESC_RTS_BUFERR         0x10000000    /* Buffer Error */
-#define USB_DMA_DESC_LAST               0x08000000
-#define USB_DMA_DESC_MASK_FRAM_NUM      0x07ff0000    // bits 26-16: frame number for iso
-#define USB_DMA_DESC_RXTX_BYTES         0x0000FFFF
-
-/* setup descriptor */
-#define SETUP_MASK_CONFIG_STAT          0x0fff0000
-#define SETUP_MASK_CONFIG_NUM           0x0f000000
-#define SETUP_MASK_IF_NUM               0x00f00000
-#define SETUP_MASK_ALT_SETNUM           0x000f0000
-
-#define EP_STATE_ALLOCATED              0x00000001
-#define EP_STATE_BUSY                   0x00000002
-#define EP_STATE_ASYNC                  0x00000004
-
-struct usb_dev_dma_desc {
-    int   status;
-    int   resv;
-    void  *data_ptr;
-    void  *next_desc;
-};
-
-struct usb_dev_setup_buf {
-    int   status;
-    int   resv;
-    int   data1; /* first 4 bytes of data */
-    int   data2; /* last 4 bytes of data */
-};
-
-struct usb_endpoint
-{
-    void *buf;
-    unsigned int len;
-    volatile unsigned int state;
-    int rc;
-    struct wakeup complete;
-    struct usb_dev_dma_desc *uc_desc;
-};
+#include "usb-drv-as3525.h"
 
 static struct usb_endpoint endpoints[USB_NUM_EPS][2];
+static int got_set_configuration = 0;
+static int usb_enum_timeout = -1;
 
 /*
  * dma/setup descriptors and buffers should avoid sharing
@@ -333,11 +78,7 @@ void usb_attach(void)
     usb_enable(true);
 }
 
-static inline void usb_delay(int delay)
-{   //TUNEME : delay is in milliseconds
-    delay <<= 14;
-    while(delay--) ;
-}
+static void usb_tick(void);
 
 static void usb_phy_on(void)
 {
@@ -348,14 +89,14 @@ static void usb_phy_on(void)
 
     /* UVDD on */
     ascodec_write(AS3515_USB_UTIL, ascodec_read(AS3515_USB_UTIL) | (1<<4));
-    usb_delay(100);
+    mdelay(100);
 
     /* reset */
     CCU_SRC = CCU_SRC_USB_AHB_EN|CCU_SRC_USB_PHY_EN;
     CCU_SRL = CCU_SRL_MAGIC_NUMBER;
-    usb_delay(1);
+    mdelay(1);
     CCU_SRC = CCU_SRC_USB_AHB_EN;
-    usb_delay(1);
+    mdelay(1);
     CCU_SRC = CCU_SRL = 0;
 
     USB_GPIO_CSR = USB_GPIO_TX_ENABLE_N
@@ -369,9 +110,9 @@ static void usb_phy_suspend(void)
     USB_GPIO_CSR |= USB_GPIO_ASESSVLD_EXT |
                     USB_GPIO_BSESSVLD_EXT |
                     USB_GPIO_VBUS_VLD_EXT;
-    usb_delay(3);
+    mdelay(3);
     USB_GPIO_CSR |= USB_GPIO_VBUS_VLD_EXT_SEL;
-    usb_delay(10);
+    mdelay(10);
 }
 
 static void usb_phy_resume(void)
@@ -379,9 +120,9 @@ static void usb_phy_resume(void)
     USB_GPIO_CSR &= ~(USB_GPIO_ASESSVLD_EXT |
                       USB_GPIO_BSESSVLD_EXT |
                       USB_GPIO_VBUS_VLD_EXT);
-    usb_delay(3);
+    mdelay(3);
     USB_GPIO_CSR &= ~USB_GPIO_VBUS_VLD_EXT_SEL;
-    usb_delay(10);
+    mdelay(10);
 }
 
 static void setup_desc_init(struct usb_dev_setup_buf *desc)
@@ -425,18 +166,31 @@ static void reset_endpoints(int init)
 
     for(i = 0; i < USB_NUM_EPS; i++) {
         /*
-         * LS: 8 (control), no bulk available 
+         * MPS sizes depending on speed:
+         * LS: 8 (control), no bulk available
          * FS: 64 (control), 64 (bulk)
          * HS: 64 (control), 512 (bulk)
-         * TODO: switch depending on speed.
+         *
+         * We don't need to handle LS since there is no low-speed only
+         * host AFAIK.
          */
-        int mps = i == 0 ? 64 : 512;
+        int mps = i == 0 ? 64 : (usb_drv_port_speed() ? 512 : 64);
 
         if (init) {
+            if (endpoints[i][0].state & EP_STATE_BUSY) {
+                if (endpoints[i][0].state & EP_STATE_ASYNC) {
+                    endpoints[i][0].rc = -1;
+                    wakeup_signal(&endpoints[i][0].complete);
+                } else {
+                    usb_core_transfer_complete(i, USB_DIR_IN, -1, 0);
+                }
+            }
             endpoints[i][0].state = 0;
             wakeup_init(&endpoints[i][0].complete);
 
             if (i != 2) { /* Skip the OUT EP0 alias */
+                if (endpoints[i][1].state & EP_STATE_BUSY)
+                    usb_core_transfer_complete(i, USB_DIR_OUT, -1, 0);
                 endpoints[i][1].state = 0;
                 wakeup_init(&endpoints[i][1].complete);
                 USB_OEP_SUP_PTR(i)    = 0;
@@ -445,18 +199,18 @@ static void reset_endpoints(int init)
 
         dma_desc_init(i, 0);
         USB_IEP_CTRL    (i) = USB_EP_CTRL_FLUSH|USB_EP_CTRL_SNAK;
-        USB_IEP_MPS     (i) = mps;
+        USB_IEP_MPS     (i) = mps; /* in bytes */
         /* We don't care about the 'IN token received' event */
         USB_IEP_STS_MASK(i) = USB_EP_STAT_IN; /* OF: 0x840 */
-        USB_IEP_TXFSIZE (i) = mps/2;
+        USB_IEP_TXFSIZE (i) = mps/2; /* in dwords => mps*2 bytes */
         USB_IEP_STS     (i) = 0xffffffff; /* clear status */
         USB_IEP_DESC_PTR(i) = 0;
 
         if (i != 2) { /* Skip the OUT EP0 alias */
             dma_desc_init(i, 1);
             USB_OEP_CTRL    (i) = USB_EP_CTRL_FLUSH|USB_EP_CTRL_SNAK;
-            USB_OEP_MPS     (i) = (mps/2 << 23) | mps;
-            USB_OEP_STS_MASK(i) = 0x0000; /* OF: 0x1800 */
+            USB_OEP_MPS     (i) = (mps/2 << 16) | mps;
+            USB_OEP_STS_MASK(i) = USB_EP_STAT_BNA; /* OF: 0x1800 */
             USB_OEP_RXFR    (i) = 0;      /* Always 0 in OF trace? */
             USB_OEP_STS     (i) = 0xffffffff; /* clear status */
             USB_OEP_DESC_PTR(i) = 0;
@@ -464,7 +218,7 @@ static void reset_endpoints(int init)
     }
 
     setup_desc_init(setup_desc);
-    USB_OEP_SUP_PTR(0)    = (int)setup_desc;
+    USB_OEP_SUP_PTR(0)    = AS3525_PHYSICAL_ADDR((int)setup_desc);
 }
 
 void usb_drv_init(void)
@@ -473,16 +227,19 @@ void usb_drv_init(void)
 
     usb_enable_pll();
 
+    /* we have external power, so boost cpu */
+    cpu_boost(1);
+
     /* length regulator: normal operation */
     ascodec_write(AS3514_CVDD_DCDC3, ascodec_read(AS3514_CVDD_DCDC3) | 1<<2);
 
     /* AHB part */
-    CGU_PERI |= CGU_USB_CLOCK_ENABLE;
+    bitset32(&CGU_PERI, CGU_USB_CLOCK_ENABLE);
 
     /* reset AHB */
     CCU_SRC = CCU_SRC_USB_AHB_EN;
     CCU_SRL = CCU_SRL_MAGIC_NUMBER;
-    usb_delay(1);
+    mdelay(1);
     CCU_SRC = CCU_SRL = 0;
 
     USB_GPIO_CSR = USB_GPIO_TX_ENABLE_N
@@ -500,25 +257,26 @@ void usb_drv_init(void)
     usb_phy_suspend();
     USB_DEV_CTRL |= USB_DEV_CTRL_SOFT_DISCONN;
 
-    /* We don't care about OTG or SOF events */
-    /* Right now we don't handle suspend or reset, so mask those too */
-    USB_DEV_INTR_MASK = USB_DEV_INTR_OTG |
+    /* We don't care about SVC or SOF events */
+    /* Right now we don't handle suspend, so mask those too */
+    USB_DEV_INTR_MASK = USB_DEV_INTR_SVC |
                         USB_DEV_INTR_SOF |
                         USB_DEV_INTR_USB_SUSPEND |
                         USB_DEV_INTR_EARLY_SUSPEND;
 
-    USB_DEV_CFG = USB_DEV_CFG_STAT_ACK     |
-                  USB_DEV_CFG_UNI_DIR      |
-                  USB_DEV_CFG_PI_16BIT     |
-                  USB_DEV_CFG_HS           |
-                  USB_DEV_CFG_SELF_POWERED |
-                  0x20200;
+    USB_DEV_CFG = USB_DEV_CFG_STAT_ACK      |
+                  USB_DEV_CFG_UNI_DIR       |
+                  USB_DEV_CFG_PI_16BIT      |
+                  USB_DEV_CFG_HS            |
+                  USB_DEV_CFG_SELF_POWERED  |
+                  USB_DEV_CFG_CSR_PRG       |
+                  USB_DEV_CFG_PHY_ERR_DETECT;
 
-    USB_DEV_CTRL = USB_DEV_CTRL_BLEN_1DWORD  |
-                   USB_DEV_CTRL_DESC_UPDATE  |
+    USB_DEV_CTRL = USB_DEV_CTRL_DESC_UPDATE  |
                    USB_DEV_CTRL_THRES_ENABLE |
-                   USB_DEV_CTRL_RDE          |
-                   0x04000000;
+                   USB_DEV_CTRL_BURST_ENABLE |
+                   USB_DEV_CTRL_BLEN_8DWORDS |
+                   USB_DEV_CTRL_TLEN_8THMAXSIZE;
 
     USB_DEV_EP_INTR_MASK &= ~((1<<0) | (1<<16));    /* ep 0 */
 
@@ -539,17 +297,31 @@ void usb_drv_init(void)
                  | USB_GPIO_HS_INTR
                  | USB_GPIO_CLK_SEL10; /* 0x06180000; */
 
+    tick_add_task(usb_tick);
+
+    usb_enum_timeout = HZ; /* one second timeout for enumeration */
 }
 
 void usb_drv_exit(void)
 {
+    tick_remove_task(usb_tick);
     USB_DEV_CTRL |= (1<<10); /* soft disconnect */
+    usb_phy_suspend();
+    /*
+     * mask all interrupts _before_ writing to VIC_INT_EN_CLEAR,
+     * or else the core might latch the interrupt while
+     * the write ot VIC_INT_EN_CLEAR is in the pipeline and
+     * so cause a fake spurious interrupt.
+     */
+    USB_DEV_EP_INTR_MASK = 0xffffffff;
+    USB_DEV_INTR_MASK    = 0xffffffff;
     VIC_INT_EN_CLEAR = INTERRUPT_USB;
     CGU_USB &= ~(1<<5);
-    CGU_PERI &= ~CGU_USB_CLOCK_ENABLE;
+    bitclr32(&CGU_PERI, CGU_USB_CLOCK_ENABLE);
     /* Disable UVDD generating LDO */
     ascodec_write(AS3515_USB_UTIL, ascodec_read(AS3515_USB_UTIL) & ~(1<<4));
     usb_disable_pll();
+    cpu_boost(0);
     logf("usb_drv_exit() !!!!\n");
 }
 
@@ -633,16 +405,20 @@ int usb_drv_recv(int ep, void *ptr, int len)
     ep &= 0x7f;
     logf("usb_drv_recv(%d,%x,%d)\n", ep, (int)ptr, len);
 
+    if (len > USB_DMA_DESC_RXTX_BYTES)
+        panicf("usb_recv: len=%d > %d", len, USB_DMA_DESC_RXTX_BYTES);
+
     if ((int)ptr & 31) {
         logf("addr %08x not aligned!\n", (int)ptr);
     }
 
     endpoints[ep][1].state |= EP_STATE_BUSY;
     endpoints[ep][1].len = len;
-    endpoints[ep][1].rc = -1;
+    endpoints[ep][1].rc  = -1;
 
     /* remove data buffer from cache */
-    invalidate_dcache();
+    invalidate_dcache_range(ptr, len);
+
     /* DMA setup */
     uc_desc->status    = USB_DMA_DESC_BS_HST_RDY |
                          USB_DMA_DESC_LAST |
@@ -651,11 +427,28 @@ int usb_drv_recv(int ep, void *ptr, int len)
         uc_desc->status   |= USB_DMA_DESC_ZERO_LEN;
         uc_desc->data_ptr  = 0;
     } else {
-        uc_desc->data_ptr  = ptr;
+        uc_desc->data_ptr  = AS3525_PHYSICAL_ADDR(ptr);
     }
-    USB_OEP_DESC_PTR(ep) = (int)&dmadescs[ep][1];
+    USB_OEP_DESC_PTR(ep) = AS3525_PHYSICAL_ADDR((int)&dmadescs[ep][1]);
     USB_OEP_STS(ep)      = USB_EP_STAT_OUT_RCVD; /* clear status */
-    USB_OEP_CTRL(ep)    |= USB_EP_CTRL_CNAK;
+
+    /* Make sure receive DMA is on */
+    if (!(USB_DEV_CTRL & USB_DEV_CTRL_RDE)){
+        USB_DEV_CTRL |= USB_DEV_CTRL_RDE;
+        if (!(USB_DEV_CTRL & USB_DEV_CTRL_RDE))
+            logf("failed to enable RDE!\n");
+    }
+
+    USB_OEP_CTRL(ep)    |= USB_EP_CTRL_CNAK; /* Go! */
+
+    if (USB_OEP_CTRL(ep) & USB_EP_CTRL_NAK) {
+        int i = 0;
+        while (USB_OEP_CTRL(ep) & USB_EP_CTRL_NAK) {
+            USB_OEP_CTRL(ep)    |= USB_EP_CTRL_CNAK; /* Go! */
+            i++;
+        }
+        logf("ep%d CNAK needed %d retries CTRL=%x\n", ep, i, (int)USB_OEP_CTRL(ep));
+    }
 
     return 0;
 }
@@ -683,17 +476,25 @@ char *make_hex(char *data, int len)
 }
 #endif
 
-void ep_send(int ep, void *ptr, int len)
+static void ep_send(int ep, void *ptr, int len)
 {
     struct usb_dev_dma_desc *uc_desc = endpoints[ep][0].uc_desc;
-    int i;
 
     endpoints[ep][0].state |= EP_STATE_BUSY;
     endpoints[ep][0].len = len;
     endpoints[ep][0].rc = -1;
 
+    /*
+     * I'm seeing a problem where Linux sends two SETUP requests,
+     * but fails to read the response from the first one.
+     * We then have the response we wanted to send still in our fifo,
+     * so flush the fifo before sending on the control endpoint.
+     */
+    if (ep == 0)
+        USB_IEP_CTRL(ep) |= USB_EP_CTRL_FLUSH;
+
     /* Make sure data is committed to memory */
-    clean_dcache();
+    clean_dcache_range(ptr, len);
 
     logf("xx%s\n", make_hex(ptr, len));
 
@@ -703,9 +504,9 @@ void ep_send(int ep, void *ptr, int len)
     if (len == 0)
         uc_desc->status |= USB_DMA_DESC_ZERO_LEN;
 
-    uc_desc->data_ptr  = ptr;
+    uc_desc->data_ptr  = AS3525_PHYSICAL_ADDR(ptr);
 
-    USB_IEP_DESC_PTR(ep) = (int)&dmadescs[ep][0];
+    USB_IEP_DESC_PTR(ep) = AS3525_PHYSICAL_ADDR((int)&dmadescs[ep][0]);
     USB_IEP_STS(ep)      = 0xffffffff; /* clear status */
     /* start transfer */
     USB_IEP_CTRL(ep)     |= USB_EP_CTRL_CNAK | USB_EP_CTRL_PD;
@@ -717,9 +518,19 @@ int usb_drv_send(int ep, void *ptr, int len)
     logf("usb_drv_send(%d,%x,%d): ", ep, (int)ptr, len);
 
     ep &= 0x7f;
+
+    if (ep == 0 && got_set_configuration) {
+        got_set_configuration = 0;
+        if (len != 0)
+            panicf("usb_drv_send: GSC, but len!=0");
+        /* Tell the HW we handled the request */
+        USB_DEV_CTRL |= USB_DEV_CTRL_APCSR_DONE;
+        return 0;
+    }
+
     ep_send(ep, ptr, len);
-    while (endpoints[ep][0].state & EP_STATE_BUSY)
-        wakeup_wait(&endpoints[ep][0].complete, TIMEOUT_BLOCK);
+    if (wakeup_wait(&endpoints[ep][0].complete, HZ) == OBJ_WAIT_TIMEDOUT)
+        logf("send timed out!\n");
 
     return endpoints[ep][0].rc;
 }
@@ -743,12 +554,12 @@ static void handle_in_ep(int ep)
     USB_IEP_STS(ep) = ep_sts; /* ack */
 
     if (ep_sts & USB_EP_STAT_BNA) { /* Buffer was not set up */
-        logf("ep%d IN, status %x (BNA)\n", ep, ep_sts);
-        panicf("ep%d IN 0x%x (BNA)", ep, ep_sts);
+        int ctrl = USB_IEP_CTRL(ep);
+        logf("ep%d IN, status %x ctrl %x (BNA)\n", ep, ep_sts, ctrl);
+        panicf("ep%d IN 0x%x 0x%x (BNA)", ep, ep_sts, ctrl);
     }
 
     if (ep_sts & USB_EP_STAT_TDC) {
-        USB_IEP_CTRL(ep) |= USB_EP_CTRL_FLUSH;
         endpoints[ep][0].state &= ~EP_STATE_BUSY;
         endpoints[ep][0].rc = 0;
         logf("EP%d %x %stx done len %x stat %08x\n",
@@ -768,17 +579,12 @@ static void handle_in_ep(int ep)
         logf("ep%d IN, hwstat %lx, epstat %x\n", ep, USB_IEP_STS(ep), endpoints[ep][0].state);
         panicf("ep%d IN 0x%x", ep, ep_sts);
     }
-
-    /* HW automatically disables RDE, re-enable it */
-    /* But this an IN ep, I wonder... */
-    USB_DEV_CTRL |= USB_DEV_CTRL_RDE;
 }
 
 static void handle_out_ep(int ep)
 {
     struct usb_ctrlrequest *req = (void*)AS3525_UNCACHED_ADDR(&setup_desc->data1);
     int ep_sts = USB_OEP_STS(ep) & ~USB_OEP_STS_MASK(ep);
-    struct usb_dev_dma_desc *uc_desc = endpoints[ep][1].uc_desc;
 
     if (ep > 3)
         panicf("out_ep > 3!?");
@@ -786,27 +592,28 @@ static void handle_out_ep(int ep)
     USB_OEP_STS(ep) = ep_sts; /* ACK */
 
     if (ep_sts & USB_EP_STAT_BNA) { /* Buffer was not set up */
-        logf("ep%d OUT, status %x (BNA)\n", ep, ep_sts);
-        panicf("ep%d OUT 0x%x (BNA)", ep, ep_sts);
+        int ctrl = USB_OEP_CTRL(ep);
+        logf("ep%d OUT, status %x ctrl %x (BNA)\n", ep, ep_sts, ctrl);
+        panicf("ep%d OUT 0x%x 0x%x (BNA)", ep, ep_sts, ctrl);
+        ep_sts &= ~USB_EP_STAT_BNA;
     }
 
     if (ep_sts & USB_EP_STAT_OUT_RCVD) {
+        struct usb_dev_dma_desc *uc_desc = endpoints[ep][1].uc_desc;
         int dma_sts = uc_desc->status;
         int dma_len = dma_sts & 0xffff;
-        int dma_frm = (dma_sts >> 16) & 0x7ff;
-        int dma_mst = dma_sts & 0xf8000000;
 
         if (!(dma_sts & USB_DMA_DESC_ZERO_LEN)) {
-             logf("EP%d OUT token, st:%08x len:%d frm:%x data=%s epstate=%d\n", ep,
-                 dma_mst, dma_len, dma_frm, make_hex(uc_desc->data_ptr, dma_len),
-                 endpoints[ep][1].state);
+             logf("EP%d OUT token, st:%08x len:%d frm:%x data=%s epstate=%d\n",
+                 ep, dma_sts & 0xf8000000, dma_len, (dma_sts >> 16) & 0x7ff,
+                 make_hex(uc_desc->data_ptr, dma_len), endpoints[ep][1].state);
              /*
               * If parts of the just dmaed range are in cache, dump them now.
               */
              dump_dcache_range(uc_desc->data_ptr, dma_len);
         } else{
              logf("EP%d OUT token, st:%08x frm:%x (no data)\n", ep,
-                 dma_mst, dma_frm);
+                 dma_sts & 0xf8000000, (dma_sts >> 16) & 0x7ff);
         }
 
         if (endpoints[ep][1].state & EP_STATE_BUSY) {
@@ -818,7 +625,6 @@ static void handle_out_ep(int ep)
         }
 
         USB_OEP_CTRL(ep) |= USB_EP_CTRL_SNAK; /* make sure NAK is set */
-
         ep_sts &= ~USB_EP_STAT_OUT_RCVD;
     }
 
@@ -826,8 +632,9 @@ static void handle_out_ep(int ep)
         static struct usb_ctrlrequest req_copy;
 
         req_copy = *req;
-        logf("t%ld:got SETUP packet: type=%d req=%d val=%d ind=%d len=%d\n",
+        logf("t%ld:got SETUP packet: %s type=%d req=%d val=%d ind=%d len=%d\n",
              current_tick,
+             make_hex((void*)req, 8),
              req->bRequestType,
              req->bRequest,
              req->wValue,
@@ -844,10 +651,54 @@ static void handle_out_ep(int ep)
         logf("ep%d OUT, status %x\n", ep, ep_sts);
         panicf("ep%d OUT 0x%x", ep, ep_sts);
     }
+}
 
-    /* HW automatically disables RDE, re-enable it */
-    /* THEORY: Because we only set up one DMA buffer... */
+/*
+ * This is a simplified version of the timer based RDE enable from
+ * the Linux amd5536udc.c driver.
+ * We need this because of the following hw issue:
+ * The usb_storage buffer is 63KB, but Linux sends 120KB.
+ * We get the first part, but upon re-enabling receive dma we
+ * get a 'buffer not available' error from the hardware, since
+ * we haven't gotten the next usb_drv_recv() from the stack yet.
+ * It seems the NAK bit is ignored here and the HW tries to dma
+ * the incoming data anyway.
+ * In theory I think the BNA error should be recoverable, but
+ * I haven't figured out how to do that yet and this approach seems
+ * to work for now.
+ */
+static void usb_tick(void)
+{
+    static int rde_timer = 0;
+    static int rde_fails = 0;
+
+    if (usb_enum_timeout != -1) {
+        /*
+         * If the enum times out it's a charger, drop out of usb mode.
+         */
+        if (usb_enum_timeout-- <= 0)
+            usb_remove_int();
+    }
+
+    if (USB_DEV_CTRL & USB_DEV_CTRL_RDE)
+        return;
+
+    if (!(USB_DEV_STS & USB_DEV_STS_RXF_EMPTY))
+        rde_timer++;
+
+    if (rde_timer < 2)
+        return;
+
+    logf("usb_tick: re-enabling RDE\n");
     USB_DEV_CTRL |= USB_DEV_CTRL_RDE;
+    rde_timer = 0;
+    if (USB_DEV_CTRL & USB_DEV_CTRL_RDE) {
+        rde_fails = 0;
+    } else {
+        rde_fails++;
+        if (rde_fails > 3)
+            panicf("usb_tick: failed to set RDE");
+    }
 }
 
 /* interrupt service routine */
@@ -891,12 +742,10 @@ void INT_USB(void)
             };
 
             logf("set config\n");
+            got_set_configuration = 1;
 
             set_config.wValue = USB_DEV_STS & USB_DEV_STS_MASK_CFG;
             usb_core_control_request(&set_config);
-
-            /* Tell the HW we handled the request */
-            USB_DEV_CTRL |= USB_DEV_CTRL_APCSR_DONE;
             intr &= ~USB_DEV_INTR_SET_CONFIG;
         }
         if (intr & USB_DEV_INTR_EARLY_SUSPEND) {/* idle >3ms detected */
@@ -917,33 +766,34 @@ void INT_USB(void)
             logf("sof\n");
             intr &= ~USB_DEV_INTR_SOF;
         }
+        if (intr & USB_DEV_INTR_SVC) {/* device status changed */
+            logf("svc: %08x otg: %08x\n", (int)USB_DEV_STS, (int)USB_OTG_CSR);
+            intr &= ~USB_DEV_INTR_SVC;
+        }
         if (intr & USB_DEV_INTR_ENUM_DONE) {/* speed enumeration complete */
             int spd = USB_DEV_STS & USB_DEV_STS_MASK_SPD;  /* Enumerated Speed */
+            usb_enum_timeout = -1;
 
             logf("speed enum complete: ");
             if (spd == USB_DEV_STS_SPD_HS) logf("hs\n");
             if (spd == USB_DEV_STS_SPD_FS) logf("fs\n");
             if (spd == USB_DEV_STS_SPD_LS) logf("ls\n");
 
-            USB_PHY_EP0_INFO = 0x00200000;
             USB_DEV_CTRL |= USB_DEV_CTRL_APCSR_DONE;
             USB_IEP_CTRL(0) |= USB_EP_CTRL_ACT;
             USB_OEP_CTRL(0) |= USB_EP_CTRL_ACT;
             intr &= ~USB_DEV_INTR_ENUM_DONE;
         }
-        if (intr & USB_DEV_INTR_BUSERR) {
-            panicf("usb dma bus error");
-            intr &= ~USB_DEV_INTR_BUSERR;
+        if (intr & USB_DEV_INTR_MYSTERY) {
+            logf("got mystery dev intr\n");
+            USB_DEV_INTR_MASK |= USB_DEV_INTR_MYSTERY;
+            intr &= ~USB_DEV_INTR_MYSTERY;
         }
-        if (intr)
+        if (intr) {
+            logf("usb devirq 0x%x", intr);
             panicf("usb devirq 0x%x", intr);
+        }
     }
-
-    if (!(USB_DEV_CTRL & USB_DEV_CTRL_RDE)){
-        logf("re-enabling receive DMA\n");
-        USB_DEV_CTRL |= USB_DEV_CTRL_RDE;
-    }
-
 }
 
 /* (not essential? , not implemented in usb-tcc.c) */
@@ -966,95 +816,5 @@ void usb_drv_stall(int ep, bool stall, bool in)
 
 bool usb_drv_stalled(int ep, bool in)
 {
-    return USB_EP_CTRL(ep, in) & USB_EP_CTRL_STALL ? true : false;
+    return USB_EP_CTRL(ep, in) & USB_EP_CTRL_STALL;
 }
-
-#else
-
-void usb_attach(void)
-{
-}
-
-void usb_drv_init(void)
-{
-}
-
-void usb_drv_exit(void)
-{
-}
-
-int usb_drv_port_speed(void)
-{
-    return 0;
-}
-
-int usb_drv_request_endpoint(int type, int dir)
-{
-    (void)type;
-    (void)dir;
-
-    return -1;
-}
-
-void usb_drv_release_endpoint(int ep)
-{
-    (void)ep;
-}
-
-void usb_drv_cancel_all_transfers(void)
-{
-}
-
-void usb_drv_set_test_mode(int mode)
-{
-    (void)mode;
-}
-
-void usb_drv_set_address(int address)
-{
-    (void)address;
-}
-
-int usb_drv_recv(int ep, void *ptr, int len)
-{
-    (void)ep;
-    (void)ptr;
-    (void)len;
-
-    return -1;
-}
-
-int usb_drv_send(int ep, void *ptr, int len)
-{
-    (void)ep;
-    (void)ptr;
-    (void)len;
-
-    return -1;
-}
-
-int usb_drv_send_nonblocking(int ep, void *ptr, int len)
-{
-    (void)ep;
-    (void)ptr;
-    (void)len;
-
-    return -1;
-}
-
-void usb_drv_stall(int ep, bool stall, bool in)
-{
-    (void)ep;
-    (void)stall;
-    (void)in;
-}
-
-bool usb_drv_stalled(int ep, bool in)
-{
-    (void)ep;
-    (void)in;
-
-    return 0;
-}
-
-#endif

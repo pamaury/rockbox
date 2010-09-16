@@ -109,6 +109,7 @@ int rtc_write_datetime(const struct tm *tm)
     return 1;
 }
 
+#ifdef HAVE_RTC_ALARM
 void rtc_set_alarm(int h, int m)
 {
     unsigned char buf[4] = {0};
@@ -154,7 +155,7 @@ void rtc_get_alarm(int *h, int *m)
     *h = BCD2DEC(buf[0] & 0x3f);
 }
 
-bool rtc_enable_alarm(bool enable)
+void rtc_enable_alarm(bool enable)
 {
     unsigned char tmp=0;
     int rv=0;
@@ -172,13 +173,11 @@ bool rtc_enable_alarm(bool enable)
         /* disable alarm interrupt */       
         if(rtc_lock_alarm_clear)
             /* lock disabling alarm before it was checked whether or not the unit was started by RTC alarm */
-            return false;        
+            return;
         rv = i2c_readbytes(RTC_ADDR, RTC_CTRL2, 1, &tmp);
         tmp &= ~(RTC_AIE | RTC_AF);
         pp_i2c_send(RTC_ADDR, RTC_CTRL2, tmp);
     }
-    
-    return false;
 }
 
 bool rtc_check_alarm_started(bool release_alarm)
@@ -224,4 +223,5 @@ bool rtc_check_alarm_flag(void)
 
     return (tmp & RTC_AF);
 }
+#endif /* HAVE_RTC_ALARM */
 

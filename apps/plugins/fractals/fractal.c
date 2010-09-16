@@ -23,22 +23,11 @@
  ****************************************************************************/
 #include "plugin.h"
 
-#ifdef HAVE_LCD_BITMAP
-
 #include "fractal.h"
 #include "fractal_rect.h"
 #include "fractal_sets.h"
 #include "mandelbrot_set.h"
-
-#ifdef USEGSLIB
-#define MYLCD(fn) grey_ub_ ## fn
-#define MYLCD_UPDATE()
-#define MYXLCD(fn) grey_ub_ ## fn
-#else
-#define MYLCD(fn) rb->lcd_ ## fn
-#define MYLCD_UPDATE() rb->lcd_update();
-#define MYXLCD(fn) xlcd_ ## fn
-#endif
+#include "lib/pluginlib_exit.h"
 
 #ifdef USEGSLIB
 GREY_INFO_STRUCT
@@ -51,7 +40,7 @@ static size_t gbuf_size = 0;
 #define REDRAW_FULL         2
 #define REDRAW_FULL_OVERLAY 3
 
-PLUGIN_HEADER
+
 
 /* returns 1 if a button has been pressed, 0 otherwise */
 static int button_yield(void *ctx)
@@ -95,9 +84,8 @@ static int button_yield(void *ctx)
     }
 }
 
-static void cleanup(void *parameter)
+static void cleanup(void)
 {
-    (void)parameter;
 #ifdef USEGSLIB
     grey_release();
 #endif
@@ -119,11 +107,13 @@ enum plugin_status plugin_start(const void* parameter)
     if (!grey_init(gbuf, gbuf_size, GREY_ON_COP, LCD_WIDTH, LCD_HEIGHT, NULL))
     {
         rb->splash(HZ, "Couldn't init greyscale display");
-        return 0;
+        return PLUGIN_ERROR;
     }
     grey_show(true); /* switch on greyscale overlay */
 #endif
 
+    /* release greylib on exit */
+    atexit(cleanup);
 #if LCD_DEPTH > 1
     rb->lcd_set_backdrop(NULL);
 #endif
@@ -143,8 +133,8 @@ enum plugin_status plugin_start(const void* parameter)
             switch (redraw)
             {
                 case REDRAW_FULL:
-                    MYLCD(clear_display)();
-                    MYLCD_UPDATE();
+                    mylcd_ub_clear_display();
+                    mylcd_ub_update();
                     /* fall-through */
                 case REDRAW_FULL_OVERLAY:
                     rects_queue_init();
@@ -171,9 +161,6 @@ enum plugin_status plugin_start(const void* parameter)
         case FRACTAL_RC_QUIT:
 #endif
         case FRACTAL_QUIT:
-#ifdef USEGSLIB
-            grey_release();
-#endif
             return PLUGIN_OK;
 
         case FRACTAL_ZOOM_OUT:
@@ -200,32 +187,32 @@ enum plugin_status plugin_start(const void* parameter)
 
         case FRACTAL_UP:
             ops->move(0, +1);
-            MYXLCD(scroll_down)(LCD_SHIFT_Y);
-            MYLCD_UPDATE();
+            mylcd_ub_scroll_down(LCD_SHIFT_Y);
+            mylcd_ub_update();
             if (redraw != REDRAW_FULL)
                 redraw = rects_move_down() ? REDRAW_FULL : REDRAW_PARTIAL;
             break;
 
         case FRACTAL_DOWN:
             ops->move(0, -1);
-            MYXLCD(scroll_up)(LCD_SHIFT_Y);
-            MYLCD_UPDATE();
+            mylcd_ub_scroll_up(LCD_SHIFT_Y);
+            mylcd_ub_update();
             if (redraw != REDRAW_FULL)
                 redraw = rects_move_up() ? REDRAW_FULL : REDRAW_PARTIAL;
             break;
 
         case FRACTAL_LEFT:
             ops->move(-1, 0);
-            MYXLCD(scroll_right)(LCD_SHIFT_X);
-            MYLCD_UPDATE();
+            mylcd_ub_scroll_right(LCD_SHIFT_X);
+            mylcd_ub_update();
             if (redraw != REDRAW_FULL)
                 redraw = rects_move_right() ? REDRAW_FULL : REDRAW_PARTIAL;
             break;
 
         case FRACTAL_RIGHT:
             ops->move(+1, 0);
-            MYXLCD(scroll_left)(LCD_SHIFT_X);
-            MYLCD_UPDATE();
+            mylcd_ub_scroll_left(LCD_SHIFT_X);
+            mylcd_ub_update();
             if (redraw != REDRAW_FULL)
                 redraw = rects_move_left() ? REDRAW_FULL : REDRAW_PARTIAL;
             break;
@@ -256,19 +243,12 @@ enum plugin_status plugin_start(const void* parameter)
             break;
 
         default:
-            if (rb->default_event_handler_ex(button, cleanup, NULL)
-                == SYS_USB_CONNECTED)
-                return PLUGIN_USB_CONNECTED;
+            exit_on_usb(button);
             break;
         }
 
         if (button != BUTTON_NONE)
             lastbutton = button;
     }
-#ifdef USEGSLIB
-    grey_release();
-#endif
     return PLUGIN_OK;
 }
-
-#endif

@@ -23,15 +23,11 @@
 
 #include "plugin.h"
 
-#ifdef HAVE_LCD_BITMAP
-
 #include "lib/xlcd.h"
 #include "lib/pluginlib_actions.h"
 #include "lib/fixedpoint.h"
 #include "lib/playback_control.h"
 #include "lib/highscore.h"
-
-PLUGIN_HEADER
 
 /* files */
 #define SCORE_FILE PLUGIN_GAMES_DIR "/bubbles.score"
@@ -2568,5 +2564,3 @@ enum plugin_status plugin_start(const void* parameter) {
     rb->lcd_setfont(FONT_UI);
     return ret;
 }
-
-#endif

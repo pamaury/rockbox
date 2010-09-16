@@ -185,20 +185,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_PLAYLIST_SHUFFLE
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
-  </voice>
-</phrase>
-<phrase>
   id: LANG_CANCEL
   desc: Visual confirmation of canceling a changed setting
   user: core
@@ -1182,91 +1168,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_EQUALIZER_HARDWARE
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    ipodvideo: ""
-  </source>
-  <dest>
-    *: none
-    ipodvideo: ""
-  </dest>
-  <voice>
-    *: none
-    ipodvideo: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_EQUALIZER_HARDWARE_ENABLED
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    ipodvideo: ""
-  </source>
-  <dest>
-    *: none
-    ipodvideo: ""
-  </dest>
-  <voice>
-    *: none
-    ipodvideo: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_EQUALIZER_BANDWIDTH
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    ipodvideo: ""
-  </source>
-  <dest>
-    *: none
-    ipodvideo: ""
-  </dest>
-  <voice>
-    *: none
-    ipodvideo: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_EQUALIZER_HARDWARE_BANDWIDTH_NARROW
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    ipodvideo: ""
-  </source>
-  <dest>
-    *: none
-    ipodvideo: ""
-  </dest>
-  <voice>
-    *: none
-    ipodvideo: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_EQUALIZER_HARDWARE_BANDWIDTH_WIDE
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    ipodvideo: ""
-  </source>
-  <dest>
-    *: none
-    ipodvideo: ""
-  </dest>
-  <voice>
-    *: none
-    ipodvideo: ""
-  </voice>
-</phrase>
-<phrase>
   id: LANG_DITHERING
   desc: in the sound settings menu
   user: core
@@ -1820,20 +1721,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_REPLAYGAIN_ENABLE
-  desc: deprecated
-  user:
-  <source>
-    *: none
-  </source>
-  <dest>
-    *: none
-  </dest>
-  <voice>
-    *: none
-  </voice>
-</phrase>
-<phrase>
   id: LANG_REPLAYGAIN_NOCLIP
   desc: in replaygain
   user: core
@@ -2003,48 +1890,6 @@
   <voice>
     *: none
     spdif_power: "Optický výstup"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_ID3_ORDER
-  desc: DEPRECATED 
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_ID3_V1_FIRST
-  desc: DEPRECATED 
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_ID3_V2_FIRST
-  desc: DEPRECATED 
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
   </voice>
 </phrase>
 <phrase>
@@ -2938,15 +2783,15 @@
   user: core
   <source>
     *: none
-    lcd_non-mono: "Background Colour"
+    lcd_color: "Background Colour"
   </source>
   <dest>
     *: none
-    lcd_non-mono: "Farba Pozadia"
+    lcd_color: "Farba Pozadia"
   </dest>
   <voice>
     *: none
-    lcd_non-mono: "Farba pozadia"
+    lcd_color: "Farba pozadia"
   </voice>
 </phrase>
 <phrase>
@@ -2955,15 +2800,15 @@
   user: core
   <source>
     *: none
-    lcd_non-mono: "Foreground Colour"
+    lcd_color: "Foreground Colour"
   </source>
   <dest>
     *: none
-    lcd_non-mono: "Farba Popredia"
+    lcd_color: "Farba Popredia"
   </dest>
   <voice>
     *: none
-    lcd_non-mono: "Farba popredia"
+    lcd_color: "Farba popredia"
   </voice>
 </phrase>
 <phrase>
@@ -2972,15 +2817,15 @@
   user: core
   <source>
     *: none
-    lcd_non-mono: "Reset Colours"
+    lcd_color: "Reset Colours"
   </source>
   <dest>
     *: none
-    lcd_non-mono: "Resetovať Farby"
+    lcd_color: "Resetovať Farby"
   </dest>
   <voice>
     *: none
-    lcd_non-mono: "Resetovať farby"
+    lcd_color: "Resetovať farby"
   </voice>
 </phrase>
 <phrase>
@@ -3023,15 +2868,15 @@
   user: core
   <source>
     *: none
-    lcd_non-mono: "Invalid colour"
+    lcd_color: "Invalid colour"
   </source>
   <dest>
     *: none
-    lcd_non-mono: "Neplatná Farba"
+    lcd_color: "Neplatná Farba"
   </dest>
   <voice>
     *: none
-    lcd_non-mono: ""
+    lcd_color: ""
   </voice>
 </phrase>
 <phrase>
@@ -3198,59 +3043,20 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_JUMP_SCROLL
-  desc: (archosplayer) menu alternative for jump scroll
-  user: core
-  <source>
-    *: "Jump Scroll"
-  </source>
-  <dest>
-    *: "Skokové Rolovanie"
-  </dest>
-  <voice>
-    *: "Skokové rolovanie"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_ONE_TIME
-  desc: (archosplayer) the jump scroll shall be done "one time"
-  user: core
-  <source>
-    *: "One time"
-  </source>
-  <dest>
-    *: "Raz"
-  </dest>
-  <voice>
-    *: "Raz"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_JUMP_SCROLL_DELAY
-  desc: (archosplayer) Delay before making a jump scroll
-  user: core
-  <source>
-    *: "Jump Scroll Delay"
-  </source>
-  <dest>
-    *: "Čakanie Pred Skokovým Rolovaním"
-  </dest>
-  <voice>
-    *: "Čakanie pred skokovým rolovaním"
-  </voice>
-</phrase>
-<phrase>
   id: LANG_SCREEN_SCROLL_VIEW
   desc: should lines scroll out of the screen
   user: core
   <source>
-    *: "Screen Scrolls Out Of View"
+    *: none
+    lcd_bitmap: "Screen Scrolls Out Of View"
   </source>
   <dest>
-    *: "Obrazovka Roluje Mimo Zobrazenia"
+    *: none
+    lcd_bitmap: "Obrazovka Roluje Mimo Zobrazenia"
   </dest>
   <voice>
-    *: "Obrazovka roluje mimo zobrazenia"
+    *: none
+    lcd_bitmap: "Obrazovka roluje mimo zobrazenia"
   </voice>
 </phrase>
 <phrase>
@@ -3258,13 +3064,16 @@
   desc: Pixels to advance per Screen scroll
   user: core
   <source>
-    *: "Screen Scroll Step Size"
+    *: none
+    lcd_bitmap: "Screen Scroll Step Size"
   </source>
   <dest>
-    *: "Dĺžka Kroku Obrazovkového Rolovania"
+    *: none
+    lcd_bitmap: "Dĺžka Kroku Obrazovkového Rolovania"
   </dest>
   <voice>
-    *: "Dĺžka kroku obrazovkového rolovania"
+    *: none
+    lcd_bitmap: "Dĺžka kroku obrazovkového rolovania"
   </voice>
 </phrase>
 <phrase>
@@ -3534,20 +3343,6 @@
   <voice>
     *: "Uvoľnenie peaku"
     masd: none
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_PM_UNITS_PER_READ
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
   </voice>
 </phrase>
 <phrase>
@@ -4657,11 +4452,11 @@
   user: core
   <source>
     *: none
-    alarm: "Alarm Time: %02d:%02d"
+    alarm: "Alarm Time:"
   </source>
   <dest>
     *: none
-    alarm: "Čas Budenia: %02d:%02d"
+    alarm: "Čas Budenia:"
   </dest>
   <voice>
     *: none
@@ -5171,20 +4966,6 @@
   <voice>
     *: none
     radio: "Ponuka FM rádia"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_FM_STATION
-  desc: deprecated
-  user:
-  <source>
-    *: none
-  </source>
-  <dest>
-    *: none
-  </dest>
-  <voice>
-    *: none
   </voice>
 </phrase>
 <phrase>
@@ -6143,23 +5924,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_RECORD_CURRENT_DIR
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: none
-    recording: ""
-  </source>
-  <dest>
-    *: none
-    recording: deprecated
-  </dest>
-  <voice>
-    *: none
-    recording: ""
-  </voice>
-</phrase>
-<phrase>
   id: LANG_SET_AS_REC_DIR
   desc: used in the onplay menu to set a recording dir
   user: core
@@ -6449,57 +6213,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_RECORDING_LEFT
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    recording: ""
-  </source>
-  <dest>
-    *: none
-    recording: ""
-  </dest>
-  <voice>
-    *: none
-    recording: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_RECORDING_RIGHT
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    recording: ""
-  </source>
-  <dest>
-    *: none
-    recording: ""
-  </dest>
-  <voice>
-    *: none
-    recording: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_RECORD_AGC_PRESET
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    agc: ""
-  </source>
-  <dest>
-    *: none
-    agc: ""
-  </dest>
-  <voice>
-    *: none
-    agc: ""
-  </voice>
-</phrase>
-<phrase>
   id: LANG_AGC_SAFETY
   desc: AGC preset
   user: core
@@ -6582,23 +6295,6 @@
   <voice>
     *: none
     agc: "Hlas (rýchlo)"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_RECORD_AGC_CLIPTIME
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    agc: ""
-  </source>
-  <dest>
-    *: none
-    agc: ""
-  </dest>
-  <voice>
-    *: none
-    agc: ""
   </voice>
 </phrase>
 <phrase>
@@ -7004,20 +6700,6 @@
   </dest>
   <voice>
     *: "Čas behu"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_CURRENT_TIME
-  desc: deprecated
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
   </voice>
 </phrase>
 <phrase>
@@ -8195,34 +7877,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_SETTINGS_SAVE_FAILED
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SETTINGS_PARTITION
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
-  </voice>
-</phrase>
-<phrase>
   id: LANG_PAUSE
   desc: in wps and recording trigger menu
   user: core
@@ -8264,8 +7918,6 @@
     *: "Čas"
   </voice>
 </phrase>
-/* TODO: cleanup LANG_USB_CHARGING unless HAVE_USB_CHARGING_ENABLE defined,
- * the selector should probably be usb_charging_enable_enable as well. */
 <phrase>
   id: LANG_USB_CHARGING
   desc: in Battery menu
@@ -8555,20 +8207,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_FILETYPES_EXTENSION_FULL
-  desc: Extension array full
-  user: core
-  <source>
-    *: "Extension array full"
-  </source>
-  <dest>
-    *: "Pole rozšírenia je plné"
-  </dest>
-  <voice>
-    *: "Pole rozšírenia je plné"
-  </voice>
-</phrase>
-<phrase>
   id: LANG_FILETYPES_FULL
   desc: Filetype array full
   user: core
@@ -8608,37 +8246,6 @@
   </dest>
   <voice>
     *: "Neplatný názov súboru"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_FILETYPES_PLUGIN_NAME_LONG
-  desc: Viewer plugin name too long
-  user: core
-  <source>
-    *: "Plugin name too long"
-  </source>
-  <dest>
-    *: "Názov zásuvného modulu je príliš dlhý"
-  </dest>
-  <voice>
-    *: "Názov zásuvného modulu je príliš dlhý"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_RESTARTING_PLAYBACK
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    swcodec: ""
-  </source>
-  <dest>
-    *: none
-    swcodec: ""
-  </dest>
-  <voice>
-    *: none
-    swcodec: ""
   </voice>
 </phrase>
 <phrase>
@@ -9953,20 +9560,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: VOICE_EXT_TXT
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: deprecated
-  </dest>
-  <voice>
-    *: ""
-  </voice>
-</phrase>
-<phrase>
   id: VOICE_EXT_ROCK
   desc: spoken only, for file extension
   user: core
@@ -10099,74 +9692,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_SYSFONT_SET_BOOL_YES
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_SET_BOOL_NO
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_ON
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_OFF
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
   id: LANG_SYSFONT_EQUALIZER_EDIT_MODE
   desc: in the equalizer settings menu
   user: core
@@ -10206,219 +9731,15 @@
   user: core
   <source>
     *: none
-    lcd_bitmap: "Gain"
+    swcodec: "Gain"
   </source>
   <dest>
     *: none
-    lcd_bitmap: "Zosilnenie"
+    swcodec: "Zosilnenie"
   </dest>
   <voice>
     *: none
-    lcd_bitmap: "Zosilnenie"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_SHUFFLE
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_REPEAT
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_ALL
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_REPEAT_ONE
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_REPEAT_AB
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_FILTER
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_FILTER_SUPPORTED
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_FILTER_MUSIC
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_FILTER_PLAYLIST
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_FLIP_DISPLAY
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_SCROLL_BAR
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_STATUS_BAR
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
+    swcodec: "Zosilnenie"
   </voice>
 </phrase>
 <phrase>
@@ -10487,40 +9808,6 @@
   <voice>
     *: none
     recorder_pad: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_DISK_FULL
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    recording: ""
-  </source>
-  <dest>
-    *: none
-    recording: ""
-  </dest>
-  <voice>
-    *: none
-    recording,iriverh100,iriverh120,iriverh300,iaudiom5,iaudiox5,ipod4g,ipodcolor,ipodnano1g,ipodvideo,sansae200*,sansac200*: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_VOLUME
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    recording: ""
-  </source>
-  <dest>
-    *: none
-    recording: ""
-  </dest>
-  <voice>
-    *: none
-    recording: ""
   </voice>
 </phrase>
 <phrase>
@@ -10691,261 +9978,6 @@
   <voice>
     *: none
     recording: "Spúšťač"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_RECORDING_TIME
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    recording: ""
-  </source>
-  <dest>
-    *: none
-    recording: ""
-  </dest>
-  <voice>
-    *: none
-    recording: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_RECORD_TIMESPLIT_REC
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    recording: ""
-  </source>
-  <dest>
-    *: none
-    recording: ""
-  </dest>
-  <voice>
-    *: none
-    recording: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_RECORDING_SIZE
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    recording: ""
-  </source>
-  <dest>
-    *: none
-    recording: ""
-  </dest>
-  <voice>
-    *: none
-    recording: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_RECORD_PRERECORD
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    recording: ""
-  </source>
-  <dest>
-    *: none
-    recording: ""
-  </dest>
-  <voice>
-    *: none
-    recording: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_RECORDING_LEFT
-  desc: in the recording screen
-  user: core
-  <source>
-    *: none
-    recording: "Gain Left"
-  </source>
-  <dest>
-    *: none
-    recording: "Zosilnenie Lavého Kanála"
-  </dest>
-  <voice>
-    *: none
-    recording: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_RECORDING_RIGHT
-  desc: in the recording screen
-  user: core
-  <source>
-    *: none
-    recording: "Gain Right"
-  </source>
-  <dest>
-    *: none
-    recording: "Zosilnenie Pravého Kanála"
-  </dest>
-  <voice>
-    *: none
-    recording: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_SPLIT_SIZE
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    recording: ""
-  </source>
-  <dest>
-    *: none
-    recording: ""
-  </dest>
-  <voice>
-    *: none
-    recording: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_RECORDING_FILENAME
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    recording: ""
-  </source>
-  <dest>
-    *: none
-    recording: ""
-  </dest>
-  <voice>
-    *: none
-    recording: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_RECORDING_AGC_PRESET
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    agc: ""
-  </source>
-  <dest>
-    *: none
-    agc: ""
-  </dest>
-  <voice>
-    *: none
-    agc: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_AGC_SAFETY
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    agc: ""
-  </source>
-  <dest>
-    *: none
-    agc: ""
-  </dest>
-  <voice>
-    *: none
-    agc: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_AGC_LIVE
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    agc: ""
-  </source>
-  <dest>
-    *: none
-    agc: ""
-  </dest>
-  <voice>
-    *: none
-    agc: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_AGC_DJSET
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    agc: ""
-  </source>
-  <dest>
-    *: none
-    agc: ""
-  </dest>
-  <voice>
-    *: none
-    agc: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_AGC_MEDIUM
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    agc: ""
-  </source>
-  <dest>
-    *: none
-    agc: ""
-  </dest>
-  <voice>
-    *: none
-    agc: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_AGC_VOICE
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    agc: ""
-  </source>
-  <dest>
-    *: none
-    agc: ""
-  </dest>
-  <voice>
-    *: none
-    agc: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_RECORDING_AGC_MAXGAIN
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    agc: ""
-  </source>
-  <dest>
-    *: none
-    agc: ""
-  </dest>
-  <voice>
-    *: none
-    agc: ""
   </voice>
 </phrase>
 <phrase>
@@ -11157,93 +10189,6 @@
   <voice>
     *: none
     recording: "Počítadlo klikov"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_PM_CLIPCOUNT
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    recording: ""
-  </source>
-  <dest>
-    *: none
-    recording: ""
-  </dest>
-  <voice>
-    *: none
-    recording: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_USBSTACK
-  desc: deprecated
-  user:
-  <source>
-    *: none
-  </source>
-  <dest>
-    *: none
-  </dest>
-  <voice>
-    *: none
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_USBSTACK_MODE
-  desc: deprecated
-  user:
-  <source>
-    *: none
-  </source>
-  <dest>
-    *: none
-  </dest>
-  <voice>
-    *: none
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_USBSTACK_DEVICE
-  desc: deprecated
-  user:
-  <source>
-    *: none
-  </source>
-  <dest>
-    *: none
-  </dest>
-  <voice>
-    *: none
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_USBSTACK_HOST
-  desc: deprecated
-  user:
-  <source>
-    *: none
-  </source>
-  <dest>
-    *: none
-  </dest>
-  <voice>
-    *: none
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_USBSTACK_DEVICE_DRIVER
-  desc: deprecated
-  user:
-  <source>
-    *: none
-  </source>
-  <dest>
-    *: none
-  </dest>
-  <voice>
-    *: none
   </voice>
 </phrase>
 <phrase>
@@ -11605,62 +10550,6 @@
   </dest>
   <voice>
     *: "Neznáme"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_STUDY_MODE
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_STUDY_HOP_STEP
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_ENABLE_STUDY_MODE
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_DISABLE_STUDY_MODE
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
   </voice>
 </phrase>
 <phrase>
@@ -12096,20 +10985,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_ALBUMART
-  desc: deprecated
-  user:
-  <source>
-    *: none
-  </source>
-  <dest>
-    *: none
-  </dest>
-  <voice>
-    *: none
-  </voice>
-</phrase>
-<phrase>
   id: LANG_RECORDING_MONO_MODE
   desc: in the recording settings
   user: core
@@ -12141,23 +11016,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_QS_ITEMS
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: none
-    quickscreen: ""
-  </source>
-  <dest>
-    *: none
-    quickscreen: ""
-  </dest>
-  <voice>
-    *: none
-    quickscreen: ""
-  </voice>
-</phrase>
-<phrase>
   id: LANG_LEFT
   desc: Generic use of 'left'
   user: core
@@ -12183,23 +11041,6 @@
   </dest>
   <voice>
     *: "Pravá"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_BOTTOM
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: none
-    quickscreen: ""
-  </source>
-  <dest>
-    *: none
-    quickscreen: ""
-  </dest>
-  <voice>
-    *: none
-    quickscreen: ""
   </voice>
 </phrase>
 <phrase>
@@ -13055,41 +11896,16 @@
   desc: spoken only, for file extension
   user: core
   <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: "Vzhľad vzdialeného stavového riadka"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_CUSTOM_STATUSBAR
-  desc: deprecated
-  user:
-  <source>
     *: none
+    remote: ""
   </source>
   <dest>
     *: none
+    remote: ""
   </dest>
   <voice>
     *: none
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_REMOTE_CUSTOM_STATUSBAR
-  desc: deprecated
-  user:
-  <source>
-    *: none
-  </source>
-  <dest>
-    *: none
-  </dest>
-  <voice>
-    *: none
+    remote: "Vzhľad vzdialeného stavového riadka"
   </voice>
 </phrase>
 <phrase>
@@ -13347,5 +12163,381 @@
   <voice>
     *: none
     swcodec: "Vrátiť pred obnovením prehrávania"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_HOTKEY_WPS
+  desc: hotkey menu
+  user: core
+  <source>
+    *: none
+    hotkey: "WPS Hotkey"
+  </source>
+  <dest>
+    *: none
+    hotkey: "Skratka Pre WPS"
+  </dest>
+  <voice>
+    *: none
+    hotkey: "Skratka pre wps"
+  </voice>
+</phrase>
+<phrase>
+  id: VOICE_EXT_FMS
+  desc: spoken only, for file extension
+  user: core
+  <source>
+    *: none
+    radio: ""
+  </source>
+  <dest>
+    *: none
+    radio: ""
+  </dest>
+  <voice>
+    *: none
+    radio: "Vzhľad obrazovky pre rádio"
+  </voice>
+</phrase>
+<phrase>
+  id: VOICE_EXT_RFMS
+  desc: spoken only, for file extension
+  user: core
+  <source>
+    *: none
+    radio_remote: ""
+  </source>
+  <dest>
+    *: none
+    radio_remote: ""
+  </dest>
+  <voice>
+    *: none
+    radio_remote: "Vzhľad vzdialenej obrazovky pre rádio"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_HOTKEY_FILE_BROWSER
+  desc: hotkey menu
+  user: core
+  <source>
+    *: none
+    hotkey: "File Browser Hotkey"
+  </source>
+  <dest>
+    *: none
+    hotkey: "Skratka Prezerania Súborov"
+  </dest>
+  <voice>
+    *: none
+    hotkey: "Skratka prezerania súborov"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_FM_STATION_HEADER
+  desc: in radio screen
+  user: core
+  <source>
+    *: none
+    radio: "Station:"
+  </source>
+  <dest>
+    *: none
+    radio: "Stanica:"
+  </dest>
+  <voice>
+    *: none
+    radio: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_REMOTE_RADIOSCREEN
+  desc: in the theme menu
+  user: core
+  <source>
+    *:none
+    radio_remote: "Remote Radio Screen"
+  </source>
+  <dest>
+    *: none
+    radio_remote: "Vzdialená Obrazovka Rádia"
+  </dest>
+  <voice>
+    *: none
+    radio_remote: "Vzdialená obrazovka rádia"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_HW_EQ_GAIN
+  desc: in sound_menu, hardware equalizer tone controls filter gain
+  user: core
+  <source>
+    *: none
+    gigabeats: "Band %d Gain"
+  </source>
+  <dest>
+    *: none
+    gigabeats: "Šírka Pásma %d"
+  </dest>
+  <voice>
+    *: none
+    gigabeats: "Šírka pásma"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_HW_EQ_WIDTH_WIDE
+  desc: in sound_menu, hardware equalizer tone controls wide bandwidth setting
+  user: core
+  <source>
+    *: none
+    gigabeats: "Wide"
+  </source>
+  <dest>
+    *: none
+    gigabeats: "Široké"
+  </dest>
+  <voice>
+    *: none
+    gigabeats: "Široké"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_HW_EQ_WIDTH_NARROW
+  desc: in sound_menu, hardware equalizer tone controls narrow bandwith setting
+  user: core
+  <source>
+    *: none
+    gigabeats: "Narrow"
+  </source>
+  <dest>
+    *: none
+    gigabeats: "Úzke"
+  </dest>
+  <voice>
+    *: none
+    gigabeats: "Úzke"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_TAGNAVI_UNTAGGED
+  desc: "<untagged>" entry in tag browser
+  user: core
+  <source>
+    *: "<Untagged>"
+  </source>
+  <dest>
+    *: "<Netagované>"
+  </dest>
+  <voice>
+    *: "Netagované"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_HW_EQ_TONE_CONTROLS_ADVANCED
+  desc: in sound_menu, advanced settings for hardware equalizer tone controls
+  user: core
+  <source>
+    *: none
+    gigabeats: "Advanced Tone Control Settings"
+  </source>
+  <dest>
+    *: none
+    gigabeats: "Pokročilé Nastavenia Tónu"
+  </dest>
+  <voice>
+    *: none
+    gigabeats: "Pokročilé nastavenia tónu"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_DEPTH_3D
+  desc: in sound_menu, amount of 3D enhancement effect
+  user: core
+  <source>
+    *: none
+    gigabeats: "3-D Enhancement"
+  </source>
+  <dest>
+    *: none
+    gigabeats: "3-D Vylepšenie"
+  </dest>
+  <voice>
+    *: none
+    gigabeats: "3-D Vylepšenie"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_HW_EQ_FREQUENCY
+  desc: in sound_menu, hardware equalizer tone controls shelf filter cutoff frequency
+  user: core
+  <source>
+    *: none
+    gigabeats: "Band %d Frequency"
+  </source>
+  <dest>
+    *: none
+    gigabeats: "Frekvencia Pásma %d"
+  </dest>
+  <voice>
+    *: none
+    gigabeats: "Frekvencia pásma"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_HW_EQ_WIDTH
+  desc: in sound_menu, hardware equalizer tone controls peak bandwith setting
+  user: core
+  <source>
+    *: none
+    gigabeats: "Band %d Width"
+  </source>
+  <dest>
+    *: none
+    gigabeats: "Šírka Pásma %d"
+  </dest>
+  <voice>
+    *: none
+    gigabeats: "Šírka pásma"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_RADIOSCREEN
+  desc: in the theme menu
+  user: core
+  <source>
+    *:none
+    radio: "Radio Screen"
+  </source>
+  <dest>
+    *: none
+    radio: "Obrazovka Rádia"
+  </dest>
+  <voice>
+    *: none
+    radio: "Obrazovka rádia"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_HW_EQ_TONE_CONTROLS
+  desc: in sound_menu, hardware equalizer tone controls
+  user: core
+  <source>
+    *: none
+    gigabeats: "Tone Controls"
+  </source>
+  <dest>
+    *: none
+    gigabeats: "Nastavenia Tónu"
+  </dest>
+  <voice>
+    *: none
+    gigabeats: "Nastavenia tónu"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_ID3_COMPOSER
+  desc: in tag viewer
+  user: core
+  <source>
+    *: "Composer"
+  </source>
+  <dest>
+    *: "Autor"
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_FORCE
+  desc: alternative to yes/no for tristate settings
+  user: core
+  <source>
+    *: "Force"
+  </source>
+  <dest>
+    *: "vnútiť"
+  </dest>
+  <voice>
+    *: "vnútiť"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_ONPLAY_PICTUREFLOW
+  desc: Onplay pictureflow
+  user: core
+  <source>
+    *: "PictureFlow"
+  </source>
+  <dest>
+    *: "PictureFlow"
+  </dest>
+  <voice>
+    *: "Otvoriť picture flow"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_KBD_OK
+  desc: in keyboad
+  user: core
+  <source>
+    *: none
+    touchscreen: "OK"
+  </source>
+  <dest>
+    *: none
+    touchscreen: "OK"
+  </dest>
+  <voice>
+    *: none
+    touchscreen: "OK"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_BOOKMARK_SETTINGS_AUTOUPDATE
+  desc: prompt for user to decide whether to update bookmarks
+  user: core
+  <source>
+    *: "Update on Stop"
+  </source>
+  <dest>
+    *: "Aktualizovať Pri Zastavení"
+  </dest>
+  <voice>
+    *: "Aktualizovať pri zastavení"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_KBD_DELETE
+  desc: in keyboad
+  user: core
+  <source>
+    *: none
+    touchscreen: "Del"
+  </source>
+  <dest>
+    *: none
+    touchscreen: "Del"
+  </dest>
+  <voice>
+    *: none
+    touchscreen: "Del"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_KBD_CANCEL
+  desc: in keyboad
+  user: core
+  <source>
+    *: none
+    touchscreen: "Cancel"
+  </source>
+  <dest>
+    *: none
+    touchscreen: "Zrušiť"
+  </dest>
+  <voice>
+    *: none
+    touchscreen: "Zrušiť"
   </voice>
 </phrase>

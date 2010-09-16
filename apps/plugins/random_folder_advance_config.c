@@ -21,7 +21,7 @@
 #include "plugin.h"
 #include "file.h"
 
-PLUGIN_HEADER
+
 
 static bool cancel;
 static int fd;
@@ -98,7 +98,8 @@ void traversedir(char* location, char* name)
 
             if (check)
             {
-                if (entry->attribute & ATTR_DIRECTORY) {
+                struct dirinfo info = rb->dir_get_info(dir, entry);
+                if (info.attribute & ATTR_DIRECTORY) {
                     char *start;
                     dirs_count++;
                     rb->snprintf(path,MAX_PATH,"%s/%s",fullpath,entry->d_name);

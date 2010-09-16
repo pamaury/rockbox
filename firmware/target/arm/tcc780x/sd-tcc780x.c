@@ -22,7 +22,8 @@
 #include "sd.h"
 #include "system.h"
 #include <string.h>
-#include "hotswap.h"
+#include "gcc_extensions.h"
+#include "sdmmc.h"
 #include "storage.h"
 #include "led.h"
 #include "thread.h"
@@ -212,18 +213,6 @@ static inline bool card_detect_target(void)
 #else
     return false;
 #endif
-}
-
-void card_enable_monitoring_target(bool on)
-{
-    if (on)
-    {
-        IEN |= EXT0_IRQ_MASK;
-    }
-    else
-    {
-        IEN &= ~EXT0_IRQ_MASK;
-    }
 }
 
 static int sd1_oneshot_callback(struct timeout *tmo)
@@ -654,7 +643,7 @@ sd_write_error:
     }
 }
 
-static void sd_thread(void) __attribute__((noreturn));
+static void sd_thread(void) NORETURN_ATTR;
 static void sd_thread(void)
 {
     struct queue_event ev;
@@ -786,6 +775,7 @@ int sd_init(void)
         /* Configure interrupts for the card slot */
         TMODE &= ~EXT0_IRQ_MASK; /* edge-triggered */
         TMODEA |= EXT0_IRQ_MASK; /* trigger on both edges */
+        IEN |= EXT0_IRQ_MASK; /* enable the interrupt */
 #endif
     }
 

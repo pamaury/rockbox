@@ -24,6 +24,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <inttypes.h>
 #include "buffering.h"
 
 #include "storage.h"
@@ -31,7 +32,6 @@
 #include "thread.h"
 #include "file.h"
 #include "panic.h"
-#include "memory.h"
 #include "lcd.h"
 #include "font.h"
 #include "button.h"
@@ -46,7 +46,6 @@
 #include "screens.h"
 #include "playlist.h"
 #include "pcmbuf.h"
-#include "bmp.h"
 #include "appevents.h"
 #include "metadata.h"
 #ifdef HAVE_ALBUMART
@@ -424,11 +423,11 @@ static struct memory_handle *find_handle(int handle_id)
    delta maximum bytes available to move the handle.  If the move is performed
          it is set to the actual distance moved.
    data_size is the amount of data to move along with the struct.
-   returns a valid memory_handle if the move is successful
-           NULL if the handle is NULL, the  move would be less than the size of
-           a memory_handle after correcting for wraps or if the handle is not
-           found in the linked list for adjustment.  This function has no side
-           effects if NULL is returned. */
+   returns true if the move is successful and false if the handle is NULL,
+           the  move would be less than the size of a memory_handle after
+           correcting for wraps or if the handle is not found in the linked
+           list for adjustment.  This function has no side effects if false
+           is returned. */
 static bool move_handle(struct memory_handle **h, size_t *delta,
                         size_t data_size, bool can_wrap)
 {
@@ -552,7 +551,7 @@ static bool move_handle(struct memory_handle **h, size_t *delta,
     *delta = final_delta;
     mutex_unlock(&llist_mod_mutex);
     mutex_unlock(&llist_mutex);
-    return dest;
+    return true;
 }
 
 
@@ -780,7 +779,7 @@ static void rebuffer_handle(int handle_id, size_t newpos)
     {
         LOGFQUEUE("buffering >| Q_BUFFER_HANDLE %d", handle_id);
         queue_send(&buffering_queue, Q_BUFFER_HANDLE, handle_id);
-        h->ridx = h->data + newpos;
+        h->ridx = ringbuf_add(h->data, newpos - h->offset);
         return;
     }
 
@@ -1488,7 +1487,7 @@ void buffering_thread(void)
                 base_handle_id = (int)ev.data;
                 break;
 
-#ifndef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
             case SYS_USB_CONNECTED:
                 LOGFQUEUE("buffering < SYS_USB_CONNECTED");
                 usb_acknowledge(SYS_USB_CONNECTED_ACK);
@@ -1577,8 +1576,7 @@ bool buffering_reset(char *buf, size_t buflen)
         return false;
 
     buffer = buf;
-    /* Preserve alignment when wrapping around */
-    buffer_len = STORAGE_ALIGN_DOWN(buflen);
+    buffer_len = buflen;
     guard_buffer = buf + buflen;
 
     buf_widx = 0;

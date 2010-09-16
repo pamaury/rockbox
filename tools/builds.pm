@@ -1,8 +1,8 @@
-$publicrelease="3.5.1";
-$manualrelease="3.5";
-$voicerelease="3.5";
-$releasedate="March 4, 2010";
-$releasenotes="/wiki/ReleaseNotes351";
+$publicrelease="3.6";
+$manualrelease="3.6";
+$voicerelease="3.6";
+$releasedate="June 3, 2010";
+$releasenotes="/wiki/ReleaseNotes36";
 
 %builds = (
     'archosav300' => {
@@ -114,7 +114,6 @@ $releasenotes="/wiki/ReleaseNotes351";
     'ipodvideo' => {
         name => 'iPod Video 30GB',
         status => 3,
-        ram => 32,
     },
     'ipodvideo64mb' => {
         name => 'iPod Video 60/80GB',
@@ -123,7 +122,6 @@ $releasenotes="/wiki/ReleaseNotes351";
         manual => 'ipodvideo',
         voice => 'ipodvideo',
         configname => 'ipodvideo',
-        ram => 64,
     },
     'iriverh10' => {
         name => 'iriver H10 20GB',
@@ -225,12 +223,12 @@ $releasenotes="/wiki/ReleaseNotes351";
     },
     'sansac200v2' => {
         name => 'SanDisk Sansa c200 v2',
-        status => 1,
+        status => 2,
         icon => 'sansac200',
     },
     'sansaclip' => {
         name => 'SanDisk Sansa Clip v1',
-        status => 2,
+        status => 3,
     },
     'sansaclipv2' => {
         name => 'SanDisk Sansa Clip v2',
@@ -293,7 +291,7 @@ $releasenotes="/wiki/ReleaseNotes351";
     },
     'hd200' => {
         name => 'MPIO HD200',
-        status => 1,
+        status => 2,
     },
 );
 

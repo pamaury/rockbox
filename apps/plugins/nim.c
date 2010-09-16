@@ -19,8 +19,7 @@
  *
  ****************************************************************************/
 #include "plugin.h"
-
-#ifdef HAVE_LCD_CHARCELLS
+#include "lib/pluginlib_exit.h"
 
 /* NIM game for the player
 
@@ -48,7 +47,7 @@ V1.2 : 2003-07-30
      take a match. Later you are obliged to take at least one.)
 */
 
-PLUGIN_HEADER
+
 
 /*Pattern for the game*/
 static unsigned char smile[]={0x00, 0x11, 0x04, 0x04, 0x00, 0x11, 0x0E};    /* :-) */
@@ -57,7 +56,6 @@ static unsigned char pattern3[]={0x15, 0x15, 0x15, 0x15, 0x15, 0x15, 0x15}; /*3 
 static unsigned char pattern2[]={0x14, 0x14, 0x14, 0x14, 0x14, 0x14, 0x14}; /*2 parts*/
 static unsigned char pattern1[]={0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10}; /*1 part*/
 
-static unsigned char str[12];   /*String use to display the first line*/
 static unsigned long hsmile,hcry,h1,h2; /*Handle for the new pattern*/
 
 static bool end;    /*If true game is finished*/
@@ -102,8 +100,7 @@ static void display_first_line(int x)
 {
     int i;
 
-    rb->snprintf(str,sizeof(str),"       =%d",x);
-    rb->lcd_puts(0,0,str);
+    rb->lcd_putsf(0,0,"       =%d",x);
 
     rb->lcd_define_pattern(h1,pattern3);
     for (i=0;i<x/3;i++)
@@ -122,10 +119,8 @@ static void display_first_line(int x)
 }
 
 /* Call when the program end */
-static void nim_exit(void *parameter)
+static void nim_exit(void)
 {
-    (void)parameter;
-    
     /*Restore the old pattern*/
     rb->lcd_unlock_pattern(h1);
     rb->lcd_unlock_pattern(h2);
@@ -144,6 +139,7 @@ enum plugin_status plugin_start(const void* parameter)
     int x,v,min;
     bool ok;
     bool go;
+    atexit(nim_exit);
 
     /* if you don't use the parameter, you can do like
        this to avoid the compiler warning about it */
@@ -181,8 +177,7 @@ enum plugin_status plugin_start(const void* parameter)
                 y=1;
                 display_first_line(x);
 
-                rb->snprintf(str,sizeof(str),"[%d..%d]?=%d",min,v,y);
-                rb->lcd_puts(0,1,str);
+                rb->lcd_putsf(0,1,"[%d..%d]?=%d",min,v,y);
                 rb->lcd_update();
 
                 go=false;
@@ -193,7 +188,6 @@ enum plugin_status plugin_start(const void* parameter)
                     {
                         case BUTTON_STOP|BUTTON_REL:
                             go = true;
-                            nim_exit(NULL);
                             return PLUGIN_OK;
                             break;
 
@@ -214,14 +208,11 @@ enum plugin_status plugin_start(const void* parameter)
                             break;
 
                         default:
-                            if (rb->default_event_handler_ex(button, nim_exit,
-                                                    NULL) == SYS_USB_CONNECTED)
-                                return PLUGIN_USB_CONNECTED;
+                            exit_on_usb(button);
                             break;
                     }
                     display_first_line(x);
-                    rb->snprintf(str,sizeof(str),"[%d..%d]?=%d",min,v,y);
-                    rb->lcd_puts(0,1,str);
+                    rb->lcd_putsf(0,1,"[%d..%d]?=%d",min,v,y);
                     rb->lcd_update();
                 }
 
@@ -281,8 +272,7 @@ enum plugin_status plugin_start(const void* parameter)
                 }
                 v=y*2;
                 x-=y;
-                rb->snprintf(str,sizeof(str),"I take=%d",y);
-                rb->lcd_puts(0,1,str);
+                rb->lcd_putsf(0,1,"I take=%d",y);
                 rb->lcd_update();
                 rb->sleep(HZ);
             }
@@ -291,7 +281,5 @@ enum plugin_status plugin_start(const void* parameter)
             min=1;
         }
     }
-    nim_exit(NULL);
     return PLUGIN_OK;
 }
-#endif

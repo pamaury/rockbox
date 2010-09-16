@@ -59,11 +59,10 @@
 */
 
 /* define this if you can flip your LCD */
-//#define HAVE_LCD_FLIP
+#define HAVE_LCD_FLIP
 
 /* define this if you can invert the colours on your LCD */
 #define HAVE_LCD_INVERT
-
 
 /* define this if you have a real-time clock */
 #define CONFIG_RTC RTC_AS3514
@@ -108,7 +107,7 @@
 /* The number of bytes reserved for loadable plugins */
 #define PLUGIN_BUFFER_SIZE 0x80000
 
-#define AB_REPEAT_ENABLE 1
+#define AB_REPEAT_ENABLE
 
 /* FM Tuner - suspected to be the SI4702 */
 #define CONFIG_TUNER SI4700
@@ -163,9 +162,12 @@
 #define CONFIG_I2C I2C_AS3525
 
 /* define current usage levels (based on battery bench) */
-#define CURRENT_NORMAL     37
+#define CURRENT_NORMAL     35
 #define CURRENT_BACKLIGHT  30
 #define CURRENT_RECORD     CURRENT_NORMAL
+
+/* maximum charging current */
+#define CURRENT_MAX_CHG   200
 
 /* Define this to the CPU frequency */
 #define CPU_FREQ      248000000
@@ -184,19 +186,16 @@
 #define HAVE_HOTSWAP
 #endif
 
-#ifndef BOOTLOADER
-
-#define USB_HANDLED_BY_OF
-
 /* USB On-the-go */
 #define CONFIG_USBOTG USBOTG_AS3525
 
 /* enable these for the experimental usb stack */
 #define HAVE_USBSTACK
+//#define USB_HANDLED_BY_OF
+#define USE_ROCKBOX_USB
 #define USB_VENDOR_ID 0x0781
 #define USB_PRODUCT_ID 0x74c1
-
-#endif /* !BOOTLOADER */
+#define HAVE_USB_HID_MOUSE
 
 /* Define this if you have adjustable CPU frequency */
 #define HAVE_ADJUSTABLE_CPU_FREQ

@@ -89,7 +89,7 @@ enum voice_thread_messages
 /* Structure to store clip data callback info */
 struct voice_info
 {
-    pcm_more_callback_type get_more; /* Callback to get more clips */
+    pcm_play_callback_type get_more; /* Callback to get more clips */
     unsigned char *start;            /* Start of clip */
     size_t size;                     /* Size of clip */
 };
@@ -117,7 +117,7 @@ static inline bool playback_is_playing(void)
 
 /* Stop any current clip and start playing a new one */
 void mp3_play_data(const unsigned char* start, int size,
-                   pcm_more_callback_type get_more)
+                   pcm_play_callback_type get_more)
 {
     /* Shared struct to get data to the thread - once it replies, it has
      * safely cached it in its own private data */
@@ -256,7 +256,7 @@ static void voice_message(struct voice_thread_data *td)
             return;
 
         case Q_VOICE_STOP:
-            LOGFQUEUE("voice < Q_VOICE_STOP: %ld", td->ev.data);
+            LOGFQUEUE("voice < Q_VOICE_STOP: %ld", (long)td->ev.data);
 
             if (td->ev.data != 0 && !playback_is_playing())
             {

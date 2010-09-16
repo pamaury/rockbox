@@ -54,21 +54,10 @@
 #define VERBATIM_BYTE_SIZE    8
 #define CANONICAL_HEADER_SIZE 44
 
-#define FFMAX(a,b) ((a) > (b) ? (a) : (b))
-#define FFMIN(a,b) ((a) > (b) ? (b) : (a))
 #define MKTAG(a,b,c,d) (a | (b << 8) | (c << 16) | (d << 24))
 
 #define get_le16(gb) bswap_16(get_bits_long(gb, 16))
 #define get_le32(gb) bswap_32(get_bits_long(gb, 32))
-
-static uint32_t bswap_32(uint32_t x){
-    x= ((x<<8)&0xFF00FF00) | ((x>>8)&0x00FF00FF);
-    return (x>>16) | (x<<16);
-}
-
-static uint16_t bswap_16(uint16_t x){
-    return (x>>8) | (x<<8);
-}
 
 /* converts fourcc string to int */
 static int ff_get_fourcc(const char *s){
@@ -84,8 +73,7 @@ static unsigned int get_uint(ShortenContext *s, int k)
 }
 
 #if defined(CPU_COLDFIRE)
-static void coldfire_lshift_samples(int n, int shift, int32_t *samples) ICODE_ATTR_FLAC;
-static void coldfire_lshift_samples(int n, int shift, int32_t *samples)
+static inline void coldfire_lshift_samples(int n, int shift, int32_t *samples)
 {
 /*
     for (i = 0; i < n; i++)
@@ -94,34 +82,33 @@ static void coldfire_lshift_samples(int n, int shift, int32_t *samples)
     asm volatile (
             "move.l %[n], %%d0              \n" /* d0 = loop counter */
             "asr.l  #2, %%d0                \n"
-            "beq l1_shift                   \n"
-        "l2_shift:" /* main loop (unroll by 4) */
+            "beq 1f                         \n"
+        "2:" /* main loop (unroll by 4) */
             "movem.l (%[x]), %%d4-%%d7      \n"
             "asl.l   %[s], %%d4             \n"
             "asl.l   %[s], %%d5             \n"
             "asl.l   %[s], %%d6             \n"
             "asl.l   %[s], %%d7             \n"
             "movem.l %%d4-%%d7, (%[x])      \n"
-            "add.l  #16, %[x]               \n"
+            "lea.l  (16, %[x]), %[x]        \n"
 
             "subq.l  #1, %%d0               \n"
-            "bne l2_shift                   \n"
-        "l1_shift:" /* any loops left? */
+            "bne 2b                         \n"
+        "1:" /* any loops left? */
             "and.l  #3, %[n]                \n"
-            "beq l4_shift                   \n"
-        "l3_shift:" /* remaining loops */
+            "beq 4f                         \n"
+        "3:" /* remaining loops */
             "move.l (%[x]), %%d4            \n"
             "asl.l  %[s], %%d4              \n"
             "move.l %%d4, (%[x])+           \n"
 
             "subq.l #1, %[n]                \n"
-            "bne l3_shift                   \n"
-        "l4_shift:" /* exit */
-        : [n] "+d" (n),         /* d1 */
-          [s] "+d" (shift),     /* d2 */
-          [x] "+a" (samples)    /* a0 */
-        :
-        : "%d0", "%d4", "%d5", "%d6", "%d7"
+            "bne 3b                         \n"
+        "4:" /* exit */
+        : [n] "+d" (n),
+          [x] "+a" (samples)
+        : [s] "d" (shift)
+        : "%d0", "%d4", "%d5", "%d6", "%d7", "cc", "memory"
     );
 }
 #endif

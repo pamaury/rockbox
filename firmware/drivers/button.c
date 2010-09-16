@@ -33,7 +33,7 @@
 #include "serial.h"
 #include "power.h"
 #include "powermgmt.h"
-#ifdef SIMULATOR
+#ifdef HAVE_SDL
 #include "button-sdl.h"
 #else
 #include "button-target.h"
@@ -199,7 +199,7 @@ static void button_tick(void)
                            which doesn't shut down easily with the OFF
                            key */
 #ifdef HAVE_SW_POWEROFF
-                        if ((btn == POWEROFF_BUTTON
+                        if ((btn & POWEROFF_BUTTON
 #ifdef RC_POWEROFF_BUTTON
                                     || btn == RC_POWEROFF_BUTTON
 #endif
@@ -215,7 +215,7 @@ static void button_tick(void)
 
                             /* Safety net for players without hardware
                                poweroff */
-#ifndef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
                             if(repeat_count > POWEROFF_COUNT * 10)
                                 power_off();
 #endif
@@ -440,7 +440,7 @@ static int button_flip(int button)
 {
     int newbutton = button;
 
-#ifndef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
     newbutton &=
         ~(BUTTON_LEFT | BUTTON_RIGHT
 #if defined(BUTTON_UP) && defined(BUTTON_DOWN)

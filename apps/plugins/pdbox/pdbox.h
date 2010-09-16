@@ -7,7 +7,7 @@
  *                     \/            \/     \/    \/            \/
  * $Id$
  *
- * Copyright (C) 2009 Wincent Balin
+ * Copyright (C) 2009, 2010 Wincent Balin
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -22,11 +22,8 @@
 #ifndef PDBOX_H
 #define PDBOX_H
 
-
-#if 1
 /* Use TLSF. */
 #include "codecs/lib/tlsf/src/tlsf.h"
-#endif
 
 /* Pure Data */
 #include "PDa/src/m_pd.h"
@@ -36,46 +33,31 @@
 
 /* Memory prototypes. */
 
-#if 1
 /* Direct memory allocator functions to TLSF. */
 #define malloc(size) tlsf_malloc(size)
 #define free(ptr) tlsf_free(ptr)
 #define realloc(ptr, size) tlsf_realloc(ptr, size)
 #define calloc(elements, elem_size) tlsf_calloc(elements, elem_size)
-#endif
-
-#if 0
-extern void set_memory_pool(void* memory_pool, size_t memory_size);
-extern void clear_memory_pool(void);
-extern void* mcalloc(size_t nmemb, size_t size);
-extern void* mmalloc(size_t size);
-extern void mfree(void* ptr);
-extern void* mrealloc(void* ptr, size_t size);
-extern void print_memory_pool(void);
-
-#define malloc mmalloc
-#define free mfree
-#define realloc mrealloc
-#define calloc mcalloc
-#endif
-
-#if 0
-#include <stdlib.h>
-#define malloc malloc
-#define free free
-#define realloc realloc
-#define calloc calloc
-#endif
 
 /* Audio declarations. */
-#define PD_SAMPLERATE 22050
+#ifdef SIMULATOR
+  #define PD_SAMPLERATE 44100
+#elif (HW_SAMPR_CAPS & SAMPR_CAP_22)
+  #define PD_SAMPLERATE 22050
+#elif (HW_SAMPR_CAPS & SAMPR_CAP_32)
+  #define PD_SAMPLERATE 32000
+#elif (HW_SAMPR_CAPS & SAMPR_CAP_44)
+  #define PD_SAMPLERATE 44100
+#else
+  #error No sufficient sample rate available!
+#endif
 #define PD_SAMPLES_PER_HZ ((PD_SAMPLERATE / HZ) + \
                            (PD_SAMPLERATE % HZ > 0 ? 1 : 0))
 #define PD_OUT_CHANNELS 2
 
 /* Audio buffer part. Contains data for one HZ period. */
 #ifdef SIMULATOR
-#define AUDIOBUFSIZE (PD_SAMPLES_PER_HZ * PD_OUT_CHANNELS * 32)
+#define AUDIOBUFSIZE (PD_SAMPLES_PER_HZ * PD_OUT_CHANNELS * 16)
 #else
 #define AUDIOBUFSIZE (PD_SAMPLES_PER_HZ * PD_OUT_CHANNELS)
 #endif
@@ -250,7 +232,7 @@ enum pd_key_id
 
 /* Map real keys to virtual ones.
    Feel free to add your preferred keymap here. */
-#if defined(IRIVER_H300_SERIES)
+#if (CONFIG_KEYPAD == IRIVER_H300_PAD)
     /* Added by wincent */
     #define PDPOD_QUIT (BUTTON_OFF)
     #define PDPOD_PLAY (BUTTON_ON)
@@ -260,7 +242,7 @@ enum pd_key_id
     #define PDPOD_WHEELLEFT (BUTTON_DOWN)
     #define PDPOD_WHEELRIGHT (BUTTON_UP)
     #define PDPOD_ACTION (BUTTON_MODE)
-#elif defined(IRIVER_H100_SERIES)
+#elif (CONFIG_KEYPAD == IRIVER_H100_PAD)
     /* Added by wincent */
     #define PDPOD_QUIT (BUTTON_OFF)
     #define PDPOD_PLAY (BUTTON_REC)
@@ -270,6 +252,36 @@ enum pd_key_id
     #define PDPOD_WHEELLEFT (BUTTON_DOWN)
     #define PDPOD_WHEELRIGHT (BUTTON_UP)
     #define PDPOD_ACTION (BUTTON_ON)
+#elif (CONFIG_KEYPAD == SANSA_FUZE_PAD)
+    /* Added by funman */
+    #define PDPOD_QUIT (BUTTON_HOME|BUTTON_REPEAT)
+    #define PDPOD_PLAY BUTTON_UP
+    #define PDPOD_PREVIOUS BUTTON_LEFT
+    #define PDPOD_NEXT BUTTON_RIGHT
+    #define PDPOD_MENU BUTTON_SELECT
+    #define PDPOD_WHEELLEFT BUTTON_SCROLL_BACK
+    #define PDPOD_WHEELRIGHT BUTTON_SCROLL_FWD
+    #define PDPOD_ACTION BUTTON_DOWN
+#elif (CONFIG_KEYPAD == SANSA_E200_PAD)
+    #define PDPOD_QUIT (BUTTON_POWER|BUTTON_REPEAT)
+    #define PDPOD_PLAY BUTTON_UP
+    #define PDPOD_PREVIOUS BUTTON_LEFT
+    #define PDPOD_NEXT BUTTON_RIGHT
+    #define PDPOD_MENU BUTTON_DOWN
+    #define PDPOD_WHEELLEFT BUTTON_SCROLL_BACK
+    #define PDPOD_WHEELRIGHT BUTTON_SCROLL_FWD
+    #define PDPOD_ACTION BUTTON_SELECT
+#elif (CONFIG_KEYPAD == IPOD_4G_PAD) || (CONFIG_KEYPAD == IPOD_3G_PAD) || \
+      (CONFIG_KEYPAD == IPOD_1G2G_PAD)
+    /* Added by wincent */
+    #define PDPOD_QUIT (BUTTON_SELECT | BUTTON_MENU)
+    #define PDPOD_PLAY (BUTTON_PLAY)
+    #define PDPOD_PREVIOUS (BUTTON_LEFT)
+    #define PDPOD_NEXT (BUTTON_RIGHT)
+    #define PDPOD_MENU (BUTTON_MENU)
+    #define PDPOD_WHEELLEFT (BUTTON_SCROLL_BACK)
+    #define PDPOD_WHEELRIGHT (BUTTON_SCROLL_FWD)
+    #define PDPOD_ACTION (BUTTON_SELECT)
 #else
     #warning "No keys defined for this architecture!"
 #endif

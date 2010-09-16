@@ -52,6 +52,9 @@ enum {
     USB_REQUEST_REBOOT,      /* Event */
 #endif
     USB_QUIT,                /* Event */
+#if defined(HAVE_USB_CHARGING_ENABLE) && defined(HAVE_USBSTACK)
+    USB_CHARGER_UPDATE,      /* Event */
+#endif
 };
 
 #ifdef HAVE_USB_POWER
@@ -152,11 +155,21 @@ int usb_detect(void); /* return the raw hardware value - nothing/pc/charger */
 void usb_status_event(int current_status);
 #ifdef HAVE_USB_POWER
 bool usb_powered(void);
-#ifdef CONFIG_CHARGING
-bool usb_charging_enable(bool on);
-bool usb_charging_enabled(void);
-#endif
-#endif
+#ifdef HAVE_USB_CHARGING_ENABLE
+enum {
+    USB_CHARGING_DISABLE,
+    USB_CHARGING_ENABLE,
+    USB_CHARGING_FORCE
+};
+/* called by app, implemented by usb_core on targets with rockbox usb
+ * or target-specific code on others
+ */
+void usb_charging_enable(int state);
+#ifdef HAVE_USBSTACK
+void usb_charger_update(void);
+#endif /* HAVE_USBSTACK */
+#endif /* HAVE_USB_CHARGING_ENABLE */
+#endif /* HAVE_USB_POWER */
 #ifdef HAVE_USBSTACK
 void usb_signal_transfer_completion(
     struct usb_transfer_completion_event_data *event_data);

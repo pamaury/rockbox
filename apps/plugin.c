@@ -41,6 +41,8 @@
 #include "pcmbuf.h"
 #include "errno.h"
 #include "diacritic.h"
+#include "filefuncs.h"
+#include "load_code.h"
 
 #if CONFIG_CHARGING
 #include "power.h"
@@ -57,7 +59,7 @@
 #include "usbstack/usb_hid.h"
 #endif
 
-#ifdef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_SDL)
 #define PREFIX(_x_) sim_ ## _x_
 #else
 #define PREFIX
@@ -72,23 +74,21 @@
 static unsigned int open_files;
 #endif
 
-#ifdef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_HOSTED)
 static unsigned char pluginbuf[PLUGIN_BUFFER_SIZE];
-void *sim_plugin_load(char *plugin, void **pd);
-void sim_plugin_close(void *pd);
 void sim_lcd_ex_init(unsigned long (*getpixel)(int, int));
 void sim_lcd_ex_update_rect(int x, int y, int width, int height);
 #else
-#define sim_plugin_close(x)
 extern unsigned char pluginbuf[];
 #include "bitswap.h"
 #endif
 
 /* for actual plugins only, not for codecs */
-static bool plugin_loaded = false;
 static int  plugin_size = 0;
 static bool (*pfn_tsr_exit)(bool reenter) = NULL; /* TSR exit callback */
 static char current_plugin[MAX_PATH];
+/* NULL if no plugin is loaded, otherwise the handle that lc_open() returned */
+static void *current_plugin_handle;
 
 char *plugin_get_current_filename(void);
 
@@ -109,7 +109,9 @@ static const struct plugin_api rockbox_api = {
     lcd_clear_display,
     lcd_getstringsize,
     lcd_putsxy,
+    lcd_putsxyf,
     lcd_puts,
+    lcd_putsf,
     lcd_puts_scroll,
     lcd_stop_scroll,
 #ifdef HAVE_LCD_CHARCELLS
@@ -157,7 +159,7 @@ static const struct plugin_api rockbox_api = {
     lcd_yuv_set_options,
 #endif
 #endif /* MEMORYSIZE > 2 */
-#elif (LCD_DEPTH < 4) && !defined(SIMULATOR)
+#elif (LCD_DEPTH < 4) && (CONFIG_PLATFORM & PLATFORM_NATIVE)
     lcd_blit_mono,
     lcd_blit_grey_phase,
 #endif /* LCD_DEPTH */
@@ -177,6 +179,9 @@ static const struct plugin_api rockbox_api = {
     &button_queue,
 #endif
     bidi_l2v,
+#ifdef HAVE_LCD_BITMAP
+    is_diacritic,
+#endif
     font_get_bits,
     font_load,
     font_get,
@@ -341,10 +346,10 @@ static const struct plugin_api rockbox_api = {
     dir_exists,
 
     /* kernel/ system */
-#ifdef CPU_ARM
+#if defined(CPU_ARM) && CONFIG_PLATFORM & PLATFORM_NATIVE
     __div0,
 #endif
-    PREFIX(sleep),
+    sleep,
     yield,
     &current_tick,
     default_event_handler,
@@ -363,7 +368,7 @@ static const struct plugin_api rockbox_api = {
 #endif
 
     reset_poweroff_timer,
-#ifndef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
     system_memory_guard,
     &cpu_frequency,
 
@@ -374,13 +379,15 @@ static const struct plugin_api rockbox_api = {
     cpu_boost,
 #endif
 #endif /* HAVE_ADJUSTABLE_CPU_FREQ */
-#endif /* !SIMULATOR */
+#endif /* PLATFORM_NATIVE */
 #ifdef HAVE_SCHEDULER_BOOSTCTRL
     trigger_cpu_boost,
     cancel_cpu_boost,
 #endif
-#if NUM_CORES > 1
+#ifdef HAVE_CPUCACHE_FLUSH
     cpucache_flush,
+#endif
+#ifdef HAVE_CPUCACHE_INVALIDATE
     cpucache_invalidate,
 #endif
     timer_register,
@@ -412,7 +419,7 @@ static const struct plugin_api rockbox_api = {
     remove_event,
     send_event,
 
-#ifdef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_HOSTED)
     /* special simulator hooks */
 #if defined(HAVE_LCD_BITMAP) && LCD_DEPTH < 8
     sim_lcd_ex_init,
@@ -434,7 +441,7 @@ static const struct plugin_api rockbox_api = {
     memset,
     memcpy,
     memmove,
-#ifndef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
     _ctype_,
 #endif
     atoi,
@@ -461,7 +468,10 @@ static const struct plugin_api rockbox_api = {
     sound_max,
     sound_unit,
     sound_val2phys,
-#ifndef SIMULATOR
+#ifdef AUDIOHW_HAVE_EQ
+    sound_enum_hw_eq_band_setting,
+#endif
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
     mp3_play_data,
     mp3_play_pause,
     mp3_play_stop,
@@ -491,7 +501,6 @@ static const struct plugin_api rockbox_api = {
     pcm_init_recording,
     pcm_close_recording,
     pcm_record_data,
-    pcm_record_more,
     pcm_stop_recording,
     pcm_calculate_rec_peaks,
     audio_set_recording_gain,
@@ -520,7 +529,7 @@ static const struct plugin_api rockbox_api = {
     playlist_insert_track,
     playlist_insert_directory,
     playlist_shuffle,
-    PREFIX(audio_play),
+    audio_play,
     audio_stop,
     audio_pause,
     audio_resume,
@@ -560,6 +569,7 @@ static const struct plugin_api rockbox_api = {
     /* statusbars */
     &statusbars,
     gui_syncstatusbar_draw,
+
     /* options */
     get_settings_list,
     find_setting,
@@ -584,7 +594,7 @@ static const struct plugin_api rockbox_api = {
     battery_level,
     battery_level_safe,
     battery_time,
-#ifndef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
     battery_voltage,
 #endif
 #if CONFIG_CHARGING
@@ -598,7 +608,7 @@ static const struct plugin_api rockbox_api = {
 #endif
 
     /* misc */
-#if !defined(SIMULATOR)
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
     &errno,
 #endif
     srand,
@@ -614,9 +624,6 @@ static const struct plugin_api rockbox_api = {
     plugin_get_audio_buffer,
     plugin_tsr,
     plugin_get_current_filename,
-#ifdef PLUGIN_USE_IRAM
-    plugin_iram_init,
-#endif
 #if defined(DEBUG) || defined(SIMULATOR)
     debugf,
 #endif
@@ -630,7 +637,10 @@ static const struct plugin_api rockbox_api = {
     codec_thread_do_callback,
     codec_load_file,
     get_codec_filename,
-#endif
+    find_array_ptr,
+    remove_array_ptr,
+    round_value_to_list32,
+#endif /* CONFIG_CODEC == SWCODEC */
     get_metadata,
     mp3info,
     count_mp3_frames,
@@ -708,125 +718,80 @@ static const struct plugin_api rockbox_api = {
     semaphore_release,
 #endif
 
-    appsversion,
+    rbversion,
+
     /* new stuff at the end, sort into place next time
        the API gets incompatible */
+    dir_get_info,
 
-#ifdef HAVE_LCD_BITMAP
-    is_diacritic,
-#endif
-
-#if (CONFIG_CODEC == SWCODEC) && defined(HAVE_RECORDING) && \
-    (defined(HAVE_LINE_IN) || defined(HAVE_MIC_IN))
-    round_value_to_list32,
-#endif
-
-#ifdef AUDIOHW_HAVE_EQ
-    sound_enum_hw_eq_band_setting,
-#endif
-
-#if CONFIG_CODEC == SWCODEC
-    find_array_ptr,
-    remove_array_ptr,
-#endif
+    lc_open,
+    lc_open_from_mem,
+    lc_get_header,
+    lc_close,
 };
 
 int plugin_load(const char* plugin, const void* parameter)
 {
     int rc, i;
-    struct plugin_header *hdr;
-#ifdef SIMULATOR
-    void *pd;
-#else /* !SIMULATOR */
-    int fd;
-    ssize_t readsize;
-#if NUM_CORES > 1
-    unsigned my_core;
-#endif
-#endif /* !SIMULATOR */
+    struct plugin_header *p_hdr;
+    struct lc_header     *hdr;
 
 #if LCD_DEPTH > 1
     fb_data* old_backdrop;
 #endif
 
-    if (pfn_tsr_exit != NULL) /* if we have a resident old plugin: */
-    {
+    if (current_plugin_handle && pfn_tsr_exit)
+    {    /* if we have a resident old plugin and a callback */
         if (pfn_tsr_exit(!strcmp(current_plugin, plugin)) == false )
         {
             /* not allowing another plugin to load */
             return PLUGIN_OK;
         }
-        pfn_tsr_exit = NULL;
-        plugin_loaded = false;
+        lc_close(current_plugin_handle);
+        current_plugin_handle = pfn_tsr_exit = NULL;
     }
 
     splash(0, ID2P(LANG_WAIT));
     strcpy(current_plugin, plugin);
 
-#ifdef SIMULATOR
-    hdr = sim_plugin_load((char *)plugin, &pd);
-    if (pd == NULL) {
+    current_plugin_handle = lc_open(plugin, pluginbuf, PLUGIN_BUFFER_SIZE);
+    if (current_plugin_handle == NULL) {
         splashf(HZ*2, str(LANG_PLUGIN_CANT_OPEN), plugin);
         return -1;
     }
+
+    p_hdr = lc_get_header(current_plugin_handle);
+
+    hdr = p_hdr ? &p_hdr->lc_hdr : NULL;
+    
+
     if (hdr == NULL
         || hdr->magic != PLUGIN_MAGIC
-        || hdr->target_id != TARGET_ID) {
-        sim_plugin_close(pd);
-        splash(HZ*2, str(LANG_PLUGIN_WRONG_MODEL));
-        return -1;
-    }
-    if (hdr->api_version > PLUGIN_API_VERSION
-        || hdr->api_version < PLUGIN_MIN_API_VERSION) {
-        sim_plugin_close(pd);
-        splash(HZ*2, str(LANG_PLUGIN_WRONG_VERSION));
-        return -1;
-    }
-#else
-    fd = open(plugin, O_RDONLY);
-    if (fd < 0) {
-        splashf(HZ*2, str(LANG_PLUGIN_CANT_OPEN), plugin);
-        return fd;
-    }
-#if NUM_CORES > 1
-    /* Make sure COP cache is flushed and invalidated before loading */
-    my_core = switch_core(CURRENT_CORE ^ 1);
-    cpucache_invalidate();
-    switch_core(my_core);
-#endif
-
-    readsize = read(fd, pluginbuf, PLUGIN_BUFFER_SIZE);
-    close(fd);
-
-    if (readsize < 0) {
-        splashf(HZ*2, str(LANG_READ_FAILED), plugin);
-        return -1;
-    }
-    hdr = (struct plugin_header *)pluginbuf;
-
-    if ((unsigned)readsize <= sizeof(struct plugin_header)
-        || hdr->magic != PLUGIN_MAGIC
         || hdr->target_id != TARGET_ID
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
         || hdr->load_addr != pluginbuf
-        || hdr->end_addr > pluginbuf + PLUGIN_BUFFER_SIZE) {
+        || hdr->end_addr > pluginbuf + PLUGIN_BUFFER_SIZE
+#endif
+        )
+    {
+        lc_close(current_plugin_handle);
         splash(HZ*2, str(LANG_PLUGIN_WRONG_MODEL));
         return -1;
     }
     if (hdr->api_version > PLUGIN_API_VERSION
-        || hdr->api_version < PLUGIN_MIN_API_VERSION) {
+        || hdr->api_version < PLUGIN_MIN_API_VERSION)
+    {
+        lc_close(current_plugin_handle);
         splash(HZ*2, str(LANG_PLUGIN_WRONG_VERSION));
         return -1;
     }
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
     plugin_size = hdr->end_addr - pluginbuf;
-
-    /* zero out bss area only, above guards end of pluginbuf */
-    if (plugin_size > readsize)
-        memset(pluginbuf + readsize, 0, plugin_size - readsize);
+#else
+    plugin_size = 0;
 #endif
 
-    *(hdr->api) = &rockbox_api;
-    plugin_loaded = true;
-    
+    *(p_hdr->api) = &rockbox_api;
 
 #if defined HAVE_LCD_BITMAP && LCD_DEPTH > 1
     old_backdrop = lcd_get_backdrop();
@@ -841,8 +806,6 @@ int plugin_load(const char* plugin, const void* parameter)
 
     FOR_NB_SCREENS(i)
        viewportmanager_theme_enable(i, false, NULL);
-
-    cpucache_invalidate();
     
 #ifdef HAVE_TOUCHSCREEN
     touchscreen_set_mode(TOUCHSCREEN_BUTTON);
@@ -852,7 +815,13 @@ int plugin_load(const char* plugin, const void* parameter)
     open_files = 0;
 #endif
 
-    rc = hdr->entry_point(parameter);
+    rc = p_hdr->entry_point(parameter);
+
+    if (!pfn_tsr_exit)
+    {   /* close handle if plugin is no tsr one */
+        lc_close(current_plugin_handle);
+        current_plugin_handle = NULL;
+    }
 
     /* Go back to the global setting in case the plugin changed it */
 #ifdef HAVE_TOUCHSCREEN
@@ -887,18 +856,15 @@ int plugin_load(const char* plugin, const void* parameter)
 #endif
 
     lcd_clear_display();
-#ifdef HAVE_LCD_REMOTE
+#ifdef HAVE_REMOTE_LCD
     lcd_remote_clear_display();
 #endif
 
     FOR_NB_SCREENS(i)
         viewportmanager_theme_undo(i, false);
 
-    if (pfn_tsr_exit == NULL)
-        plugin_loaded = false;
-
 #ifdef HAVE_PLUGIN_CHECK_OPEN_CLOSE
-    if(open_files != 0 && !plugin_loaded)
+    if(open_files != 0 && !current_plugin_handle)
     {
         int fd;
         logf("Plugin '%s' leaks file handles", plugin);
@@ -916,8 +882,6 @@ int plugin_load(const char* plugin, const void* parameter)
     }
 #endif
 
-    sim_plugin_close(pd);
-
     if (rc == PLUGIN_ERROR)
         splash(HZ*2, str(LANG_PLUGIN_ERROR));
 
@@ -930,7 +894,7 @@ void* plugin_get_buffer(size_t *buffer_size)
 {
     int buffer_pos;
 
-    if (plugin_loaded)
+    if (current_plugin_handle)
     {
         if (plugin_size >= PLUGIN_BUFFER_SIZE)
             return NULL;
@@ -963,23 +927,6 @@ void* plugin_get_audio_buffer(size_t *buffer_size)
 #endif
 }
 
-#ifdef PLUGIN_USE_IRAM
-/* Initializes plugin IRAM */
-void plugin_iram_init(char *iramstart, char *iramcopy, size_t iram_size,
-                      char *iedata, size_t iedata_size)
-{
-    /* We need to stop audio playback in order to use codec IRAM */
-    audio_hard_stop();
-    memcpy(iramstart, iramcopy, iram_size);
-    memset(iedata, 0, iedata_size);
-    memset(iramcopy, 0, iram_size);
-#if NUM_CORES > 1
-    /* writeback cleared iedata and iramcopy areas */
-    cpucache_flush();
-#endif
-}
-#endif /* PLUGIN_USE_IRAM */
-
 /* The plugin wants to stay resident after leaving its main function, e.g.
    runs from timer or own thread. The callback is registered to later
    instruct it to free its resources before a new plugin gets loaded. */
@@ -998,16 +945,16 @@ static int open_wrapper(const char* pathname, int flags, ...)
 /* we don't have an 'open' function. it's a define. and we need
  * the real file_open, hence PREFIX() doesn't work here */
     int fd;
-#ifdef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_HOSTED)
     if (flags & O_CREAT)
     {
         va_list ap;
         va_start(ap, flags);
-        fd = sim_open(pathname, flags, va_arg(ap, unsigned int));
+        fd = open(pathname, flags, va_arg(ap, unsigned int));
         va_end(ap);
     }
     else
-        fd = sim_open(pathname, flags);
+        fd = open(pathname, flags);
 #else
     fd = file_open(pathname,flags);
 #endif

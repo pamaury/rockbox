@@ -21,7 +21,7 @@
 #define _WMADEC_H
 
 #include <codecs/libasf/asf.h>
-#include "bitstream.h" /* For GetBitContext */
+#include "ffmpeg_get_bits.h"
 #include "types.h"
 
 //#define TRACE
@@ -147,9 +147,8 @@ typedef struct WMADecodeContext
     fixed32 noise_mult; /* XXX: suppress that and integrate it in the noise array */
     /* lsp_to_curve tables */
     fixed32 lsp_cos_table[BLOCK_MAX_SIZE];
-    fixed64 lsp_pow_e_table[256];
-    fixed32 lsp_pow_m_table1[(1 << LSP_POW_BITS)];
-    fixed32 lsp_pow_m_table2[(1 << LSP_POW_BITS)];
+    void *lsp_pow_m_table1;
+    void *lsp_pow_m_table2;
 
     /* State of current superframe decoding */
     int bit_offset;
@@ -167,6 +166,5 @@ int wma_decode_init(WMADecodeContext* s, asf_waveformatex_t *wfx);
 int wma_decode_superframe_init(WMADecodeContext* s,
                                const uint8_t *buf, int buf_size);
 int wma_decode_superframe_frame(WMADecodeContext* s,
-                                int32_t *samples,
                                 const uint8_t *buf, int buf_size);
 #endif

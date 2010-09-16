@@ -26,29 +26,21 @@
     .global    start
 start:
     /* Exception vectors */
-    ldr     pc, [pc, #28]
-    ldr     pc, [pc, #28]
-    ldr     pc, [pc, #28]
-    ldr     pc, [pc, #28]
-    ldr     pc, [pc, #28]
-    ldr     pc, [pc, #28]
-    ldr     pc, [pc, #28]
-    ldr     pc, [pc, #28]
 
-#if CONFIG_CPU==S5L8700
-    .word 0x43554644 /* DFUC */
-#else
-    .word 0xdeadbeef /* to keep the same PC offsets */
-#endif
+    /*
+     * reset vector *MUST* use relative-addressing only
+     * the MMU might not be enabled yet, and the PC might point to
+     * a memory region not present in the linked binary
+     */
 
-.word newstart
-.word undef_instr_handler
-.word software_int_handler
-.word prefetch_abort_handler
-.word data_abort_handler
-.word reserved_handler
-.word irq_handler
-.word fiq_handler
+    b   newstart
+    b   undef_instr_handler
+    b   software_int_handler
+    b   prefetch_abort_handler
+    b   data_abort_handler
+    b   reserved_handler
+    b   irq_handler
+    b   fiq_handler
 
 _vectorsend:
 
@@ -57,56 +49,11 @@ _vectorsend:
 newstart:
     msr     cpsr_c, #0xd3 /* enter supervisor mode, disable IRQ/FIQ */
 
-#if (CONFIG_CPU==AS3525 || CONFIG_CPU==AS3525v2) && !defined(BOOTLOADER)
+#if CONFIG_CPU == AS3525 || CONFIG_CPU == AS3525v2
+    bl      memory_init
+#endif
 
-#define CACHE_NONE  0
-#define CACHE_ALL   0x0C
-#define UNCACHED_ADDR(a) (a + 0x10000000)
-
-    /* Setup MMU : has to be done before accessing IRAM ! */
-
-    bl      ttb_init
-
-    mov     r0, #0                          @ physical address
-    mov     r1, #0                          @ virtual address
-    mov     r2, #0x1000                     @ size (all memory)
-    mov     r3, #CACHE_NONE
-    bl      map_section
-
-    mov     r0, #0                          @ physical address
-    ldr     r1, =IRAM_ORIG                  @ virtual address
-    mov     r2, #1                          @ size : 1MB
-    mov     r3, #CACHE_ALL
-    bl      map_section
-
-    mov     r0, #0                          @ physical address
-    ldr     r1, =UNCACHED_ADDR(IRAM_ORIG)   @ virtual address
-    mov     r2, #1                          @ size : 1MB
-    mov     r3, #CACHE_NONE
-    bl      map_section
-
-    mov     r0, #0x30000000                 @ physical address
-    mov     r1, #DRAM_ORIG                  @ virtual address
-    mov     r2, #MEMORYSIZE                 @ size
-    mov     r3, #CACHE_ALL
-    bl      map_section
-
-    mov     r0, #0x30000000                 @ physical address
-    mov     r1, #UNCACHED_ADDR(DRAM_ORIG)   @ virtual address
-    mov     r2, #MEMORYSIZE                 @ size
-    mov     r3, #CACHE_NONE
-    bl      map_section
-
-    /* map 1st mbyte of DRAM at 0x0 to have exception vectors available */
-
-    mov     r0, #0x30000000                 @ physical address
-    mov     r1, #0                          @ virtual address
-    mov     r2, #1                          @ size
-    mov     r3, #CACHE_ALL
-    bl      map_section
-
-    bl      enable_mmu
-
+#ifdef USE_IRAM
     /* Zero out IBSS */
     ldr     r2, =_iedata
     ldr     r3, =_iend
@@ -126,7 +73,6 @@ newstart:
     ldrhi   r5, [r2], #4
     strhi   r5, [r3], #4
     bhi     1b
-
 #endif
 
 #ifdef HAVE_INIT_ATTR
@@ -179,15 +125,20 @@ newstart:
 
     /* Switch back to supervisor mode */
     msr     cpsr_c, #0xd3
-    bl      main
-
+    ldr     ip, =main       @ make sure we are using the virtual address
+    bx      ip
 
 /* All illegal exceptions call into UIE with exception address as first
  * parameter. This is calculated differently depending on which exception
  * we're in. Second parameter is exception number, used for a string lookup
  * in UIE. */
 undef_instr_handler:
-    sub    r0, lr, #4
+    sub    r0, lr, #4   @ r0 points to the faulty ARM instruction
+#ifdef USE_THUMB
+    mrs    r1, spsr
+    tst    r1, #(1<<5)  @ T bit set ?
+    subne  r0, lr, #2   @ if yes, r0 points to the faulty THUMB instruction
+#endif /* USE_THUMB */
     mov    r1, #0
     b      UIE
 

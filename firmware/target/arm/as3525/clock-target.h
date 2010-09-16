@@ -62,9 +62,19 @@
 #if CONFIG_CPU == AS3525v2
 
 /* PLLA & PLLB registers differ from AS3525(v1)
- * so we use a setting with a known frequency */
+ * PLL bits:
+ * - bit 0-6 = F-1 (F=multiplier)
+ * - bit 7-9 = R-1 (R=divisor)
+ * - bit 10  = OD (output divider)? Divides by 2 if set.
+ * - bit 11  = unknown (no effect)
+ * - bit 12  = unknown (always set to 1)
+ * Fpll = Fin * F / (R * OD), where Fin = 12 MHz
+ */
 #define AS3525_PLLA_FREQ        240000000
 #define AS3525_PLLA_SETTING     0x113B
+
+#define AS3525_PLLB_FREQ        192000000   /* allows 44.1kHz with 0.04% error*/
+#define AS3525_PLLB_SETTING     0x155F
 
 #define AS3525_FCLK_PREDIV      0
 #define AS3525_FCLK_FREQ        AS3525_PLLA_FREQ
@@ -129,14 +139,20 @@
 #define AS3525_FCLK_POSTDIV      (CLK_DIV((AS3525_PLLA_FREQ*(8-AS3525_FCLK_PREDIV)/8), AS3525_FCLK_FREQ) - 1) /*div=1/(n+1)*/
 
 #if CONFIG_CPU == AS3525v2
-/* On as3525v2 we change fclk by writing to CGU_PROC */
 #define AS3525_FCLK_POSTDIV_UNBOOSTED      (CLK_DIV((AS3525_PLLA_FREQ*(8-AS3525_FCLK_PREDIV)/8), CPUFREQ_NORMAL) - 1) /*div=1/(n+1) */
 /* Since pclk is based on fclk, we need to change CGU_PERI as well */
 #define AS3525_PCLK_DIV0_UNBOOSTED (CLK_DIV(CPUFREQ_NORMAL, AS3525_DRAM_FREQ) - 1) /*div=1/(n+1)*/
 #endif /* CONFIG_CPU == AS3525v2 */
 
 /* MCLK */
+#if CONFIG_CPU == AS3525v2
+/* on AMSv2 we can enable PLLB for MCLK to increase PCM sample rate accuracy
+   with no significant impact on battery life */
+#define AS3525_MCLK_SEL          AS3525_CLK_PLLB
+#else
 #define AS3525_MCLK_SEL          AS3525_CLK_PLLA
+#endif /* CONFIG_CPU == AS3525v2 */
+
 #if (AS3525_MCLK_SEL==AS3525_CLK_PLLA)
 #define AS3525_MCLK_FREQ         AS3525_PLLA_FREQ
 #elif (AS3525_MCLK_SEL==AS3525_CLK_PLLB)
@@ -147,21 +163,18 @@
 
 /* PCLK */
 
-/* Figure out if we need to use asynchronous bus */
-#if ((CONFIG_CPU == AS3525) && (AS3525_FCLK_FREQ % AS3525_PCLK_FREQ))
-#define ASYNCHRONOUS_BUS                          /* Boosted mode asynchronous */
-#endif
+#if CONFIG_CPU == AS3525
 
-#ifdef ASYNCHRONOUS_BUS
-#define AS3525_PCLK_SEL          AS3525_CLK_PLLA    /* PLLA input for asynchronous */
-#define AS3525_PCLK_DIV0         (CLK_DIV(AS3525_PLLA_FREQ, AS3525_DRAM_FREQ) - 1)/*div=1/(n+1)*/
-#else /* ASYNCHRONOUS_BUS */
-#define AS3525_PCLK_SEL          AS3525_CLK_FCLK    /* Fclk input for synchronous */
-#define AS3525_PCLK_DIV0         (CLK_DIV(AS3525_FCLK_FREQ, AS3525_DRAM_FREQ) - 1) /*div=1/(n+1)*/
-#endif /* ASYNCHRONOUS_BUS */
-
+#define AS3525_PCLK_SEL          AS3525_CLK_PLLA
          /*unable to use AS3525_PCLK_DIV1 != 0 successfuly so far*/
 #define AS3525_PCLK_DIV1         (CLK_DIV(AS3525_DRAM_FREQ, AS3525_PCLK_FREQ) - 1)/* div = 1/(n+1)*/ 
+#define AS3525_PCLK_DIV0         (CLK_DIV(AS3525_PLLA_FREQ, AS3525_DRAM_FREQ) - 1) /*div=1/(n+1)*/
+#else
+
+#define AS3525_PCLK_SEL          AS3525_CLK_FCLK
+#define AS3525_PCLK_DIV0         (CLK_DIV(AS3525_FCLK_FREQ, AS3525_DRAM_FREQ) - 1) /*div=1/(n+1)*/
+
+#endif /* CONFIG_CPU */
 
    /* PCLK as Source */
   #define AS3525_DBOP_DIV        (CLK_DIV(AS3525_PCLK_FREQ, AS3525_DBOP_FREQ) - 1) /*div=1/(n+1)*/

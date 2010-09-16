@@ -29,7 +29,11 @@ int audio_channels = 2;
 
 void audio_set_output_source(int source)
 {
-    (void)source;
+    bitset32(&CGU_PERI, CGU_I2SOUT_APB_CLOCK_ENABLE);
+    if (source == AUDIO_SRC_PLAYBACK)
+        I2SOUT_CONTROL &= ~(1<<5);
+    else
+        I2SOUT_CONTROL |= 1<<5; /* source = loopback from i2sin fifo */
 }
 
 void audio_input_mux(int source, unsigned flags)

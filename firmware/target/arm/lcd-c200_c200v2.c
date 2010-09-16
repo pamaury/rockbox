@@ -124,15 +124,7 @@ static inline void c200v1_lcd_init(void)
     udelay(10000);
 }
 
-#define lcd_delay(delay) udelay((delay) * 1000)
-
 #elif defined(SANSA_C200V2)
-
-static inline void lcd_delay(int delay)
-{   //TUNEME : delay is in milliseconds
-    delay <<= 14;
-    while(delay--) ;
-}
 
 /* send LCD data */
 void lcd_write_data(const fb_data *data, int width)
@@ -177,44 +169,38 @@ static inline void as3525_dbop_init(void)
     DBOP_TIMPOL_01 = 0x6e167;
     DBOP_TIMPOL_23 = 0xa167e06f;
 
-    lcd_delay(20);
+    udelay(20000);
 }
 
 #endif
 
-/* LCD init */
-void lcd_init_device(void)
+static void lcd_reset(void)
 {
-#if defined(SANSA_C200)
-    c200v1_lcd_init();
-#elif defined(SANSA_C200V2)
-    as3525_dbop_init();
-
+#if defined(SANSA_C200V2)
     /* reset lcd */
     GPIOB_DIR |= (1<<6);
     GPIOB_PIN(6) = 0; /* pull reset low */
-    lcd_delay(20);
+    udelay(20000);
     GPIOB_PIN(6) = 1<<6; /* release reset */
-    lcd_delay(20);
+    udelay(20000);
 #endif
-
     lcd_send_command(R_STANDBY_OFF, 0);
-    lcd_delay(20);
+    udelay(20000);
 
     lcd_send_command(R_OSCILLATION_MODE, 0x01);
-    lcd_delay(20);
+    udelay(20000);
 
     lcd_send_command(R_DCDC_AMP_ONOFF, 0x01);
-    lcd_delay(20);
+    udelay(20000);
 
     lcd_send_command(R_DCDC_AMP_ONOFF, 0x09);
-    lcd_delay(20);
+    udelay(20000);
 
     lcd_send_command(R_DCDC_AMP_ONOFF, 0x0b);
-    lcd_delay(20);
+    udelay(20000);
 
     lcd_send_command(R_DCDC_AMP_ONOFF, 0x0f);
-    lcd_delay(20);
+    udelay(20000);
 
     lcd_send_command(R_DRIVER_OUTPUT_MODE, 0x07);
 
@@ -244,9 +230,20 @@ void lcd_init_device(void)
     lcd_send_command(R_X_ADDR_AREA, 0); /* x1 */
     lcd_send_command(LCD_WIDTH - 1, 0); /* x2 */
 
-    lcd_delay(100);
+    udelay(100000);
 
     lcd_send_command(R_DISPLAY_ON, 0);
+}
+
+/* LCD init */
+void lcd_init_device(void)
+{
+#if defined(SANSA_C200)
+    c200v1_lcd_init();
+#elif defined(SANSA_C200V2)
+    as3525_dbop_init();
+#endif
+    lcd_reset();
 }
 
 /*** hardware configuration ***/
@@ -262,8 +259,11 @@ void lcd_set_contrast(int val)
 
 void lcd_set_invert_display(bool yesno)
 {
-    /* TODO: Implement lcd_set_invert_display() */
+#ifdef HAVE_LCD_INVERT
+    lcd_send_command(R_SPEC_DISPLAY_PATTERN, yesno ? 1 : 0);
+#else
     (void)yesno;
+#endif
 }
 
 #if defined(HAVE_LCD_ENABLE)
@@ -412,6 +412,11 @@ void lcd_update_rect(int x, int y, int width, int height)
 
     lcd_send_command(R_Y_ADDR_AREA, y + 0x1a);
     lcd_send_command(y + height - 1 + 0x1a, 0);
+
+#ifdef SANSA_C200V2
+    /* somehow there are glitches without this delay */
+    udelay(1);
+#endif
 
     do {
         lcd_write_data(addr, width);

@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include "lcd.h"
 #include "font.h"
+#include "gcc_extensions.h"
 
 static const char* const uiename[] = {
     "Undefined instruction",
@@ -34,7 +35,7 @@ static const char* const uiename[] = {
 /* Unexpected Interrupt or Exception handler. Currently only deals with
    exceptions, but will deal with interrupts later.
  */
-void __attribute__((noreturn)) UIE(unsigned int pc, unsigned int num)
+void NORETURN_ATTR UIE(unsigned int pc, unsigned int num)
 {
 #if LCD_DEPTH > 1
     lcd_set_backdrop(NULL);
@@ -99,8 +100,9 @@ void __attribute__((noreturn)) UIE(unsigned int pc, unsigned int num)
 void __attribute__((naked)) __div0(void)
 {
     asm volatile (
-        "ldr    r0, [sp] \r\n"
-        "mov    r1, #3   \r\n"
-        "b      UIE      \r\n"
+        "ldr    r0, [sp]    \r\n"
+        "sub    r0, r0, #4  \r\n"
+        "mov    r1, #3      \r\n"
+        "b      UIE         \r\n"
     );
 }

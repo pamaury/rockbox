@@ -215,13 +215,25 @@ static const char graphic_numeric[] = "graphic,numeric";
   #define DEFAULT_FONTNAME "12-Adobe-Helvetica"
 #elif LCD_HEIGHT <= 320
   #define DEFAULT_FONTNAME "15-Adobe-Helvetica"
+#elif LCD_HEIGHT <= 400
+  #define DEFAULT_FONTNAME "16-Adobe-Helvetica"
+#elif LCD_HEIGHT <= 480
+  #define DEFAULT_FONTNAME "27-Adobe-Helvetica"
 #else
-  #define DEFAULT_FONTNAME "12-Adobe-Helvetica"
+  #define DEFAULT_FONTNAME "35-Adobe-Helvetica"
 #endif
 
 #else
   #define DEFAULT_FONTNAME ""
 #endif
+
+#ifdef HAVE_REMOTE_LCD
+#if LCD_REMOTE_HEIGHT <= 64
+  #define DEFAULT_REMOTE_FONTNAME "08-Rockfont"
+#else
+  #define DEFAULT_REMOTE_FONTNAME "-"
+#endif
+#endif /* HAVE_REMOTE_LCD */
 
 #ifdef HAVE_LCD_COLOR
   #define DEFAULT_ICONSET "tango_small"
@@ -411,46 +423,6 @@ static void set_superbass(bool value)
     sound_set_superbass((int)value);
 }
 #endif
-
-#ifdef HAVE_LCD_CHARCELLS
-static const char* jumpscroll_format(char* buffer, size_t buffer_size, int value,
-                              const char* unit)
-{
-    (void)unit;
-    switch (value)
-    {
-        case 0:
-            return str(LANG_OFF);
-        case 1:
-            return str(LANG_ONE_TIME);
-        case 2:
-        case 3:
-        case 4:
-            snprintf(buffer, buffer_size, "%d", value);
-            break;
-        case 5:
-            return str(LANG_ALWAYS);
-    }
-    return buffer;
-}
-static int32_t jumpscroll_getlang(int value, int unit)
-{
-    switch (value)
-    {
-        case 0:
-            return LANG_OFF;
-        case 1:
-            return LANG_ONE_TIME;
-        case 2:
-        case 3:
-        case 4:
-            return TALK_ID(value, unit);
-        case 5:
-            return LANG_ALWAYS;
-    }
-    return -1;
-}
-#endif /* HAVE_LCD_CHARCELLS */
 
 #ifdef HAVE_QUICKSCREEN
 static int find_setting_by_name(char*name)
@@ -791,7 +763,15 @@ const struct settings_list settings[] = {
 #endif
                   "max files in dir", UNIT_INT, 50, 10000, 50,
                   NULL, NULL, NULL),
-#if BATTERY_CAPACITY_INC > 0
+/* use this setting for user code even if there's no exchangable battery
+ * support enabled */
+#ifdef BATTERY_CAPACITY_DEFAULT
+/* define min/max/inc for this file if there's only one battery */
+#ifndef BATTERY_CAPACITY_MIN
+#define BATTERY_CAPACITY_MIN BATTERY_CAPACITY_DEFAULT
+#define BATTERY_CAPACITY_MAX BATTERY_CAPACITY_DEFAULT
+#define BATTERY_CAPACITY_INC 0
+#endif
     INT_SETTING(0, battery_capacity, LANG_BATTERY_CAPACITY,
                 BATTERY_CAPACITY_DEFAULT, "battery capacity", UNIT_MAH,
                 BATTERY_CAPACITY_MIN, BATTERY_CAPACITY_MAX,
@@ -932,13 +912,6 @@ const struct settings_list settings[] = {
                 "screen scroll step", UNIT_PIXEL, 1, LCD_WIDTH, 1, NULL, NULL,
                 gui_list_screen_scroll_step),
 #endif /* HAVE_LCD_BITMAP */
-#ifdef HAVE_LCD_CHARCELLS
-    INT_SETTING(0, jump_scroll, LANG_JUMP_SCROLL, 0, "jump scroll", UNIT_INT, 0,
-                5, 1, jumpscroll_format, jumpscroll_getlang, lcd_jump_scroll),
-    INT_SETTING(0, jump_scroll_delay, LANG_JUMP_SCROLL_DELAY, 500,
-                "jump scroll delay", UNIT_MS, 0, 2500, 100, NULL, NULL,
-                lcd_jump_scroll_delay),
-#endif
     OFFON_SETTING(0,scroll_paginated,LANG_SCROLL_PAGINATED,
                   false,"scroll paginated",NULL),
 #ifdef HAVE_LCD_COLOR
@@ -1026,6 +999,8 @@ const struct settings_list settings[] = {
                    ID2P(LANG_SET_BOOL_NO), ID2P(LANG_SET_BOOL_YES),
                    ID2P(LANG_ASK), ID2P(LANG_BOOKMARK_SETTINGS_RECENT_ONLY_YES),
                    ID2P(LANG_BOOKMARK_SETTINGS_RECENT_ONLY_ASK)),
+    OFFON_SETTING(0, autoupdatebookmark, LANG_BOOKMARK_SETTINGS_AUTOUPDATE,
+                   false, "autoupdate bookmarks", NULL),
     CHOICE_SETTING(0, autoloadbookmark, LANG_BOOKMARK_SETTINGS_AUTOLOAD,
                    BOOKMARK_NO, "autoload bookmarks", off_on_ask, NULL, 3,
                    ID2P(LANG_SET_BOOL_NO), ID2P(LANG_SET_BOOL_YES),
@@ -1564,7 +1539,7 @@ const struct settings_list settings[] = {
 #endif
 #ifdef HAVE_REMOTE_LCD
     TEXT_SETTING(F_THEMESETTING, remote_font_file, "remote font",
-                     "-", FONT_DIR "/", ".fnt"),
+                     DEFAULT_REMOTE_FONTNAME, FONT_DIR "/", ".fnt"),
 #endif
     TEXT_SETTING(F_THEMESETTING,wps_file, "wps",
                      DEFAULT_WPSNAME, WPS_DIR "/", ".wps"),
@@ -1587,7 +1562,9 @@ const struct settings_list settings[] = {
     TEXT_SETTING(0,kbd_file,"kbd","-",ROCKBOX_DIR "/",".kbd"),
 #endif
 #ifdef HAVE_USB_CHARGING_ENABLE
-    OFFON_SETTING(0,usb_charging,LANG_USB_CHARGING,false,"usb charging",NULL),
+    CHOICE_SETTING(0, usb_charging, LANG_USB_CHARGING, 1, "usb charging",
+                   "off,on,force", NULL, 3, ID2P(LANG_SET_BOOL_NO),
+                   ID2P(LANG_SET_BOOL_YES), ID2P(LANG_FORCE)),
 #endif
     OFFON_SETTING(F_BANFROMQS,cuesheet,LANG_CUESHEET_ENABLE,false,"cuesheet support",
                   NULL),
@@ -1600,33 +1577,33 @@ const struct settings_list settings[] = {
     CHOICE_SETTING(0, start_in_screen, LANG_START_SCREEN, 1, 
                    "start in screen", "previous,root,files,"
 #ifdef HAVE_TAGCACHE 
+#define START_DB_COUNT 1
                    "db,"
+#else 
+#define START_DB_COUNT 0
 #endif
                    "wps,menu,"
 #ifdef HAVE_RECORDING
+#define START_REC_COUNT 1
                    "recording,"
+#else 
+#define START_REC_COUNT 0
 #endif
 #if CONFIG_TUNER
+#define START_TUNER_COUNT 1
                    "radio,"
+#else 
+#define START_TUNER_COUNT 0
 #endif
-                   "bookmarks" ,NULL,
-#if defined(HAVE_TAGCACHE)
-  #if defined(HAVE_RECORDING) && CONFIG_TUNER
-                   9,
-  #elif defined(HAVE_RECORDING) || CONFIG_TUNER /* only one of them */
-                   8,
-  #else
-                   7,
-  #endif
-#else
-  #if defined(HAVE_RECORDING) && CONFIG_TUNER
-                   8,
-  #elif defined(HAVE_RECORDING) || CONFIG_TUNER /* only one of them */
-                   7,
-  #else
-                   6,
-  #endif
+                   "bookmarks"
+#ifdef HAVE_PICTUREFLOW_INTEGRATION
+#define START_PF_COUNT 1
+                   ",pictureflow"
+#else 
+#define START_PF_COUNT 0
 #endif
+                   , NULL,
+    (6 + START_DB_COUNT + START_REC_COUNT + START_TUNER_COUNT + START_PF_COUNT),
                    ID2P(LANG_PREVIOUS_SCREEN), ID2P(LANG_MAIN_MENU),
                    ID2P(LANG_DIR_BROWSER), 
 #ifdef HAVE_TAGCACHE
@@ -1640,6 +1617,9 @@ const struct settings_list settings[] = {
                    ID2P(LANG_FM_RADIO),
 #endif
                    ID2P(LANG_BOOKMARK_MENU_RECENT_BOOKMARKS)
+#ifdef HAVE_PICTUREFLOW_INTEGRATION
+                   ,ID2P(LANG_ONPLAY_PICTUREFLOW)
+#endif
                   ),
     SYSTEM_SETTING(NVRAM(1),last_screen,-1),
 #if defined(HAVE_RTC_ALARM) && \
@@ -1783,10 +1763,23 @@ const struct settings_list settings[] = {
 #ifdef HAVE_HOTKEY
     TABLE_SETTING(F_ALLOW_ARBITRARY_VALS, hotkey_wps,
         LANG_HOTKEY_WPS, HOTKEY_VIEW_PLAYLIST, "hotkey wps",
-        "off,view playlist,show track info,pitchscreen,open with,delete",
-        UNIT_INT, hotkey_formatter, hotkey_getlang, NULL, 6, HOTKEY_OFF,
+        "off,view playlist,show track info,pitchscreen,open with,delete"
+#ifdef HAVE_PICTUREFLOW_INTEGRATION        
+        ",pictureflow"
+#endif
+        ,UNIT_INT, hotkey_formatter, hotkey_getlang, NULL, 
+#ifdef HAVE_PICTUREFLOW_INTEGRATION        
+        7, 
+#else
+        6,
+#endif
+        HOTKEY_OFF,
         HOTKEY_VIEW_PLAYLIST, HOTKEY_SHOW_TRACK_INFO, HOTKEY_PITCHSCREEN,
-        HOTKEY_OPEN_WITH, HOTKEY_DELETE),
+        HOTKEY_OPEN_WITH, HOTKEY_DELETE
+#ifdef HAVE_PICTUREFLOW_INTEGRATION        
+        , HOTKEY_PICTUREFLOW
+#endif        
+        ),
     TABLE_SETTING(F_ALLOW_ARBITRARY_VALS, hotkey_tree,
         LANG_HOTKEY_FILE_BROWSER, HOTKEY_OFF, "hotkey tree",
         "off,open with,delete,insert,insert shuffled",

@@ -44,6 +44,7 @@ jpeg,viewers
 keybox,apps
 lamp,apps
 logo,demos
+lrcplayer,apps
 lua,viewers
 fractals,demos
 matrix,demos
@@ -83,6 +84,7 @@ rockpaint,apps
 search,viewers
 searchengine,viewers
 settings_dumper,apps
+shopper,viewers
 shortcuts_append,viewers
 shortcuts_view,viewers
 sliding_puzzle,games
@@ -111,6 +113,7 @@ test_touchscreen,apps
 test_viewports,apps
 test_greylib_bitmap_scale,viewers
 text_editor,apps
+text_viewer,viewers
 theme_remove,viewers
 vbrfix,viewers
 video,viewers

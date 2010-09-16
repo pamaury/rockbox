@@ -22,10 +22,6 @@
 #include "plugin.h"
 #include "lib/pluginlib_bmp.h"
 
-#if defined(HAVE_LCD_COLOR)
-
-PLUGIN_HEADER
-
 /* Magic constants. */
 #define PPM_MAGIC1 'P'
 #define PPM_MAGIC2 '3'
@@ -38,8 +34,7 @@ PLUGIN_HEADER
 
 #define ppm_error(...) rb->splashf(HZ*2, __VA_ARGS__ )
 
-static fb_data buffer[PPM_MAXSIZE];
-static fb_data lcd_buf[LCD_WIDTH * LCD_HEIGHT];
+static fb_data *buffer, *lcd_buf;
 
 int ppm_read_magic_number(int fd)
 {
@@ -294,6 +289,25 @@ enum plugin_status plugin_start(const void* parameter)
     
     if(!parameter) return PLUGIN_ERROR;
 
+    size_t buffer_size;
+    char *audiobuf = rb->plugin_get_buffer(&buffer_size);
+    if (buffer_size < PPM_MAXSIZE + LCD_WIDTH * LCD_HEIGHT + 1)
+    {
+        /* steal from audiobuffer if plugin buffer is too small */
+        audiobuf = rb->plugin_get_audio_buffer(&buffer_size);
+
+        if (buffer_size < PPM_MAXSIZE + LCD_WIDTH * LCD_HEIGHT + 1)
+        {
+            rb->splash(HZ, "Not enough memory");
+            return PLUGIN_ERROR;
+        }
+    }
+
+    /* align on 16 bits */
+    audiobuf = (char *)(((uintptr_t)audiobuf + 1) & ~1);
+    buffer = (fb_data *)audiobuf;
+    lcd_buf = (fb_data*) (audiobuf + PPM_MAXSIZE);
+
     rb->strcpy(filename, parameter);
     
     fd = rb->open(filename, O_RDONLY);
@@ -339,5 +353,3 @@ enum plugin_status plugin_start(const void* parameter)
     
     return PLUGIN_OK;
 }
-
-#endif

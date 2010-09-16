@@ -43,7 +43,7 @@
 #include "progressloggerinterface.h"
 
 #include "bootloaderinstallbase.h"
-
+#include "bootloaderinstallmpio.h"
 
 #if defined(Q_OS_LINUX)
 #include <stdio.h>
@@ -68,6 +68,7 @@ RbUtilQt::RbUtilQt(QWidget *parent) : QMainWindow(parent)
     absolutePath = qApp->applicationDirPath();
 
     HttpGet::setGlobalUserAgent("rbutil/"VERSION);
+    HttpGet::setGlobalProxy(proxy());
     // init startup & autodetection
     ui.setupUi(this);
 #if defined(Q_OS_LINUX)
@@ -319,15 +320,7 @@ void RbUtilQt::updateSettings()
     qDebug() << "[RbUtil] updating current settings";
     updateDevice();
     updateManual();
-    if(RbSettings::value(RbSettings::ProxyType) == "system") {
-        HttpGet::setGlobalProxy(System::systemProxy());
-    }
-    else if(RbSettings::value(RbSettings::ProxyType) == "manual") {
-        HttpGet::setGlobalProxy(RbSettings::value(RbSettings::Proxy).toString());
-    }
-    else {
-        HttpGet::setGlobalProxy(QUrl(""));
-    }
+    HttpGet::setGlobalProxy(proxy());
     HttpGet::setGlobalCache(RbSettings::value(RbSettings::CachePath).toString());
     HttpGet::setGlobalDumbCache(RbSettings::value(RbSettings::CacheOffline).toBool());
     
@@ -805,6 +798,15 @@ void RbUtilQt::installBootloaderPost(bool error)
 void RbUtilQt::installFontsBtn()
 {
     if(chkConfig(true)) return;
+    QString mountpoint = RbSettings::value(RbSettings::Mountpoint).toString();
+    RockboxInfo installInfo(mountpoint);
+    if(installInfo.revision().isEmpty() && installInfo.release().isEmpty()) {
+        QMessageBox::critical(this, tr("No Rockbox installation found"),
+                tr("Could not determine the installed Rockbox version. "
+                    "Please install a Rockbox build before installing "
+                    "fonts."));
+        return;
+    }
     if(QMessageBox::question(this, tr("Confirm Installation"),
            tr("Do you really want to install the fonts package?"),
               QMessageBox::Yes | QMessageBox::No) != QMessageBox::Yes) return;
@@ -823,13 +825,28 @@ bool RbUtilQt::installFontsAuto()
 
 void RbUtilQt::installFonts()
 {
+    QString mountpoint = RbSettings::value(RbSettings::Mountpoint).toString();
+    RockboxInfo installInfo(mountpoint);
+    QString fontsurl;
+    QString logversion;
+    QString relversion = installInfo.release();
+    if(relversion.isEmpty()) {
+        // release is empty for non-release versions (i.e. daily / current)
+        fontsurl = SystemInfo::value(SystemInfo::DailyFontUrl).toString();
+        logversion = installInfo.revision();
+    }
+    else {
+        fontsurl = SystemInfo::value(SystemInfo::ReleaseFontUrl).toString();
+        logversion = installInfo.release();
+    }
+    fontsurl.replace("%RELEASEVER%", relversion);
+
     // create zip installer
     installer = new ZipInstaller(this);
-
-    installer->setUrl(SystemInfo::value(SystemInfo::FontUrl).toString());
+    installer->setUrl(fontsurl);
     installer->setLogSection("Fonts");
-    installer->setLogVersion(ServerInfo::value(ServerInfo::DailyDate).toString());
-    installer->setMountPoint(RbSettings::value(RbSettings::Mountpoint).toString());
+    installer->setLogVersion(logversion);
+    installer->setMountPoint(mountpoint);
     if(!RbSettings::value(RbSettings::CacheDisabled).toBool())
         installer->setCache(true);
 
@@ -854,26 +871,54 @@ void RbUtilQt::installVoice()
         return;
     }
 
+    QString mountpoint = RbSettings::value(RbSettings::Mountpoint).toString();
+    RockboxInfo installInfo(mountpoint);
+
+    QString voiceurl;
+    QString logversion;
+    QString relversion = installInfo.release();
+    // if no version is found abort.
+    if(installInfo.revision().isEmpty() && relversion.isEmpty()) {
+        QMessageBox::critical(this, tr("No Rockbox installation found"),
+                tr("Could not determine the installed Rockbox version. "
+                    "Please install a Rockbox build before installing "
+                    "voice files."));
+        return;
+    }
+    if(relversion.isEmpty()) {
+        // release is empty for non-release versions (i.e. daily / current)
+        voiceurl = SystemInfo::value(SystemInfo::DailyVoiceUrl).toString();
+        logversion = installInfo.revision();
+    }
+    else {
+        voiceurl = SystemInfo::value(SystemInfo::ReleaseVoiceUrl).toString();
+        logversion = installInfo.release();
+    }
     if(QMessageBox::question(this, tr("Confirm Installation"),
        tr("Do you really want to install the voice file?"),
-       QMessageBox::Yes | QMessageBox::No) != QMessageBox::Yes) return;
+       QMessageBox::Yes | QMessageBox::No) != QMessageBox::Yes)
+        return;
+
+    QDate date = QDate::fromString(
+            ServerInfo::value(ServerInfo::DailyDate).toString(), Qt::ISODate);
+    QString model = SystemInfo::value(SystemInfo::CurBuildserverModel).toString();
+    // replace placeholder in voice url
+    voiceurl.replace("%DATE%", date.toString("yyyyMMdd"));
+    voiceurl.replace("%MODEL%", model);
+    voiceurl.replace("%RELVERSION%", relversion);
+
+    qDebug() << "[RbUtil] voicefile URL:" << voiceurl;
+
     // create logger
     logger = new ProgressLoggerGui(this);
     logger->show();
-
     // create zip installer
     installer = new ZipInstaller(this);
 
-    QString voiceurl = SystemInfo::value(SystemInfo::VoiceUrl).toString();
-    QDate date = QDate::fromString(ServerInfo::value(ServerInfo::DailyDate).toString(),Qt::ISODate);
-    voiceurl += SystemInfo::value(SystemInfo::CurBuildserverModel).toString() + "-" +
-        date.toString("yyyyMMdd") + "-english.zip";
-    qDebug() << "[RbUtil] voicefile URL:" << voiceurl;
-
     installer->setUrl(voiceurl);
     installer->setLogSection("Voice");
-    installer->setLogVersion(ServerInfo::value(ServerInfo::DailyDate).toString());
-    installer->setMountPoint(RbSettings::value(RbSettings::Mountpoint).toString());
+    installer->setLogVersion(logversion);
+    installer->setMountPoint(mountpoint);
     if(!RbSettings::value(RbSettings::CacheDisabled).toBool())
         installer->setCache(true);
     connect(installer, SIGNAL(logItem(QString, int)), logger, SLOT(addItem(QString, int)));
@@ -1224,6 +1269,7 @@ void RbUtilQt::checkUpdate(void)
     if(RbSettings::value(RbSettings::CacheOffline).toBool())
         update->setCache(true);
    
+    ui.statusbar->showMessage(tr("Checking for update ..."));
     update->getFile(QUrl(url));
 }
 
@@ -1245,7 +1291,7 @@ void RbUtilQt::downloadUpdateDone(bool error)
         }
         qDebug() << "[Checkupdate] " << rbutilList;
         
-        QString newVersion ="";
+        QString newVersion = "";
         //check if there is a binary with higher version in this list
         for(int i=0; i < rbutilList.size(); i++)
         {
@@ -1261,9 +1307,9 @@ void RbUtilQt::downloadUpdateDone(bool error)
 #endif                
 #endif            
             //check if it is newer, and remember newest
-            if(newerVersion(VERSION,rbutilList.at(i)))
+            if(Utils::compareVersionStrings(VERSION, rbutilList.at(i)) == 1)
             {
-                if(newVersion == "" || newerVersion(newVersion,rbutilList.at(i)))
+                if(Utils::compareVersionStrings(newVersion, rbutilList.at(i)) == 1)
                 {
                     newVersion = rbutilList.at(i);
                 }
@@ -1286,58 +1332,11 @@ void RbUtilQt::downloadUpdateDone(bool error)
             QMessageBox::information(this,tr("RockboxUtility Update available"),
                         tr("<b>New RockboxUtility Version available.</b> <br><br>"
                         "Download it from here: <a href='%1'>%2</a>").arg(url).arg(newVersion) );
+            ui.statusbar->showMessage(tr("New version of Rockbox Utility available."));
+        }
+        else {
+            ui.statusbar->showMessage(tr("Rockbox Utility is up to date."), 5000);
         }
     }
 }
 
-bool RbUtilQt::newerVersion(QString versionOld,QString versionNew)
-{
-   QRegExp chars("\\d*(\\D)");
-   
-   //strip non-number from beginning
-   versionOld = versionOld.remove(0,versionOld.indexOf(QRegExp("\\d")));
-   versionNew = versionNew.remove(0,versionNew.indexOf(QRegExp("\\d")));
-
-   // split versions by "."
-   QStringList versionListOld = versionOld.split(".");
-   QStringList versionListNew = versionNew.split(".");
-   
-   QStringListIterator iteratorOld(versionListOld);
-   QStringListIterator iteratorNew(versionListNew);
-   
-   //check every section
-   while(iteratorOld.hasNext() && iteratorNew.hasNext())
-   {
-      QString newPart = iteratorNew.next();
-      QString oldPart = iteratorOld.next();
-      QString newPartChar = "", oldPartChar = "";
-      int newPartInt = 0, oldPartInt =0;
-
-      //convert to int, if it contains chars, put into seperated variable
-      if(newPart.contains(chars))
-      {
-        newPartChar = chars.cap(1);
-        newPart = newPart.remove(newPartChar);
-      }
-      newPartInt = newPart.toInt();
-      //convert to int, if it contains chars, put into seperated variable
-      if(oldPart.contains(chars))
-      {
-        oldPartChar = chars.cap(1);
-        oldPart = oldPart.remove(oldPartChar);
-      }
-      oldPartInt = oldPart.toInt();
-            
-      if(newPartInt > oldPartInt)  // this section int is higher -> true
-        return true;
-      else if(newPartInt < oldPartInt)  //this section int is lower -> false
-        return false;
-      else if(newPartChar > oldPartChar)  //ints are the same, chars is higher -> true
-        return true;
-      else if(newPartChar < oldPartChar)  //ints are the same, chars is lower -> false
-        return false;
-      //all the same, next section  
-   }
-   // all the same -> false
-   return false;
-}

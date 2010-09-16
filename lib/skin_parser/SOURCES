@@ -1,0 +1,7 @@
+skin_buffer.c
+skin_parser.c
+#if !defined(ROCKBOX) || defined(__PCTOOL__)
+skin_debug.c
+#endif
+skin_scan.c
+tag_table.c

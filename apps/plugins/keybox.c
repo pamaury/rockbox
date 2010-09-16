@@ -21,7 +21,7 @@
 #include "plugin.h"
 #include "lib/playback_control.h"
 #include "lib/md5.h"
-PLUGIN_HEADER
+
 
 #define KEYBOX_FILE PLUGIN_APPS_DIR "/keybox.dat"
 #define BLOCK_SIZE 8
@@ -554,10 +554,10 @@ static int keybox(void)
             return FILE_OPEN_ERROR;
         bytes_read = rb->read(fd, &buffer, sizeof(buffer));
 
+        rb->close(fd);
+
         if (parse_buffer())
             return 0;
-
-        rb->close(fd);
     }
 
     while (!done)

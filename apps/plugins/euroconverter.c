@@ -20,8 +20,7 @@
  ****************************************************************************/
 #include "plugin.h"
 #include "lib/configfile.h"
-
-#ifdef HAVE_LCD_CHARCELLS
+#include "lib/pluginlib_exit.h"
 
 /* Euro converter for the player */
 /*
@@ -45,7 +44,7 @@ To do:
 - The Irish currency needs 6 digits after the . to have sufficient precision on big number
 */
 
-PLUGIN_HEADER
+
 
 /* Name and path of the config file*/
 static const char cfg_filename[] =  "euroconverter.cfg";
@@ -387,10 +386,8 @@ static int euro_menu(void)
 
 
 /* Call when the program end */
-static void euro_exit(void *parameter)
+static void euro_exit(void)
 {
-    (void)parameter;
-    
     //Restore the old pattern (i don't find another way to do this. An idea?)
     rb->lcd_unlock_pattern(heuro);
     rb->lcd_unlock_pattern(hhome);
@@ -411,6 +408,7 @@ enum plugin_status plugin_start(const void* parameter)
     /* if you don't use the parameter, you can do like
        this to avoid the compiler warning about it */
     (void)parameter;
+    atexit(euro_exit);
 
     /*Get the pattern handle*/
     heuro=rb->lcd_get_locked_pattern();
@@ -587,9 +585,7 @@ enum plugin_status plugin_start(const void* parameter)
                 break;
 
             default:
-                if (rb->default_event_handler_ex(button, euro_exit, NULL)
-                     == SYS_USB_CONNECTED)
-                    return PLUGIN_USB_CONNECTED;
+                exit_on_usb(button);
                 break;
         }
         /*Display*/
@@ -599,8 +595,5 @@ enum plugin_status plugin_start(const void* parameter)
             e=mydiv(h,currency[country]);
         display(e,h,pos);
     }
-    euro_exit(NULL);
     return PLUGIN_OK;
 }
-
-#endif

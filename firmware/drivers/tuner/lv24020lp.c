@@ -67,24 +67,31 @@ static int fd_log = -1;
 /** tuner register defines **/
 
 #if defined(SANSA_E200) || defined(SANSA_C200)
-#define TUNER_GPIO_OUTPUT_EN  GPIOH_OUTPUT_EN
-#define TUNER_GPIO_OUTPUT_VAL GPIOH_OUTPUT_VAL
-#define TUNER_GPIO_INPUT_VAL  GPIOH_INPUT_VAL
+#define TUNER_GPIO_INPUT_VAL              GPIOH_INPUT_VAL
+#define TUNER_GPIO_OUTPUT_EN_SET(mask)    GPIO_SET_BITWISE(GPIOH_OUTPUT_EN, mask)
+#define TUNER_GPIO_OUTPUT_EN_CLEAR(mask)  GPIO_CLEAR_BITWISE(GPIOH_OUTPUT_EN, mask)
+#define TUNER_GPIO_OUTPUT_VAL_SET(mask)   GPIO_SET_BITWISE(GPIOH_OUTPUT_VAL, mask)
+#define TUNER_GPIO_OUTPUT_VAL_CLEAR(mask) GPIO_CLEAR_BITWISE(GPIOH_OUTPUT_VAL, mask)
 #define FM_NRW_PIN      3
 #define FM_CLOCK_PIN    4
 #define FM_DATA_PIN     5
 
 #elif defined(IAUDIO_7)
-#define TUNER_GPIO_OUTPUT_EN  GPIOA_DIR
-#define TUNER_GPIO_OUTPUT_VAL GPIOA
-#define TUNER_GPIO_INPUT_VAL  GPIOA
+#define TUNER_GPIO_INPUT_VAL              GPIOA
+#define TUNER_GPIO_OUTPUT_EN_SET(mask)    (GPIOA_DIR |= (mask))
+#define TUNER_GPIO_OUTPUT_EN_CLEAR(mask)  (GPIOA_DIR &= ~(mask))
+#define TUNER_GPIO_OUTPUT_VAL_SET(mask)   (GPIOA |= (mask))
+#define TUNER_GPIO_OUTPUT_VAL_CLEAR(mask) (GPIOA &= ~(mask))
 #define FM_CLOCK_PIN    5
 #define FM_DATA_PIN     6
 #define FM_NRW_PIN      7
+
 #elif defined(COWON_D2)
-#define TUNER_GPIO_OUTPUT_EN  GPIOC_DIR
-#define TUNER_GPIO_OUTPUT_VAL GPIOC
-#define TUNER_GPIO_INPUT_VAL  GPIOC
+#define TUNER_GPIO_INPUT_VAL              GPIOC
+#define TUNER_GPIO_OUTPUT_EN_SET(mask)    (GPIOC_DIR |= (mask))
+#define TUNER_GPIO_OUTPUT_EN_CLEAR(mask)  (GPIOC_DIR &= ~(mask))
+#define TUNER_GPIO_OUTPUT_VAL_SET(mask)   (GPIOC |= (mask))
+#define TUNER_GPIO_OUTPUT_VAL_CLEAR(mask) (GPIOC &= ~(mask))
 #define FM_NRW_PIN      31
 #define FM_CLOCK_PIN    29
 #define FM_DATA_PIN     30
@@ -291,16 +298,17 @@ static void lv24020lp_send_byte(unsigned int byte)
 
     for (i = 0; i < 8; i++)
     {
-        TUNER_GPIO_OUTPUT_VAL &= ~(1 << FM_CLOCK_PIN);
+        TUNER_GPIO_OUTPUT_VAL_CLEAR(1 << FM_CLOCK_PIN);
+        
 
         if (byte & 1)
-            TUNER_GPIO_OUTPUT_VAL |= (1 << FM_DATA_PIN);
+            TUNER_GPIO_OUTPUT_VAL_SET(1 << FM_DATA_PIN);
         else
-            TUNER_GPIO_OUTPUT_VAL &=  ~(1 << FM_DATA_PIN);
+            TUNER_GPIO_OUTPUT_VAL_CLEAR(1 << FM_DATA_PIN);
 
         udelay(FM_CLK_DELAY);
 
-        TUNER_GPIO_OUTPUT_VAL |= (1 << FM_CLOCK_PIN);
+        TUNER_GPIO_OUTPUT_VAL_SET(1 << FM_CLOCK_PIN);
         udelay(FM_CLK_DELAY);
 
         byte >>= 1;
@@ -311,8 +319,8 @@ static void lv24020lp_send_byte(unsigned int byte)
 static void lv24020lp_end_write(void)
 {
     /* switch back to read mode */
-    TUNER_GPIO_OUTPUT_EN &= ~(1 << FM_DATA_PIN);
-    TUNER_GPIO_OUTPUT_VAL &= ~(1 << FM_NRW_PIN);
+    TUNER_GPIO_OUTPUT_EN_CLEAR(1 << FM_DATA_PIN);
+    TUNER_GPIO_OUTPUT_VAL_CLEAR(1 << FM_NRW_PIN);
     udelay(FM_CLK_DELAY);
 }
 
@@ -326,8 +334,8 @@ static unsigned int lv24020lp_begin_write(unsigned int address)
     for (;;)
     {
         /* Prepare 3-wire bus pins for write cycle */
-        TUNER_GPIO_OUTPUT_VAL |= (1 << FM_NRW_PIN);
-        TUNER_GPIO_OUTPUT_EN |= (1 << FM_DATA_PIN);
+        TUNER_GPIO_OUTPUT_VAL_SET(1 << FM_NRW_PIN);
+        TUNER_GPIO_OUTPUT_EN_SET(1 << FM_DATA_PIN);
         udelay(FM_CLK_DELAY);
 
         /* current block == register block? */
@@ -418,13 +426,13 @@ static unsigned int lv24020lp_read(unsigned int address)
     toread = 0;
     for (i = 0; i < 8; i++)
     {
-        TUNER_GPIO_OUTPUT_VAL &= ~(1 << FM_CLOCK_PIN);
+        TUNER_GPIO_OUTPUT_VAL_CLEAR(1 << FM_CLOCK_PIN);
         udelay(FM_CLK_DELAY);
 
         if (TUNER_GPIO_INPUT_VAL & (1 << FM_DATA_PIN))
             toread |= (1 << i);
 
-        TUNER_GPIO_OUTPUT_VAL |= (1 << FM_CLOCK_PIN);
+        TUNER_GPIO_OUTPUT_VAL_SET(1 << FM_CLOCK_PIN);
         udelay(FM_CLK_DELAY);
     }
 
@@ -488,8 +496,24 @@ static int tuner_measure(unsigned char type, int scale, int duration)
 
     /* start counter, delay for specified time and stop it */
     lv24020lp_write_set(CNT_CTRL, CNT_EN);
-    udelay(duration*1000 - 16);
+
+#ifdef CPU_PP
+    /* obtain actual duration, including interrupts that occurred and
+     * the time to write the counter stop */
+    long usec = USEC_TIMER;
+#endif
+
+    udelay(duration*1000);
+
     lv24020lp_write_clear(CNT_CTRL, CNT_EN);
+
+#ifdef CPU_PP
+    duration = (USEC_TIMER - usec) / 1000;
+#endif
+
+    /* This function takes a loooong time and other stuff needs
+       running by now */
+    yield();
 
     /* read tick count */
     finval = (lv24020lp_read(CNT_H) << 8) | lv24020lp_read(CNT_L);
@@ -503,10 +527,6 @@ static int tuner_measure(unsigned char type, int scale, int duration)
         finval = scale*finval*256 / duration;
     else
         finval = scale*finval / duration;
-
-    /* This function takes a loooong time and other stuff needs
-       running by now */
-    yield();
 
     return (int)finval;
 }
@@ -523,6 +543,16 @@ static void set_frequency(int freq)
     TUNER_LOG("set_frequency(%d)\n", freq);
 
     enable_afc(false);
+
+    /* For the LV2400x, the tuned frequency is the sum of the displayed
+     * frequency and the preset IF frequency, in formula:
+     *      Tuned FM frequency = displayed frequency + preset IF frequency
+     *
+     * For example: when the IF frequency of LV2400x is preset at 110 kHz,
+     * it must be tuned at 88.51 MHz to receive the radio station at 88.4 MHz.
+     * -- AN2400S04@ – V0.4
+     */
+    freq += if_set;
 
     /* MHz -> kHz */
     freq /= 1000;
@@ -908,11 +938,14 @@ int lv24020lp_set(int setting, int value)
         break;
 
     case RADIO_REGION:
-        if (lv24020lp_region_data[value])
+    {
+        const struct fm_region_data *rd = &fm_region_data[value];
+        if (rd->deemphasis == 75)
             lv24020lp_write_set(AUDIO_CTRL2, DEEMP);
         else
             lv24020lp_write_clear(AUDIO_CTRL2, DEEMP);
         break;
+    }
 
     case RADIO_FORCE_MONO:
         if (value)

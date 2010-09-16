@@ -40,7 +40,6 @@
 
 #ifdef HAVE_HOTSWAP
 #include "storage.h"
-#include "hotswap.h"
 #include "dir.h"
 #endif
 /* gui api */
@@ -69,6 +68,7 @@
 #include "tagcache.h"
 #endif
 #include "language.h"
+#include "plugin.h"
 
 struct root_items {
     int (*function)(void* param);
@@ -252,7 +252,11 @@ static int browser(void* param)
     switch ((intptr_t)param)
     {
         case GO_TO_FILEBROWSER:
-            get_current_file(last_folder, MAX_PATH);
+            if (!get_current_file(last_folder, MAX_PATH))
+            {
+                last_folder[0] = '/';
+                last_folder[1] = '\0';
+            }
         break;
 #ifdef HAVE_TAGCACHE
         case GO_TO_DBBROWSER:
@@ -341,7 +345,7 @@ static int plugins_menu(void* param)
     MENUITEM_STRINGLIST(plugins_menu_items, ID2P(LANG_PLUGINS), NULL,
                         ID2P(LANG_PLUGIN_GAMES),
                         ID2P(LANG_PLUGIN_APPS), ID2P(LANG_PLUGIN_DEMOS));
-    char *folder;
+    const char *folder;
     int retval = GO_TO_PREVIOUS;
     int selection = 0, current = 0;
     while (retval == GO_TO_PREVIOUS)
@@ -545,6 +549,34 @@ static int load_context_screen(int selection)
         return GO_TO_PREVIOUS;
 }
 
+#ifdef HAVE_PICTUREFLOW_INTEGRATION
+static int load_plugin_screen(char *plug_path)
+{
+    int ret_val;
+    int old_previous = last_screen;    
+    last_screen = next_screen;
+    global_status.last_screen = (char)next_screen;
+    status_save();
+    
+    switch (plugin_load(plug_path, NULL))
+    {
+    case PLUGIN_GOTO_WPS:
+        ret_val = GO_TO_WPS;
+        break;
+    case PLUGIN_OK:
+        ret_val = audio_status() ? GO_TO_PREVIOUS : GO_TO_ROOT;
+        break;
+    default:
+        ret_val = GO_TO_PREVIOUS;
+        break;
+    }
+
+    if (ret_val == GO_TO_PREVIOUS)
+        last_screen = (old_previous == next_screen) ? GO_TO_ROOT : old_previous;
+    return ret_val;
+}
+#endif
+
 static int previous_music = GO_TO_WPS;
 
 void previous_music_is_wps(void)
@@ -620,6 +652,24 @@ void root_menu(void)
             case GO_TO_ROOTITEM_CONTEXT:
                 next_screen = load_context_screen(selected);
                 break;
+#ifdef HAVE_PICTUREFLOW_INTEGRATION                
+            case GO_TO_PICTUREFLOW:
+                while ( !tagcache_is_usable() ) 
+                {
+                    splash(0, str(LANG_TAGCACHE_BUSY));
+                    if ( action_userabort(HZ/5) ) 
+                        break;
+                }
+                {
+                    char pf_path[MAX_PATH];
+                    snprintf(pf_path, sizeof(pf_path),
+                            "%s/pictureflow.rock",
+                            PLUGIN_DEMOS_DIR);
+                    next_screen = load_plugin_screen(pf_path);
+                }
+                previous_browser = GO_TO_PICTUREFLOW;
+                break;
+#endif                
             default:
                 if (next_screen == GO_TO_FILEBROWSER 
 #ifdef HAVE_TAGCACHE

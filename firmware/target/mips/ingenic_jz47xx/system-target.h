@@ -22,6 +22,8 @@
 #ifndef __SYSTEM_TARGET_H_
 #define __SYSTEM_TARGET_H_
 
+#include <inttypes.h>
+
 #include "config.h"
 #include "jz4740.h"
 #include "mipsregs.h"
@@ -29,6 +31,9 @@
 #define CACHE_SIZE       16*1024
 #define CACHE_LINE_SIZE  32
 #include "mmu-mips.h"
+
+/* no optimized byteswap functions implemented for mips, yet */
+#define NEED_GENERIC_BYTESWAPS
 
 /* This one returns the old status */
 static inline int set_interrupt_status(int status, int mask)
@@ -71,11 +76,6 @@ static inline void restore_interrupt(int status)
 #define set_irq_level(status)  set_interrupt_status((status), ST0_IE)
 #define disable_irq_save()     disable_interrupt_save(ST0_IE)
 #define restore_irq(c0_status) restore_interrupt(c0_status)
-
-#define swap16(x) (((x) & 0xff) << 8 | ((x) >> 8) & 0xff)
-#define swap32(x) (((x) & 0xff) << 24 | ((x) & 0xff00) << 8 | \
-                   ((x) & 0xff0000) >> 8 | ((x) >> 24) & 0xff)
-
 #define UNCACHED_ADDRESS(addr)    ((unsigned int)(addr) | 0xA0000000)
 #define UNCACHED_ADDR(x)          UNCACHED_ADDRESS((x))
 #define PHYSADDR(x)               ((x) & 0x1fffffff)

@@ -43,13 +43,19 @@ unsigned int power_input_status(void)
     if (GPIO3_DR & (1 << 20))
         status |= POWER_INPUT_BATTERY;
 
-    if (usb_allowed_current() < 500)
+    if (usb_charging_maxcurrent() < 500)
     {
         /* ACK that USB is connected but NOT chargeable */
         status &= ~(POWER_INPUT_USB_CHARGER & POWER_INPUT_CHARGER);
     }
 
     return status;
+}
+
+void usb_charging_maxcurrent_change(int maxcurrent)
+{
+    (void)maxcurrent;
+    /* Nothing to do */
 }
 
 /* Detect changes in presence of the AC adaptor. */
@@ -79,17 +85,17 @@ void ide_power_enable(bool on)
     if (!on)
     {
         /* Bus must be isolated before power off */
-        imx31_regset32(&GPIO2_DR, (1 << 16));
+        bitset32(&GPIO2_DR, (1 << 16));
     }
 
     /* HD power switch */
-    imx31_regmod32(&GPIO3_DR, on ? (1 << 5) : 0, (1 << 5));
+    bitmod32(&GPIO3_DR, on ? (1 << 5) : 0, (1 << 5));
 
     if (on)
     {
         /* Bus switch may be turned on after powerup */
         sleep(HZ/10);
-        imx31_regclr32(&GPIO2_DR, (1 << 16));
+        bitclr32(&GPIO2_DR, (1 << 16));
     }
 }
 

@@ -46,6 +46,7 @@
 #include "dma-target.h"
 #include "uart-s3c2440.h"
 #include "led-mini2440.h"
+#include "version.h"
 
 
 int main(void)
@@ -78,20 +79,20 @@ int main(void)
         verbose = true;
         
     printf("Rockbox boot loader");
-    printf("Version %s", APPSVERSION);
+    printf("Version " RBVERSION);
 
     rc = storage_init();
     if(rc)
     {
         reset_screen();
-        error(EATA, rc);
+        error(EATA, rc, true);
     }
 
     disk_init(IF_MD(0));
     rc = disk_mount_all();
     if (rc<=0)
     {
-        error(EDISK,rc);
+        error(EDISK,rc, true);
     }
 
     printf("Loading firmware");
@@ -104,7 +105,7 @@ int main(void)
 
     rc = load_firmware(loadbuffer, BOOTFILE, buffer_size);
     if(rc < 0)
-        error(EBOOTFILE, rc);
+        error(EBOOTFILE, rc, true);
     
     printf("Loaded firmware %d\n", rc);
     

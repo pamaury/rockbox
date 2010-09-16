@@ -33,8 +33,36 @@
 #define DMA_REC_CH_PRIORITY 6
 
 static struct buffer_descriptor dma_play_bd NOCACHEBSS_ATTR;
-static struct channel_descriptor dma_play_cd NOCACHEBSS_ATTR;
 
+static void play_dma_callback(void);
+static struct channel_descriptor dma_play_cd =
+{
+    .bd_count = 1,
+    .callback = play_dma_callback,
+    .shp_addr = SDMA_PER_ADDR_SSI2_TX1,
+    .wml      = SDMA_SSI_TXFIFO_WML*2,
+    .per_type = SDMA_PER_SSI_SHP, /* SSI2 shared with SDMA core */
+    .tran_type = SDMA_TRAN_EMI_2_PER,
+    .event_id1 = SDMA_REQ_SSI2_TX1,
+};
+
+/* The pcm locking relies on the fact the interrupt handlers run to completion
+ * before lower-priority modes proceed. We don't have to touch hardware
+ * registers. Disabling SDMA interrupt would disable DMA callbacks systemwide
+ * and that is not something that is desireable.
+ *
+ * Lock explanation [++.locked]:
+ * Trivial, just increment .locked.
+ *
+ * Unlock explanation [if (--.locked == 0 && .state != 0)]:
+ * If int occurred and saw .locked as nonzero, we'll get a pending
+ * and it will have taken no action other than to set the flag to the
+ * value of .state. If it saw zero for .locked, it will have proceeded
+ * normally into the pcm callbacks. If cb set the pending flag, it has
+ * to be called to kickstart the callback mechanism and DMA. If the unlock
+ * came after a stop, we won't be in the block and DMA will be off. If
+ * we're still doing transfers, cb will see 0 for .locked and if pending,
+ * it won't be called by DMA again. */
 struct dma_data
 {
     int locked;
@@ -44,7 +72,7 @@ struct dma_data
 
 static struct dma_data dma_play_data =
 {
-    /* Initialize to a locked, stopped state */
+    /* Initialize to an unlocked, stopped state */
     .locked = 0,
     .callback_pending = 0,
     .state = 0
@@ -52,9 +80,9 @@ static struct dma_data dma_play_data =
 
 static void play_dma_callback(void)
 {
-    unsigned char *start;
-    size_t size = 0;
-    pcm_more_callback_type get_more = pcm_callback_for_more;
+    void *start;
+    size_t size;
+    bool rror;
 
     if (dma_play_data.locked != 0)
     {
@@ -63,34 +91,25 @@ static void play_dma_callback(void)
         return;
     }
 
-    if (dma_play_bd.mode.status & BD_RROR)
-    {
-        /* Stop on error */
-    }
-    else if (get_more != NULL && (get_more(&start, &size), size != 0))
-    {
-        start = (void*)(((unsigned long)start + 3) & ~3);
-        size &= ~3;
+    rror = dma_play_bd.mode.status & BD_RROR;
 
-        /* Flush any pending cache writes */
-        clean_dcache_range(start, size);
-        dma_play_bd.buf_addr = (void *)addr_virt_to_phys((unsigned long)start);
-        dma_play_bd.mode.count = size;
-        dma_play_bd.mode.command = TRANSFER_16BIT;
-        dma_play_bd.mode.status = BD_DONE | BD_WRAP | BD_INTR;
-        sdma_channel_run(DMA_PLAY_CH_NUM);
+    pcm_play_get_more_callback(rror ? NULL : &start, &size);
+
+    if (size == 0)
         return;
-    }
 
-    /* Error, callback missing or no more DMA to do */
-    pcm_play_dma_stop();
-    pcm_play_dma_stopped_callback();
+     /* Flush any pending cache writes */
+    clean_dcache_range(start, size);
+    dma_play_bd.buf_addr = (void *)addr_virt_to_phys((unsigned long)start);
+    dma_play_bd.mode.count = size;
+    dma_play_bd.mode.command = TRANSFER_16BIT;
+    dma_play_bd.mode.status = BD_DONE | BD_WRAP | BD_INTR;
+    sdma_channel_run(DMA_PLAY_CH_NUM);
 }
 
 void pcm_play_lock(void)
 {
-    if (++dma_play_data.locked == 1)
-        imx31_regclr32(&SSI_SIER2, SSI_SIER_TDMAE);
+    ++dma_play_data.locked;
 }
 
 void pcm_play_unlock(void)
@@ -100,12 +119,8 @@ void pcm_play_unlock(void)
         int oldstatus = disable_irq_save();
         int pending = dma_play_data.callback_pending;
         dma_play_data.callback_pending = 0;
-        SSI_SIER2 |= SSI_SIER_TDMAE;
         restore_irq(oldstatus);
 
-        /* Should an interrupt be forced instead? The upper pcm layer can
-         * call producer's callback in thread context so technically this is
-         * acceptable. */
         if (pending != 0)
             play_dma_callback();
     }
@@ -119,14 +134,6 @@ void pcm_dma_apply_settings(void)
 void pcm_play_dma_init(void)
 {
     /* Init channel information */
-    dma_play_cd.bd_count = 1;
-    dma_play_cd.callback = play_dma_callback;
-    dma_play_cd.shp_addr = SDMA_PER_ADDR_SSI2_TX1;
-    dma_play_cd.wml      = SDMA_SSI_TXFIFO_WML*2;
-    dma_play_cd.per_type = SDMA_PER_SSI_SHP; /* SSI2 shared with SDMA core */
-    dma_play_cd.tran_type = SDMA_TRAN_EMI_2_PER;
-    dma_play_cd.event_id1 = SDMA_REQ_SSI2_TX1;
-
     sdma_channel_init(DMA_PLAY_CH_NUM, &dma_play_cd, &dma_play_bd);
     sdma_channel_set_priority(DMA_PLAY_CH_NUM, DMA_PLAY_CH_PRIORITY);
 
@@ -237,7 +244,7 @@ static void play_start_pcm(void)
     SSI_SCR2 |= SSI_SCR_SSIEN;   /* Enable SSI */
     SSI_STCR2 |= SSI_STCR_TFEN0; /* Enable TX FIFO */
 
-    dma_play_data.state = 1; /* Enable DMA requests on unlock */
+    dma_play_data.state = 1; /* Check callback on unlock */
 
     /* Do prefill to prevent swapped channels (see TLSbo61214 in MCIMX31CE).
      * No actual solution was offered but this appears to work. */
@@ -246,21 +253,24 @@ static void play_start_pcm(void)
     SSI_STX0_2 = 0;
     SSI_STX0_2 = 0;
 
-    SSI_SCR2 |= SSI_SCR_TE;  /* Start transmitting */
+    SSI_SIER2 |= SSI_SIER_TDMAE; /* Enable DMA req. */
+    SSI_SCR2 |= SSI_SCR_TE;      /* Start transmitting */
 }
 
 static void play_stop_pcm(void)
 {
+    SSI_SIER2 &= ~SSI_SIER_TDMAE; /* Disable DMA req. */
+
+    /* Set state before pending to prevent race with interrupt */
+    dma_play_data.state = 0;
+
     /* Wait for FIFO to empty */
     while (SSI_SFCSR_TFCNT0 & SSI_SFCSR2);
 
-    /* Disable transmission */
-    SSI_STCR2 &= ~SSI_STCR_TFEN0;
-    SSI_SCR2 &= ~(SSI_SCR_TE | SSI_SCR_SSIEN);
+    SSI_STCR2 &= ~SSI_STCR_TFEN0; /* Disable TX */
+    SSI_SCR2 &= ~(SSI_SCR_TE | SSI_SCR_SSIEN); /* Disable transmission, SSI */
 
-    /* Set state before pending to prevent race with interrupt */
-    /* Do not enable DMA requests on unlock */
-    dma_play_data.state = 0;
+    /* Clear any pending callback */
     dma_play_data.callback_pending = 0;
 }
 
@@ -271,12 +281,6 @@ void pcm_play_dma_start(const void *addr, size_t size)
     /* Disable transmission */
     SSI_STCR2 &= ~SSI_STCR_TFEN0;
     SSI_SCR2 &= ~(SSI_SCR_TE | SSI_SCR_SSIEN);
-
-    addr = (void *)(((unsigned long)addr + 3) & ~3);
-    size &= ~3;
-
-    if (size <= 0)
-        return;
 
     if (!sdma_channel_reset(DMA_PLAY_CH_NUM))
         return;
@@ -371,11 +375,22 @@ void * pcm_dma_addr(void *addr)
 
 #ifdef HAVE_RECORDING
 static struct buffer_descriptor dma_rec_bd NOCACHEBSS_ATTR;
-static struct channel_descriptor dma_rec_cd NOCACHEBSS_ATTR;
+
+static void rec_dma_callback(void);
+static struct channel_descriptor dma_rec_cd =
+{
+    .bd_count = 1,
+    .callback = rec_dma_callback,
+    .shp_addr = SDMA_PER_ADDR_SSI1_RX1,
+    .wml      = SDMA_SSI_RXFIFO_WML*2,
+    .per_type = SDMA_PER_SSI,
+    .tran_type = SDMA_TRAN_PER_2_EMI,
+    .event_id1 = SDMA_REQ_SSI1_RX1,
+};
 
 static struct dma_data dma_rec_data =
 {
-    /* Initialize to a locked, stopped state */
+    /* Initialize to an unlocked, stopped state */
     .locked = 0,
     .callback_pending = 0,
     .state = 0
@@ -383,8 +398,9 @@ static struct dma_data dma_rec_data =
 
 static void rec_dma_callback(void)
 {
-    pcm_more_callback_type2 more_ready;
     int status = 0;
+    void *start;
+    size_t size;
 
     if (dma_rec_data.locked != 0)
     {
@@ -395,45 +411,11 @@ static void rec_dma_callback(void)
     if (dma_rec_bd.mode.status & BD_RROR)
         status = DMA_REC_ERROR_DMA;
 
-    more_ready = pcm_callback_more_ready;
+    pcm_rec_more_ready_callback(status, &start, &size);
 
-    if (more_ready != NULL && more_ready(status) >= 0)
-    {
-        sdma_channel_run(DMA_REC_CH_NUM);
+    if (size == 0)
         return;
-    }
 
-    /* Finished recording */
-    pcm_rec_dma_stop();
-    pcm_rec_dma_stopped_callback();
-}
-
-void pcm_rec_lock(void)
-{
-    if (++dma_rec_data.locked == 1)
-        imx31_regclr32(&SSI_SIER1, SSI_SIER_RDMAE);
-}
-
-void pcm_rec_unlock(void)
-{
-    if (--dma_rec_data.locked == 0 && dma_rec_data.state != 0)
-    {
-        int oldstatus = disable_irq_save();
-        int pending = dma_rec_data.callback_pending;
-        dma_rec_data.callback_pending = 0;
-        SSI_SIER1 |= SSI_SIER_RDMAE;
-        restore_irq(oldstatus);
-
-        /* Should an interrupt be forced instead? The upper pcm layer can
-         * call consumer's callback in thread context so technically this is
-         * acceptable. */
-        if (pending != 0)
-            rec_dma_callback();
-    }
-}
-
-void pcm_rec_dma_record_more(void *start, size_t size)
-{
     /* Invalidate - buffer must be coherent */
     dump_dcache_range(start, size);
 
@@ -443,21 +425,45 @@ void pcm_rec_dma_record_more(void *start, size_t size)
     dma_rec_bd.mode.count = size;
     dma_rec_bd.mode.command = TRANSFER_16BIT;
     dma_rec_bd.mode.status = BD_DONE | BD_WRAP | BD_INTR;
+
+    sdma_channel_run(DMA_REC_CH_NUM);
+}
+
+void pcm_rec_lock(void)
+{
+    ++dma_rec_data.locked;
+}
+
+void pcm_rec_unlock(void)
+{
+    if (--dma_rec_data.locked == 0 && dma_rec_data.state != 0)
+    {
+        int oldstatus = disable_irq_save();
+        int pending = dma_rec_data.callback_pending;
+        dma_rec_data.callback_pending = 0;
+        restore_irq(oldstatus);
+
+        if (pending != 0)
+            rec_dma_callback();
+    }
 }
 
 void pcm_rec_dma_stop(void)
 {
+    SSI_SIER1 &= ~SSI_SIER_RDMAE; /* Disable DMA req. */
+
+    /* Set state before pending to prevent race with interrupt */
+    dma_rec_data.state = 0;
+
     /* Stop receiving data */
     sdma_channel_stop(DMA_REC_CH_NUM);
 
-    imx31_regclr32(&SSI_SIER1, SSI_SIER_RDMAE);
+    bitclr32(&SSI_SIER1, SSI_SIER_RDMAE);
 
     SSI_SCR1 &= ~SSI_SCR_RE;      /* Disable RX */
     SSI_SRCR1 &= ~SSI_SRCR_RFEN0; /* Disable RX FIFO */
 
-    /* Set state before pending to prevent race with interrupt */
-    /* Do not enable DMA requests on unlock */
-    dma_rec_data.state = 0;
+    /* Clear any pending callback */
     dma_rec_data.callback_pending = 0;
 }
 
@@ -477,7 +483,7 @@ void pcm_rec_dma_start(void *addr, size_t size)
     dma_rec_bd.mode.command = TRANSFER_16BIT;
     dma_rec_bd.mode.status = BD_DONE | BD_WRAP | BD_INTR;
 
-    dma_rec_data.state = 1;
+    dma_rec_data.state = 1; /* Check callback on unlock */
 
     SSI_SRCR1 |= SSI_SRCR_RFEN0; /* Enable RX FIFO */
 
@@ -487,6 +493,8 @@ void pcm_rec_dma_start(void *addr, size_t size)
 
     /* Enable receive */
     SSI_SCR1 |= SSI_SCR_RE;
+    SSI_SIER1 |= SSI_SIER_RDMAE; /* Enable DMA req. */
+
     sdma_channel_run(DMA_REC_CH_NUM);
 }
 
@@ -501,14 +509,6 @@ void pcm_rec_dma_init(void)
     pcm_rec_dma_stop();
 
     /* Init channel information */
-    dma_rec_cd.bd_count = 1;
-    dma_rec_cd.callback = rec_dma_callback;
-    dma_rec_cd.shp_addr = SDMA_PER_ADDR_SSI1_RX1;
-    dma_rec_cd.wml      = SDMA_SSI_RXFIFO_WML*2;
-    dma_rec_cd.per_type = SDMA_PER_SSI;
-    dma_rec_cd.tran_type = SDMA_TRAN_PER_2_EMI;
-    dma_rec_cd.event_id1 = SDMA_REQ_SSI1_RX1;
-
     sdma_channel_init(DMA_REC_CH_NUM, &dma_rec_cd, &dma_rec_bd);
     sdma_channel_set_priority(DMA_REC_CH_NUM, DMA_REC_CH_PRIORITY);
 }

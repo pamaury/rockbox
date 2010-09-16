@@ -138,23 +138,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_RESTARTING_PLAYBACK
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    swcodec: ""
-  </source>
-  <dest>
-    *: none
-    swcodec: ""
-  </dest>
-  <voice>
-    *: none
-    swcodec: ""
-  </voice>
-</phrase>
-<phrase>
   id: LANG_REMOVE_MMC
   desc: before acknowledging usb in case an MMC is inserted (Ondio)
   user: core
@@ -1323,10 +1306,12 @@
     crossfade: "Crossfade"
   </source>
   <dest>
-    *: "Overvloeien"
+    *: none
+    crossfade: "Overvloeien"
   </dest>
   <voice>
-    *: "Overvloeien"
+    *: none
+    crossfade: "Overvloeien"
   </voice>
 </phrase>
 <phrase>
@@ -1426,48 +1411,6 @@
   <voice>
     *: none
     spdif_power: "Optische uitgang"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_ID3_ORDER
-  desc: DEPRECATED 
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_ID3_V1_FIRST
-  desc: DEPRECATED 
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_ID3_V2_FIRST
-  desc: DEPRECATED 
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
   </voice>
 </phrase>
 <phrase>
@@ -2546,23 +2489,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_RECORD_CURRENT_DIR
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: none
-    recording: ""
-  </source>
-  <dest>
-    *: none
-    recording: deprecated
-  </dest>
-  <voice>
-    *: none
-    recording: ""
-  </voice>
-</phrase>
-<phrase>
   id: LANG_RECORD_TRIGGER
   desc: in recording settings_menu
   user: core
@@ -2809,20 +2735,6 @@
   <voice>
     *: none
     crossfade: "Mix"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_REPLAYGAIN_ENABLE
-  desc: deprecated
-  user:
-  <source>
-    *: none
-  </source>
-  <dest>
-    *: none
-  </dest>
-  <voice>
-    *: none
   </voice>
 </phrase>
 <phrase>
@@ -3161,15 +3073,15 @@
   user: core
   <source>
     *: none
-    lcd_non-mono: "Background Colour"
+    lcd_color: "Background Colour"
   </source>
   <dest>
     *: none
-    lcd_non-mono: "Achtergrond kleur"
+    lcd_color: "Achtergrond kleur"
   </dest>
   <voice>
     *: none
-    lcd_non-mono: "Achtergrond kleur"
+    lcd_color: "Achtergrond kleur"
   </voice>
 </phrase>
 <phrase>
@@ -3178,15 +3090,15 @@
   user: core
   <source>
     *: none
-    lcd_non-mono: "Foreground Colour"
+    lcd_color: "Foreground Colour"
   </source>
   <dest>
     *: none
-    lcd_non-mono: "Voorgrond kleur"
+    lcd_color: "Voorgrond kleur"
   </dest>
   <voice>
     *: none
-    lcd_non-mono: "Voorgrond kleur"
+    lcd_color: "Voorgrond kleur"
   </voice>
 </phrase>
 <phrase>
@@ -3195,15 +3107,15 @@
   user: core
   <source>
     *: none
-    lcd_non-mono: "Reset Colours"
+    lcd_color: "Reset Colours"
   </source>
   <dest>
     *: none
-    lcd_non-mono: "Kleuren terugzetten"
+    lcd_color: "Kleuren terugzetten"
   </dest>
   <voice>
     *: none
-    lcd_non-mono: "Kleuren terugzetten"
+    lcd_color: "Kleuren terugzetten"
   </voice>
 </phrase>
 <phrase>
@@ -3308,59 +3220,20 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_JUMP_SCROLL
-  desc: (archosplayer) menu alternative for jump scroll
-  user: core
-  <source>
-    *: "Jump Scroll"
-  </source>
-  <dest>
-    *: "Spring scroll"
-  </dest>
-  <voice>
-    *: "Spring scroll"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_ONE_TIME
-  desc: (archosplayer) the jump scroll shall be done "one time"
-  user: core
-  <source>
-    *: "One time"
-  </source>
-  <dest>
-    *: "Een keer"
-  </dest>
-  <voice>
-    *: "Een keer"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_JUMP_SCROLL_DELAY
-  desc: (archosplayer) Delay before making a jump scroll
-  user: core
-  <source>
-    *: "Jump Scroll Delay"
-  </source>
-  <dest>
-    *: "Spring scroll vertraging"
-  </dest>
-  <voice>
-    *: "Spring scroll vertraging"
-  </voice>
-</phrase>
-<phrase>
   id: LANG_SCREEN_SCROLL_VIEW
   desc: should lines scroll out of the screen
   user: core
   <source>
-    *: "Screen Scrolls Out Of View"
+    *: none
+    lcd_bitmap: "Screen Scrolls Out Of View"
   </source>
   <dest>
-    *: "Scherm schuift uit beeld"
+    *: none
+    lcd_bitmap: "Scherm schuift uit beeld"
   </dest>
   <voice>
-    *: "Scherm schuift uit beeld"
+    *: none
+    lcd_bitmap: "Scherm schuift uit beeld"
   </voice>
 </phrase>
 <phrase>
@@ -3368,13 +3241,16 @@
   desc: Pixels to advance per Screen scroll
   user: core
   <source>
-    *: "Screen Scroll Step Size"
+    *: none
+    lcd_bitmap: "Screen Scroll Step Size"
   </source>
   <dest>
-    *: "Scherm scrol stap groote"
+    *: none
+    lcd_bitmap: "Scherm scrol stap groote"
   </dest>
   <voice>
-    *: "Scherm scrol stap groote"
+    *: none
+    lcd_bitmap: "Scherm scrol stap groote"
   </voice>
 </phrase>
 <phrase>
@@ -3525,20 +3401,6 @@
   <voice>
     *: "Piek terugloop"
     masd: none
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_PM_UNITS_PER_READ
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
   </voice>
 </phrase>
 <phrase>
@@ -4652,40 +4514,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_RECORDING_LEFT
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    recording: ""
-  </source>
-  <dest>
-    *: none
-    recording: ""
-  </dest>
-  <voice>
-    *: none
-    recording: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_RECORDING_RIGHT
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    recording: ""
-  </source>
-  <dest>
-    *: none
-    recording: ""
-  </dest>
-  <voice>
-    *: none
-    recording: ""
-  </voice>
-</phrase>
-<phrase>
   id: LANG_DISK_FULL
   desc: in recording screen
   user: core
@@ -4798,15 +4626,15 @@
   user: core
   <source>
     *: none
-    alarm: "Alarm Time: %02d:%02d"
+    alarm: "Alarm Time:"
   </source>
   <dest>
     *: none
-    alarm: "Inschakel tijd: %02d:%02d"
+    alarm: "Inschakel tijd:"
   </dest>
   <voice>
     *: none
-    alarm: "Inschakel tijd: %02d:%02d"
+    alarm: "Inschakel tijd:"
   </voice>
 </phrase>
 <phrase>
@@ -4945,15 +4773,15 @@
   user: core
   <source>
     *: none
-    lcd_non-mono: "Invalid colour"
+    lcd_color: "Invalid colour"
   </source>
   <dest>
    *: none
-    lcd_non-mono: "Ongeldige kleur"
+    lcd_color: "Ongeldige kleur"
   </dest>
   <voice>
    *: none
-    lcd_non-mono: "Ongeldige kleur"
+    lcd_color: "Ongeldige kleur"
   </voice>
 </phrase>
 <phrase>
@@ -6694,20 +6522,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: VOICE_EXT_TXT
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: deprecated
-  </dest>
-  <voice>
-    *: ""
-  </voice>
-</phrase>
-<phrase>
   id: VOICE_EXT_ROCK
   desc: spoken only, for file extension
   user: core
@@ -6792,20 +6606,6 @@
   </dest>
   <voice>
     *: "toetsenbord"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_PLAYLIST_SHUFFLE
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
   </voice>
 </phrase>
 <phrase>
@@ -6988,20 +6788,6 @@
   </dest>
   <voice>
     *: "Speellijst stuurbestand is niet geldig"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_FM_STATION
-  desc: deprecated
-  user:
-  <source>
-    *: none
-  </source>
-  <dest>
-    *: none
-  </dest>
-  <voice>
-    *: none
   </voice>
 </phrase>
 <phrase>
@@ -7637,20 +7423,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_FILETYPES_EXTENSION_FULL
-  desc: Extension array full
-  user: core
-  <source>
-    *: "Extension array full"
-  </source>
-  <dest>
-    *: "Extensies lijst vol"
-  </dest>
-  <voice>
-    *: "Extensies lijst vol"
-  </voice>
-</phrase>
-<phrase>
   id: LANG_FILETYPES_FULL
   desc: Filetype array full
   user: core
@@ -7662,20 +7434,6 @@
   </dest>
   <voice>
     *: "Bestandstype lijst vol"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_FILETYPES_PLUGIN_NAME_LONG
-  desc: Viewer plugin name too long
-  user: core
-  <source>
-    *: "Plugin name too long"
-  </source>
-  <dest>
-    *: "Plugin naam is te lang"
-  </dest>
-  <voice>
-    *: "Plugin naam is te lang"
   </voice>
 </phrase>
 <phrase>
@@ -8252,91 +8010,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_SYSFONT_SET_BOOL_YES
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_SET_BOOL_NO
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_ON
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_OFF
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_VOLUME
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    recording: ""
-  </source>
-  <dest>
-    *: none
-    recording: ""
-  </dest>
-  <voice>
-    *: none
-    recording: ""
-  </voice>
-</phrase>
-<phrase>
   id: LANG_SYSFONT_CHANNEL_STEREO
   desc: in sound_settings
   user: core
@@ -8402,142 +8075,6 @@
   <voice>
     *: none
     swcodec: "Afsnij freq"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_SHUFFLE
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_REPEAT
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_REPEAT_ONE
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_REPEAT_AB
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_FILTER
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_FILTER_SUPPORTED
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_FILTER_MUSIC
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_FILTER_PLAYLIST
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
   </voice>
 </phrase>
 <phrase>
@@ -8643,176 +8180,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_SYSFONT_FLIP_DISPLAY
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_SCROLL_BAR
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_STATUS_BAR
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_RECORDING_TIME
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    recording: ""
-  </source>
-  <dest>
-    *: none
-    recording: ""
-  </dest>
-  <voice>
-    *: none
-    recording: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_RECORD_TIMESPLIT_REC
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    recording: ""
-  </source>
-  <dest>
-    *: none
-    recording: ""
-  </dest>
-  <voice>
-    *: none
-    recording: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_RECORDING_SIZE
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    recording: ""
-  </source>
-  <dest>
-    *: none
-    recording: ""
-  </dest>
-  <voice>
-    *: none
-    recording: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_RECORD_PRERECORD
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    recording: ""
-  </source>
-  <dest>
-    *: none
-    recording: ""
-  </dest>
-  <voice>
-    *: none
-    recording: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_RECORDING_LEFT
-  desc: in the recording screen
-  user: core
-  <source>
-    *: none
-    recording: "Gain Left"
-  </source>
-  <dest>
-    *: none
-    recording: "Versterking links"
-  </dest>
-  <voice>
-    *: none
-    recording: "Versterking links"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_RECORDING_RIGHT
-  desc: in the recording screen
-  user: core
-  <source>
-    *: none
-    recording: "Gain Right"
-  </source>
-  <dest>
-    *: none
-    recording: "Versterking rechts"
-  </dest>
-  <voice>
-    *: none
-    recording: "Versterking rechts"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_DISK_FULL
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    recording: ""
-  </source>
-  <dest>
-    *: none
-    recording: ""
-  </dest>
-  <voice>
-    *: none
-    recording,iriverh100,iriverh120,iriverh300,iaudiom5,iaudiox5,ipod4g,ipodcolor,ipodnano1g,ipodvideo,sansae200*,sansac200*: ""
-  </voice>
-</phrase>
-<phrase>
   id: LANG_SYSFONT_DIRBROWSE_F1
   desc: in dir browser, F1 button bar text
   user: core
@@ -8864,23 +8231,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_SYSFONT_SPLIT_SIZE
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    recording: ""
-  </source>
-  <dest>
-    *: none
-    recording: ""
-  </dest>
-  <voice>
-    *: none
-    recording: ""
-  </voice>
-</phrase>
-<phrase>
   id: LANG_LOADING_PERCENT
   desc: splash number of percents loaded
   user: core
@@ -8892,91 +8242,6 @@
   </dest>
   <voice>
     *: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_EQUALIZER_HARDWARE
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    ipodvideo: ""
-  </source>
-  <dest>
-    *: none
-    ipodvideo: ""
-  </dest>
-  <voice>
-    *: none
-    ipodvideo: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_EQUALIZER_HARDWARE_ENABLED
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    ipodvideo: ""
-  </source>
-  <dest>
-    *: none
-    ipodvideo: ""
-  </dest>
-  <voice>
-    *: none
-    ipodvideo: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_EQUALIZER_BANDWIDTH
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    ipodvideo: ""
-  </source>
-  <dest>
-    *: none
-    ipodvideo: ""
-  </dest>
-  <voice>
-    *: none
-    ipodvideo: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_EQUALIZER_HARDWARE_BANDWIDTH_NARROW
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    ipodvideo: ""
-  </source>
-  <dest>
-    *: none
-    ipodvideo: ""
-  </dest>
-  <voice>
-    *: none
-    ipodvideo: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_EQUALIZER_HARDWARE_BANDWIDTH_WIDE
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    ipodvideo: ""
-  </source>
-  <dest>
-    *: none
-    ipodvideo: ""
-  </dest>
-  <voice>
-    *: none
-    ipodvideo: ""
   </voice>
 </phrase>
 <phrase>
@@ -9005,23 +8270,6 @@
   </dest>
   <voice>
     *: "Enkel huidige map"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_RECORD_AGC_PRESET
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    agc: ""
-  </source>
-  <dest>
-    *: none
-    agc: ""
-  </dest>
-  <voice>
-    *: none
-    agc: ""
   </voice>
 </phrase>
 <phrase>
@@ -9110,40 +8358,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_RECORD_AGC_CLIPTIME
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    agc: ""
-  </source>
-  <dest>
-    *: none
-    agc: ""
-  </dest>
-  <voice>
-    *: none
-    agc: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_RECORDING_AGC_PRESET
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    agc: ""
-  </source>
-  <dest>
-    *: none
-    agc: ""
-  </dest>
-  <voice>
-    *: none
-    agc: ""
-  </voice>
-</phrase>
-<phrase>
   id: VOICE_KBIT_PER_SEC
   desc: spoken only, a unit postfix
   user: core
@@ -9155,23 +8369,6 @@
   </dest>
   <voice>
     *: "kilobits per seconde"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_RECORDING_FILENAME
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    recording: ""
-  </source>
-  <dest>
-    *: none
-    recording: ""
-  </dest>
-  <voice>
-    *: none
-    recording: ""
   </voice>
 </phrase>
 <phrase>
@@ -9551,108 +8748,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_SYSFONT_AGC_SAFETY
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    agc: ""
-  </source>
-  <dest>
-    *: none
-    agc: ""
-  </dest>
-  <voice>
-    *: none
-    agc: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_AGC_LIVE
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    agc: ""
-  </source>
-  <dest>
-    *: none
-    agc: ""
-  </dest>
-  <voice>
-    *: none
-    agc: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_AGC_DJSET
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    agc: ""
-  </source>
-  <dest>
-    *: none
-    agc: ""
-  </dest>
-  <voice>
-    *: none
-    agc: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_AGC_MEDIUM
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    agc: ""
-  </source>
-  <dest>
-    *: none
-    agc: ""
-  </dest>
-  <voice>
-    *: none
-    agc: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_AGC_VOICE
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    agc: ""
-  </source>
-  <dest>
-    *: none
-    agc: ""
-  </dest>
-  <voice>
-    *: none
-    agc: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_RECORDING_AGC_MAXGAIN
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    agc: ""
-  </source>
-  <dest>
-    *: none
-    agc: ""
-  </dest>
-  <voice>
-    *: none
-    agc: ""
-  </voice>
-</phrase>
-<phrase>
   id: LANG_PROPERTIES
   desc: browser file/dir properties
   user: core
@@ -9695,20 +8790,6 @@
   </dest>
   <voice>
     *: "Tijd actief"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_CURRENT_TIME
-  desc: deprecated
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
   </voice>
 </phrase>
 <phrase>
@@ -10374,23 +9455,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_SYSFONT_ALL
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
   id: LANG_GAIN
   desc: Generic string for gain used in EQ menu and recording screen
   user: core
@@ -10422,20 +9486,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_SETTINGS_PARTITION
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
-  </voice>
-</phrase>
-<phrase>
   id: LANG_SET_TIME
   desc: in settings_menu
   user: core
@@ -10450,20 +9500,6 @@
   <voice>
     *: none
     rtc: "Stel datum/tijd in"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SETTINGS_SAVE_FAILED
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
   </voice>
 </phrase>
 <phrase>
@@ -10544,7 +9580,8 @@
     *: "PLAY = Ja"
     cowond2*: "MENU of bovenaan rechts = Ja"
     iriverh100,iriverh120,iriverh300: "NAVI = Ja"
-    samsungyh*,ipod*,iaudiox5,iaudiom5,gigabeat*,sansae200*,sansac200*,iriverh10,iriverh10_5gb,mrobe100,sansaclip,sansafuze*: "SELECT = Ja"
+    samsungyh*,ipod*,iaudiox5,iaudiom5,gigabeat*,sansae200*,sansac200*,iriverh10,iriverh10_5gb,mrobe100,sansaclip*,sansafuze*: "SELECT = Ja"
+    mrobe500: "PLAY, POWER, of bovenaan rechts = Ja"
     archosplayer: "(PLAY/STOP)"
     vibe500: "OK = Ja"
   </dest>
@@ -10571,6 +9608,7 @@
     mrobe500: "HEART = Instellen"
     iriverh100,iriverh120,iriverh300: "NAVI = Instellen"
     ipod*,iaudiox5,iaudiom5,iriverh10,iriverh10_5gb,sansae200*,sansac200*,gigabeat*,mrobe100,sansaclip*,sansafuze*: "SELECT = Instellen"
+    gogearsa9200: "PLAY = Instellen"
     vibe500: "OK = Instellen"
   </dest>
   <voice>
@@ -10662,15 +9700,15 @@
   user: core
   <source>
     *: none
-    lcd_bitmap: "Gain"
+    swcodec: "Gain"
   </source>
   <dest>
     *: none
-    lcd_bitmap: "Versterking"
+    swcodec: "Versterking"
   </dest>
   <voice>
     *: none
-    lcd_bitmap: "Versterking"
+    swcodec: "Versterking"
   </voice>
 </phrase>
 <phrase>
@@ -11144,93 +10182,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_SYSFONT_PM_CLIPCOUNT
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    recording: ""
-  </source>
-  <dest>
-    *: none
-    recording: ""
-  </dest>
-  <voice>
-    *: none
-    recording: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_USBSTACK
-  desc: deprecated
-  user:
-  <source>
-    *: none
-  </source>
-  <dest>
-    *: none
-  </dest>
-  <voice>
-    *: none
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_USBSTACK_HOST
-  desc: deprecated
-  user:
-  <source>
-    *: none
-  </source>
-  <dest>
-    *: none
-  </dest>
-  <voice>
-    *: none
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_USBSTACK_MODE
-  desc: deprecated
-  user:
-  <source>
-    *: none
-  </source>
-  <dest>
-    *: none
-  </dest>
-  <voice>
-    *: none
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_USBSTACK_DEVICE
-  desc: deprecated
-  user:
-  <source>
-    *: none
-  </source>
-  <dest>
-    *: none
-  </dest>
-  <voice>
-    *: none
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_USBSTACK_DEVICE_DRIVER
-  desc: deprecated
-  user:
-  <source>
-    *: none
-  </source>
-  <dest>
-    *: none
-  </dest>
-  <voice>
-    *: none
-  </voice>
-</phrase>
-<phrase>
   id: LANG_SELECTOR_START_COLOR
   desc: line selector color option
   user: core
@@ -11592,48 +10543,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_ENABLE_STUDY_MODE
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_STUDY_MODE
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_STUDY_HOP_STEP
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
-  </voice>
-</phrase>
-<phrase>
   id: VOICE_QUICKSCREEN
   desc: spoken only, Announces entering the "quick screen"
   user: core
@@ -11645,20 +10554,6 @@
   </dest>
   <voice>
     *: "Snelscherm"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_DISABLE_STUDY_MODE
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
   </voice>
 </phrase>
 <phrase>
@@ -11978,20 +10873,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_ALBUMART
-  desc: deprecated
-  user:
-  <source>
-    *: none
-  </source>
-  <dest>
-    *: none
-  </dest>
-  <voice>
-    *: none
-  </voice>
-</phrase>
-<phrase>
   id: LANG_CHANNEL_LEFTRIGHT
   desc: in sound_settings
   user: core
@@ -12040,23 +10921,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_QS_ITEMS
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: none
-    quickscreen: ""
-  </source>
-  <dest>
-    *: none
-    quickscreen: ""
-  </dest>
-  <voice>
-    *: none
-    quickscreen: ""
-  </voice>
-</phrase>
-<phrase>
   id: LANG_LEFT
   desc: Generic use of 'left'
   user: core
@@ -12082,23 +10946,6 @@
   </dest>
   <voice>
     *: "Rechts"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_BOTTOM
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: none
-    quickscreen: ""
-  </source>
-  <dest>
-    *: none
-    quickscreen: ""
-  </dest>
-  <voice>
-    *: none
-    quickscreen: ""
   </voice>
 </phrase>
 <phrase>
@@ -12636,20 +11483,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_CUSTOM_STATUSBAR
-  desc: deprecated
-  user:
-  <source>
-    *: none
-  </source>
-  <dest>
-    *: none
-  </dest>
-  <voice>
-    *: none
-  </voice>
-</phrase>
-<phrase>
   id: VOICE_EXT_SBS
   desc: spoken only, for file extension
   user: core
@@ -12678,20 +11511,6 @@
   <voice>
     *: none
     swcodec: "Release Tijd"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_REMOTE_CUSTOM_STATUSBAR
-  desc: deprecated
-  user:
-  <source>
-    *: none
-  </source>
-  <dest>
-    *: none
-  </dest>
-  <voice>
-    *: none
   </voice>
 </phrase>
 <phrase>
@@ -12733,13 +11552,16 @@
   desc: spoken only, for file extension
   user: core
   <source>
-    *: ""
+    *: none
+    remote: ""
   </source>
   <dest>
-    *: ""
+    *: none
+    remote: ""
   </dest>
   <voice>
-    *: "remote statusbalk uitzicht"
+    *: none
+    remote: "remote statusbalk uitzicht"
   </voice>
 </phrase>
 <phrase>
@@ -12881,15 +11703,15 @@
   user: core
   <source>
     *: none
-    usb_hid: "Browser Mode"
+    usb_hid: "Browser"
   </source>
   <dest>
     *: none
-    usb_hid: "Blader mode"
+    usb_hid: "Bladeren"
   </dest>
   <voice>
     *: none
-    usb_hid: "Blader mode"
+    usb_hid: "Bladeren"
   </voice>
 </phrase>
 <phrase>
@@ -12983,15 +11805,15 @@
   user: core
   <source>
     *: none
-    usb_hid: "Mouse Mode"
+    usb_hid: "Mouse"
   </source>
   <dest>
     *: none
-    usb_hid: "Muis mode"
+    usb_hid: "Muis"
   </dest>
   <voice>
     *: none
-    usb_hid: "Muis mode"
+    usb_hid: "Muis"
   </voice>
 </phrase>
 <phrase>
@@ -13017,15 +11839,15 @@
   user: core
   <source>
     *: none
-    usb_hid: "Multimedia Mode"
+    usb_hid: "Multimedia"
   </source>
   <dest>
     *: none
-    usb_hid: "Multimedia mode"
+    usb_hid: "Multimedia"
   </dest>
   <voice>
     *: none
-    usb_hid: "Multimedia mode"
+    usb_hid: "Multimedia"
   </voice>
 </phrase>
 <phrase>
@@ -13127,15 +11949,15 @@
   user: core
   <source>
     *: none
-    usb_hid: "Presentation Mode"
+    usb_hid: "Presentation"
   </source>
   <dest>
     *: none
-    usb_hid: "Presentatie mode"
+    usb_hid: "Presentatie"
   </dest>
   <voice>
     *: none
-    usb_hid: "Presentatie mode"
+    usb_hid: "Presentatie"
   </voice>
 </phrase>
 <phrase>
@@ -13297,5 +12119,432 @@
   <voice>
     *: none
     recording_histogram: "Histogram interval"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_HOTKEY_WPS
+  desc: hotkey menu
+  user: core
+  <source>
+    *: none
+    hotkey: "WPS Hotkey"
+  </source>
+  <dest>
+    *: none
+    hotkey: "WPS sneltoets"
+  </dest>
+  <voice>
+    *: none
+    hotkey: "WPS sneltoets"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_HW_EQ_GAIN
+  desc: in sound_menu, hardware equalizer tone controls filter gain
+  user: core
+  <source>
+    *: none
+    gigabeats: "Band %d Gain"
+  </source>
+  <dest>
+    *: none
+    gigabeats: "Band %d versterking"
+  </dest>
+  <voice>
+    *: none
+    gigabeats: "Band versterking"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_LINEOUT_ONOFF
+  desc: in system settings menu
+  user: core
+  <source>
+    *: none
+    lineout_poweroff: "Line Out"
+  </source>
+  <dest>
+    *: none
+    lineout_poweroff: "Lijn uitgang"
+  </dest>
+  <voice>
+    *: none
+    lineout_poweroff: "Lijn uitgang"
+  </voice>
+</phrase>
+<phrase>
+  id: VOICE_EXT_FMS
+  desc: spoken only, for file extension
+  user: core
+  <source>
+    *: none
+    radio: ""
+  </source>
+  <dest>
+    *: none
+    radio: ""
+  </dest>
+  <voice>
+    *: none
+    radio: "radio scherm uitzicht"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_HW_EQ_WIDTH_WIDE
+  desc: in sound_menu, hardware equalizer tone controls wide bandwidth setting
+  user: core
+  <source>
+    *: none
+    gigabeats: "Wide"
+  </source>
+  <dest>
+    *: none
+    gigabeats: "Breed"
+  </dest>
+  <voice>
+    *: none
+    gigabeats: "Breed"
+  </voice>
+</phrase>
+<phrase>
+  id: VOICE_EXT_RFMS
+  desc: spoken only, for file extension
+  user: core
+  <source>
+    *: none
+    radio_remote: ""
+  </source>
+  <dest>
+    *: none
+    radio_remote: ""
+  </dest>
+  <voice>
+    *: none
+    radio_remote: "remote radio screen skin"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_HW_EQ_WIDTH_NARROW
+  desc: in sound_menu, hardware equalizer tone controls narrow bandwith setting
+  user: core
+  <source>
+    *: none
+    gigabeats: "Narrow"
+  </source>
+  <dest>
+    *: none
+    gigabeats: "Smal"
+  </dest>
+  <voice>
+    *: none
+    gigabeats: "Smal"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_HOTKEY_FILE_BROWSER
+  desc: hotkey menu
+  user: core
+  <source>
+    *: none
+    hotkey: "File Browser Hotkey"
+  </source>
+  <dest>
+    *: none
+    hotkey: "Bestanden bladeren Hotkey"
+  </dest>
+  <voice>
+    *: none
+    hotkey: "Bestanden bladeren Hotkey"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_RESUME_REWIND
+  desc: in playback settings menu
+  user: core
+  <source>
+    *: none
+    swcodec: "Rewind Before Resume"
+  </source>
+  <dest>
+    *: none
+    swcodec: "Terugspoelen alvorens te hernemen"
+  </dest>
+  <voice>
+    *: none
+    swcodec: "Terugspoelen alvorens te hernemen"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_TAGNAVI_UNTAGGED
+  desc: "<untagged>" entry in tag browser
+  user: core
+  <source>
+    *: "<Untagged>"
+  </source>
+  <dest>
+    *: "<GeenTags>"
+  </dest>
+  <voice>
+    *: "GeenTags"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_HW_EQ_TONE_CONTROLS_ADVANCED
+  desc: in sound_menu, advanced settings for hardware equalizer tone controls
+  user: core
+  <source>
+    *: none
+    gigabeats: "Advanced Tone Control Settings"
+  </source>
+  <dest>
+    *: none
+    gigabeats: "Uitgebreide klank instellingen"
+  </dest>
+  <voice>
+    *: none
+    gigabeats: "Uitgebreide klank instellingen"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_DEPTH_3D
+  desc: in sound_menu, amount of 3D enhancement effect
+  user: core
+  <source>
+    *: none
+    gigabeats: "3-D Enhancement"
+  </source>
+  <dest>
+    *: none
+    gigabeats: "3-D Verbetering"
+  </dest>
+  <voice>
+    *: none
+    gigabeats: "3-D Verbetering"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_HW_EQ_FREQUENCY
+  desc: in sound_menu, hardware equalizer tone controls shelf filter cutoff frequency
+  user: core
+  <source>
+    *: none
+    gigabeats: "Band %d Frequency"
+  </source>
+  <dest>
+    *: none
+    gigabeats: "Band %d Frequentie"
+  </dest>
+  <voice>
+    *: none
+    gigabeats: "Band Frequentie"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_HW_EQ_WIDTH
+  desc: in sound_menu, hardware equalizer tone controls peak bandwith setting
+  user: core
+  <source>
+    *: none
+    gigabeats: "Band %d Width"
+  </source>
+  <dest>
+    *: none
+    gigabeats: "Band %d Breedte"
+  </dest>
+  <voice>
+    *: none
+    gigabeats: "Band Breedte"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_FM_STATION_HEADER
+  desc: in radio screen
+  user: core
+  <source>
+    *: none
+    radio: "Station:"
+  </source>
+  <dest>
+    *: none
+    radio: "Zender:"
+  </dest>
+  <voice>
+    *: none
+    radio: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_HW_EQ_TONE_CONTROLS
+  desc: in sound_menu, hardware equalizer tone controls
+  user: core
+  <source>
+    *: none
+    gigabeats: "Tone Controls"
+  </source>
+  <dest>
+    *: none
+    gigabeats: "Klank instellingen"
+  </dest>
+  <voice>
+    *: none
+    gigabeats: "Klank instellingen"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_HOTKEY
+  desc: hotkey menu
+  user: core
+  <source>
+    *: none
+    hotkey: "Hotkey"
+  </source>
+  <dest>
+    *: none
+    hotkey: "Sneltoets"
+  </dest>
+  <voice>
+    *: none
+    hotkey: "Sneltoets"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_REMOTE_RADIOSCREEN
+  desc: in the theme menu
+  user: core
+  <source>
+    *:none
+    radio_remote: "Remote Radio Screen"
+  </source>
+  <dest>
+    *:none
+    radio_remote: "Radio scherm op afstandsbediening"
+  </dest>
+  <voice>
+    *:none
+    radio_remote: "Radio scherm op afstandsbediening"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_ID3_COMPOSER
+  desc: in tag viewer
+  user: core
+  <source>
+    *: "Composer"
+  </source>
+  <dest>
+    *: "Componist"
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_RADIOSCREEN
+  desc: in the theme menu
+  user: core
+  <source>
+    *:none
+    radio: "Radio Screen"
+  </source>
+  <dest>
+    *:none
+    radio: "Radio scherm"
+  </dest>
+  <voice>
+    *:none
+    radio: "Radio scherm"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_KBD_OK
+  desc: in keyboad
+  user: core
+  <source>
+    *: none
+    touchscreen: "OK"
+  </source>
+  <dest>
+    *: none
+    touchscreen: "OK"
+  </dest>
+  <voice>
+    *: none
+    touchscreen: "OK"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_BOOKMARK_SETTINGS_AUTOUPDATE
+  desc: prompt for user to decide whether to update bookmarks
+  user: core
+  <source>
+    *: "Update on Stop"
+  </source>
+  <dest>
+    *: "Ververs na stoppen"
+  </dest>
+  <voice>
+    *: "Ververs na stoppen"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_KBD_DELETE
+  desc: in keyboad
+  user: core
+  <source>
+    *: none
+    touchscreen: "Del"
+  </source>
+  <dest>
+    *: none
+    touchscreen: "Del"
+  </dest>
+  <voice>
+    *: none
+    touchscreen: "Del"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_KBD_CANCEL
+  desc: in keyboad
+  user: core
+  <source>
+    *: none
+    touchscreen: "Cancel"
+  </source>
+  <dest>
+    *: none
+    touchscreen: "Annuleer"
+  </dest>
+  <voice>
+    *: none
+    touchscreen: "Annuleer"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_ONPLAY_PICTUREFLOW
+  desc: Onplay pictureflow
+  user: core
+  <source>
+    *: "PictureFlow"
+  </source>
+  <dest>
+    *: "PictureFlow"
+  </dest>
+  <voice>
+    *: "start picture flow"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_FORCE
+  desc: alternative to yes/no for tristate settings
+  user: core
+  <source>
+    *: "Force"
+  </source>
+  <dest>
+    *: "Forceer"
+  </dest>
+  <voice>
+    *: "Forceer"
   </voice>
 </phrase>

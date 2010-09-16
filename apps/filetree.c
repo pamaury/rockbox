@@ -153,10 +153,10 @@ static void check_file_thumbnails(struct tree_context* c)
     while((entry = readdir(dir)) != 0) /* walk directory */
     {
         int ext_pos;
-
+        struct dirinfo info = dir_get_info(dir, entry);
         ext_pos = strlen((char *)entry->d_name) - strlen(file_thumbnail_ext);
         if (ext_pos <= 0 /* too short to carry ".talk" */
-            || (entry->attribute & ATTR_DIRECTORY) /* no file */
+            || (info.attribute & ATTR_DIRECTORY) /* no file */
             || strcasecmp((char *)&entry->d_name[ext_pos], file_thumbnail_ext))
         {   /* or doesn't end with ".talk", no candidate */
             continue;
@@ -284,15 +284,17 @@ int ft_load(struct tree_context* c, const char* tempdir)
     for ( i=0; i < global_settings.max_files_in_dir; i++ ) {
         int len;
         struct dirent *entry = readdir(dir);
+        struct dirinfo info;
         struct entry* dptr =
             (struct entry*)(c->dircache + i * sizeof(struct entry));
         if (!entry)
             break;
 
+        info = dir_get_info(dir, entry);
         len = strlen((char *)entry->d_name);
 
         /* skip directories . and .. */
-        if ((entry->attribute & ATTR_DIRECTORY) &&
+        if ((info.attribute & ATTR_DIRECTORY) &&
             (((len == 1) && (!strncmp((char *)entry->d_name, ".", 1))) ||
              ((len == 2) && (!strncmp((char *)entry->d_name, "..", 2))))) {
             i--;
@@ -300,7 +302,7 @@ int ft_load(struct tree_context* c, const char* tempdir)
         }
 
         /* Skip FAT volume ID */
-        if (entry->attribute & ATTR_VOLUME_ID) {
+        if (info.attribute & ATTR_VOLUME_ID) {
             i--;
             continue;
         }
@@ -308,12 +310,12 @@ int ft_load(struct tree_context* c, const char* tempdir)
         /* filter out dotfiles and hidden files */
         if (*c->dirfilter != SHOW_ALL &&
             ((entry->d_name[0]=='.') ||
-            (entry->attribute & ATTR_HIDDEN))) {
+            (info.attribute & ATTR_HIDDEN))) {
             i--;
             continue;
         }
 
-        dptr->attr = entry->attribute;
+        dptr->attr = info.attribute;
 
         /* check for known file types */
         if ( !(dptr->attr & ATTR_DIRECTORY) )
@@ -362,8 +364,8 @@ int ft_load(struct tree_context* c, const char* tempdir)
         }
         dptr->name = &c->name_buffer[name_buffer_used];
         dptr->time_write =
-            (long)entry->wrtdate<<16 |
-            (long)entry->wrttime; /* in one # */
+            (long)info.wrtdate<<16 |
+            (long)info.wrttime; /* in one # */
         strcpy(dptr->name, (char *)entry->d_name);
         name_buffer_used += len + 1;
 
@@ -413,13 +415,10 @@ static void ft_load_font(char *file)
 
 int ft_enter(struct tree_context* c)
 {
-    int rc = 0;
+    int rc = GO_TO_PREVIOUS;
     char buf[MAX_PATH];
     struct entry *dircache = c->dircache;
     struct entry* file = &dircache[c->selected_item];
-    bool reload_dir = false;
-    bool start_wps = false;
-    bool exit_func = false;
 
     if (c->currdir[1])
         snprintf(buf,sizeof(buf),"%s/%s",c->currdir, file->name);
@@ -495,8 +494,6 @@ int ft_enter(struct tree_context* c)
                 {
                     set_file(buf, global_settings.fmr_file, MAX_FILENAME);
                     radio_load_presets(global_settings.fmr_file);
-                    if(!in_radio_screen())
-                        radio_screen();
                 }
                 /*
                  * Preset outside default folder, we can choose such only
@@ -506,8 +503,8 @@ int ft_enter(struct tree_context* c)
                 else
                 {
                     radio_load_presets(buf);
-                    radio_screen();
                 }
+                rc = GO_TO_FM;
 
                 break;
             case FILE_ATTR_FMS:
@@ -566,7 +563,7 @@ int ft_enter(struct tree_context* c)
             case FILE_ATTR_BMARK:
                 splash(0, ID2P(LANG_WAIT));
                 bookmark_load(buf, false);
-                reload_dir = true;
+                rc = GO_TO_FILEBROWSER;
                 break;
 
             case FILE_ATTR_LNG:
@@ -597,7 +594,7 @@ int ft_enter(struct tree_context* c)
                 break;
 #endif
 
-#ifndef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
                 /* firmware file */
             case FILE_ATTR_MOD:
                 splash(0, ID2P(LANG_WAIT));
@@ -609,11 +606,12 @@ int ft_enter(struct tree_context* c)
             case FILE_ATTR_ROCK:
             case FILE_ATTR_LUA:
             {
-                char *plugin = buf, *argument = NULL;
+                char *plugin = buf, *argument = NULL, lua_path[MAX_PATH];
                 int ret;
 
                 if ((file->attr & FILE_ATTR_MASK) == FILE_ATTR_LUA) {
-                    plugin = VIEWERS_DIR "/lua.rock"; /* Use a #define here ? */
+                    snprintf(lua_path, sizeof(lua_path)-1, "%s/lua.rock", VIEWERS_DIR); /* Use a #define here ? */
+                    plugin = lua_path;
                     argument = buf;
                 }
 
@@ -631,9 +629,9 @@ int ft_enter(struct tree_context* c)
                         if(*c->dirfilter > NUM_FILTER_MODES)
                             /* leave sub-browsers after usb, doing
                                otherwise might be confusing to the user */
-                            exit_func = true;
+                            rc = GO_TO_ROOT;
                         else
-                            reload_dir = true;
+                            rc = GO_TO_FILEBROWSER;
                         break;
                     /*
                     case PLUGIN_ERROR:
@@ -663,10 +661,10 @@ int ft_enter(struct tree_context* c)
                     switch (plugin_load(plugin,buf))
                     {
                         case PLUGIN_USB_CONNECTED:
-                            reload_dir = true;
+                            rc = GO_TO_FILEBROWSER;
                             break;
                         case PLUGIN_GOTO_WPS:
-                            play = true;
+                            rc = GO_TO_WPS;
                             break;
                         /*
                         case PLUGIN_OK:
@@ -686,8 +684,7 @@ int ft_enter(struct tree_context* c)
             global_status.resume_index = start_index;
             global_status.resume_offset = 0;
             status_save();
-
-            start_wps = true;
+            rc = GO_TO_WPS;
         }
         else {
             if (*c->dirfilter > NUM_FILTER_MODES &&
@@ -695,18 +692,10 @@ int ft_enter(struct tree_context* c)
                 *c->dirfilter != SHOW_FONT &&
                 *c->dirfilter != SHOW_PLUGINS)
             {
-                exit_func = true;
+                rc = GO_TO_ROOT;
             }
         }
     }
-
-    if (reload_dir)
-        rc = 1;
-    if (start_wps)
-        rc = 2;
-    if (exit_func)
-        rc = 3;
-
     return rc;
 }
 

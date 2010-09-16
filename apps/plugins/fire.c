@@ -23,7 +23,6 @@
 
 #include "plugin.h"
 #include "lib/helper.h"
-#ifdef HAVE_LCD_BITMAP
 
 #include "lib/pluginlib_actions.h"
 #include "lib/fixedpoint.h"
@@ -40,8 +39,6 @@
 #define FIRE_WIDTH LCD_WIDTH
 #define FIRE_XPOS 0
 #endif
-
-PLUGIN_HEADER
 
 #ifndef HAVE_LCD_COLOR
 GREY_INFO_STRUCT
@@ -384,5 +381,3 @@ enum plugin_status plugin_start(const void* parameter)
 
     return ret;
 }
-
-#endif /* #ifdef HAVE_LCD_BITMAP */

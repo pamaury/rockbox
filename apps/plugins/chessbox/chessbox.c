@@ -23,8 +23,6 @@
  
 #include "plugin.h"
 
-#ifdef HAVE_LCD_BITMAP
-
 #if (MEMORYSIZE > 8) /* Lowmem doesn't have playback in chessbox */
 #define HAVE_PLAYBACK_CONTROL
 #endif
@@ -49,7 +47,7 @@ struct cb_command {
 extern const fb_data chessbox_pieces[];
 
 
-PLUGIN_HEADER
+
 
 /* Tile size defined by the assigned bitmap */
 #include "pluginbitmaps/chessbox_pieces.h"
@@ -941,5 +939,3 @@ enum plugin_status plugin_start(const void* parameter) {
 
     return PLUGIN_OK;
 }
-
-#endif /* HAVE_LCD_BITMAP */

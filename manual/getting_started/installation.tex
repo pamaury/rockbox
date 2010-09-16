@@ -11,7 +11,7 @@ before beginning there are a few things it is important to know.
 follow the instructions at 
 \url{http://www.rockbox.org/twiki/bin/view/Main/SansaE200RInstallation}.}}
 
-\opt{ipodnano,ipodnano2g,ipodvideo,e200,c200,e200v2,clipv1,clipv2,cowond2,fuze,fuzev2}{
+\opt{ipodnano,ipodnano2g,ipodvideo,e200,c200,c200v2,e200v2,clipv1,clipv2,cowond2,fuze,fuzev2}{
 \begin{description}  
 \item[Supported hardware versions.] 
     \opt{ipodnano,ipodnano2g}{
@@ -28,15 +28,7 @@ follow the instructions at
     For information on identifying which Ipod you own, see this page on Apple's 
     website: \url{http://www.info.apple.com/kbnum/n61688}.
   }
-  \opt{c200}{
-    The \playertype{} is available in multiple versions, not
-    all of which run Rockbox.  Rockbox doesn't run on the
-    newer v2 models. They can be identified
-    by checking the Sandisk firmware version number under 
-    Settings $\rightarrow$ Info. The v1
-    firmware is named 01.xx.xx, while the v2 firmware begins with 03.
-  }
-  \opt{e200,e200v2}{
+  \opt{c200,c200v2,e200,e200v2}{
     The \playertype{} is available in multiple versions, and you need to make
     sure which you have by checking the Sandisk firmware version number under 
     Settings $\rightarrow$ Info. The v1 firmware is named 01.xx.xx, while the
@@ -74,6 +66,24 @@ follow the instructions at
           There have been reports of SD cards becoming unusable after being used
           with Rockbox on \playerman{} \playertype{}. Only use old, low-capacity
           cards until we are satisfied the driver is safe to use.\\}
+      \item There is only basic touchscreen support. Further work is
+        required to make the UI more usable with a touchscreen in general.
+        \note{The touchscreen can be used in two modes, either a 3$\times$3 grid mode
+          which divides the screen into areas to emulate a set of physical
+          buttons (the default setting), or ``absolute point'' mode where the
+          touchscreen is used to point to items on the screen.\\}
+    \end{itemize}
+\end{description}
+}
+\opt{ondavx777}{
+\begin{description}
+  \item[Current limitations.] Most Rockbox functions are usable on the
+    \playertype{}, including music playback and most plugins, but
+    there are a number of shortcomings that prevent it from being a fully
+    supported target:
+    \begin{itemize}
+      \item A MicroSD card is required to run Rockbox, since the internal
+        flash memory hasn't been figured out yet.
       \item There is only basic touchscreen support. Further work is
         required to make the UI more usable with a touchscreen in general.
         \note{The touchscreen can be used in two modes, either a 3$\times$3 grid mode
@@ -131,7 +141,7 @@ follow the instructions at
     simultaneously. Your \dap{} should enter disk mode and you can try
     reconnecting to the computer.
   }
-  \opt{x5}{
+  \opt{iaudiox5}{
     When instructed to connect/disconnect the USB cable, always use
     the USB port through the subpack, not the side `USB Host' port. The side port
     is intended to be used for USB OTG connections only (digital cameras, memory
@@ -145,7 +155,7 @@ follow the instructions at
     \nopt{sansaAMS}{\warn{Never extract files to your \dap{} while it is in recovery mode.}}
   }
 
-  \opt{fuze,clipplus}{
+  \opt{fuze,fuzev2,clipplus}{
     \note{The following steps require you to change the setting in
     \setting{Settings $\rightarrow$ System Settings $\rightarrow$ USB Mode} to
     \setting{MSC} from within the original firmware.}
@@ -250,7 +260,7 @@ still available to you.\\
   \dap{} how to load and start other components of Rockbox and for providing
   the dual boot function. This is the component of Rockbox that is installed
   to the flash memory of your \playerman.
-  \opt{iaudio}{\note{Dual boot does not currently work on the \playertype{}.}}}
+  \opt{iaudiom3,iaudiom5,iaudiox5}{\note{Dual boot does not currently work on the \playertype.}}}
 
 \item[The Rockbox firmware.]
   \opt{HAVE_RB_BL_IN_FLASH}{Unlike the \playerman{} firmware, which runs
@@ -261,7 +271,6 @@ still available to you.\\
   update Rockbox. The build consists of a directory called
   \fname{.rockbox} which contains all of the Rockbox files, and is 
   located in the root of your \daps{} drive.
-
 \end{description}
 }
 
@@ -297,7 +306,7 @@ housekeeping tool \caps{Rockbox Utility}. It allows you to:
 Prebuilt binaries for Windows, Linux and Mac OS X are
 available at the \wikilink{RockboxUtility} wiki page.\\
 
-\opt{gigabeats,clipv1,clipv2,clipplus}{\note{Rockbox Utility does not currently support the 
+\opt{gigabeats,ondavx777}{\note{Rockbox Utility does not currently support the
 \playertype{} and you will therefore need to follow the manual install
 instructions below.\\}}
 
@@ -427,6 +436,7 @@ correct version for your \dap{}.}}
  the files onto%
  \opt{gigabeats}{the main data partition of }
  \opt{cowond2}{either an SD card or the internal memory of }
+ \opt{ondavx777}{the MicroSD of }
  your \dap{}.
  \opt{cowond2}{\note{If you have chosen to extract to the internal memory, it
      will not be possible to save settings.}}
@@ -453,19 +463,22 @@ structure that Rockbox needs.\\}
  by Rockbox, in the main directory of your \daps{} drive.
 }
 
-\opt{swcodec}{\nopt{gigabeats}{
-  \subsubsection{Installing the bootloader}
-  \opt{h100,h300}{\input{getting_started/iriver_install.tex}}
-  \opt{ipod}{\input{getting_started/ipod_install.tex}}
-  \opt{m3,m5,x5}{\input{getting_started/iaudio_install.tex}}
-  \opt{h10,h10_5gb}{\input{getting_started/h10_install.tex}}
-  \opt{gigabeatf}{\input{getting_started/gigabeat_install.tex}}
-  \opt{sansa}{\input{getting_started/sansa_install.tex}}
-  \opt{sansaAMS}{\input{getting_started/sansaAMS_install.tex}}
-  \opt{mrobe100}{\input{getting_started/mrobe100_install.tex}}
-  \opt{cowond2}{\input{getting_started/cowond2_install.tex}}
-  \opt{vibe500}{\input{getting_started/vibe500_install.tex}}
-}}
+\opt{swcodec}{%
+    \nopt{gigabeats}{%
+    \subsubsection{Installing the bootloader}
+        \opt{h100,h300}{\input{getting_started/iriver_install.tex}}
+        \opt{ipod}{\input{getting_started/ipod_install.tex}}
+        \opt{iaudio}{\input{getting_started/iaudio_install.tex}}
+        \opt{h10,h10_5gb}{\input{getting_started/h10_install.tex}}
+        \opt{gigabeatf}{\input{getting_started/gigabeat_install.tex}}
+        \opt{sansa}{\input{getting_started/sansa_install.tex}}
+        \opt{sansaAMS}{\input{getting_started/sansaAMS_install.tex}}
+        \opt{mrobe100}{\input{getting_started/mrobe100_install.tex}}
+        \opt{cowond2}{\input{getting_started/cowond2_install.tex}}
+        \opt{vibe500}{\input{getting_started/vibe500_install.tex}}
+        \opt{ondavx777}{\input{getting_started/ondavx777_install.tex}}
+    }
+}
 
 \subsection{Finishing the install}\label{ref:finish_install}
 
@@ -482,7 +495,7 @@ structure that Rockbox needs.\\}
   \end{itemize}
 }
 
-\opt{m3,m5,x5}{
+\opt{iaudiom3,iaudiom5,iaudiox5}{
   After installing you \emph{need} to power-cycle the 
   \dap{} by doing the following steps.
   \begin{itemize}
@@ -495,7 +508,7 @@ structure that Rockbox needs.\\}
   \end{itemize}
 }
 
-\opt{h10,h10_5gb,ipod,mrobe100,sansa,archos,sansaAMS,cowond2,vibe500}{
+\opt{h10,h10_5gb,ipod,mrobe100,sansa,archos,sansaAMS,cowond2,vibe500,ondavx777}{
   Safely eject / unmount the USB drive, unplug the cable and restart.
 }
 
@@ -579,7 +592,7 @@ you turn the unit on, Rockbox should load.}
   }
 }
 
-\opt{m3}{
+\opt{iaudiom3}{
   \fixme{Add a note about the charging trick and place it here?}
 }
 
@@ -609,7 +622,7 @@ The new build will be installed over your current build.\\
 
 \section{Uninstalling Rockbox}\index{Installation!uninstall}
 
-\nopt{gigabeatf,m5,x5,archos,mrobe100,gigabeats}{
+\nopt{gigabeatf,iaudiom3,iaudiom5,iaudiox5,archos,mrobe100,gigabeats}{
   \note{The Rockbox bootloader allows you to choose between Rockbox and 
   the original firmware. (See \reference{ref:Dualboot} for more information.)}
 }
@@ -674,7 +687,7 @@ completely follow the manual uninstallation instructions below.}}
   instead of \texttt{i} for install.
 }
 
-\opt{m5,x5}{
+\opt{iaudiom3,iaudiom5,iaudiox5}{
   If you would like to go back to using the original \playerman{} software,
   connect the \dap{} to your computer, download the original \playername{}
   firmware from the \playerman{} website, and copy it to the \fname{FIRMWARE}
@@ -706,7 +719,7 @@ completely follow the manual uninstallation instructions below.}}
 \nopt{gigabeats}{
   If you wish to clean up your disk, you may also wish to delete the
   \fname{.rockbox} directory and its contents.
-  \nopt{m5,x5}{Turn the \playerman{} off.
+  \nopt{iaudiom3,iaudiom5,iaudiox5}{Turn the \playerman{} off.
     Turn the \dap{} back on and the original \playerman{} software will load.}
 }
 

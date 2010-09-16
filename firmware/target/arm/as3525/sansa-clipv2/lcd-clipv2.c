@@ -26,10 +26,12 @@
 #include "system.h"
 #include "cpu.h"
 
-void lcd_hw_init(void)
+#define LCD_DELAY 10
+
+int lcd_hw_init(void)
 {
 /* DBOP initialisation, do what OF does */
-    CCU_IO |= (1<<12); /* ?? */
+    bitset32(&CCU_IO, 1<<12); /* ?? */
     CGU_DBOP |= /*(1<<3)*/ 0x18 | AS3525_DBOP_DIV;
 
     DBOP_CTRL      = 0x51004;
@@ -38,9 +40,9 @@ void lcd_hw_init(void)
 
     GPIOB_DIR |= (1<<2)|(1<<5);
     GPIOB_PIN(5) = (1<<5);
-}
 
-#define LCD_DELAY 10
+    return 0;
+}
 
 void lcd_write_command(int byte)
 {
@@ -82,3 +84,9 @@ void lcd_write_data(const fb_data* p_bytes, int count)
     /* While push fifo is not empty */
     while ((DBOP_STAT & (1<<10)) == 0);
 }
+
+void lcd_enable_power(bool onoff)
+{
+    (void) onoff;
+}
+

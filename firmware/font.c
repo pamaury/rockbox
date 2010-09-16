@@ -28,6 +28,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include "inttypes.h"
 #include "lcd.h"
 #include "font.h"
@@ -36,6 +37,7 @@
 #include "panic.h"
 #include "rbunicode.h"
 #include "diacritic.h"
+#include "rbpaths.h"
 
 #define MAX_FONTSIZE_FOR_16_BIT_OFFSETS 0xFFDB
 
@@ -55,8 +57,6 @@
 #ifndef FONT_HEADER_SIZE
 #define FONT_HEADER_SIZE 36
 #endif
-
-#define GLYPH_CACHE_FILE ROCKBOX_DIR"/.glyphcache"
 
 #ifndef BOOTLOADER
 /* Font cache includes */
@@ -348,12 +348,16 @@ static bool internal_load_font(struct font* pf, const char *path,
         if (!font_load_header(pf))
         {
             DEBUGF("Failed font header load");
+            close(pf->fd);
+            pf->fd = -1;
             return false;
         }
 
         if (!font_load_cached(pf))
         {
             DEBUGF("Failed font cache load");
+            close(pf->fd);
+            pf->fd = -1;
             return false;
         }
 
@@ -586,9 +590,12 @@ static void glyph_file_write(void* data)
     unsigned short ch;
     unsigned char tmp[2];
 
+    if ( p->_char_code == 0xffff )
+        return;
+    
     ch = p->_char_code + pf->firstchar;
 
-    if (ch != 0xffff && cache_fd >= 0) {
+    if ( cache_fd >= 0) {
         tmp[0] = ch >> 8;
         tmp[1] = ch & 0xff;
         if (write(cache_fd, tmp, 2) != 2) {
@@ -606,12 +613,13 @@ void glyph_cache_save(struct font* pf)
         pf = &font_ui;
     if (pf->fd >= 0 && pf == &font_ui) 
     {
-#ifdef WPSEDITOR
-        cache_fd = open(GLYPH_CACHE_FILE, O_WRONLY|O_CREAT|O_TRUNC, 0666);
-#else
-        cache_fd = creat(GLYPH_CACHE_FILE, 0666);
-#endif
-        if (cache_fd < 0) return;
+        char path[MAX_PATH];
+        const char *file = get_user_file_path(GLYPH_CACHE_FILE, IS_FILE|NEED_WRITE,
+                                       path, sizeof(path));
+
+        cache_fd = open(file, O_WRONLY|O_CREAT|O_TRUNC, 0666);
+        if (cache_fd < 0)
+            return;
 
         lru_traverse(&pf->cache._lru, glyph_file_write);
 
@@ -624,27 +632,106 @@ void glyph_cache_save(struct font* pf)
     return;
 }
 
+int font_glyphs_to_bufsize(const char *path, int glyphs)
+{
+    struct font f;
+    int bufsize;
+    char buf[FONT_HEADER_SIZE];
+    
+    f.buffer_start = buf;
+    f.buffer_size = sizeof(buf);
+    f.buffer_position = buf;    
+    
+    f.fd = open(path, O_RDONLY|O_BINARY);
+    if(f.fd < 0)
+        return 0;
+    
+    read(f.fd, f.buffer_position, FONT_HEADER_SIZE);
+    f.buffer_end = f.buffer_position + FONT_HEADER_SIZE;
+    
+    if( !font_load_header(&f) )
+    {
+        close(f.fd);
+        return 0;
+    }
+    close(f.fd);
+    
+    bufsize = LRU_SLOT_OVERHEAD + sizeof(struct font_cache_entry) + 
+        sizeof( unsigned short);
+    bufsize += f.maxwidth * ((f.height + 7) / 8);
+    bufsize *= glyphs;
+    if ( bufsize < FONT_HEADER_SIZE )
+        bufsize = FONT_HEADER_SIZE;
+    return bufsize;
+}
+
+static int ushortcmp(const void *a, const void *b)
+{
+    return ((int)(*(unsigned short*)a - *(unsigned short*)b));
+}
 static void glyph_cache_load(struct font* pf)
 {
+
+#define MAX_SORT 256
     if (pf->fd >= 0) {
         int fd;
+        int i, size;
         unsigned char tmp[2];
         unsigned short ch;
+        char path[MAX_PATH];
+        unsigned short glyphs[MAX_SORT];
+        unsigned short glyphs_lru_order[MAX_SORT];
+        int glyph_file_skip=0, glyph_file_size=0;
+        
+        int sort_size = pf->cache._capacity;        
+        if ( sort_size > MAX_SORT )
+             sort_size = MAX_SORT;
 
-        fd = open(GLYPH_CACHE_FILE, O_RDONLY|O_BINARY);
-
+        fd = open(get_user_file_path(GLYPH_CACHE_FILE, IS_FILE|NEED_WRITE,
+                                     path, sizeof(path)), O_RDONLY|O_BINARY);
         if (fd >= 0) {
+            
+            /* only read what fits */
+            glyph_file_size = filesize( fd );
+            if ( glyph_file_size > 2*pf->cache._capacity ) {
+                glyph_file_skip = glyph_file_size - 2*pf->cache._capacity;
+                lseek( fd, glyph_file_skip, SEEK_SET );
+            }
 
-            while (read(fd, tmp, 2) == 2) {
-                ch = (tmp[0] << 8) | tmp[1];
-                font_get_bits(pf, ch);
+            while(1) {
+
+                for ( size = 0;
+                      read( fd, tmp, 2 ) == 2 && size < sort_size;
+                      size++ ) 
+                {
+                    glyphs[size] = (tmp[0] << 8) | tmp[1];
+                    glyphs_lru_order[size] = glyphs[size];
+                }
+                
+                /* sort glyphs array to make sector cache happy */
+                qsort((void *)glyphs, size, sizeof(unsigned short), 
+                      ushortcmp );
+
+                /* load font bitmaps */
+                i = 0;
+                font_get_bits(pf, glyphs[i]);
+                for ( i = 1; i < size ; i++) {
+                     if ( glyphs[i] != glyphs[i-1] )
+                         font_get_bits(pf, glyphs[i]);
+                }
+                
+                /* redo to fix lru order */
+                for ( i = 0; i < size ; i++)
+                    font_get_bits(pf, glyphs_lru_order[i]);
+
+                if ( size < sort_size )
+                    break;
             }
 
             close(fd);
         } else {
             /* load latin1 chars into cache */
-            ch = 256;
-            while (ch-- > 32)
+            for ( ch = 32 ; ch < 256  && ch < pf->cache._capacity + 32; ch++ )
                 font_get_bits(pf, ch);
         }
     }

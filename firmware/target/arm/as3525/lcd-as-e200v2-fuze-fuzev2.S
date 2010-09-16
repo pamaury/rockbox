@@ -241,8 +241,7 @@ lcd_write_yuv420_lines:
     tst         r7, #DBOP_BUSY          @ fifo not empty?
     beq         1b                      @
 
-    ldmfd       sp!, { r4-r11, pc }     @ restore registers and return
-    bx          lr                      @
+    ldmpc       regs=r4-r11             @ restore registers and return
     .ltorg                              @ dump constant pool
     .size   lcd_write_yuv420_lines, .-lcd_write_yuv420_lines
 
@@ -287,7 +286,7 @@ lcd_write_yuv420_lines_odither:
                                         @ r5 = yuv_src[1] = Cb_p
                                         @ r6 = yuv_src[2] = Cr_p
                                         @
-    ldr         r14, [sp, #40]          @ Line up pattern and kernel quadrant
+    ldr         r14, [sp, #36]          @ Line up pattern and kernel quadrant
     sub         r2, r2, #1              @ stride =- 1
     eor         r14, r14, r3            @
     and         r14, r14, #0x2          @
@@ -546,6 +545,6 @@ lcd_write_yuv420_lines_odither:
     tst         r7, #DBOP_BUSY          @ fifo not empty?
     beq         1b                      @
 
-    ldmfd       sp!, { r4-r11, pc }     @ restore registers and return
+    ldmpc       regs=r4-r11             @ restore registers and return
     .ltorg                              @ dump constant pool
     .size   lcd_write_yuv420_lines_odither, .-lcd_write_yuv420_lines_odither

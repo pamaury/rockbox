@@ -40,18 +40,19 @@
 #ifdef HAVE_REMOTE_LCD
 #include "lcd-remote.h"
 #endif
+
 #ifndef SIMULATOR
 #include "backlight-target.h"
 #else
 #include "backlight-sim.h"
 #endif
 
+#if defined(HAVE_BACKLIGHT) && defined(BACKLIGHT_FULL_INIT)
+
 #if (CONFIG_BACKLIGHT_FADING == BACKLIGHT_FADING_SW_SETTING) \
     || (CONFIG_BACKLIGHT_FADING == BACKLIGHT_FADING_SW_HW_REG)
 #include "backlight-sw-fading.h"
 #endif
-
-#if defined(HAVE_BACKLIGHT) && defined(BACKLIGHT_FULL_INIT)
 
 #define BACKLIGHT_FADE_IN_THREAD \
     (CONFIG_BACKLIGHT_FADING &  (BACKLIGHT_FADING_SW_SETTING \
@@ -972,7 +973,6 @@ void backlight_init(void)
 
 void backlight_on(void) {}
 void backlight_off(void) {}
-void buttonlight_on(void) {}
 void backlight_set_timeout(int value) {(void)value;}
 
 bool is_backlight_on(bool ignore_always_off)
@@ -994,7 +994,12 @@ bool is_remote_backlight_on(bool ignore_always_off)
 #ifdef HAVE_BACKLIGHT_BRIGHTNESS
 void backlight_set_brightness(int val) { (void)val; }
 #endif
+
+#ifdef HAVE_BUTTON_LIGHT
+void buttonlight_on(void) {}
 #ifdef HAVE_BUTTONLIGHT_BRIGHTNESS
 void buttonlight_set_brightness(int val) { (void)val; }
 #endif
+#endif /* HAVE_BUTTON_LIGHT */
+
 #endif /* defined(HAVE_BACKLIGHT) && defined(BACKLIGHT_FULL_INIT) */

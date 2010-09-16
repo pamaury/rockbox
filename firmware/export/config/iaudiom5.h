@@ -86,10 +86,12 @@
 
 #define CONFIG_KEYPAD IAUDIO_X5M5_PAD
 
+#define CONFIG_REMOTE_KEYPAD IAUDIO_REMOTE
+
 /* Define this to enable morse code input */
 #define HAVE_MORSE_INPUT
 
-#define AB_REPEAT_ENABLE 1
+#define AB_REPEAT_ENABLE
 #define ACTION_WPSAB_SINGLE ACTION_WPS_BROWSE
 
 /* Define this if you do software codec */

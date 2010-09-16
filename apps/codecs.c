@@ -28,6 +28,7 @@
 #include <ctype.h>
 #include <stdarg.h>
 #include "string-extra.h"
+#include "load_code.h"
 #include "debug.h"
 #include "button.h"
 #include "dir.h"
@@ -54,46 +55,29 @@
 #define LOGF_ENABLE
 #include "logf.h"
 
-#ifdef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_SDL)
 #define PREFIX(_x_) sim_ ## _x_
 #else
-#define PREFIX
+#define PREFIX(_x_) _x_
 #endif
 
-#ifdef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_HOSTED)
 #if CONFIG_CODEC == SWCODEC
 unsigned char codecbuf[CODEC_SIZE];
 #endif
-void *sim_codec_load_ram(char* codecptr, int size, void **pd);
-void sim_codec_close(void *pd);
-#else
-#define sim_codec_close(x)
 #endif
 
 size_t codec_size;
 
 extern void* plugin_get_audio_buffer(size_t *buffer_size);
 
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE) && defined(HAVE_RECORDING)
 #undef open
 static int open(const char* pathname, int flags, ...)
 {
-#ifdef SIMULATOR
-    int fd;
-    if (flags & O_CREAT)
-    {
-        va_list ap;
-        va_start(ap, flags);
-        fd = sim_open(pathname, flags, va_arg(ap, unsigned int));
-        va_end(ap);
-    }
-    else
-        fd = sim_open(pathname, flags);
-
-    return fd;
-#else
     return file_open(pathname, flags);
-#endif
 }
+#endif
 struct codec_api ci = {
 
     0, /* filesize */
@@ -119,10 +103,10 @@ struct codec_api ci = {
     NULL, /* configure */
     
     /* kernel/ system */
-#ifdef CPU_ARM
+#if defined(CPU_ARM) && CONFIG_PLATFORM & PLATFORM_NATIVE
     __div0,
 #endif
-    PREFIX(sleep),
+    sleep,
     yield,
 
 #if NUM_CORES > 1
@@ -134,10 +118,8 @@ struct codec_api ci = {
     semaphore_release,
 #endif
 
-#if NUM_CORES > 1
     cpucache_flush,
     cpucache_invalidate,
-#endif
 
     /* strings and memory */
     strcpy,
@@ -167,7 +149,7 @@ struct codec_api ci = {
     __cyg_profile_func_exit,
 #endif
 
-#if defined(HAVE_RECORDING) && !defined(SIMULATOR)
+#ifdef HAVE_RECORDING
     false,  /* stop_encoder */
     0,      /* enc_codec_loaded */
     enc_get_inputs,
@@ -179,13 +161,13 @@ struct codec_api ci = {
 
     /* file */
     (open_func)PREFIX(open),
-    close,
-    (read_func)read,
+    PREFIX(close),
+    (read_func)PREFIX(read),
     PREFIX(lseek),
-    (write_func)write,
+    (write_func)PREFIX(write),
     round_value_to_list32,
 
-#endif
+#endif /* HAVE_RECORDING */
 
     /* new stuff at the end, sort into place next time
        the API gets incompatible */
@@ -193,66 +175,51 @@ struct codec_api ci = {
 
 void codec_get_full_path(char *path, const char *codec_root_fn)
 {
-    snprintf(path, MAX_PATH-1, CODECS_DIR "/%s." CODEC_EXTENSION,
-             codec_root_fn);
+    snprintf(path, MAX_PATH-1, "%s/%s." CODEC_EXTENSION,
+             CODECS_DIR, codec_root_fn);
 }
 
-static int codec_load_ram(int size, struct codec_api *api)
+static int codec_load_ram(void *handle, struct codec_api *api)
 {
-    struct codec_header *hdr;
+    struct codec_header *c_hdr = lc_get_header(handle);
+    struct lc_header    *hdr   = c_hdr ? &c_hdr->lc_hdr : NULL;
     int status;
-#ifndef SIMULATOR
-    hdr = (struct codec_header *)codecbuf;
-        
-    if (size <= (signed)sizeof(struct codec_header)
-        || (hdr->magic != CODEC_MAGIC
-#ifdef HAVE_RECORDING
-             && hdr->magic != CODEC_ENC_MAGIC
-#endif
-            )
-        || hdr->target_id != TARGET_ID
-        || hdr->load_addr != codecbuf
-        || hdr->end_addr > codecbuf + CODEC_SIZE)
-    {
-        logf("codec header error");
-        return CODEC_ERROR;
-    }
-
-    codec_size = hdr->end_addr - codecbuf;
-
-#else /* SIMULATOR */
-    void *pd;
-    
-    hdr = sim_codec_load_ram(codecbuf, size, &pd);
-
-    if (pd == NULL)
-        return CODEC_ERROR;
 
     if (hdr == NULL
         || (hdr->magic != CODEC_MAGIC
 #ifdef HAVE_RECORDING
              && hdr->magic != CODEC_ENC_MAGIC
 #endif
-           )
-        || hdr->target_id != TARGET_ID) {
-        sim_codec_close(pd);
+            )
+        || hdr->target_id != TARGET_ID
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
+        || hdr->load_addr != codecbuf
+        || hdr->end_addr > codecbuf + CODEC_SIZE
+#endif
+        )
+    {
+        logf("codec header error");
+        lc_close(handle);
         return CODEC_ERROR;
     }
 
-    codec_size = codecbuf - codecbuf;
-
-#endif /* SIMULATOR */
     if (hdr->api_version > CODEC_API_VERSION
         || hdr->api_version < CODEC_MIN_API_VERSION) {
-        sim_codec_close(pd);
+        logf("codec api version error");
+        lc_close(handle);
         return CODEC_ERROR;
     }
 
-    *(hdr->api) = api;
-    cpucache_invalidate();
-    status = hdr->entry_point();
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
+    codec_size = hdr->end_addr - codecbuf;
+#else
+    codec_size = 0;
+#endif
 
-    sim_codec_close(pd);
+    *(c_hdr->api) = api;
+    status = c_hdr->entry_point();
+
+    lc_close(handle);
 
     return status;
 }
@@ -260,36 +227,37 @@ static int codec_load_ram(int size, struct codec_api *api)
 int codec_load_buf(unsigned int hid, struct codec_api *api)
 {
     int rc;
+    void *handle;
     rc = bufread(hid, CODEC_SIZE, codecbuf);
     if (rc < 0) {
         logf("error loading codec");
         return CODEC_ERROR;
     }
+    handle = lc_open_from_mem(codecbuf, rc);
+    if (handle == NULL)
+    {
+        logf("error loading codec");
+        return CODEC_ERROR;
+    }
+
     api->discard_codec();
-    return codec_load_ram(rc, api);
+    return codec_load_ram(handle, api);
 }
 
 int codec_load_file(const char *plugin, struct codec_api *api)
 {
     char path[MAX_PATH];
-    int fd;
-    int rc;
+    void *handle;
 
     codec_get_full_path(path, plugin);
-    
-    fd = open(path, O_RDONLY);
-    if (fd < 0) {
-        logf("Codec load error:%d", fd);
+
+    handle = lc_open(path, codecbuf, CODEC_SIZE);
+
+    if (handle == NULL) {
+        logf("Codec load error");
         splashf(HZ*2, "Couldn't load codec: %s", path);
-        return fd;
-    }
-    
-    rc = read(fd, &codecbuf[0], CODEC_SIZE);
-    close(fd);
-    if (rc <= 0) {
-        logf("Codec read error");
         return CODEC_ERROR;
     }
 
-    return codec_load_ram((size_t)rc, api);
+    return codec_load_ram(handle, api);
 }

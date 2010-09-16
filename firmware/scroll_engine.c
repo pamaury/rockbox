@@ -23,6 +23,7 @@
  *
  ****************************************************************************/
 #include "config.h"
+#include "gcc_extensions.h"
 #include "cpu.h"
 #include "kernel.h"
 #include "thread.h"
@@ -47,8 +48,8 @@ static const char scroll_name[] = "scroll";
 static struct scrollinfo lcd_scroll[LCD_SCROLLABLE_LINES];
 
 #ifdef HAVE_REMOTE_LCD
-struct scrollinfo lcd_remote_scroll[LCD_REMOTE_SCROLLABLE_LINES];
-struct event_queue scroll_queue;
+static struct scrollinfo lcd_remote_scroll[LCD_REMOTE_SCROLLABLE_LINES];
+static struct event_queue scroll_queue;
 #endif
 
 struct scroll_screen_info lcd_scroll_info =
@@ -242,7 +243,7 @@ static bool scroll_process_message(int delay)
             usb_wait_for_disconnect(&scroll_queue);
             sync_display_ticks();
             return true;
-#ifndef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
         case SYS_REMOTE_PLUGGED:
             if (!remote_initialized)
                 sync_display_ticks();
@@ -257,7 +258,7 @@ static bool scroll_process_message(int delay)
 }
 #endif /* HAVE_REMOTE_LCD */
 
-static void scroll_thread(void) __attribute__((noreturn));
+static void scroll_thread(void) NORETURN_ATTR;
 #ifdef HAVE_REMOTE_LCD
 
 static void scroll_thread(void)
@@ -280,7 +281,7 @@ static void scroll_thread(void)
         delay = current_tick;
 
         if (
-#ifndef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
             !remote_initialized ||
 #endif
             (tick_remote = lcd_remote_scroll_info.last_scroll +

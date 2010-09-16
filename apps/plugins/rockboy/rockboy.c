@@ -26,9 +26,6 @@
 #include "hw.h"
 #include "pcm.h"
 
-PLUGIN_HEADER
-PLUGIN_IRAM_DECLARE
-
 int shut,cleanshut;
 char *errormsg;
 
@@ -361,7 +358,7 @@ static int gnuboy_main(const char *rom)
     rb->lcd_puts(0,0,"Init video");
     vid_init();
     rb->lcd_puts(0,1,"Init sound");
-    pcm_init();
+    rockboy_pcm_init();
     rb->lcd_puts(0,2,"Loading rom");
     loader_init(rom);
     if(shut)
@@ -380,8 +377,6 @@ static int gnuboy_main(const char *rom)
 /* this is the plugin entry point */
 enum plugin_status plugin_start(const void* parameter)
 {
-    PLUGIN_IRAM_INIT(rb)
-
     rb->lcd_setfont(0);
 
     rb->lcd_clear_display();
@@ -403,7 +398,7 @@ enum plugin_status plugin_start(const void* parameter)
             = rb->plugin_get_audio_buffer(&audio_buffer_free);
         plugbuf=false;
     }
-#if MEM <= 8 && !defined(SIMULATOR)
+#if MEM <= 8 && (CONFIG_PLATFORM & PLATFORM_NATIVE)
     /* loaded as an overlay plugin, protect from overwriting ourselves */
     if ((unsigned)(plugin_start_addr - (unsigned char *)audio_bufferbase)
         < audio_buffer_free)
@@ -438,7 +433,7 @@ enum plugin_status plugin_start(const void* parameter)
         return PLUGIN_ERROR;
     }
     if(!rb->audio_status())
-        pcm_close();
+        rockboy_pcm_close();
         
     rb->splash(HZ/2, "Closing Rockboy");
 

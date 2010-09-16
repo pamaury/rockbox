@@ -21,7 +21,7 @@
 
 /* Define bitmask of input sources - recordable bitmask can be defined
    explicitly if different */
-#define INPUT_SRC_CAPS (SRC_CAP_MIC | SRC_CAP_LINEIN | SRC_CAP_FMRADIO)
+#define INPUT_SRC_CAPS (SRC_CAP_LINEIN | SRC_CAP_FMRADIO)
 
 /* define the bitmask of hardware sample rates */
 #define HW_SAMPR_CAPS   (SAMPR_CAP_48 | SAMPR_CAP_44 | SAMPR_CAP_32 | \
@@ -95,7 +95,7 @@
 /* Define this if you have the WM8758 audio codec */
 #define HAVE_WM8758
 
-#define AB_REPEAT_ENABLE 1
+#define AB_REPEAT_ENABLE
 #define ACTION_WPSAB_SINGLE ACTION_WPS_BROWSE
 
 /* define this if you have a disk storage, i.e. something
@@ -136,15 +136,10 @@
 #define HAVE_HEADPHONE_DETECTION
 
 /* Type of mobile power */
-#if (MEM==32)  /* this is the 30GB-model */
-# define BATTERY_CAPACITY_DEFAULT 400 /* default battery capacity for the 30GB model */
-# define BATTERY_CAPACITY_MIN     300 /* min. capacity selectable */
-# define BATTERY_CAPACITY_MAX    1000 /* max. capacity selectable */
-#else          /* these are the 60/80GB-models */
-# define BATTERY_CAPACITY_DEFAULT 600 /* default battery capacity for the 60/80GB model */
-# define BATTERY_CAPACITY_MIN     500 /* min. capacity selectable */
-# define BATTERY_CAPACITY_MAX    1400 /* max. capacity selectable */
-#endif
+#define BATTERY_CAPACITY_DEFAULT  400 /* default battery capacity for the   */
+                                      /* 30GB model. 60/80GB would have 600 */
+#define BATTERY_CAPACITY_MIN      300 /* min. capacity selectable */
+#define BATTERY_CAPACITY_MAX     1400 /* max. capacity selectable */
 #define BATTERY_CAPACITY_INC       50 /* capacity increment */
 #define BATTERY_TYPES_COUNT         1 /* only one type */
 
@@ -153,6 +148,10 @@
 
 /* define this if the unit can be powered or charged via USB */
 #define HAVE_USB_POWER
+
+/* define this if the unit can have USB charging disabled by user -
+ * if USB/MAIN power is discernable and hardware doesn't compel charging */
+#define HAVE_USB_CHARGING_ENABLE
 
 /* define current usage levels */
 #define CURRENT_NORMAL     24  /* 30MHz clock, LCD off, accessory supply on */

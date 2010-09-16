@@ -347,30 +347,6 @@ bool curr_cuesheet_skip(struct cuesheet *cue, int direction, unsigned long curr_
 
 }
 
-void cue_spoof_id3(struct cuesheet *cue, struct mp3entry *id3)
-{
-    if (!cue || !cue->curr_track)
-        return;
-
-    struct cue_track_info *track = cue->curr_track;
-
-    id3->title = *track->title ? track->title : NULL;
-    id3->artist = *track->performer ? track->performer : NULL;
-    id3->composer = *track->songwriter ? track->songwriter : NULL;
-    id3->album = *cue->title ? cue->title : NULL;
-
-    /* if the album artist is the same as the track artist, we hide it. */
-    if (strcmp(cue->performer, track->performer))
-        id3->albumartist = *cue->performer ? cue->performer : NULL;
-    else
-        id3->albumartist = NULL;
-
-    int i = cue->curr_track_idx;
-    id3->tracknum = i+1;
-    if (id3->track_string)
-        snprintf(id3->track_string, 10, "%d/%d", i+1, cue->track_count);
-}
-
 #ifdef HAVE_LCD_BITMAP
 static inline void draw_veritcal_line_mark(struct screen * screen,
                                            int x, int y, int h)
@@ -402,7 +378,6 @@ bool cuesheet_subtrack_changed(struct mp3entry *id3)
                 && id3->elapsed >= (cue->curr_track+1)->offset)))
     {
         cue_find_current_track(cue, id3->elapsed);
-        cue_spoof_id3(cue, id3);
         return true;
     }
     return false;

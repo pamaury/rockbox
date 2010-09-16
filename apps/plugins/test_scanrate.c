@@ -21,10 +21,6 @@
 
 #include "plugin.h"
 
-#if defined(HAVE_LCD_BITMAP) && (LCD_DEPTH < 4) && !defined(SIMULATOR)
-
-PLUGIN_HEADER
-
 #if (CONFIG_KEYPAD == RECORDER_PAD) || (CONFIG_KEYPAD == ONDIO_PAD) \
  || (CONFIG_KEYPAD == IRIVER_H100_PAD)
 #define SCANRATE_DONE    BUTTON_OFF
@@ -156,7 +152,6 @@ static void timer_isr(void)
 
 int plugin_main(void)
 {
-    unsigned char buf[32];
     int button;
     bool done = false;
     bool change = true;
@@ -190,9 +185,8 @@ int plugin_main(void)
         {
             /* The actual frequency is twice the displayed value */
             rb->timer_set_period(TIMER_FREQ * 5 / scan_rate);
-            rb->snprintf(buf, sizeof(buf), "f: %d.%d Hz", scan_rate / 10,
+            rb->lcd_putsxyf(TEXT_X, TEXT_Y, "f: %d.%d Hz", scan_rate / 10,
                          scan_rate % 10);
-            rb->lcd_putsxy(TEXT_X, TEXT_Y, buf);
             need_refresh = true;
             change = false;
         }
@@ -245,5 +239,3 @@ enum plugin_status plugin_start(const void* parameter)
     (void)parameter;
     return plugin_main();
 }
-
-#endif

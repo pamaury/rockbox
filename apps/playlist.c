@@ -86,6 +86,7 @@
 #include "screens.h"
 #include "buffer.h"
 #include "misc.h"
+#include "filefuncs.h"
 #include "button.h"
 #include "filetree.h"
 #include "abrepeat.h"
@@ -103,7 +104,6 @@
 #include "rbunicode.h"
 #include "root_menu.h"
 
-#define PLAYLIST_CONTROL_FILE ROCKBOX_DIR "/.playlist_control"
 #define PLAYLIST_CONTROL_FILE_VERSION 2
 
 /*
@@ -144,7 +144,6 @@ struct directory_search_context {
 };
 
 static struct playlist_info current_playlist;
-static char now_playing[MAX_PATH+1];
 
 static void empty_playlist(struct playlist_info* playlist, bool resume);
 static void new_playlist(struct playlist_info* playlist, const char *dir,
@@ -1318,7 +1317,7 @@ static void playlist_thread(void)
                 dirty_pointers = false;
                 break ;
             
-#ifndef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
             case SYS_USB_CONNECTED:
                 usb_acknowledge(SYS_USB_CONNECTED_ACK);
                 usb_wait_for_disconnect(&playlist_queue);
@@ -1440,7 +1439,12 @@ static int get_next_dir(char *dir, bool is_forward, bool recursion)
     /* process random folder advance */
     if (global_settings.next_folder == FOLDER_ADVANCE_RANDOM)
     {
-        int fd = open(ROCKBOX_DIR "/folder_advance_list.dat", O_RDONLY);
+        char folder_advance_list[MAX_PATH];
+        get_user_file_path(ROCKBOX_DIR, FORCE_BUFFER_COPY,
+                folder_advance_list, sizeof(folder_advance_list));
+        strlcat(folder_advance_list, "/folder_advance_list.dat",
+                sizeof(folder_advance_list));
+        int fd = open(folder_advance_list, O_RDONLY);
         if (fd >= 0)
         {
             char buffer[MAX_PATH];
@@ -1910,7 +1914,8 @@ void playlist_init(void)
     struct playlist_info* playlist = &current_playlist;
 
     playlist->current = true;
-    strlcpy(playlist->control_filename, PLAYLIST_CONTROL_FILE,
+    get_user_file_path(PLAYLIST_CONTROL_FILE, IS_FILE|NEED_WRITE|FORCE_BUFFER_COPY,
+            playlist->control_filename,
             sizeof(playlist->control_filename));
     playlist->fd = -1;
     playlist->control_fd = -1;
@@ -2450,7 +2455,7 @@ bool playlist_check(int steps)
 
 /* get trackname of track that is "steps" away from current playing track.
    NULL is used to identify end of playlist */
-const char* playlist_peek(int steps)
+const char* playlist_peek(int steps, char* buf, size_t buf_size)
 {
     struct playlist_info* playlist = &current_playlist;
     int seek;
@@ -2465,11 +2470,11 @@ const char* playlist_peek(int steps)
     control_file = playlist->indices[index] & PLAYLIST_INSERT_TYPE_MASK;
     seek = playlist->indices[index] & PLAYLIST_SEEK_MASK;
 
-    if (get_filename(playlist, index, seek, control_file, now_playing,
-            MAX_PATH+1) < 0)
+    if (get_filename(playlist, index, seek, control_file, buf,
+        buf_size) < 0)
         return NULL;
 
-    temp_ptr = now_playing;
+    temp_ptr = buf;
 
     if (!playlist->in_ram || control_file)
     {
@@ -2488,7 +2493,7 @@ const char* playlist_peek(int steps)
             /* Even though this is an invalid file, we still need to pass a
                file name to the caller because NULL is used to indicate end
                of playlist */
-            return now_playing;
+            return buf;
         }
     }
 

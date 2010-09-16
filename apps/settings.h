@@ -33,6 +33,7 @@
 #if CONFIG_CODEC == SWCODEC
 #include "audio.h"
 #endif
+#include "rbpaths.h"
 
 struct opt_items {
     unsigned const char* string;
@@ -40,50 +41,6 @@ struct opt_items {
 };
 
 /** Setting values defines **/
-
-/* name of directory where configuration, fonts and other data
- * files are stored */
-#ifdef __PCTOOL__
-#undef ROCKBOX_DIR
-#undef ROCKBOX_DIR_LEN
-#undef WPS_DIR
-#define ROCKBOX_DIR "."
-#define ROCKBOX_DIR_LEN 1
-#else
-
-/* ROCKBOX_DIR is now defined in autoconf.h for flexible build types */
-#ifndef ROCKBOX_DIR
-#error ROCKBOX_DIR not defined (should be in autoconf.h)
-#endif
-#define ROCKBOX_DIR_LEN sizeof(ROCKBOX_DIR)
-#endif /* def __PCTOOL__ */
-
-
-#define FONT_DIR    ROCKBOX_DIR "/fonts"
-#define LANG_DIR    ROCKBOX_DIR "/langs"
-#define WPS_DIR     ROCKBOX_DIR "/wps"
-#define SBS_DIR     WPS_DIR
-#define THEME_DIR   ROCKBOX_DIR "/themes"
-#define ICON_DIR    ROCKBOX_DIR "/icons"
-
-#define PLUGIN_DIR          ROCKBOX_DIR "/rocks"
-#define PLUGIN_GAMES_DIR    PLUGIN_DIR "/games"
-#define PLUGIN_APPS_DIR     PLUGIN_DIR "/apps"
-#define PLUGIN_DEMOS_DIR    PLUGIN_DIR "/demos"
-#define VIEWERS_DIR         PLUGIN_DIR "/viewers"
-
-#define BACKDROP_DIR ROCKBOX_DIR "/backdrops"
-#define REC_BASE_DIR "/"
-#define EQS_DIR     ROCKBOX_DIR "/eqs"
-#define CODECS_DIR  ROCKBOX_DIR "/codecs"
-#define RECPRESETS_DIR  ROCKBOX_DIR "/recpresets"
-#define FMPRESET_PATH ROCKBOX_DIR "/fmpresets"
-#define PLAYLIST_CATALOG_DEFAULT_DIR "/Playlists"
-
-#define VIEWERS_CONFIG      ROCKBOX_DIR "/viewers.config"
-#define CONFIGFILE          ROCKBOX_DIR "/config.cfg"
-#define FIXEDSETTINGSFILE   ROCKBOX_DIR "/fixed.cfg"
-
 #define MAX_FILENAME 32
 
 
@@ -260,6 +217,7 @@ void sound_settings_apply(void);
  * skin buffer is reset properly
  */
 void settings_apply_skins(void);
+void theme_init_buffer(void);
 
 void settings_apply(bool read_disk);
 void settings_apply_pm_range(void);
@@ -288,7 +246,7 @@ bool set_int_ex(const unsigned char* string, const char* unit, int voice_unit,
              const char* (*formatter)(char*, size_t, int, const char*),
              int32_t (*get_talk_id)(int, int));
 
-void set_file(const char* filename, char* setting, int maxlen);
+void set_file(const char* filename, char* setting, const int maxlen);
 
 bool set_option(const char* string, const void* variable, enum optiontype type,
                 const struct opt_items* options, int numoptions, void (*function)(int));
@@ -604,7 +562,8 @@ struct user_settings
     /* auto bookmark settings */
     int autoloadbookmark;   /* auto load option: 0=off, 1=ask, 2=on */
     int autocreatebookmark; /* auto create option: 0=off, 1=ask, 2=on */
-    int usemrb;             /* use MRB list: 0=No, 1=Yes*/
+    bool autoupdatebookmark;/* auto update option */
+    int usemrb;             /* use MRB list: 0=No, 1=Yes, 2=One per playlist */
 
 #ifdef HAVE_DIRCACHE
     bool dircache;          /* enable directory cache */
@@ -660,7 +619,9 @@ struct user_settings
 
     /* power settings */
     int poweroff;   /* idle power off timer */
+#ifdef BATTERY_CAPACITY_DEFAULT
     int battery_capacity; /* in mAh */
+#endif
 
 #if BATTERY_TYPES_COUNT > 1
     int battery_type;  /* for units which can take multiple types (Ondio). */
@@ -669,7 +630,7 @@ struct user_settings
     bool spdif_enable; /* S/PDIF power on/off */
 #endif
 #ifdef HAVE_USB_CHARGING_ENABLE
-    bool usb_charging;
+    int usb_charging;
 #endif
 
     /* device settings */
@@ -696,12 +657,6 @@ struct user_settings
 #endif
     unsigned char kbd_file[MAX_FILENAME+1];  /* last keyboard */
 #endif /* HAVE_LCD_BITMAP */
-
-#ifdef HAVE_LCD_CHARCELLS
-    int jump_scroll;   /* Fast jump when scrolling */
-    int jump_scroll_delay; /* Delay between jump scroll screens */
-#endif
-
     int  backlight_timeout;  /* backlight off timeout:  0-18 0=never,
                                1=always,
                                then according to timeout_values[] */

@@ -79,7 +79,7 @@
 /* The number of bytes reserved for loadable plugins */
 #define PLUGIN_BUFFER_SIZE 0x10000
 
-#define AB_REPEAT_ENABLE 1
+#define AB_REPEAT_ENABLE
 
 /* Define this if you do software codec */
 #define CONFIG_CODEC SWCODEC
@@ -88,6 +88,8 @@
 #define HAVE_WM8731
 /* Codec is slave on serial bus */
 #define CODEC_SLAVE
+/* WM8731 has no tone controls, so we use the software ones */
+#define HAVE_SW_TONE_CONTROLS
 
 /* Define this for LCD backlight available */
 #define HAVE_BACKLIGHT

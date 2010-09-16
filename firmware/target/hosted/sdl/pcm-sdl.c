@@ -31,6 +31,13 @@
 #include "audiohw.h"
 #include "system.h"
 
+#ifdef HAVE_RECORDING
+#include "audiohw.h"
+#ifdef HAVE_SPDIF_IN
+#include "spdif.h"
+#endif
+#endif
+
 #include "pcm.h"
 #include "pcm_sampr.h"
 
@@ -228,15 +235,9 @@ static void sdl_audio_callback(struct pcm_udata *udata, Uint8 *stream, int len)
 
     /* Audio card wants more? Get some more then. */
     while (len > 0) {
-        if ((ssize_t)pcm_data_size <= 0) {
-            pcm_data_size = 0;
-
-            if (pcm_callback_for_more)
-                pcm_callback_for_more(&pcm_data, &pcm_data_size);
-        }
-
-        if (pcm_data_size > 0) {
+        pcm_play_get_more_callback((void **)&pcm_data, &pcm_data_size);
     start:
+        if (pcm_data_size != 0) {
             udata->num_in  = pcm_data_size / pcm_sample_bytes;
             udata->num_out = len / pcm_sample_bytes;
 
@@ -251,8 +252,6 @@ static void sdl_audio_callback(struct pcm_udata *udata, Uint8 *stream, int len)
             len           -= udata->num_out;
         } else {
             DEBUGF("sdl_audio_callback: No Data.\n");
-            pcm_play_dma_stop();
-            pcm_play_dma_stopped_callback();
             break;
         }
     }
@@ -292,21 +291,24 @@ void pcm_rec_dma_stop(void)
 {
 }
 
-void pcm_rec_dma_record_more(void *start, size_t size)
-{
-    (void)start;
-    (void)size;
-}
-
-unsigned long pcm_rec_status(void)
-{
-    return 0;
-}
-
 const void * pcm_rec_dma_get_peak_buffer(void)
 {
     return NULL;
 }
+
+void audiohw_set_recvol(int left, int right, int type)
+{
+    (void)left;
+    (void)right;
+    (void)type;
+}
+
+#ifdef HAVE_SPDIF_IN
+unsigned long spdif_measure_frequency(void)
+{
+    return 0;
+}
+#endif
 
 #endif /* HAVE_RECORDING */
 

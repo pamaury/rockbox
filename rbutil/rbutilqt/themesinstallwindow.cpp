@@ -26,6 +26,8 @@
 #include "utils.h"
 #include "rbsettings.h"
 #include "systeminfo.h"
+#include "rockboxinfo.h"
+#include "version.h"
 
 ThemesInstallWindow::ThemesInstallWindow(QWidget *parent) : QDialog(parent)
 {
@@ -58,15 +60,20 @@ void ThemesInstallWindow::downloadInfo()
 {
     // try to get the current build information
     getter = new HttpGet(this);
+    RockboxInfo installInfo
+        = RockboxInfo(RbSettings::value(RbSettings::Mountpoint).toString());
 
     themesInfo.open();
     qDebug() << "[Themes] downloading info to" << themesInfo.fileName();
     themesInfo.close();
 
-    QUrl url;
-    url = QUrl(SystemInfo::value(SystemInfo::ThemesUrl).toString()
-                + "/rbutilqt.php?target="
-                + SystemInfo::value(SystemInfo::CurConfigureModel).toString());
+    QString infoUrl = SystemInfo::value(SystemInfo::ThemesInfoUrl).toString();
+    infoUrl.replace("%TARGET%",
+            SystemInfo::value(SystemInfo::CurConfigureModel).toString());
+    infoUrl.replace("%REVISION%", installInfo.revision());
+    infoUrl.replace("%RELEASE%", installInfo.release());
+    infoUrl.replace("%RBUTILVER%", VERSION);
+    QUrl url = QUrl(infoUrl);
     qDebug() << "[Themes] Info URL:" << url << "Query:" << url.queryItems();
     if(RbSettings::value(RbSettings::CacheOffline).toBool())
         getter->setCache(true);

@@ -23,7 +23,7 @@
 
 #include "plugin.h"
 #include "lib/jpeg_mem.h"
-PLUGIN_HEADER
+
 
 /* a null output plugin to save memory and better isolate decode cost */
 static unsigned int get_size_null(struct bitmap *bm)
@@ -54,14 +54,12 @@ const struct custom_format format_null = {
     .get_size = get_size_null
 };
 
-static char output_buf[256];
 static int output_y = 0;
 static int font_h;
 
 #define lcd_printf(...) \
 do { \
-    rb->snprintf(output_buf, sizeof(output_buf), __VA_ARGS__); \
-    rb->lcd_putsxy(0, output_y, output_buf); \
+    rb->lcd_putsxyf(0, output_y, __VA_ARGS__); \
     rb->lcd_update_rect(0, output_y, LCD_WIDTH, font_h); \
     output_y += font_h; \
 } while (0)

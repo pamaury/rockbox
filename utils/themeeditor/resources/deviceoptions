@@ -1,0 +1,183 @@
+###########################################################################
+#             __________               __   ___.
+#   Open      \______   \ ____   ____ |  | _\_ |__   _______  ___
+#   Source     |       _//  _ \_/ ___\|  |/ /| __ \ /  _ \  \/  /
+#   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
+#   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
+#                     \/            \/     \/    \/            \/
+# $Id$
+#
+# Copyright (C) 2010 Robert Bieber
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
+# KIND, either express or implied.
+#
+############################################################################/
+# This file defines the options for the device configuration panel
+# Declare a section with a line containing a string inside brackets, i.e.
+# [Some Section]
+# Declare options within the section in the following format, one per line
+# tag;Tag Label;[input];default
+# tag is the skin tag represented by that option
+#
+# Tag Label is a human-readable label to attach to the input
+#
+# [input] is the type of widget that should be used for the tag, and its range
+# if applicable.  The valid forms are:
+# check - Inserts a true/false checkbox
+# text - Inserts a line edit box
+# slider(min, max) - Inserts a horizontal slider with range specified
+# spin(min, max) - Inserts a spin box with range specified
+# fspin(min, max) - Inserts a floating point spin box with range specified
+# combo(option1, option2...) - Inserts a combo box with the options specified
+#
+# default is the default value for the input
+#
+# Note that there aren't any provisions for escaping characters at the moment,
+# so don't include [, ], or ; in your text, or (, ) in combo box choices
+#
+# Blank lines are ignored
+#
+# A ? at the beginning of a field indicates that it's a special value for
+# conditionals
+#
+# Be warned: because this file is compiled into the application, I'm not
+# performing much of any error checking on it: screwing up the syntax may very
+# well segfault the application on startup
+
+[Rendering Info]
+screenwidth ; Screen Width ; spin(0,800) ; 300
+screenheight ; Screen Height ; spin(0,800) ; 200
+remotewidth ; Remote Width ; spin(0,800) ; 100
+remoteheight ; Remote Height ; spin(0,800); 50
+simtime ; Simulation Time ; fspin(0, 100000) ; 60.0
+showviewports ; Show Viewports ; check ; false
+showtouch ; Show Touch Areas ; check ; true
+rendersbs ; Render SBS If Available ; check ; true
+rtl ; Right-To-Left Language ; check ; false
+
+[ID3 Info]
+id3available ; ID3 Info Available ; check ; true
+ia ; Artist ; text ; Current Artist
+ic ; Composer ; text ; Current Composer
+iA ; Album Artist ; text ; Current Album Artist
+id ; Album Name ; text ; Current Album Name
+iG ; Grouping ; text ; Current Grouping
+ig ; Genre Name ; text ; Current Genre
+in ; Track number ; spin(1,100) ; 3
+it ; Track Title ; text ; Current Title
+iC ; Comment ; text ; Current Comment
+iv ; ID3 Version ; fspin(1,2.4); 2.0
+iy ; Year ; spin(1000,2020) ; 2008
+ik ; Disk Number ; spin(1,100) ; 1
+
+[Next Track ID3 Info]
+Ia ; Next Track Artist ; text ; Next Artist
+Ic ; Next Track Composer ; text ; Next Composer
+IA ; Next Track Album Artist ; text ; Next Album Artist
+Id ; Next Track Album Name ; text ; Next Album Name
+IG ; Next Track Grouping ; text ; Next Grouping
+Ig ; Next Track Genre Name ; text ; Next Genre
+In ; Next Track Track number ; spin(1,100) ; 3
+It ; Next Track Track Title ; text ; Next Title
+IC ; Next Track Comment ; text ; Next Comment
+Iv ; Next Track ID3 Version ; fspin(1,2.4); 2.0
+Iy ; Next Track Year ; spin(1000,2020) ; 2008
+Ik ; Next Track Disk Number ; spin(1,100) ; 1
+
+[File Info]
+fb ; Bitrate (kbps) ; spin(1,2048) ; 256
+fc ; Codec ; combo(MP1, MP2, MP3, AIFF, WAV, OGG, FLAC, MPC, AC3, WV, ALAC, AAC, SHN, SID, ADX, NSF, Speex, SPC, APE, WMA) ; OGG
+ff ; Frequency (Hz) ; spin(1,100000) ; 42000
+fk ; Frequency (KHz) ; fspin(1, 100) ; 42
+file ; File Path ; text ; /.rockbox/music/artist/album/01 - file.ogg
+fs ; Size (KB) ; spin(1,100000) ; 3000
+fv ; Variable Bit Rate ; check ; true
+
+[Next File Info]
+Fb ; Next File Bitrate (kbps) ; spin(1,2048) ; 256
+Fc ; Next File Codec ; combo(MP1, MP2, MP3, AIFF, WAV, OGG, FLAC, MPC, AC3, WV, ALAC, AAC, SHN, SID, ADX, NSF, Speex, SPC, APE, WMA) ; OGG
+Ff ; Next File Frequency (Hz) ; spin(1,100000) ; 42000
+Fk ; Next File Frequency (KHz) ; fspin(1, 100) ; 42
+nextfile ; Next File Path ; text ; /.rockbox/music/artist/album/02 - nextfile.ogg
+Fs ; Next File Size (KB) ; spin(1,100000) ; 3000
+Fv ; Next File Variable Bit Rate ; check ; true
+
+[Playlist/Song Info]
+?pc ; Time In Song (Seconds) ; fspin(0,5000) ; 60
+pe ; Playlist Entries ; spin(0,1000) ; 20
+pn ; Playlist Name ; text ; Current Playlist
+pp ; Playlist Position ; spin(0,1000) ; 10
+ps ; Shuffle ; check ; true
+?pt ; Total Track Time ; spin(0,1000) ; 180
+Sp ; Playback Pitch ; fspin(50,200) ; 100
+rp ; Song Playcount ; spin(0,10000) ; 20
+rr ; Song Rating ; spin(0,10) ; 5
+ra ; Autoscore ; spin(0,10) ; 7
+?C ; Album Art Available ; check ; true
+artwidth ; Album Art Width ; spin(0,500) ; 100
+artheight; Album Art Height ; spin(0,500) ; 100
+
+[Hardware Status]
+pv ; Current Volume (dB) ; spin(-100,100) ; 0
+bl ; Battery Level (-1 for unknown) ; spin(-1,100) ; 50
+bv ; Battery Volts ; spin(0,20) ; 5
+bt ; Time Left (-1 for unknown) ; spin(-1,500); 100
+bp ; Charger Connected ; check ; true
+bc ; Charging ; check ; false
+bs ; Sleep Time Left ; spin(0,500) ; 100
+mh ; Hold Switch ; check ; true
+mr ; Remote Hold Switch ; check ; false
+lh ; Hard Disk Activity ; check ; true
+
+[Playback Status]
+rg ; Replaygain Value (dB) ; fspin(-100,20) ; 0
+?rg ; Replaygain Status (Conditional) ; combo(Off, Track, Album, TrackShuffle, AlbumShuffle, No Tag) ; Off
+mm ; Repeat Mode ; combo(Off, All, One, Shuffle, A-B) ; All
+mp ; Playback Mode ; combo(Stop, Play, Pause, Fast Forward, Rewind, Recording, Recording Paused, FM Radio Playing, FM Radio Muted) ; Play
+xf ; Crossfade Type ; combo(Off, Automatic Track Skip Only, Shuffle, Shuffle or Manual Track Skip, Always) ; Always
+
+[Clock]
+cc ; Has Realtime Clock ; check ; true
+cf ; 24 Hour Format ; check ; true
+cY ; Year ; spin(1500,2100) ; 2010
+cm ; Month ; combo(January, February, March, April, May, Jun, July, August, September, October, November, December) ; January
+day ; Day of Month ; spin(1,31) ; 20
+?cw ; Day of Week ; combo(Sunday, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday) ; Tuesday
+hour ; Hour (24h) ; spin(0, 23) ; 12
+minute ; Minute ; spin(0, 59) ; 25
+second ; Second ; spin(0, 59) ; 20
+
+[Recording Status]
+Rp ; Target Has Recorder ; check ; false
+Rm ; Recording in Mono ; check ; true
+Rf ; Recording frequency ; combo(8,11,12,16,22,24,32,44,48,85,88,96) ; 44
+Re ; Encoder Being Used ; combo(WAV, AIFF, WV, MP3) ; WAV
+Rb ; Bitrate ; combo(8,16,24,32,40,48,56,64,80,96,112,128,144,160,192) ; 160
+
+[FM Radio]
+tp ; Target Has Radio ; check ; false
+tt ; Tuner Tuned ; check ; true
+tm ; Scan Mode ; check ; true
+ts ; Stereo ; check ; true
+ta ; Minimum Frequency (Two Decimal Digits) ; text ; 9.3
+tb ; Maximum Frequency (Two Decimal Digits) ; text ; 9.4
+tf ; Current Frequency (Two Decimal Digits) ; text ; 9.3
+Ti ; Current Preset ; spin(1,100) ; 4
+Tn ; Current Preset Name ; text ; Current Preset
+Tf ; Current Preset Frequency ; text ; 9.3
+Tc ; Preset Count ; spin(0,100) ; 10
+tx ; Has RDS ; check ; true
+ty ; RDS Name ; text ; Current RDS Name
+tz ; RDS Text ; text ; Current RDS Text
+
+[Misc.]
+mv ; Volume Changing ; check ; false
+cs ; Current Screen ; combo(Menus, WPS, Recording Screen, FM Radio Screen, Current Playlist Screen) ; WPS
+Lt ; List Title ; text ; Current List Title
+Li ; Title Icon ; spin(0,200) ; 2

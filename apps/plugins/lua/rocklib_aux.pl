@@ -18,6 +18,13 @@
 #
 ############################################################################
 
+
+# The purpose of this script is to automatically generate Lua wrappers for
+# (easily) portable C functions used in the Rockbox plugin API.
+# It doesn't contain support for enums, structs or pointers (apart from char*).
+#
+# The output will be written to <build_dir>/apps/plugins/lua/rocklib_aux.c
+
 sub trim
 {
     my $text = $_[0];
@@ -40,10 +47,15 @@ sub rand_string
 
 my @functions;
 my @ported_functions;
+# These functions are excluded from automatically wrapping. This is useful if
+# you want to manually port them to Lua. The format is a standard Perl regular
+# expression.
 my @forbidden_functions = ('^open$',
                            '^close$',
                            '^read$',
                            '^write$',
+                           '^mkdir$',
+                           '^rmdir$',
                            '^lseek$',
                            '^ftruncate$',
                            '^filesize$',
@@ -111,7 +123,10 @@ my $svnrev = '$Revision$';
 
 # Print the header
 print <<EOF
-/* Automatically generated of $svnrev from rocklib.c & plugin.h */
+/* Automatically generated from rocklib.c & plugin.h ($svnrev)
+ *
+ * See apps/plugins/lua/rocklib_aux.pl for the generator.
+ */
 
 #define lrocklib_c
 #define LUA_LIB

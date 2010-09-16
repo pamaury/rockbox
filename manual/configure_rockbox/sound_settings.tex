@@ -10,25 +10,27 @@ change to customise your listening experience.
   where 0~dB is a reference that indicates the maximum volume that the \dap{}
   can produce without possible distortion (clipping). All values lower than
   this reference will be negative and yield a progressively softer volume.
-  \opt{player,recorder,recorderv2fm,ondio,x5,m5,ipodnano,ipodnano2g,ipodvideo,
-       ipodcolor,ipod1g2g,h10,h10_5gb,sansa,sansaAMS,gigabeats,gigabeatf,vibe500}{
-  Values higher than 0~dB are available and can be used to raise the
-  volume more than would otherwise be possible. These volume levels will
-  ordinarily lead to distorted sound, but might work nicely for music that has
-  an otherwise low volume level.}
+  \nopt{h100,h300,ondavx777}{%
+      Values higher than 0~dB are available and can be used to raise the
+      volume more than would otherwise be possible. These volume levels will
+      ordinarily lead to distorted sound, but might work nicely for music that has
+      an otherwise low volume level.
+  }
   The volume can be adjusted from a
   \opt{player}{minimum of -78~dB to a maximum of +18~dB.}%
   \opt{recorder,recorderv2fm,ondio}{minimum of -100~dB to a maximum of +12~dB.}%
   \opt{h100,h300}{minimum of -84~dB to a maximum of 0~dB.}%
-  \opt{x5,m5,ipod3g,ipod4g,gigabeatf,mrobe100}{minimum of -73~dB to a maximum of +6~dB.}%
+  \opt{iaudiom3,iaudiom5,iaudiox5,ipod3g,ipod4g,gigabeatf,mrobe100}{%
+      minimum of -73~dB to a maximum of +6~dB.}%
   \opt{ipodnano}{minimum of -72~dB to a maximum of +6~dB.}%
-  \opt{ipodvideo}{minimum of -89~dB to a maximum of +6~dB.}%
+  \opt{ipodvideo,cowond2}{minimum of -89~dB to a maximum of +6~dB.}%
   \opt{ipodnano2g,ipodcolor,ipod1g2g,h10,h10_5gb,sansa,sansaAMS}{minimum of 
-  -74~dB to a maximum of +6~dB.}%
+      -74~dB to a maximum of +6~dB.}%
   \opt{gigabeats}{minimum of -90~dB to a maximum of +6~dB.}%
   \opt{gigabeatf,vibe500}{minimum of -74~dB to a maximum of +6~dB.}%
   \opt{ipodvideo}{\\Remark: Lowering the volume below -57~dB will also affect the line-out 
   and the recording gain.}
+  \opt{cowond2}{\\Remark: Lowering the volume below -57~dB will also affect the line-out.}
   
 \section{Bass}
   This setting emphasises
@@ -40,7 +42,8 @@ change to customise your listening experience.
   \opt{h100,h300}{The minimum setting is 0~dB and the maximum is 24~dB.}%
   \opt{ipodnano,ipodnano2g,ipodcolor}{The minimum setting is -6~dB and the maximum is 9~dB.}%
   \opt{ipodvideo}{The minimum setting is -12~dB and the maximum is 12~dB.}%
-  \opt{x5,sansa,sansaAMS,h10,h10_5gb,vibe500}{The minimum setting is -24~dB and the maximum is 24~dB.}
+  \opt{iaudiom3,iaudiom5,iaudiox5,sansa,sansaAMS,h10,h10_5gb,vibe500}{%
+      The minimum setting is -24~dB and the maximum is 24~dB.}
 
 \opt{ipodvideo}{
 \section{Bass Cutoff}
@@ -60,7 +63,8 @@ change to customise your listening experience.
   \opt{h100,h300}{The minimum setting is 0~dB and the maximum is 6~dB.}%
   \opt{ipodnano,ipodnano2g,ipodcolor}{The minimum setting is -6~dB and the maximum is 9~dB.}%
   \opt{ipodvideo}{The minimum setting is -12~dB and the maximum is 12~dB.}%
-  \opt{x5,sansa,sansaAMS,h10,h10_5gb,vibe500}{The minimum setting is -24~dB and the maximum is 24~dB.}
+  \opt{iaudiom3,iaudiom5,iaudiox5,sansa,sansaAMS,h10,h10_5gb,vibe500}{%
+      The minimum setting is -24~dB and the maximum is 24~dB.}
 
 \opt{ipodvideo}{
 \section{Treble Cutoff}
@@ -83,34 +87,26 @@ change to customise your listening experience.
   any way, and if so, in what manner they will be combined.
   Available options are:
   %
-  \begin{table}
-  \begin{rbtabular}{\textwidth}{lX}%
-      {\textbf{Setting} & \textbf{Description}}{}{}
-        Stereo
-        & Leave the audio signal unmodified. \\
-        %
-        Mono 
-        & Combine both channels and send the resulting signal to both stereo
-          channels, resulting in a monophonic output. \\
-        %
-        Custom
-        & Allows you to manually specify a stereo width with the
-          \setting{Stereo Width} setting described later in this chapter. \\
-        %
-        Mono Left
-        & Plays the left channel in both stereo channels. \\
-        %
-        Mono Right
-        & Plays the right channel in both stereo channels. \\
-        %
-        Karaoke
-        & Removes all sound that is common to both channels. Since most
+  \begin{description}
+      \item[Stereo.]
+          Leave the audio signal unmodified.
+      \item[Mono.]
+          Combine both channels and send the resulting signal to both stereo
+          channels, resulting in a monophonic output.
+      \item[Custom.]
+          Allows you to manually specify a stereo width with the
+          \setting{Stereo Width} setting described later in this chapter.
+      \item[Mono Left.]
+          Plays the left channel in both stereo channels.
+      \item[Mono Right.]
+          Plays the right channel in both stereo channels.
+      \item[Karaoke.]
+          Removes all sound that is common to both channels. Since most
           music is recorded with vocals being equally present in both channels
           to make the singer sound centrally placed, this often (but not 
           always) has the effect of removing the voice track from a song. This 
-          setting also very often has other undesirable effects on the sound.  \\
-  \end{rbtabular}
-  \end{table}
+          setting also very often has other undesirable effects on the sound.
+  \end{description}
 
 \section{Stereo Width}
   Stereo width allows you to manually specify the effect that is applied
@@ -324,65 +320,95 @@ change to customise your listening experience.
   of the five EQ bands.
   
     \begin{btnmap}
-      \opt{IPOD_4G_PAD,IPOD_3G_PAD,IPOD_VIDEO_PAD}{\ButtonScrollFwd}
-      \opt{IRIVER_H100_PAD,IRIVER_H300_PAD,IAUDIO_X5_PAD,PBELL_VIBE500_PAD}{\ButtonUp}
-      \opt{SANSA_E200_PAD}{\ButtonScrollBack}
-      \opt{GIGABEAT_PAD,GIGABEAT_S_PAD}{\ButtonRight}
-      \opt{COWON_D2_PAD}{\TouchMidRight}
-    \opt{HAVEREMOTEKEYMAP}{& 
-      \opt{IRIVER_RC_H100_PAD,GIGABEAT_RC_PAD}{\ButtonRCFF}
-        }
-      & Raises the highlighted parameter.\\
+      \opt{IRIVER_H100_PAD,IRIVER_H300_PAD,IAUDIO_X5_PAD,GIGABEAT_PAD%
+          ,GIGABEAT_S_PAD,SANSA_C200_PAD,IAUDIO_M3_PAD,MROBE100_PAD}{\ButtonRight}
+      \opt{SANSA_E200_PAD,SANSA_FUZE_PAD,IPOD_4G_PAD,IPOD_3G_PAD}{\ButtonScrollFwd}
+      \opt{IRIVER_H10_PAD}{\ButtonScrollUp}
+      \opt{PBELL_VIBE500_PAD}{\ButtonUp}
+      \opt{touchscreen}{\TouchMidRight}
+          &
+      \opt{HAVEREMOTEKEYMAP}{
+          \opt{GIGABEAT_RC_PAD}{\ButtonRCFF}
+          \opt{IAUDIO_RC_PAD}{\ButtonRCRight}
+          &}
+      Raises the highlighted parameter.
+          \\
       %
-      \opt{IPOD_4G_PAD,IPOD_3G_PAD,IPOD_VIDEO_PAD}{\ButtonScrollBack}
-      \opt{IRIVER_H100_PAD,IRIVER_H300_PAD,IAUDIO_X5_PAD,PBELL_VIBE500_PAD}{\ButtonDown}
-      \opt{SANSA_E200_PAD}{\ButtonScrollFwd}
-      \opt{GIGABEAT_PAD,GIGABEAT_S_PAD}{\ButtonLeft}
+      \opt{IRIVER_H100_PAD,IRIVER_H300_PAD,IAUDIO_X5_PAD,GIGABEAT_PAD%
+          ,GIGABEAT_S_PAD,SANSA_C200_PAD,IAUDIO_M3_PAD,MROBE100_PAD}{\ButtonLeft}
+      \opt{SANSA_E200_PAD,SANSA_FUZE_PAD,IPOD_4G_PAD,IPOD_3G_PAD}{\ButtonScrollBack}
+      \opt{IRIVER_H10_PAD}{\ButtonScrollDown}
+      \opt{PBELL_VIBE500_PAD}{\ButtonDown}
       \opt{touchscreen}{\TouchMidLeft}
-    \opt{HAVEREMOTEKEYMAP}{& 
-      \opt{IRIVER_RC_H100_PAD,GIGABEAT_RC_PAD}{\ButtonRCRew}
-        }
-      & Lowers the highlighted parameter.\\
+          &
+      \opt{HAVEREMOTEKEYMAP}{
+          \opt{GIGABEAT_RC_PAD}{\ButtonRCRew}
+          \opt{IAUDIO_RC_PAD}{\ButtonRCLeft}
+          &}
+      Lowers the highlighted parameter.
+          \\
       %
-      \opt{IRIVER_H100_PAD,IRIVER_H300_PAD,IAUDIO_X5_PAD}{\ButtonLeft}
-      \opt{IPOD_4G_PAD,IPOD_3G_PAD,IPOD_VIDEO_PAD,PBELL_VIBE500_PAD}{\ButtonLeft}
-      \opt{SANSA_E200_PAD,GIGABEAT_PAD,GIGABEAT_S_PAD}{\ButtonUp}
-      \opt{COWON_D2_PAD}{\ActionStdPrev}
-    \opt{HAVEREMOTEKEYMAP}{& }
-      \opt{GIGABEAT_RC_PAD}{\ButtonRCVolUp}
-      & Moves to the previous EQ band. \\
+      \opt{IPOD_4G_PAD,IPOD_3G_PAD,PBELL_VIBE500_PAD}{\ButtonLeft}
+      \opt{IRIVER_H100_PAD,IRIVER_H300_PAD,IAUDIO_X5_PAD,SANSA_E200_PAD,SANSA_C200_PAD%
+          ,SANSA_FUZE_PAD,GIGABEAT_PAD,GIGABEAT_S_PAD,IAUDIO_M3_PAD,MROBE100_PAD}{\ButtonUp}
+      \opt{IRIVER_H10_PAD}{\ButtonRew}
+      \opt{touchscreen}{\ActionStdPrev}
+          &
+      \opt{HAVEREMOTEKEYMAP}{
+          \opt{IRIVER_RC_H100_PAD}{\ButtonRCRew}
+          \opt{GIGABEAT_RC_PAD}{\ButtonRCVolUp}
+          \opt{IAUDIO_RC_PAD}{\ButtonRCUp}
+          &}
+      Moves to the previous EQ band.
+          \\
       %
-      \opt{IRIVER_H100_PAD,IRIVER_H300_PAD,IAUDIO_X5_PAD}{\ButtonRight}
-      \opt{IPOD_4G_PAD,IPOD_3G_PAD,IPOD_VIDEO_PAD,PBELL_VIBE500_PAD}{\ButtonRight}
-      \opt{SANSA_E200_PAD,GIGABEAT_PAD,GIGABEAT_S_PAD}{\ButtonDown}
-      \opt{COWON_D2_PAD}{\ActionStdNext}
-    \opt{HAVEREMOTEKEYMAP}{& }
-      \opt{GIGABEAT_RC_PAD}{\ButtonRCVolDown}
-      & Moves to the next EQ band. \\
+      \opt{IPOD_4G_PAD,IPOD_3G_PAD,PBELL_VIBE500_PAD}{\ButtonRight}
+      \opt{IRIVER_H100_PAD,IRIVER_H300_PAD,IAUDIO_X5_PAD,SANSA_E200_PAD,SANSA_C200_PAD%
+          ,SANSA_FUZE_PAD,GIGABEAT_PAD,GIGABEAT_S_PAD,IAUDIO_M3_PAD,MROBE100_PAD}{\ButtonDown}
+      \opt{IRIVER_H10_PAD}{\ButtonFF}
+      \opt{touchscreen}{\ActionStdNext}
+          &
+      \opt{HAVEREMOTEKEYMAP}{
+          \opt{IRIVER_RC_H100_PAD}{\ButtonRCFF}
+          \opt{GIGABEAT_RC_PAD}{\ButtonRCVolDown}
+          \opt{IAUDIO_RC_PAD}{\ButtonRCDown}
+          &}
+      Moves to the next EQ band.
+          \\
       %
-      \opt{IRIVER_H100_PAD,IRIVER_H300_PAD,GIGABEAT_PAD,GIGABEAT_S_PAD}{\ButtonSelect}
-      \opt{IAUDIO_X5_PAD,IPOD_4G_PAD,IPOD_3G_PAD,IPOD_VIDEO_PAD,SANSA_E200_PAD}{\ButtonSelect}
+      \opt{IRIVER_H100_PAD,IRIVER_H300_PAD,GIGABEAT_PAD,GIGABEAT_S_PAD,IAUDIO_X5_PAD,SANSA_C200_PAD%
+          ,IPOD_4G_PAD,IPOD_3G_PAD,IPOD_VIDEO_PAD,SANSA_E200_PAD,SANSA_FUZE_PAD,MROBE100_PAD}{\ButtonSelect}
       \opt{PBELL_VIBE500_PAD}{\ButtonOK}
-      \opt{touchscreen}{\ButtonMenu{} or \TouchCenter}
-    \opt{HAVEREMOTEKEYMAP}{&       
-      \opt{IRIVER_RC_H100_PAD}{\ButtonRCSelect}
-      \opt{GIGABEAT_RC_PAD}{\ButtonRCPlay}
-        }
-      & Toggles the cursor among the three parameters (gain, centre frequency,
-      Q) for the selected EQ band.\\
+      \opt{IRIVER_H10_PAD}{\ButtonRight}
+      \opt{IAUDIO_M3_PAD}{\ButtonPlay}
+      \opt{touchscreen}{\TouchCenter
+          \opt{COWON_D2_PAD}{/ \ButtonMenu}}
+          &
+      \opt{HAVEREMOTEKEYMAP}{     
+          \opt{IRIVER_RC_H100_PAD}{\ButtonRCSelect}
+          \opt{GIGABEAT_RC_PAD,IAUDIO_RC_PAD}{\ButtonRCPlay}
+          &}
+      Toggles the cursor among the three parameters (gain, centre frequency,
+      Q) for the selected EQ band
+          \\
       %
       \opt{IRIVER_H100_PAD,IRIVER_H300_PAD}{\ButtonMode}
-      \opt{IPOD_4G_PAD,IPOD_3G_PAD,IPOD_VIDEO_PAD}{\ButtonMenu}
+      \opt{IPOD_4G_PAD,IPOD_3G_PAD}{\ButtonMenu}
       \opt{IAUDIO_X5_PAD}{\ButtonPower/\ButtonRec}
-      \opt{SANSA_E200_PAD}{\ButtonPower/\ButtonRight}
-      \opt{GIGABEAT_PAD,GIGABEAT_S_PAD}{\ButtonPower}
+      \opt{IAUDIO_M3_PAD}{\ButtonRec}
+      \opt{SANSA_E200_PAD,SANSA_FUZE_PAD,IRIVER_H10_PAD}{\ButtonLeft}
+      \opt{GIGABEAT_PAD,GIGABEAT_S_PAD,SANSA_C200_PAD,MROBE100_PAD}{\ButtonPower}
       \opt{PBELL_VIBE500_PAD}{\ButtonCancel}
-      \opt{touchscreen}{\ButtonPower{} or \TouchTopLeft}
-    \opt{HAVEREMOTEKEYMAP}{& 
-      \opt{IRIVER_RC_H100_PAD}{\ButtonRCStop}
-      \opt{GIGABEAT_RC_PAD}{\ButtonRCDsp}
-        }
-      & Exits the graphic EQ screen.\\
+      \opt{touchscreen}{\TouchTopLeft
+          \opt{COWON_D2_PAD}{/ \ButtonPower}}
+          &
+      \opt{HAVEREMOTEKEYMAP}{ 
+          \opt{IRIVER_RC_H100_PAD}{\ButtonRCStop}
+          \opt{GIGABEAT_RC_PAD}{\ButtonRCDsp}
+          \opt{IAUDIO_RC_PAD}{\ButtonRCRec}
+          &}
+      Exits the graphic EQ screen.
+          \\
     \end{btnmap}
 
   \item[Pre-cut.]

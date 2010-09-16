@@ -42,7 +42,7 @@
 #endif
 #endif
 
-#ifndef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
 
 #ifdef AUDIO_CPU_BOOST
 static void audio_cpu_boost(bool state)
@@ -115,7 +115,7 @@ int audio_get_spdif_sample_rate(void)
 } /* audio_get_spdif_sample_rate */
 #endif /* HAVE_SPDIF_IN */
 
-#else /* SIMULATOR */
+#else /* PLATFORM_HOSTED */
 
 /** Sim stubs **/
 
@@ -135,6 +135,15 @@ void audio_set_input_source(int source, unsigned flags)
 {
     (void)source;
     (void)flags;
+#if CONFIG_TUNER
+    /* Switch radio off or on per source and flags. */
+    if (source != AUDIO_SRC_FMRADIO)
+        radio_stop();
+    else if (flags & SRCF_FMRADIO_PAUSED)
+        radio_pause();
+    else
+        radio_start();
+#endif
 } /* audio_set_input_source */
 
 #ifdef HAVE_SPDIF_IN
@@ -144,4 +153,4 @@ int audio_get_spdif_sample_rate(void)
 } /* audio_get_spdif_sample_rate */
 #endif /* HAVE_SPDIF_IN */
 
-#endif /* !SIMULATOR */
+#endif /* PLATFORM_NATIVE */

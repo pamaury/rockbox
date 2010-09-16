@@ -43,14 +43,13 @@
 #include "power.h"
 #include "file.h"
 #include "common.h"
+#include "version.h"
 
 /* Show the Rockbox logo - in show_logo.c */
 extern int show_logo(void);
 
 /* Address to load main Rockbox image to */
 #define LOAD_ADDRESS 0x20000000 /* DRAM_START */
-
-char version[] = APPSVERSION;
 
 extern int line;
 
@@ -152,28 +151,28 @@ void* main(void)
    available for loading the firmware. Otherwise display the debug screen. */
 #ifdef TCCBOOT
     printf("Rockbox boot loader");
-    printf("Version %s", version);
+    printf("Version " RBVERSION);
 
     printf("ATA");
     rc = storage_init();
     if(rc)
     {
         reset_screen();
-        error(EATA, rc);
+        error(EATA, rc, true);
     }
 
     printf("mount");
     rc = disk_mount_all();
     if (rc<=0)
     {
-        error(EDISK,rc);
+        error(EDISK,rc, true);
     }
 
     rc = load_firmware(loadbuffer, BOOTFILE, MAX_LOAD_SIZE);
 
     if (rc < 0)
     {
-        error(EBOOTFILE,rc);
+        error(EBOOTFILE,rc, true);
     }
     else if (rc == EOK)
     {

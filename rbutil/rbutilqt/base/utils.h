@@ -23,10 +23,12 @@
 #ifndef UTILS_H
 #define UTILS_H
 
+#include <QtCore/QObject>
+
 #include <QString>
 #include <QUrl>
 
-class Utils
+class Utils : public QObject
 {
 public:
     static bool recursiveRmdir(const QString &dirName);
@@ -34,6 +36,7 @@ public:
     static qulonglong filesystemFree(QString path);
     static QString findExecutable(QString name);
     static QString checkEnvironment(bool permission);
+    static int compareVersionStrings(QString s1, QString s2);
 };
 
 #endif

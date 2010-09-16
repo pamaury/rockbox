@@ -44,7 +44,6 @@
 #define LCD_SET_REVERSE_DISPLAY                   ((char)0xA7)
 #define LCD_SET_MULTIPLEX_RATIO                   ((char)0xA8)
 #define LCD_SET_DC_DC                             ((char)0xAD)
-#define LCD_SET_DC_DC_PART2                       ((char)0x8A)
 #define LCD_SET_DISPLAY_OFF                       ((char)0xAE)
 #define LCD_SET_DISPLAY_ON                        ((char)0xAF)
 #define LCD_SET_PAGE_ADDRESS                      ((char)0xB0)
@@ -69,6 +68,14 @@
 
 static bool display_on; /* used by lcd_enable */
 
+/* Display variant, always 0 in clipv1, clipv2, can be 0 or 1 in clip+
+ * variant 0: has 132 pixel wide framebuffer, max brightness about 50
+ * variant 1: has 128 pixel wide framebuffer, max brightness about 128
+ */
+static int variant;
+
+static int offset; /* column offset */
+
 /*** hardware configuration ***/
 
 int lcd_default_contrast(void)
@@ -79,6 +86,9 @@ int lcd_default_contrast(void)
 void lcd_set_contrast(int val)
 {
     lcd_write_command(LCD_CNTL_CONTRAST);
+    if (variant == 1) {
+        val = val * 5 / 2;
+    }
     lcd_write_command(val);
 }
 
@@ -135,10 +145,9 @@ bool lcd_active(void)
 void lcd_init_device(void)
 {
     int i;
-#define LCD_FULLSCREEN (128+4)
-    fb_data p_bytes[LCD_FULLSCREEN]; /* framebuffer used to clear the screen */
 
-    lcd_hw_init();
+    variant = lcd_hw_init();
+    offset = (variant == 0) ? 2 : 0;
 
     /* Set display clock (divide ratio = 1) and oscillator frequency (1) */
     lcd_write_command(LCD_SET_DISPLAY_CLOCK_AND_OSC_FREQ);
@@ -155,9 +164,9 @@ void lcd_init_device(void)
     /* Set contrast register to 12% */
     lcd_set_contrast(lcd_default_contrast());
 
-    /* Disable DC-DC */
+    /* Configure DC-DC */
     lcd_write_command(LCD_SET_DC_DC);
-    lcd_write_command(LCD_SET_DC_DC_PART2/*|0*/);
+    lcd_write_command((variant == 0) ? 0x8A : 0x10);
 
     /* Set starting line as 0 */
     lcd_write_command(LCD_SET_DISPLAY_START_LINE /*|(0 & 0x3f)*/);
@@ -181,12 +190,12 @@ void lcd_init_device(void)
     lcd_write_command (LCD_SET_HIGHER_COLUMN_ADDRESS /*| 0*/);
     lcd_write_command (LCD_SET_LOWER_COLUMN_ADDRESS /*| 0*/);
 
+    fb_data p_bytes[LCD_WIDTH + 2 * offset];
     memset(p_bytes, 0, sizeof(p_bytes)); /* fills with 0 : pixel off */
-
     for(i = 0; i < 8; i++)
     {
         lcd_write_command (LCD_SET_PAGE_ADDRESS | (i /*& 0xf*/));
-        lcd_write_data(p_bytes, LCD_FULLSCREEN /* overscan */);
+        lcd_write_data(p_bytes, LCD_WIDTH + 2 * offset);
     }
 
     lcd_enable(true);
@@ -208,8 +217,8 @@ void lcd_blit_mono(const unsigned char *data, int x, int by, int width,
     while (bheight--)
     {
         lcd_write_command (LCD_CNTL_PAGE | (by++ & 0xf));
-        lcd_write_command (LCD_CNTL_HIGHCOL | (((x+2)>>4) & 0xf));
-        lcd_write_command (LCD_CNTL_LOWCOL | ((x+2) & 0xf));
+        lcd_write_command (LCD_CNTL_HIGHCOL | (((x+offset)>>4) & 0xf));
+        lcd_write_command (LCD_CNTL_LOWCOL | ((x+offset) & 0xf));
 
         lcd_write_data(data, width);
         data += stride;
@@ -234,8 +243,8 @@ void lcd_blit_grey_phase(unsigned char *values, unsigned char *phases,
     while (bheight--)
     {
         lcd_write_command (LCD_CNTL_PAGE | (by++ & 0xf));
-        lcd_write_command (LCD_CNTL_HIGHCOL | (((x+2)>>4) & 0xf));
-        lcd_write_command (LCD_CNTL_LOWCOL | ((x+2) & 0xf));
+        lcd_write_command (LCD_CNTL_HIGHCOL | (((x+offset)>>4) & 0xf));
+        lcd_write_command (LCD_CNTL_LOWCOL | ((x+offset) & 0xf));
 
         lcd_grey_data(values, phases, width);
 
@@ -261,8 +270,8 @@ void lcd_update(void)
     for (y = 0; y < LCD_FBHEIGHT; y++)
     {
         lcd_write_command (LCD_CNTL_PAGE | (y & 0xf));
-        lcd_write_command (LCD_CNTL_HIGHCOL | ((2 >> 4) & 0xf));
-        lcd_write_command (LCD_CNTL_LOWCOL | (2 & 0xf));
+        lcd_write_command (LCD_CNTL_HIGHCOL | ((offset >> 4) & 0xf));
+        lcd_write_command (LCD_CNTL_LOWCOL | (offset & 0xf));
 
         lcd_write_data (lcd_framebuffer[y], LCD_WIDTH);
     }
@@ -292,8 +301,8 @@ void lcd_update_rect(int x, int y, int width, int height)
     for (; y <= ymax; y++)
     {
         lcd_write_command (LCD_CNTL_PAGE | (y & 0xf));
-        lcd_write_command (LCD_CNTL_HIGHCOL | (((x+2) >> 4) & 0xf));
-        lcd_write_command (LCD_CNTL_LOWCOL | ((x+2) & 0xf));
+        lcd_write_command (LCD_CNTL_HIGHCOL | (((x+offset) >> 4) & 0xf));
+        lcd_write_command (LCD_CNTL_LOWCOL | ((x+offset) & 0xf));
 
         lcd_write_data (&lcd_framebuffer[y][x], width);
     }

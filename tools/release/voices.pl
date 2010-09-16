@@ -2,6 +2,8 @@
 
 $version="3.0";
 
+require "tools/builds.pm";
+
 my $verbose;
 if($ARGV[0] eq "-v") {
     $verbose =1;
@@ -54,7 +56,7 @@ sub buildit {
 
     `rm -rf * >/dev/null 2>&1`;
 
-    my $c = "../tools/configure --type=av --target=$model --language=0 --tts=f";
+    my $c = "../tools/configure --type=av --target=$model --language=0 --tts=f --ram=0 --voice=0";
 
     print "C: $c\n" if($verbose);
     `$c`;
@@ -74,7 +76,7 @@ my $pool="$home/tmp/rockbox-voices-$version/voice-pool";
 $ENV{'POOL'}="$pool";
 
 for my $b (&stablebuilds) {
-    next if ($builds{$b}{configname} < 3); # no variants
+    next if (length($builds{$b}{configname}) > 0); # no variants
 
     runone($b);
 }

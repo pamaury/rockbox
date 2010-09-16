@@ -21,7 +21,7 @@
 
 /* Define bitmask of input sources - recordable bitmask can be defined
    explicitly if different */
-#define INPUT_SRC_CAPS (SRC_CAP_MIC | SRC_CAP_LINEIN | SRC_CAP_FMRADIO)
+#define INPUT_SRC_CAPS (SRC_CAP_LINEIN | SRC_CAP_FMRADIO)
 
 /* define the bitmask of hardware sample rates */
 #define HW_SAMPR_CAPS   (SAMPR_CAP_44)
@@ -90,7 +90,7 @@
 /* Define this if you have the WM8975 audio codec */
 #define HAVE_WM8975
 
-#define AB_REPEAT_ENABLE 1
+#define AB_REPEAT_ENABLE
 #define ACTION_WPSAB_SINGLE ACTION_WPS_BROWSE
 
 /* Define this for LCD backlight available */
@@ -130,6 +130,10 @@
 
 /* define this if the unit can be powered or charged via USB */
 #define HAVE_USB_POWER
+
+/* define this if the unit can have USB charging disabled by user -
+ * if USB/MAIN power is discernable and hardware doesn't compel charging */
+#define HAVE_USB_CHARGING_ENABLE
 
 #define CURRENT_NORMAL     32  /* MP3: ~9h playback out of 300mAh battery */
 #define CURRENT_BACKLIGHT  20  /* FIXME: this needs adjusting */

@@ -22,6 +22,7 @@
 #include "system.h"
 #include <stdio.h>
 #include "kernel.h"
+#include "gcc_extensions.h"
 #include "string.h"
 #include "adc.h"
 #include "powermgmt.h"
@@ -35,11 +36,11 @@
 #include "font.h"
 #include "lcd.h"
 #include "usb-target.h"
+#include "version.h"
 
 #define TAR_CHUNK 512
 #define TAR_HEADER_SIZE 157
 
-const char version[] = APPSVERSION;
 /* Where files sent via MTP are stored */
 static const char basedir[] = "/Content/0b00/00/";
 /* Can use memory after vector table up to 0x01f00000 */
@@ -296,13 +297,13 @@ static void handle_untar(void)
 }
 
 /* Try to load the firmware and run it */
-static void __attribute__((noreturn)) handle_firmware_load(void)
+static void NORETURN_ATTR handle_firmware_load(void)
 {
     int rc = load_firmware(load_buf, BOOTFILE,
                            load_buf_size);
 
     if(rc < 0)
-        error(EBOOTFILE, rc);
+        error(EBOOTFILE, rc, true);
 
     /* Pause to look at messages */
     pause_if_button_pressed(false);
@@ -346,7 +347,7 @@ void main(void)
     lcd_clear_display();
 
     printf("Gigabeat S Rockbox Bootloader");
-    printf("Version %s", version);
+    printf("Version " RBVERSION);
 
     /* Initialize KPP so we can poll the button states */
     button_init_device();
@@ -359,7 +360,7 @@ void main(void)
     if(rc)
     {
         reset_screen();
-        error(EATA, rc);
+        error(EATA, rc, true);
     }
 
     disk_init();
@@ -367,7 +368,7 @@ void main(void)
     rc = disk_mount_all();
     if (rc<=0)
     {
-        error(EDISK,rc);
+        error(EDISK, rc, true);
     }
 
     printf("Init complete");

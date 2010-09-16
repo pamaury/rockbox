@@ -193,9 +193,9 @@ file find the instructions on the Rockbox website:
 \subsection{\label{ref:CreateYourOwnWPS}Themes -- Create Your Own}
 The theme files are simple text files, and can be created (or edited) in your
 favourite text editor. To make sure non-English characters 
-display correctly in your WPS you must save the .wps file with UTF-8 character 
-encoding. This can be done in most editors, for example Notepad in Windows 2000
-or XP (but not in 9x/ME) can do this.
+display correctly in your theme you must save the theme files with UTF-8
+character encoding. This can be done in most editors, for example Notepad in
+Windows 2000 or XP (but not in 9x/ME) can do this.
 
 \begin{description}
 \item [Files Locations: ] Each different ``themeable'' aspect requires its own file --
@@ -213,7 +213,7 @@ or XP (but not in 9x/ME) can do this.
 \end{description}
 
 All full list of the available tags are given in appendix
-\reference{ref:wps_tags}; some of the more powerful concepts in theme designe
+\reference{ref:wps_tags}; some of the more powerful concepts in theme design
 are discussed below.
 
 \begin{itemize}
@@ -221,17 +221,21 @@ are discussed below.
 \item Lines beginning with \# are comments and will be ignored.
 \end{itemize}
 
-\note{Keep in mind that your \dap{} resolution is \dapdisplaysize{} (with
+\note{Keep in mind that your \daps{} resolution is \dapdisplaysize{} (with
   the last number giving the colour depth in bits) when
   designing your own WPS, or if you use a WPS designed for another target.
   \opt{HAVE_REMOTE_LCD}{The resolution of the remote is
-  \opt{h100,h300}{128$\times$64$\times$1}\opt{x5,m5}{128$\times$96$\times$2} pixels.}}
+      \opt{h100,h300}{128$\times$64$\times$1}%
+      \opt{iaudiox5,iaudiom5,iaudiom3}{128$\times$96$\times$2}
+      pixels.
+  }
+}
 
 \nopt{lcd_charcell}{
 \subsubsection{\label{ref:Viewports}Viewports}
 
 By default, a viewport filling the whole screen contains all the elements
-defined in the \fname{.wps} file. The 
+defined in each theme file. The 
 \opt{lcd_non-mono}{elements in this viewport are displayed
   with the same background/\linebreak{}foreground
   \opt{lcd_color}{colours}\nopt{lcd_color}{shades} and the}
@@ -241,8 +245,8 @@ be defined. A viewport is a rectangular window on the screen%
 \opt{lcd_non-mono}{ with its own foreground/background
 \opt{lcd_color}{colours}\nopt{lcd_color}{shades}}.
 This window also has variable dimensions. To
-define a viewport a line starting \config{{\%V{\textbar}\dots}} has to be
-present in the \fname{.wps} file. The full syntax will be explained later in
+define a viewport a line starting \config{{\%V(\dots}} has to be
+present in the theme file. The full syntax will be explained later in
 this section. All elements placed before the 
 line defining a viewport are displayed in the default viewport. Elements
 defined after a viewport declaration are drawn within that viewport.
@@ -263,15 +267,15 @@ area of the screen.
 \subsubsection{Conditional Viewports}
 
 Any viewport can be displayed either permanently or conditionally.
-Defining a viewport as \config{{\%V{\textbar}\dots}}
+Defining a viewport as \config{{\%V(\dots}}
 will display it permanently.
 
 \begin{itemize}
-\item {\config{\%Vl{\textbar}'identifier'{\textbar}\dots{\textbar}}}
+\item {\config{\%Vl('identifier',\dots)}}
 This tag preloads a viewport for later display. `identifier' is a single
 lowercase letter (a-z) and the `\dots' parameters use the same logic as
 the \config{\%V} tag explained above.
-\item {\config{\%Vd'identifier'}} Display the `identifier' viewport.
+\item {\config{\%Vd('identifier')}} Display the `identifier' viewport.
 \end{itemize}
 
 Viewports can share identifiers so that you can display multiple viewports
@@ -292,7 +296,7 @@ As mentioned above, it is possible to set a UI viewport via the theme
 file, and to conditionally select different UI viewports.
 
   \begin{itemize}
-    \item {\config{\%Vi{\textbar}'label'{\textbar}\dots{\textbar}}}
+    \item {\config{\%Vi('label',\dots)}}
     This viewport is used as Custom UI Viewport in the case that the theme
     doesn't have a ui viewport set in the theme \fname{.cfg} file. Having this
     is strongly recommended since it makes you able to use the SBS
@@ -300,9 +304,28 @@ file, and to conditionally select different UI viewports.
     Info Viewport using the \%VI tag. The `\dots' parameters use the same logic as
     the \config{\%V} tag explained above.
 
-    \item {\config{\%VI'label'}} Set the Info Viewport to use the viewport called
+    \item {\config{\%VI('label')}} Set the Info Viewport to use the viewport called
     label, as declared with the previous tag.
   \end{itemize}
+
+\subsection{\label{ref:multifont}Additional Fonts}
+Additional fonts can be loaded within each screen file to be used in that
+screen. In this way not only can you have different fonts between e.g. the menu
+and the WPS, but you can use multiple fonts in each of the individual screens.\\
+
+\config{\%Fl('id',filename,glyphs)}
+
+  \begin{itemize}
+    \item `id' is the number you want to use in viewport declarations, 0 and 1
+       are reserved and so can't be used.
+    \item `filename' is the font filename to load. Fonts should be stored in
+       \fname{/.rockbox/fonts/}
+    \item `glyphs' is an optional specification of how many unique glyphs to
+       store in memory. Default is 256.
+  \end{itemize}
+
+  An example would be: \config{\%Fl(2,12-Nimbus.fnt,100)}
+
 }
 
 \subsubsection{Conditional Tags}
@@ -366,8 +389,8 @@ Subline related special characters and tags:
 \begin{description}
 \item[;] Split items on a line into separate sublines
 \item[\%t] Set the subline display time. The
-`\config{\%t}' is followed by either integer
-seconds (\config{\%t5}), or seconds and tenths of a second (\config{\%t3.5}).
+`\config{\%t}' is followed by either integer seconds (\config{\%t5}), or seconds
+and tenths of a second within () e.g. (\config{\%t(3.5)}).
 \end{description}
 
 Each alternating subline can still be optionally scrolled while it is
@@ -376,7 +399,7 @@ line with non{}-scrollable formats (such as track elapsed time) as long
 as they are separated into different sublines.
 Example subline definition:
 \begin{example}
-     %s%t4%ia;%s%it;%t3%pc %pr : Display id3 artist for 4 seconds,
+     %s%t(4)%ia;%s%it;%t(3)%pc %pr : Display id3 artist for 4 seconds,
                                  Display id3 title for 2 seconds,
                                  Display current and remaining track time
                                  for 3 seconds,
@@ -387,7 +410,7 @@ Conditionals can be used with sublines to display a different set and/or number
 of sublines on the line depending on the evaluation of the conditional.
 Example subline with conditionals:
 \begin{example}
-    %?it{\textless}%t8%s%it{\textbar}%s%fn{\textgreater};%?ia{\textless}%t3%s%ia{\textbar}%t0{\textgreater}\\
+    %?it{\textless}%t(8)%s%it{\textbar}%s%fn{\textgreater};%?ia{\textless}%t(3)%s%ia{\textbar}%t(0){\textgreater}\\
 \end{example}
 
 The format above will do two different things depending if ID3 tags are 
@@ -421,19 +444,19 @@ displaying images:
                % command.
   Example on background image use:
   \begin{example}
-    %X|background.bmp|
+    %X(background.bmp)
   \end{example}
   The image with filename \fname{background.bmp} is loaded and used in the WPS.
 }%
 
 Example on bitmap preloading and use:
 \begin{example}
-    %x|a|static_icon.bmp|50|50|
-    %xl|b|rep\_off.bmp|16|64|
-    %xl|c|rep\_all.bmp|16|64|
-    %xl|d|rep\_one.bmp|16|64|
-    %xl|e|rep\_shuffle.bmp|16|64|
-    %?mm<%xdb|%xdc|%xdd|%xde>
+    %x(a,static_icon.bmp,50,50)
+    %xl(b,rep\_off.bmp,16,64)
+    %xl(c,rep\_all.bmp,16,64)
+    %xl(d,rep\_one.bmp,16,64)
+    %xl(e,rep\_shuffle.bmp,16,64)
+    %?mm<%xd(b)|%xd(c)|%xd(d)|%xd(e)>
 \end{example}
 Four images at the same x and y position are preloaded in the example. Which 
 image to display is determined by the \config{\%mm} tag (the repeat mode).
@@ -450,8 +473,8 @@ title [artist]''.
 %\opt{lcd_bitmap}{
 %  \begin{verbatim}
 %    %s%?it<%?in<%in. |>%it|%fn>
-%    %s%?ia<%ia|%?d2<%d2|(root)>>
-%    %s%?id<%id|%?d1<%d1|(root)>> %?iy<(%iy)|>
+%    %s%?ia<%ia|%?d2<%d(2)|(root)>>
+%    %s%?id<%id|%?d1<%d(1)|(root)>> %?iy<(%iy)|>
 %  
 %    %al%pc/%pt%ar[%pp:%pe]
 %    %fbkBit %?fv<avg|> %?iv<(id3v%iv)|(no id3)>
@@ -535,8 +558,7 @@ Example of a configuration file:
 \item [Browse .cfg Files]Opens the \setting{File Browser} in the
   \fname{/.rockbox} directory and displays all \fname{.cfg} (configuration)
   files. Selecting a \fname{.cfg} file will cause Rockbox to load the settings
-  contained in that file. Pressing \nopt{COWON_D2_PAD}{\ButtonLeft}
-  \opt{COWON_D2_PAD}{\ButtonPower{} or \TouchTopLeft} will exit back to the
+  contained in that file. Pressing \ActionStdCancel{} will exit back to the
   \setting{Manage Settings} menu. See the \setting{Write .cfg files} option on
   the \setting{Manage Settings} menu for details of how to save and edit a 
   configuration file.
@@ -544,7 +566,8 @@ Example of a configuration file:
 \item [Reset Settings]This wipes the saved settings
   in the \dap{} and resets all settings to their default values. 
   
-  \opt{IRIVER_H100_PAD,IRIVER_H300_PAD,IAUDIO_X5_PAD,SANSA_E200_PAD,SANSA_C200_PAD}{
+  \opt{IRIVER_H100_PAD,IRIVER_H300_PAD,IAUDIO_X5_PAD,SANSA_E200_PAD,SANSA_C200_PAD%
+      ,PBELL_VIBE500_PAD}{
       \note{You can also reset all settings to their default 
       values by turning off the \dap, turning it back on, and holding the
       \ButtonRec{} button immediately after the \dap{} turns on.}

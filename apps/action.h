@@ -106,6 +106,7 @@ enum {
     ACTION_STD_QUICKSCREEN,
     ACTION_STD_KEYLOCK,
     ACTION_STD_REC,
+    ACTION_STD_HOTKEY,
     
     ACTION_F3, /* just so everything works again, possibly change me */
     /* code context actions */
@@ -157,7 +158,6 @@ enum {
     /* radio */
     ACTION_FM_MENU,
     ACTION_FM_PRESET,
-    ACTION_FM_QUICKSCREEN,
     ACTION_FM_RECORD,
     ACTION_FM_FREEZE,
     ACTION_FM_STOP,

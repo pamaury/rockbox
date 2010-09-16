@@ -185,20 +185,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_PLAYLIST_SHUFFLE
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
-  </voice>
-</phrase>
-<phrase>
   id: LANG_CANCEL
   desc: Visual confirmation of canceling a changed setting
   user: core
@@ -1165,91 +1151,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_EQUALIZER_HARDWARE
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    ipodvideo: ""
-  </source>
-  <dest>
-    *: none
-    ipodvideo: ""
-  </dest>
-  <voice>
-    *: none
-    ipodvideo: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_EQUALIZER_HARDWARE_ENABLED
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    ipodvideo: ""
-  </source>
-  <dest>
-    *: none
-    ipodvideo: ""
-  </dest>
-  <voice>
-    *: none
-    ipodvideo: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_EQUALIZER_BANDWIDTH
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    ipodvideo: ""
-  </source>
-  <dest>
-    *: none
-    ipodvideo: ""
-  </dest>
-  <voice>
-    *: none
-    ipodvideo: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_EQUALIZER_HARDWARE_BANDWIDTH_NARROW
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    ipodvideo: ""
-  </source>
-  <dest>
-    *: none
-    ipodvideo: ""
-  </dest>
-  <voice>
-    *: none
-    ipodvideo: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_EQUALIZER_HARDWARE_BANDWIDTH_WIDE
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    ipodvideo: ""
-  </source>
-  <dest>
-    *: none
-    ipodvideo: ""
-  </dest>
-  <voice>
-    *: none
-    ipodvideo: ""
-  </voice>
-</phrase>
-<phrase>
   id: LANG_DITHERING
   desc: in the sound settings menu
   user: core
@@ -1803,20 +1704,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_REPLAYGAIN_ENABLE
-  desc: deprecated
-  user:
-  <source>
-    *: none
-  </source>
-  <dest>
-    *: none
-  </dest>
-  <voice>
-    *: none
-  </voice>
-</phrase>
-<phrase>
   id: LANG_REPLAYGAIN_NOCLIP
   desc: in replaygain
   user: core
@@ -1986,48 +1873,6 @@
   <voice>
     *: none
     spdif_power: "Оптички излаз"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_ID3_ORDER
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_ID3_V1_FIRST
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_ID3_V2_FIRST
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
   </voice>
 </phrase>
 <phrase>
@@ -2921,15 +2766,15 @@
   user: core
   <source>
     *: none
-    lcd_non-mono: "Background Colour"
+    lcd_color: "Background Colour"
   </source>
   <dest>
     *: none
-    lcd_non-mono: "Боја позадине"
+    lcd_color: "Боја позадине"
   </dest>
   <voice>
     *: none
-    lcd_non-mono: "Боја позадине"
+    lcd_color: "Боја позадине"
   </voice>
 </phrase>
 <phrase>
@@ -2938,15 +2783,15 @@
   user: core
   <source>
     *: none
-    lcd_non-mono: "Foreground Colour"
+    lcd_color: "Foreground Colour"
   </source>
   <dest>
     *: none
-    lcd_non-mono: "Боја првог плана"
+    lcd_color: "Боја првог плана"
   </dest>
   <voice>
     *: none
-    lcd_non-mono: "Боја првог плана"
+    lcd_color: "Боја првог плана"
   </voice>
 </phrase>
 <phrase>
@@ -2955,15 +2800,15 @@
   user: core
   <source>
     *: none
-    lcd_non-mono: "Reset Colours"
+    lcd_color: "Reset Colours"
   </source>
   <dest>
     *: none
-    lcd_non-mono: "Ресетуј боје"
+    lcd_color: "Ресетуј боје"
   </dest>
   <voice>
     *: none
-    lcd_non-mono: "Ресетуј боје"
+    lcd_color: "Ресетуј боје"
   </voice>
 </phrase>
 <phrase>
@@ -3006,15 +2851,15 @@
   user: core
   <source>
     *: none
-    lcd_non-mono: "Invalid colour"
+    lcd_color: "Invalid colour"
   </source>
   <dest>
     *: none
-    lcd_non-mono: "Неисправна боја"
+    lcd_color: "Неисправна боја"
   </dest>
   <voice>
     *: none
-    lcd_non-mono: ""
+    lcd_color: ""
   </voice>
 </phrase>
 <phrase>
@@ -3181,59 +3026,20 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_JUMP_SCROLL
-  desc: (archosplayer) menu alternative for jump scroll
-  user: core
-  <source>
-    *: "Jump Scroll"
-  </source>
-  <dest>
-    *: "Скоковит скрол"
-  </dest>
-  <voice>
-    *: "Скоковит скрол"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_ONE_TIME
-  desc: (archosplayer) the jump scroll shall be done "one time"
-  user: core
-  <source>
-    *: "One time"
-  </source>
-  <dest>
-    *: "Једном"
-  </dest>
-  <voice>
-    *: "Једном"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_JUMP_SCROLL_DELAY
-  desc: (archosplayer) Delay before making a jump scroll
-  user: core
-  <source>
-    *: "Jump Scroll Delay"
-  </source>
-  <dest>
-    *: "Кашњење пре скоковитог скрола"
-  </dest>
-  <voice>
-    *: "Кашњење пре скоковитог скрола"
-  </voice>
-</phrase>
-<phrase>
   id: LANG_SCREEN_SCROLL_VIEW
   desc: should lines scroll out of the screen
   user: core
   <source>
-    *: "Screen Scrolls Out Of View"
+    *: none
+    lcd_bitmap: "Screen Scrolls Out Of View"
   </source>
   <dest>
-    *: "Екран скролује ван погледа"
+    *: none
+    lcd_bitmap: "Екран скролује ван погледа"
   </dest>
   <voice>
-    *: "Екран скролује ван погледа"
+    *: none
+    lcd_bitmap: "Екран скролује ван погледа"
   </voice>
 </phrase>
 <phrase>
@@ -3241,13 +3047,16 @@
   desc: Pixels to advance per Screen scroll
   user: core
   <source>
-    *: "Screen Scroll Step Size"
+    *: none
+    lcd_bitmap: "Screen Scroll Step Size"
   </source>
   <dest>
-    *: "Величина корака скроловања"
+    *: none
+    lcd_bitmap: "Величина корака скроловања"
   </dest>
   <voice>
-    *: "Величина корака скроловања"
+    *: none
+    lcd_bitmap: "Величина корака скроловања"
   </voice>
 </phrase>
 <phrase>
@@ -3517,20 +3326,6 @@
   <voice>
     *: "Враћање врхова"
     masd: none
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_PM_UNITS_PER_READ
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
   </voice>
 </phrase>
 <phrase>
@@ -4183,7 +3978,7 @@
     mrobe100: "DISPLAY = Врати на старо"
     gigabeats: "BACK = Врати на старо"
     gogearsa9200: "LEFT = Врати на старо"
-    vibe500: "C = Врати на старо"
+    vibe500: "CANCEL = Врати на старо"
   </dest>
   <voice>
     *: none
@@ -4640,11 +4435,11 @@
   user: core
   <source>
     *: none
-    alarm: "Alarm Time: %02d:%02d"
+    alarm: "Alarm Time:"
   </source>
   <dest>
     *: none
-    alarm: "Време аларма: %02d:%02d"
+    alarm: "Време аларма:"
   </dest>
   <voice>
     *: none
@@ -4661,11 +4456,11 @@
   </source>
   <dest>
     *: none
-    alarm: "Буђење траје %d:%02d"
+    alarm: "Буђење у %d:%02d"
   </dest>
   <voice>
     *: none
-    alarm: "Буђење траје"
+    alarm: "Буђење у"
   </voice>
 </phrase>
 <phrase>
@@ -4987,13 +4782,13 @@
   desc: "talkbox" mode for directories + files
   user: core
   <source>
-    *: ".talk mp3 clip"
+    *: ".talk Clip"
   </source>
   <dest>
-    *: ".talk mp3 клип"
+    *: ".talk клип"
   </dest>
   <voice>
-    *: "talk mp3 клип"
+    *: "talk клип"
   </voice>
 </phrase>
 <phrase>
@@ -5154,20 +4949,6 @@
   <voice>
     *: none
     radio: "Мени Еф Ем радија"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_FM_STATION
-  desc: deprecated
-  user:
-  <source>
-    *: none
-  </source>
-  <dest>
-    *: none
-  </dest>
-  <voice>
-    *: none
   </voice>
 </phrase>
 <phrase>
@@ -6126,23 +5907,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_RECORD_CURRENT_DIR
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: none
-    recording: ""
-  </source>
-  <dest>
-    *: none
-    recording: deprecated
-  </dest>
-  <voice>
-    *: none
-    recording: ""
-  </voice>
-</phrase>
-<phrase>
   id: LANG_SET_AS_REC_DIR
   desc: used in the onplay menu to set a recording dir
   user: core
@@ -6432,57 +6196,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_RECORDING_LEFT
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    recording: ""
-  </source>
-  <dest>
-    *: none
-    recording: ""
-  </dest>
-  <voice>
-    *: none
-    recording: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_RECORDING_RIGHT
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    recording: ""
-  </source>
-  <dest>
-    *: none
-    recording: ""
-  </dest>
-  <voice>
-    *: none
-    recording: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_RECORD_AGC_PRESET
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    agc: ""
-  </source>
-  <dest>
-    *: none
-    agc: ""
-  </dest>
-  <voice>
-    *: none
-    agc: ""
-  </voice>
-</phrase>
-<phrase>
   id: LANG_AGC_SAFETY
   desc: AGC preset
   user: core
@@ -6565,23 +6278,6 @@
   <voice>
     *: none
     agc: "Глас (брзо)"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_RECORD_AGC_CLIPTIME
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    agc: ""
-  </source>
-  <dest>
-    *: none
-    agc: ""
-  </dest>
-  <voice>
-    *: none
-    agc: ""
   </voice>
 </phrase>
 <phrase>
@@ -6990,20 +6686,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_CURRENT_TIME
-  desc: deprecated
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
-  </voice>
-</phrase>
-<phrase>
   id: LANG_TOP_TIME
   desc: in run time screen
   user: core
@@ -7137,10 +6819,10 @@
     *: "Queue Next"
   </source>
   <dest>
-    *: "Стави следећу у ред"
+    *: "Стави као следећу у ред"
   </dest>
   <voice>
-    *: "Стави следећу у ред"
+    *: "Стави као следећу у ред"
   </voice>
 </phrase>
 <phrase>
@@ -7151,10 +6833,10 @@
     *: "Queue Last"
   </source>
   <dest>
-    *: "Стави последњу у ред"
+    *: "Стави као последњу у ред"
   </dest>
   <voice>
-    *: "Стави последњу у ред"
+    *: "Стави као последњу у ред"
   </voice>
 </phrase>
 <phrase>
@@ -8179,34 +7861,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_SETTINGS_SAVE_FAILED
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SETTINGS_PARTITION
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
-  </voice>
-</phrase>
-<phrase>
   id: LANG_PAUSE
   desc: in wps and recording trigger menu
   user: core
@@ -8537,20 +8191,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_FILETYPES_EXTENSION_FULL
-  desc: Extension array full
-  user: core
-  <source>
-    *: "Extension array full"
-  </source>
-  <dest>
-    *: "Низ екстензија је пун"
-  </dest>
-  <voice>
-    *: "Низ екстензија је пун"
-  </voice>
-</phrase>
-<phrase>
   id: LANG_FILETYPES_FULL
   desc: Filetype array full
   user: core
@@ -8590,37 +8230,6 @@
   </dest>
   <voice>
     *: "Неиправно име фајла"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_FILETYPES_PLUGIN_NAME_LONG
-  desc: Viewer plugin name too long
-  user: core
-  <source>
-    *: "Plugin name too long"
-  </source>
-  <dest>
-    *: "Име додатка исувише дугачко"
-  </dest>
-  <voice>
-    *: "Име додатка исувише дугачко"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_RESTARTING_PLAYBACK
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    swcodec: ""
-  </source>
-  <dest>
-    *: none
-    swcodec: ""
-  </dest>
-  <voice>
-    *: none
-    swcodec: ""
   </voice>
 </phrase>
 <phrase>
@@ -9413,7 +9022,7 @@
     *: ""
   </dest>
   <voice>
-    *: "милиапмер часова"
+    *: "милиампер часова"
   </voice>
 </phrase>
 <phrase>
@@ -9935,20 +9544,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: VOICE_EXT_TXT
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: deprecated
-  </dest>
-  <voice>
-    *: ""
-  </voice>
-</phrase>
-<phrase>
   id: VOICE_EXT_ROCK
   desc: spoken only, for file extension
   user: core
@@ -10081,74 +9676,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_SYSFONT_SET_BOOL_YES
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_SET_BOOL_NO
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_ON
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_OFF
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
   id: LANG_SYSFONT_EQUALIZER_EDIT_MODE
   desc: in the equalizer settings menu
   user: core
@@ -10188,219 +9715,15 @@
   user: core
   <source>
     *: none
-    lcd_bitmap: "Gain"
+    swcodec: "Gain"
   </source>
   <dest>
     *: none
-    lcd_bitmap: "Pojacanje"
+    swcodec: "Pojacanje"
   </dest>
   <voice>
     *: none
-    lcd_bitmap: "Pojacanje"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_SHUFFLE
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_REPEAT
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_ALL
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_REPEAT_ONE
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_REPEAT_AB
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_FILTER
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_FILTER_SUPPORTED
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_FILTER_MUSIC
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_FILTER_PLAYLIST
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_FLIP_DISPLAY
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_SCROLL_BAR
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_STATUS_BAR
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    lcd_bitmap: ""
-  </source>
-  <dest>
-    *: none
-    lcd_bitmap: ""
-  </dest>
-  <voice>
-    *: none
-    lcd_bitmap: ""
+    swcodec: "Pojacanje"
   </voice>
 </phrase>
 <phrase>
@@ -10469,40 +9792,6 @@
   <voice>
     *: none
     recorder_pad: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_DISK_FULL
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    recording: ""
-  </source>
-  <dest>
-    *: none
-    recording: ""
-  </dest>
-  <voice>
-    *: none
-    recording,iriverh100,iriverh120,iriverh300,iaudiom5,iaudiox5,ipod4g,ipodcolor,ipodnano1g,ipodvideo,sansae200*,sansac200*: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_VOLUME
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    recording: ""
-  </source>
-  <dest>
-    *: none
-    recording: ""
-  </dest>
-  <voice>
-    *: none
-    recording: ""
   </voice>
 </phrase>
 <phrase>
@@ -10676,261 +9965,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_SYSFONT_RECORDING_TIME
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    recording: ""
-  </source>
-  <dest>
-    *: none
-    recording: ""
-  </dest>
-  <voice>
-    *: none
-    recording: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_RECORD_TIMESPLIT_REC
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    recording: ""
-  </source>
-  <dest>
-    *: none
-    recording: ""
-  </dest>
-  <voice>
-    *: none
-    recording: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_RECORDING_SIZE
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    recording: ""
-  </source>
-  <dest>
-    *: none
-    recording: ""
-  </dest>
-  <voice>
-    *: none
-    recording: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_RECORD_PRERECORD
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    recording: ""
-  </source>
-  <dest>
-    *: none
-    recording: ""
-  </dest>
-  <voice>
-    *: none
-    recording: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_RECORDING_LEFT
-  desc: in the recording screen
-  user: core
-  <source>
-    *: none
-    recording: "Gain Left"
-  </source>
-  <dest>
-    *: none
-    recording: "Pojacanje levog"
-  </dest>
-  <voice>
-    *: none
-    recording: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_RECORDING_RIGHT
-  desc: in the recording screen
-  user: core
-  <source>
-    *: none
-    recording: "Gain Right"
-  </source>
-  <dest>
-    *: none
-    recording: "Pojacanje desnog"
-  </dest>
-  <voice>
-    *: none
-    recording: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_SPLIT_SIZE
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    recording: ""
-  </source>
-  <dest>
-    *: none
-    recording: ""
-  </dest>
-  <voice>
-    *: none
-    recording: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_RECORDING_FILENAME
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    recording: ""
-  </source>
-  <dest>
-    *: none
-    recording: ""
-  </dest>
-  <voice>
-    *: none
-    recording: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_RECORDING_AGC_PRESET
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    agc: ""
-  </source>
-  <dest>
-    *: none
-    agc: ""
-  </dest>
-  <voice>
-    *: none
-    agc: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_AGC_SAFETY
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    agc: ""
-  </source>
-  <dest>
-    *: none
-    agc: ""
-  </dest>
-  <voice>
-    *: none
-    agc: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_AGC_LIVE
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    agc: ""
-  </source>
-  <dest>
-    *: none
-    agc: ""
-  </dest>
-  <voice>
-    *: none
-    agc: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_AGC_DJSET
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    agc: ""
-  </source>
-  <dest>
-    *: none
-    agc: ""
-  </dest>
-  <voice>
-    *: none
-    agc: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_AGC_MEDIUM
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    agc: ""
-  </source>
-  <dest>
-    *: none
-    agc: ""
-  </dest>
-  <voice>
-    *: none
-    agc: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_AGC_VOICE
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    agc: ""
-  </source>
-  <dest>
-    *: none
-    agc: ""
-  </dest>
-  <voice>
-    *: none
-    agc: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_RECORDING_AGC_MAXGAIN
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    agc: ""
-  </source>
-  <dest>
-    *: none
-    agc: ""
-  </dest>
-  <voice>
-    *: none
-    agc: ""
-  </voice>
-</phrase>
-<phrase>
   id: VOICE_OF
   desc: spoken only, as in 3/8 => 3 of 8
   user: core
@@ -10941,7 +9975,7 @@
     *: ""
   </dest>
   <voice>
-    *: "of"
+    *: "од"
   </voice>
 </phrase>
 <phrase>
@@ -11139,93 +10173,6 @@
   <voice>
     *: none
     recording: "Бројач клипова"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_SYSFONT_PM_CLIPCOUNT
-  desc: deprecated
-  user: core
-  <source>
-    *: none
-    recording: ""
-  </source>
-  <dest>
-    *: none
-    recording: ""
-  </dest>
-  <voice>
-    *: none
-    recording: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_USBSTACK
-  desc: deprecated
-  user:
-  <source>
-    *: none
-  </source>
-  <dest>
-    *: none
-  </dest>
-  <voice>
-    *: none
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_USBSTACK_MODE
-  desc: deprecated
-  user:
-  <source>
-    *: none
-  </source>
-  <dest>
-    *: none
-  </dest>
-  <voice>
-    *: none
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_USBSTACK_DEVICE
-  desc: deprecated
-  user:
-  <source>
-    *: none
-  </source>
-  <dest>
-    *: none
-  </dest>
-  <voice>
-    *: none
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_USBSTACK_HOST
-  desc: deprecated
-  user:
-  <source>
-    *: none
-  </source>
-  <dest>
-    *: none
-  </dest>
-  <voice>
-    *: none
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_USBSTACK_DEVICE_DRIVER
-  desc: deprecated
-  user:
-  <source>
-    *: none
-  </source>
-  <dest>
-    *: none
-  </dest>
-  <voice>
-    *: none
   </voice>
 </phrase>
 <phrase>
@@ -11559,20 +10506,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_ENABLE_STUDY_MODE
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
-  </voice>
-</phrase>
-<phrase>
   id: LANG_ACCESSORY_SUPPLY
   desc: in system settings menu
   user: core
@@ -11590,34 +10523,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_STUDY_MODE
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_STUDY_HOP_STEP
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
-  </voice>
-</phrase>
-<phrase>
   id: VOICE_QUICKSCREEN
   desc: spoken only, Announces entering the "quick screen"
   user: core
@@ -11629,20 +10534,6 @@
   </dest>
   <voice>
     *: "Quick screen"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_DISABLE_STUDY_MODE
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: ""
-  </source>
-  <dest>
-    *: ""
-  </dest>
-  <voice>
-    *: ""
   </voice>
 </phrase>
 <phrase>
@@ -11976,20 +10867,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_ALBUMART
-  desc: deprecated
-  user:
-  <source>
-    *: none
-  </source>
-  <dest>
-    *: none
-  </dest>
-  <voice>
-    *: none
-  </voice>
-</phrase>
-<phrase>
   id: LANG_CHANNEL_LEFTRIGHT
   desc: in sound_settings
   user: core
@@ -12038,23 +10915,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_BOTTOM
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: none
-    quickscreen: ""
-  </source>
-  <dest>
-    *: none
-    quickscreen: ""
-  </dest>
-  <voice>
-    *: none
-    quickscreen: ""
-  </voice>
-</phrase>
-<phrase>
   id: LANG_BOTTOM_QS_ITEM
   desc: used for the submenu name for the quickscreen items
   user: core
@@ -12069,23 +10929,6 @@
   <voice>
     *: none
     quickscreen: "Постави као доњу ставку у Екрану пречица"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_QS_ITEMS
-  desc: DEPRECATED
-  user: core
-  <source>
-    *: none
-    quickscreen: ""
-  </source>
-  <dest>
-    *: none
-    quickscreen: ""
-  </dest>
-  <voice>
-    *: none
-    quickscreen: ""
   </voice>
 </phrase>
 <phrase>
@@ -12391,20 +11234,6 @@
   </voice>
 </phrase>
 <phrase>
-  id: LANG_CUSTOM_STATUSBAR
-  desc: deprecated
-  user:
-  <source>
-    *: none
-  </source>
-  <dest>
-    *: none
-  </dest>
-  <voice>
-    *: none
-  </voice>
-</phrase>
-<phrase>
   id: VOICE_EXT_SBS
   desc: spoken only, for file extension
   user: core
@@ -12433,20 +11262,6 @@
   <voice>
     *: none
     swcodec: "Release време"
-  </voice>
-</phrase>
-<phrase>
-  id: LANG_REMOTE_CUSTOM_STATUSBAR
-  desc: deprecated
-  user:
-  <source>
-    *: none
-  </source>
-  <dest>
-    *: none
-  </dest>
-  <voice>
-    *: none
   </voice>
 </phrase>
 <phrase>
@@ -12522,13 +11337,16 @@
   desc: spoken only, for file extension
   user: core
   <source>
-    *: ""
+    *: none
+    remote: ""
   </source>
   <dest>
-    *: ""
+    *: none
+    remote: ""
   </dest>
   <voice>
-    *: "remote statusbar skin"
+    *: none
+    remote: "remote statusbar skin"
   </voice>
 </phrase>
 <phrase>
@@ -12701,15 +11519,15 @@
   user: core
   <source>
     *: none
-    usb_hid: "Browser Mode"
+    usb_hid: "Browser"
   </source>
   <dest>
     *: none
-    usb_hid: "Мод за интернет претраживач"
+    usb_hid: "Интернет претраживач"
   </dest>
   <voice>
     *: none
-    usb_hid: "Мод за интернет претраживач"
+    usb_hid: "Интернет претраживач"
   </voice>
 </phrase>
 <phrase>
@@ -12902,15 +11720,15 @@
   user: core
   <source>
     *: none
-    usb_hid: "Mouse Mode"
+    usb_hid: "Mouse"
   </source>
   <dest>
     *: none
-    usb_hid: "Мод миша"
+    usb_hid: "Миш"
   </dest>
   <voice>
     *: none
-    usb_hid: "Мод миша"
+    usb_hid: "Миша"
   </voice>
 </phrase>
 <phrase>
@@ -12936,15 +11754,15 @@
   user: core
   <source>
     *: none
-    usb_hid: "Multimedia Mode"
+    usb_hid: "Multimedia"
   </source>
   <dest>
     *: none
-    usb_hid: "Мод за мултимедију"
+    usb_hid: "Мултимедија"
   </dest>
   <voice>
     *: none
-    usb_hid: "Мод за мултимедију"
+    usb_hid: "Мултимедија"
   </voice>
 </phrase>
 <phrase>
@@ -13187,15 +12005,15 @@
   user: core
   <source>
     *: none
-    usb_hid: "Presentation Mode"
+    usb_hid: "Presentation"
   </source>
   <dest>
     *: none
-    usb_hid: "Мод за презентације"
+    usb_hid: "Презентација"
   </dest>
   <voice>
     *: none
-    usb_hid: "Мод за презентације"
+    usb_hid: "Презентација"
   </voice>
 </phrase>
 <phrase>
@@ -13210,5 +12028,503 @@
   </dest>
   <voice>
     *: "од"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_KBD_OK
+  desc: in keyboad
+  user: core
+  <source>
+    *: none
+    touchscreen: "OK"
+  </source>
+  <dest>
+    *: none
+    touchscreen: "OK"
+  </dest>
+  <voice>
+    *: none
+    touchscreen: "OK"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_HOTKEY_WPS
+  desc: hotkey menu
+  user: core
+  <source>
+    *: none
+    hotkey: "WPS Hotkey"
+  </source>
+  <dest>
+    *: none
+    hotkey: "WPS пречица"
+  </dest>
+  <voice>
+    *: none
+    hotkey: "WPS пречица"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_REMOTE_RADIOSCREEN
+  desc: in the theme menu
+  user: core
+  <source>
+    *:none
+    radio_remote: "Remote Radio Screen"
+  </source>
+  <dest>
+    *:none
+    radio_remote: "Екран радија на даљинском"
+  </dest>
+  <voice>
+    *:none
+    radio_remote: "Екран радија на даљинском"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_HW_EQ_GAIN
+  desc: in sound_menu, hardware equalizer tone controls filter gain
+  user: core
+  <source>
+    *: none
+    gigabeats: "Band %d Gain"
+  </source>
+  <dest>
+    *: none
+    gigabeats: "Појачање опсега %d"
+  </dest>
+  <voice>
+    *: none
+    gigabeats: "Појачање опсега %d"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_BASE_SKIN
+  desc: browse for the base skin in theme settings
+  user: core
+  <source>
+    *:none
+    lcd_bitmap: "Base Skin"
+  </source>
+  <dest>
+    *:none
+    lcd_bitmap: "Основни Skin"
+  </dest>
+  <voice>
+    *:none
+    lcd_bitmap: "Основни Skin"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_LINEOUT_ONOFF
+  desc: in system settings menu
+  user: core
+  <source>
+    *: none
+    lineout_poweroff: "Line Out"
+  </source>
+  <dest>
+    *: none
+    lineout_poweroff: "Линијски излаз"
+  </dest>
+  <voice>
+    *: none
+    lineout_poweroff: "Линијски излаз"
+  </voice>
+</phrase>
+<phrase>
+  id: VOICE_EXT_FMS
+  desc: spoken only, for file extension
+  user: core
+  <source>
+    *: none
+    radio: ""
+  </source>
+  <dest>
+    *: none
+    radio: ""
+  </dest>
+  <voice>
+    *: none
+    radio: "Скин радио екрана"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_HW_EQ_WIDTH_WIDE
+  desc: in sound_menu, hardware equalizer tone controls wide bandwidth setting
+  user: core
+  <source>
+    *: none
+    gigabeats: "Wide"
+  </source>
+  <dest>
+    *: none
+    gigabeats: "Широк"
+  </dest>
+  <voice>
+    *: none
+    gigabeats: "Широк"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_KBD_DELETE
+  desc: in keyboad
+  user: core
+  <source>
+    *: none
+    touchscreen: "Del"
+  </source>
+  <dest>
+    *: none
+    touchscreen: "Del"
+  </dest>
+  <voice>
+    *: none
+    touchscreen: "Del"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_REMOTE_BASE_SKIN
+  desc: browse for the base skin in theme settings
+  user: core
+  <source>
+    *:none
+    lcd_bitmap: "Remote Base Skin"
+  </source>
+  <dest>
+    *:none
+    lcd_bitmap: "Основни скин на даљинском"
+  </dest>
+  <voice>
+    *:none
+    lcd_bitmap: "Основни скин на даљинском"
+  </voice>
+</phrase>
+<phrase>
+  id: VOICE_EXT_RFMS
+  desc: spoken only, for file extension
+  user: core
+  <source>
+    *: none
+    radio_remote: ""
+  </source>
+  <dest>
+    *: none
+    radio_remote: ""
+  </dest>
+  <voice>
+    *: none
+    radio_remote: "Скин радио екрана на даљинском"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_REMOTE_SCREEN
+  desc: in the main menu
+  user: core
+  <source>
+    *:none
+    remote: "Remote Screen"
+  </source>
+  <dest>
+    *:none
+    remote: "Eкран на даљинском"
+  </dest>
+  <voice>
+    *:none
+    remote: "Eкран на даљинском"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_HW_EQ_WIDTH_NARROW
+  desc: in sound_menu, hardware equalizer tone controls narrow bandwith setting
+  user: core
+  <source>
+    *: none
+    gigabeats: "Narrow"
+  </source>
+  <dest>
+    *: none
+    gigabeats: "Уски"
+  </dest>
+  <voice>
+    *: none
+    gigabeats: "Уски"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_HOTKEY_FILE_BROWSER
+  desc: hotkey menu
+  user: core
+  <source>
+    *: none
+    hotkey: "File Browser Hotkey"
+  </source>
+  <dest>
+    *: none
+    hotkey: "Пречица прегледача фајлова"
+  </dest>
+  <voice>
+    *: none
+    hotkey: "Пречица прегледача фајлова"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_RESUME_REWIND
+  desc: in playback settings menu
+  user: core
+  <source>
+    *: none
+    swcodec: "Rewind Before Resume"
+  </source>
+  <dest>
+    *: none
+    swcodec: "Премотај уназад пре настављања"
+  </dest>
+  <voice>
+    *: none
+    swcodec: "Премотај уназад пре настављања"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_TAGNAVI_UNTAGGED
+  desc: "<untagged>" entry in tag browser
+  user: core
+  <source>
+    *: "<Untagged>"
+  </source>
+  <dest>
+    *: "<Необележенo>"
+  </dest>
+  <voice>
+    *: "Необележенo"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_HW_EQ_TONE_CONTROLS_ADVANCED
+  desc: in sound_menu, advanced settings for hardware equalizer tone controls
+  user: core
+  <source>
+    *: none
+    gigabeats: "Advanced Tone Control Settings"
+  </source>
+  <dest>
+    *: none
+    gigabeats: "Напредна подешавања конпроле тона"
+  </dest>
+  <voice>
+    *: none
+    gigabeats: "Напредна подешавања конпроле тона"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_DEPTH_3D
+  desc: in sound_menu, amount of 3D enhancement effect
+  user: core
+  <source>
+    *: none
+    gigabeats: "3-D Enhancement"
+  </source>
+  <dest>
+    *: none
+    gigabeats: "3-D побољшање"
+  </dest>
+  <voice>
+    *: none
+    gigabeats: "3-D побољшање"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_KBD_CANCEL
+  desc: in keyboad
+  user: core
+  <source>
+    *: none
+    touchscreen: "Cancel"
+  </source>
+  <dest>
+    *: none
+    touchscreen: "Одустани"
+  </dest>
+  <voice>
+    *: none
+    touchscreen: "Одустани"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_ID3_COMPOSER
+  desc: in tag viewer
+  user: core
+  <source>
+    *: "Composer"
+  </source>
+  <dest>
+    *: "Композитор"
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_HW_EQ_FREQUENCY
+  desc: in sound_menu, hardware equalizer tone controls shelf filter cutoff frequency
+  user: core
+  <source>
+    *: none
+    gigabeats: "Band %d Frequency"
+  </source>
+  <dest>
+    *: none
+    gigabeats: "Фреквенција опсега %d"
+  </dest>
+  <voice>
+    *: none
+    gigabeats: "Фреквенција опсега"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_HW_EQ_WIDTH
+  desc: in sound_menu, hardware equalizer tone controls peak bandwith setting
+  user: core
+  <source>
+    *: none
+    gigabeats: "Band %d Width"
+  </source>
+  <dest>
+    *: none
+    gigabeats: "Ширина опсега %d"
+  </dest>
+  <voice>
+    *: none
+    gigabeats: "Ширина опсега"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_FM_STATION_HEADER
+  desc: in radio screen
+  user: core
+  <source>
+    *: none
+    radio: "Station:"
+  </source>
+  <dest>
+    *: none
+    radio: "Станица:"
+  </dest>
+  <voice>
+    *: none
+    radio: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_RADIOSCREEN
+  desc: in the theme menu
+  user: core
+  <source>
+    *:none
+    radio: "Radio Screen"
+  </source>
+  <dest>
+    *:none
+    radio: "Екран радија"
+  </dest>
+  <voice>
+    *:none
+    radio: "Екран радија"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_MAIN_SCREEN
+  desc: in the main menu
+  user: core
+  <source>
+    *:none
+    remote: "Main Screen"
+  </source>
+  <dest>
+    *:none
+    remote: "Главни екран"
+  </dest>
+  <voice>
+    *:none
+    remote: "Главни екран"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_ONPLAY_PICTUREFLOW
+  desc: Onplay pictureflow
+  user: core
+  <source>
+    *: "PictureFlow"
+  </source>
+  <dest>
+    *: "PictureFlow"
+  </dest>
+  <voice>
+    *: "покрени ток слика"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_FORCE
+  desc: alternative to yes/no for tristate settings
+  user: core
+  <source>
+    *: "Force"
+  </source>
+  <dest>
+    *: "Форсирано"
+  </dest>
+  <voice>
+    *: "Форсирано"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_HW_EQ_TONE_CONTROLS
+  desc: in sound_menu, hardware equalizer tone controls
+  user: core
+  <source>
+    *: none
+    gigabeats: "Tone Controls"
+  </source>
+  <dest>
+    *: none
+    gigabeats: "Тонске контроле"
+  </dest>
+  <voice>
+    *: none
+    gigabeats: "Тонске контроле"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_HOTKEY
+  desc: hotkey menu
+  user: core
+  <source>
+    *: none
+    hotkey: "Hotkey"
+  </source>
+  <dest>
+    *: none
+    hotkey: "Пречица"
+  </dest>
+  <voice>
+    *: none
+    hotkey: "Пречица"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_RECORDING_HISTOGRAM_INTERVAL
+  desc: in record settings menu
+  user: core
+  <source>
+    *: none
+    recording_histogram: "Histogram interval"
+  </source>
+  <dest>
+    *: none
+    recording_histogram: "Интервал хистограма"
+  </dest>
+  <voice>
+    *: none
+    recording_histogram: "Интервал хистограма"
   </voice>
 </phrase>

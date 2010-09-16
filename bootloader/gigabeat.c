@@ -45,10 +45,9 @@
 #include "usb.h"
 #include "mmu-arm.h"
 #include "rtc.h"
+#include "version.h"
 
 #include <stdarg.h>
-
-char version[] = APPSVERSION;
 
 void shutdown(void)
 {
@@ -174,7 +173,7 @@ void main(void)
         verbose = true;
 
     printf("Rockbox boot loader");
-    printf("Version %s", version);
+    printf("Version " RBVERSION);
 
     sleep(50); /* ATA seems to error without this pause */
 
@@ -182,7 +181,7 @@ void main(void)
     if(rc)
     {
         reset_screen();
-        error(EATA, rc);
+        error(EATA, rc, true);
     }
 
     disk_init();
@@ -190,7 +189,7 @@ void main(void)
     rc = disk_mount_all();
     if (rc<=0)
     {
-        error(EDISK,rc);
+        error(EDISK, rc, true);
     }
 
     printf("Loading firmware");
@@ -203,7 +202,7 @@ void main(void)
 
     rc = load_firmware(loadbuffer, BOOTFILE, buffer_size);
     if(rc < 0)
-        error(EBOOTFILE, rc);
+        error(EBOOTFILE, rc, true);
 
     storage_close();
     system_prepare_fw_start();

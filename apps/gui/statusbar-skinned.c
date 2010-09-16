@@ -21,11 +21,15 @@
 
 #include "config.h"
 
+#include "action.h"
 #include "system.h"
 #include "settings.h"
 #include "appevents.h"
 #include "screens.h"
 #include "screen_access.h"
+#include "strlcpy.h"
+#include "skin_parser.h"
+#include "skin_buffer.h"
 #include "skin_engine/skin_engine.h"
 #include "skin_engine/wps_internals.h"
 #include "viewport.h"
@@ -34,132 +38,157 @@
 #include "debug.h"
 #include "font.h"
 #include "icon.h"
-
-
-/* currently only one wps_state is needed */
-extern struct wps_state     wps_state; /* from wps.c */
-static struct gui_wps       sb_skin[NB_SCREENS]      = {{ .data = NULL }};
-static struct wps_data      sb_skin_data[NB_SCREENS] = {{ .wps_loaded = 0 }};
-static struct wps_sync_data sb_skin_sync_data        = { .do_full_update = false };
+#include "option_select.h"
 
 /* initial setup of wps_data  */
 static int update_delay = DEFAULT_UPDATE_DELAY;
-
-bool sb_set_title_text(char* title, enum themable_icons icon, enum screen_type screen)
+static int set_title_worker(char* title, enum themable_icons icon, 
+                            struct wps_data *data, struct skin_element *root)
 {
-    int i;
-    bool retval = false;
-    for(i=0; i<sb_skin_data[screen].num_tokens; i++)
+    int retval = 0;
+    struct skin_element *element = root;
+    while (element)
     {
-        if (sb_skin_data[screen].tokens[i].type == WPS_TOKEN_LIST_TITLE_TEXT)
+        struct wps_token *token = NULL;
+        if (element->type == CONDITIONAL)
         {
-            sb_skin_data[screen].tokens[i].value.data = title;
-            retval = true;
+            struct conditional *cond = (struct conditional *)element->data;
+            token = cond->token;
         }
-        else if (sb_skin_data[screen].tokens[i].type == WPS_TOKEN_LIST_TITLE_ICON)
+        else if (element->type == TAG)
         {
-            /* Icon_NOICON == -1 which the skin engine wants at position 1, so + 2 */
-            sb_skin_data[screen].tokens[i].value.i = icon+2;
+            token = (struct wps_token *)element->data;
         }
+        if (token)
+        {
+            if (token->type == SKIN_TOKEN_LIST_TITLE_TEXT)
+            {
+                token->value.data = title;
+                retval = 1;
+            }
+            else if (token->type == SKIN_TOKEN_LIST_TITLE_ICON)
+            {
+                /* Icon_NOICON == -1 which the skin engine wants at position 1, so + 2 */
+                token->value.i = icon+2;
+            }
+            else if (element->params_count)
+            {
+                int i;
+                for (i=0; i<element->params_count; i++)
+                {
+                    if (element->params[i].type == CODE)
+                        retval |= set_title_worker(title, icon, data, 
+                                                   element->params[i].data.code);
+                }
+            }
+        }
+        if (element->children_count)
+        {
+            int i;
+            for (i=0; i<element->children_count; i++)
+                retval |= set_title_worker(title, icon, data, element->children[i]);
+        }
+        element = element->next;
     }
     return retval;
 }
-    
 
-void sb_skin_data_load(enum screen_type screen, const char *buf, bool isfile)
+bool sb_set_title_text(char* title, enum themable_icons icon, enum screen_type screen)
 {
-    struct wps_data *data = sb_skin[screen].data;
-
-    int success;
-    success = buf && skin_data_load(screen, data, buf, isfile);
-
-    if (success)
-    {  /* hide the sb's default viewport because it has nasty effect with stuff
+    struct wps_data *data = skin_get_gwps(CUSTOM_STATUSBAR, screen)->data;
+    bool retval = data->wps_loaded && 
+        set_title_worker(title, icon, data, data->tree) > 0;
+    return retval;
+}
+    
+int sb_preproccess(enum screen_type screen, struct wps_data *data)
+{
+    (void)data;
+    /* We need to disable the theme here or else viewport_set_defaults() 
+     * (which is called in the viewport tag parser) will crash because
+     * the theme is enabled but sb_set_info_vp() isnt set untill after the sbs
+     * is parsed. This only affects the default viewport which is ignored
+     * int he sbs anyway */
+    viewportmanager_theme_enable(screen, false, NULL);
+    return 1;
+}
+int sb_postproccess(enum screen_type screen, struct wps_data *data)
+{
+    if (data->wps_loaded)
+    {  
+        /* hide the sb's default viewport because it has nasty effect with stuff
         * not part of the statusbar,
         * hence .sbs's without any other vps are unsupported*/
-        struct skin_viewport *vp = find_viewport(VP_DEFAULT_LABEL, data);
-        struct skin_token_list *next_vp = data->viewports->next;
-
-        if (!next_vp)
-        {    /* no second viewport, let parsing fail */
-            success = false;
+        struct skin_viewport *vp = find_viewport(VP_DEFAULT_LABEL, false, data);
+        struct skin_element *next_vp = data->tree->next;
+        
+        if (vp)
+        {
+            if (!next_vp)
+            {    /* no second viewport, let parsing fail */
+                return 0;
+            }
+            /* hide this viewport, forever */
+            vp->hidden_flags = VP_NEVER_VISIBLE;
         }
-        /* hide this viewport, forever */
-        vp->hidden_flags = VP_NEVER_VISIBLE;
-        sb_set_info_vp(screen, VP_INFO_LABEL|VP_DEFAULT_LABEL);
+        sb_set_info_vp(screen, VP_DEFAULT_LABEL);
     }
-
-    if (!success && isfile)
-        sb_create_from_settings(screen);
+    viewportmanager_theme_undo(screen, false);
+    return 1;
 }
-static char infovp_label[NB_SCREENS];
-static char oldinfovp_label[NB_SCREENS];
-void sb_set_info_vp(enum screen_type screen, char label)
+
+static char *infovp_label[NB_SCREENS];
+static char *oldinfovp_label[NB_SCREENS];
+void sb_set_info_vp(enum screen_type screen, char *label)
 {
     infovp_label[screen] = label;
 }
     
 struct viewport *sb_skin_get_info_vp(enum screen_type screen)
 {
-    if (oldinfovp_label[screen] != infovp_label[screen])
+    struct wps_data *data = skin_get_gwps(CUSTOM_STATUSBAR, screen)->data;
+    if (oldinfovp_label[screen] &&
+        strcmp(oldinfovp_label[screen], infovp_label[screen]))
     {
         /* UI viewport changed, so force a redraw */
         oldinfovp_label[screen] = infovp_label[screen];
         viewportmanager_theme_enable(screen, false, NULL);
         viewportmanager_theme_undo(screen, true);
     }        
-    return &find_viewport(infovp_label[screen], sb_skin[screen].data)->vp;
+    return &find_viewport(infovp_label[screen], true, data)->vp;
 }
 
 #if (LCD_DEPTH > 1) || (defined(HAVE_REMOTE_LCD) && LCD_REMOTE_DEPTH > 1)
-char* sb_get_backdrop(enum screen_type screen)
+int sb_get_backdrop(enum screen_type screen)
 {
-    return sb_skin[screen].data->backdrop;
-}
-
-bool sb_set_backdrop(enum screen_type screen, char* filename)
-{
-    if (!filename)
-    {
-        sb_skin[screen].data->backdrop = NULL;
-        return true;
-    }
-    else if (!sb_skin[screen].data->backdrop)
-    {
-        /* need to make room on the buffer */
-        size_t buf_size;
-#if defined(HAVE_REMOTE_LCD) && (LCD_REMOTE_DEPTH > 1)
-        if (screen == SCREEN_REMOTE)
-            buf_size = REMOTE_LCD_BACKDROP_BYTES;
-        else
-#endif
-            buf_size = LCD_BACKDROP_BYTES;
-        sb_skin[screen].data->backdrop = skin_buffer_alloc(buf_size);
-        if (!sb_skin[screen].data->backdrop)
-            return false;          
-    }
-  
-    if (!screens[screen].backdrop_load(filename, sb_skin[screen].data->backdrop))
-        sb_skin[screen].data->backdrop = NULL;
-    return sb_skin[screen].data->backdrop != NULL;
+    struct wps_data *data = skin_get_gwps(CUSTOM_STATUSBAR, screen)->data;
+    if (data->wps_loaded)
+        return data->backdrop_id;
+    else
+        return -1;
 }
         
 #endif
 void sb_skin_update(enum screen_type screen, bool force)
 {
-    static long next_update = 0;
+    struct wps_data *data = skin_get_gwps(CUSTOM_STATUSBAR, screen)->data;
+    static long next_update[NB_SCREENS] = {0};
     int i = screen;
-    if (TIME_AFTER(current_tick, next_update) || force)
+    if (!data->wps_loaded)
+        return;
+    if (TIME_AFTER(current_tick, next_update[i]) || force)
     {
 #if defined(HAVE_LCD_ENABLE) || defined(HAVE_LCD_SLEEP)
         /* currently, all remotes are readable without backlight
          * so still update those */
         if (lcd_active() || (i != SCREEN_MAIN))
 #endif
-            skin_update(&sb_skin[i], force?
-                    WPS_REFRESH_ALL : WPS_REFRESH_NON_STATIC);
-        next_update = current_tick + update_delay; /* don't update too often */
-        sb_skin[SCREEN_MAIN].sync_data->do_full_update = false;
+        {
+            bool full_update = skin_do_full_update(CUSTOM_STATUSBAR, screen);
+            skin_update(CUSTOM_STATUSBAR, screen, force || 
+                        full_update ? SKIN_REFRESH_ALL : SKIN_REFRESH_NON_STATIC);
+        }
+        next_update[i] = current_tick + update_delay; /* don't update too often */
     }
 }
 
@@ -168,7 +197,7 @@ void do_sbs_update_callback(void *param)
     (void)param;
     /* the WPS handles changing the actual id3 data in the id3 pointers
      * we imported, we just want a full update */
-    sb_skin_sync_data.do_full_update = true;
+    skin_request_full_update(CUSTOM_STATUSBAR);
     /* force timeout in wps main loop, so that the update is instantly */
     queue_post(&button_queue, BUTTON_NONE, 0);
 }
@@ -184,9 +213,10 @@ void sb_skin_set_update_delay(int delay)
  *  - ui viewport
  *  - backdrop
  */
-void sb_create_from_settings(enum screen_type screen)
+char* sb_create_from_settings(enum screen_type screen)
 {
-    char buf[128], *ptr, *ptr2;
+    static char buf[128];
+    char *ptr, *ptr2;
     int len, remaining = sizeof(buf);
     int bar_position = statusbar_position(screen);
     ptr = buf;
@@ -200,7 +230,7 @@ void sb_create_from_settings(enum screen_type screen)
         {
             y = screens[screen].lcdheight - STATUSBAR_HEIGHT;
         }
-        len = snprintf(ptr, remaining, "%%V|0|%d|-|%d|0|-|-|\n%%wi\n", 
+        len = snprintf(ptr, remaining, "%%V(0,%d,-,%d,0)\n%%wi\n", 
                        y, height);
         remaining -= len;
         ptr += len;
@@ -215,9 +245,30 @@ void sb_create_from_settings(enum screen_type screen)
     
     if (ptr2[0] && ptr2[0] != '-') /* from ui viewport setting */
     {
-        len = snprintf(ptr, remaining, "%%ax%%Vi|%s|\n", ptr2);
-        while ((ptr2 = strchr(ptr, ',')))
-            *ptr2 = '|';
+        char *comma = ptr;
+        int param_count = 0;
+        len = snprintf(ptr, remaining, "%%ax%%Vi(-,%s)\n", ptr2);
+        /* The config put the colours at the end of the viewport,
+         * they need to be stripped for the skin code though */
+        do {
+            param_count++;
+            comma = strchr(comma+1, ',');
+            
+        } while (comma && param_count < 6);
+        if (comma)
+        {
+            char *end = comma;
+            char fg[8], bg[8];
+            int i = 0;
+            comma++;
+            while (*comma != ',')
+                fg[i++] = *comma++;
+            fg[i] = '\0'; comma++; i=0;
+            while (*comma != ')')
+                bg[i++] = *comma++;
+            bg[i] = '\0'; 
+            len += snprintf(end, remaining-len, ") %%Vf(%s) %%Vb(%s)\n", fg, bg);
+        }       
     }
     else
     {
@@ -232,10 +283,10 @@ void sb_create_from_settings(enum screen_type screen)
             default:
                 height = screens[screen].lcdheight;
         }
-        len = snprintf(ptr, remaining, "%%ax%%Vi|0|%d|-|%d|1|-|-|\n", 
+        len = snprintf(ptr, remaining, "%%ax%%Vi(-,0,%d,-,%d,1)\n", 
                        y, height);
     }
-    sb_skin_data_load(screen, buf, false);
+    return buf;
 }
 
 void sb_skin_init(void)
@@ -243,15 +294,48 @@ void sb_skin_init(void)
     int i;
     FOR_NB_SCREENS(i)
     {
-#ifdef HAVE_ALBUMART
-        sb_skin_data[i].albumart = NULL;
-        sb_skin_data[i].playback_aa_slot = -1;
-#endif
-        sb_skin[i].data = &sb_skin_data[i];
-        sb_skin[i].display = &screens[i];
-        /* Currently no seperate wps_state needed/possible
-           so use the only available ( "global" ) one */
-        sb_skin[i].state = &wps_state;
-        sb_skin[i].sync_data = &sb_skin_sync_data;
+        oldinfovp_label[i] = NULL;
     }
 }
+
+#ifdef HAVE_TOUCHSCREEN
+static bool bypass_sb_touchregions = true;
+void sb_bypass_touchregions(bool enable)
+{
+    bypass_sb_touchregions = enable;
+}
+
+int sb_touch_to_button(int context)
+{
+    struct touchregion *region;
+    static int last_context = -1;
+    int button, offset;
+    if (bypass_sb_touchregions)
+        return ACTION_TOUCHSCREEN;
+    
+    if (last_context != context)
+        skin_disarm_touchregions(skin_get_gwps(CUSTOM_STATUSBAR, SCREEN_MAIN)->data);
+    last_context = context;
+    button = skin_get_touchaction(skin_get_gwps(CUSTOM_STATUSBAR, SCREEN_MAIN)->data,
+                                  &offset, &region);
+    
+    switch (button)
+    {
+#ifdef HAVE_VOLUME_IN_LIST
+        case ACTION_WPS_VOLUP:
+            return ACTION_LIST_VOLUP;
+        case ACTION_WPS_VOLDOWN:
+            return ACTION_LIST_VOLDOWN;
+#endif
+        case ACTION_SETTINGS_INC:
+        case ACTION_SETTINGS_DEC:
+        {
+            const struct settings_list *setting = region->extradata;
+            option_select_next_val(setting, button == ACTION_SETTINGS_DEC, true);
+        }
+        return ACTION_REDRAW;
+        /* TODO */
+    }
+    return button;
+}
+#endif

@@ -25,7 +25,7 @@
 
 CODEC_HEADER
 
-int32_t outputbuffer[ALAC_MAX_CHANNELS][ALAC_BLOCKSIZE] IBSS_ATTR;
+static int32_t outputbuffer[ALAC_MAX_CHANNELS][ALAC_BLOCKSIZE] IBSS_ATTR;
 
 /* this is the codec entry point */
 enum codec_status codec_main(void)
@@ -49,6 +49,8 @@ enum codec_status codec_main(void)
 
   next_track:
 
+  /* Clean and initialize decoder structures */
+   memset(&demux_res , 0, sizeof(demux_res));
   if (codec_init()) {
     LOGF("ALAC: Error initialising codec\n");
     retval = CODEC_ERROR;

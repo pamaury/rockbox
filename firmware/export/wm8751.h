@@ -25,13 +25,19 @@
 #define VOLUME_MIN -730
 #define VOLUME_MAX  60
 
+/* turn off 3D Enchance feature of WM8750 for now
+#if defined(HAVE_WM8750)
+#define AUDIOHW_CAPS (BASS_CAP | TREBLE_CAP | PRESCALER_CAP | DEPTH_3D_CAP)
+#else
+*/
 #define AUDIOHW_CAPS (BASS_CAP | TREBLE_CAP | PRESCALER_CAP)
+/* #endif */
 
 extern int tenthdb2master(int db);
 
 extern void audiohw_set_master_vol(int vol_l, int vol_r);
 extern void audiohw_set_lineout_vol(int vol_l, int vol_r);
-#if defined(HAVE_WM8750)
+#if defined(HAVE_WM8750) && defined(HAVE_RECORDING)
 void audiohw_set_recsrc(int source, bool recording);
 #endif
 
@@ -125,8 +131,8 @@ void audiohw_set_recsrc(int source, bool recording);
 #define ENHANCE_3D_MODE3D_RECORD    (0 << 7)
 
 #define ALC1                        0x11
-#define ALC1_ALCL(x)                ((x) & (0x0f))
-#define ALC1_MAXGAIN(x)             ((x) & (0x07 << 4))
+#define ALC1_ALCL(x)                ((x) & 0x0f)
+#define ALC1_MAXGAIN(x)             (((x) & 0x07) << 4)
 #define ALC1_ALCSEL_DISABLED        (0 << 7)
 #define ALC1_ALCSEL_RIGHT           (1 << 7)
 #define ALC1_ALCSEL_LEFT            (2 << 7)
@@ -138,14 +144,14 @@ void audiohw_set_recsrc(int source, bool recording);
 
 #define ALC3                        0x13
 #define ALC3_ATK(x)                 ((x) & 0x0f)
-#define ALC3_DCY(x)                 ((x) & (0x0f << 4))
+#define ALC3_DCY(x)                 (((x) & 0x0f) << 4)
 
 #define NGAT                        0x14
 #define NGAT_NGAT                   (1 << 0)
 #define NGAT_NGG_CONST              (0 << 1)
 #define NGAT_NGG_MUTEADC            (1 << 1)
-#define NGAT_NGG(x)                 ((x) & (0x3 << 1))
-#define NGAT_NGTH(x)                ((x) & (0x1f << 3))
+#define NGAT_NGG(x)                 (((x) & 0x3) << 1)
+#define NGAT_NGTH(x)                (((x) & 0x1f) << 3)
 #endif
 
 #define ADDITIONAL1                 0x17
@@ -222,7 +228,7 @@ void audiohw_set_recsrc(int source, bool recording);
 #define ADCL_LMICBOOST_13DB         (1 << 4)
 #define ADCL_LMICBOOST_20DB         (2 << 4)
 #define ADCL_LMICBOOST_29DB         (3 << 4)
-#define ADCL_LMICBOOST(x)           ((x) & (0x3 << 7))
+#define ADCL_LMICBOOST(x)           (((x) & 0x3) << 4))
 #define ADCL_LINSEL_LINPUT1         (0 << 6)
 #define ADCL_LINSEL_LINPUT2         (1 << 6)
 #define ADCL_LINSEL_LINPUT3         (2 << 6)

@@ -81,7 +81,7 @@
 /* The number of bytes reserved for loadable plugins */
 #define PLUGIN_BUFFER_SIZE 0x10000
 
-#define AB_REPEAT_ENABLE 1
+#define AB_REPEAT_ENABLE
 
 #define CONFIG_TUNER TEA5767
 #define CONFIG_TUNER_XTAL 32768
@@ -132,18 +132,15 @@
 /* Offset ( in the firmware file's header ) to the real data */
 #define FIRMWARE_OFFSET_FILE_DATA 8
 
-#ifndef BOOTLOADER
-
-#define USB_HANDLED_BY_OF
-
 #define CONFIG_USBOTG USBOTG_AS3525
 
 /* enable these for the experimental usb stack */
 #define HAVE_USBSTACK
+//#define USB_HANDLED_BY_OF
+#define USE_ROCKBOX_USB
 #define USB_VENDOR_ID 0x0781
 #define USB_PRODUCT_ID 0x7431
-
-#endif /* BOOTLOADER */
+#define HAVE_USB_HID_MOUSE
 
 #define CONFIG_LCD LCD_SSD1815
 

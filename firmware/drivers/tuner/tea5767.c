@@ -28,7 +28,7 @@
 #include "fmradio.h"
 #include "fmradio_i2c.h" /* physical interface driver */
 
-#if defined(PHILIPS_HDD1630) || defined(ONDA_VX747) || defined(ONDA_VX777)
+#if defined(PHILIPS_HDD1630) || defined(ONDA_VX747) || defined(ONDA_VX777) || defined(PHILIPS_HDD6330)
 #define I2C_ADR 0x60
 #else
 #define I2C_ADR 0xC0
@@ -86,11 +86,12 @@ int tea5767_set(int setting, int value)
 
         case RADIO_REGION:
         {
-            const struct tea5767_region_data *rd =
-                &tea5767_region_data[value];
+            const struct fm_region_data *rd = &fm_region_data[value];
+            int deemphasis = (rd->deemphasis == 75) ? 1 : 0;
+            int band = (rd->freq_min == 76000000) ? 1 : 0;
 
-            tea5767_set_clear(4, (1<<6), rd->deemphasis);
-            tea5767_set_clear(3, (1<<5), rd->band);
+            tea5767_set_clear(4, (1<<6), deemphasis);
+            tea5767_set_clear(3, (1<<5), band);
             break;
         }
         case RADIO_FORCE_MONO:

@@ -18,11 +18,13 @@
 * KIND, either express or implied.
 *
 ****************************************************************************/
-#include "config.h"
 #ifndef __ROOT_MENU_H__
 #define __ROOT_MENU_H__
 
-void root_menu(void) __attribute__((noreturn));
+#include "config.h"
+#include "gcc_extensions.h"
+
+void root_menu(void) NORETURN_ATTR;
 
 enum {
     /* from old menu api, but still required*/
@@ -47,6 +49,7 @@ enum {
     GO_TO_FM,
 #endif
     GO_TO_RECENTBMARKS,
+    GO_TO_PICTUREFLOW,
     /* Do Not add any items above here unless you want it to be able to 
        be the "start screen" after a boot up. The setting in settings_list.c
        will need editing if this is the case. */

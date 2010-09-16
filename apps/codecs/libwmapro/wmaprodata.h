@@ -31,6 +31,16 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/* rockbox: not used
+const int32_t fixed_sin64[33] = {
+    0x00000000, 0xF9B82685, 0xF3742CA3, 0xED37EF92, 0xE70747C5, 0xE0E60686, 
+    0xDAD7F3A3, 0xD4E0CB16, 0xCF043AB4, 0xC945DFED, 0xC3A94591, 0xBE31E19C, 
+    0xB8E3131A, 0xB3C0200D, 0xAECC336D, 0xAA0A5B2F, 0xA57D8667, 0xA1288377, 
+    0x9D0DFE55, 0x99307EE1, 0x9592675D, 0x9235F2ED, 0x8F1D343B, 0x8C4A1430, 
+    0x89BE50C4, 0x877B7BED, 0x8582FAA6, 0x83D60413, 0x8275A0C1, 0x8162AA05, 
+    0x809DC972, 0x80277873, 0x80000001, 
+};
+*/
 /**
  * @brief frequencies to divide the frequency spectrum into scale factor bands
  */
@@ -40,7 +50,6 @@ static const uint16_t critical_freq[] = {
     2700,  3150,   3700,   4400,   5300,   6400,   7700,
     9500, 12000,  15500,  20675,  28575,  41375,  63875,
 };
-
 
 /**
  * @name Huffman tables for DPCM-coded scale factors
@@ -352,7 +361,7 @@ static const uint16_t coef0_run[HUFF_COEF0_SIZE] = {
       1,   0,   1,   0,   1,   0,
 };
 
-static const float coef0_level[HUFF_COEF0_SIZE] = {
+static const int32_t coef0_level[HUFF_COEF0_SIZE] = {
       0,   0,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,
       1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,
       1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,
@@ -393,7 +402,7 @@ static const uint16_t coef1_run[HUFF_COEF1_SIZE] = {
      1,  0,  1,  0,  1,  0,  1,  0,  0,  0,
 };
 
-static const float coef1_level[HUFF_COEF1_SIZE] = {
+static const int32_t coef1_level[HUFF_COEF1_SIZE] = {
      0,  0,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,
      1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,
      1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,
@@ -572,6 +581,7 @@ static const uint8_t symbol_to_vec2[HUFF_VEC2_SIZE] = {
 /**
  * @brief decorrelation matrix for multichannel streams
  **/
+/* rockbox: not used
 static const float default_decorrelation_matrices[] = {
     1.000000,  0.707031, -0.707031,  0.707031,  0.707031,  0.578125,  0.707031,
     0.410156,  0.578125, -0.707031,  0.410156,  0.578125,  0.000000, -0.816406,
@@ -587,10 +597,11 @@ static const float default_decorrelation_matrices[] = {
     0.289062, -0.558594,  0.410156, -0.410156,  0.000000,  0.410156, -0.578125,
     0.410156,  0.410156, -0.558594,  0.500000, -0.410156,  0.289062, -0.148438,
 };
-
+*/
 /**
  * @brief default decorrelation matrix offsets
  */
+/* rockbox: not used
 static const float * const default_decorrelation[] = {
     NULL,
     &default_decorrelation_matrices[0],
@@ -600,5 +611,5 @@ static const float * const default_decorrelation[] = {
     &default_decorrelation_matrices[30],
     &default_decorrelation_matrices[55]
 };
-
+*/
 #endif /* AVCODEC_WMAPRODATA_H */

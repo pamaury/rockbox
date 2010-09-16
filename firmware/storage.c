@@ -40,8 +40,8 @@ static unsigned int num_drives;
 #define STORAGE_MINIMUM_IDLE_TIME (HZ/10)
 #define STORAGE_DELAY_UNIT  (HZ/20)
 
-unsigned int storage_last_thread[NUM_DRIVES];
-unsigned int storage_last_activity[NUM_DRIVES];
+static unsigned int storage_last_thread[NUM_DRIVES];
+static unsigned int storage_last_activity[NUM_DRIVES];
 
 static bool storage_should_wait(int drive, int prio)
 {
@@ -581,8 +581,6 @@ void storage_get_info(int drive, struct storage_info *info)
 #ifdef HAVE_HOTSWAP
 bool storage_removable(int drive)
 {
-    bool ret = false;
-    
     int driver=(storage_drivers[drive] & DRIVER_MASK)>>DRIVER_OFFSET;
     int ldrive=(storage_drivers[drive] & DRIVE_MASK)>>DRIVE_OFFSET;
     
@@ -590,37 +588,36 @@ bool storage_removable(int drive)
     {
 #if (CONFIG_STORAGE & STORAGE_ATA)
     case STORAGE_ATA:
-        ret = ata_removable(ldrive);
+        return ata_removable(ldrive);
 #endif
 
 #if (CONFIG_STORAGE & STORAGE_MMC)
     case STORAGE_MMC:
-        ret = mmc_removable(ldrive);
+        return mmc_removable(ldrive);
 #endif
 
 #if (CONFIG_STORAGE & STORAGE_SD)
     case STORAGE_SD:
-        ret = sd_removable(ldrive);
+        return sd_removable(ldrive);
 #endif
 
 #if (CONFIG_STORAGE & STORAGE_NAND)
     case STORAGE_NAND:
-        ret = false;
+        return false;
 #endif
 
 #if (CONFIG_STORAGE & STORAGE_RAMDISK)
     case STORAGE_RAMDISK:
-        ret = false;
+        return false;
 #endif
+
+    default:
+        return false;
     }
-    
-    return ret;
 }
 
 bool storage_present(int drive)
 {
-    bool ret = false;
-    
     int driver=(storage_drivers[drive] & DRIVER_MASK)>>DRIVER_OFFSET;
     int ldrive=(storage_drivers[drive] & DRIVE_MASK)>>DRIVE_OFFSET;
     
@@ -628,31 +625,32 @@ bool storage_present(int drive)
     {
 #if (CONFIG_STORAGE & STORAGE_ATA)
     case STORAGE_ATA:
-        ret = ata_present(ldrive);
+        return ata_present(ldrive);
 #endif
 
 #if (CONFIG_STORAGE & STORAGE_MMC)
     case STORAGE_MMC:
-        ret = mmc_present(ldrive);
+        return mmc_present(ldrive);
 #endif
 
 #if (CONFIG_STORAGE & STORAGE_SD)
     case STORAGE_SD:
-        ret = sd_present(ldrive);
+        return sd_present(ldrive);
 #endif
 
 #if (CONFIG_STORAGE & STORAGE_NAND)
     case STORAGE_NAND:
-        ret = true;
+        return true;
 #endif
 
 #if (CONFIG_STORAGE & STORAGE_RAMDISK)
     case STORAGE_RAMDISK:
-        ret = true;
+        return true;
 #endif
+
+    default:
+        return false;
     }
-    
-    return ret;
 }
 #endif
 

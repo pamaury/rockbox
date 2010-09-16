@@ -31,7 +31,6 @@
 #endif
 
 /* Virtual addresses */
-/* Do not apply to the bootloader, which uses physical addresses (no MMU) */
 #define DRAM_ORIG 0x30000000
 #define IRAM_ORIG (DRAM_ORIG + DRAM_SIZE) /* IRAM is mapped just next to DRAM */
 
@@ -110,7 +109,6 @@
 #define CCU_VERS          (*(volatile unsigned long *)(CCU_BASE + 0x14))
 #define CCU_SPARE1        (*(volatile unsigned long *)(CCU_BASE + 0x18))
 #define CCU_SPARE2        (*(volatile unsigned long *)(CCU_BASE + 0x1C))
-#define CCU_USB_THINGY    (*(volatile unsigned long *)(CCU_BASE + 0x20))
 
 /* DBOP */
 #define DBOP_TIMPOL_01    (*(volatile unsigned long *)(DBOP_BASE + 0x00))
@@ -441,9 +439,9 @@ CE lines
 #define VIC_SOFT_INT        (*(volatile unsigned long*)(VIC_BASE+0x18))
 #define VIC_SOFT_INT_CLEAR  (*(volatile unsigned long*)(VIC_BASE+0x1C))
 #define VIC_PROTECTION      (*(volatile unsigned long*)(VIC_BASE+0x20))
-#define VIC_VECT_ADDR       (*(volatile unsigned long*)(VIC_BASE+0x30))
-#define VIC_DEF_VECT_ADDR   (*(volatile unsigned long*)(VIC_BASE+0x34))
-#define VIC_VECT_ADDRS      ((volatile unsigned long*)(VIC_BASE+0x100))
+#define VIC_VECT_ADDR       ((void (* volatile *) (void)) (VIC_BASE+0x30))
+#define VIC_DEF_VECT_ADDR   ((void (* volatile *) (void)) (VIC_BASE+0x34))
+#define VIC_VECT_ADDRS      ((void (* volatile *) (void)) (VIC_BASE+0x100))
 #define VIC_VECT_CNTLS      ((volatile unsigned long*)(VIC_BASE+0x200))
 
 /* Interrupt sources (for vectors setup) */

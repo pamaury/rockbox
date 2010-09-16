@@ -26,7 +26,6 @@
 /*#define LOGF_ENABLE*/
 #include "logf.h"
 #include "storage.h"
-#include "hotswap.h"
 #include "disk.h"
 /* Needed to get at the audio buffer */
 #include "audio.h"
@@ -60,8 +59,13 @@
 #ifdef USB_READ_BUFFER_SIZE
 #define READ_BUFFER_SIZE USB_READ_BUFFER_SIZE
 #else
+#if CONFIG_CPU == AS3525
+/* We'd need to implement multidescriptor dma for sizes >65535 */
+#define READ_BUFFER_SIZE (1024*63)
+#else
 #define READ_BUFFER_SIZE (1024*64)
-#endif
+#endif /* CONFIG_CPU == AS3525 */
+#endif /* USB_READ_BUFFER_SIZE */
 
 #define MAX_CBW_SIZE 1024
 
@@ -69,11 +73,16 @@
 #define WRITE_BUFFER_SIZE USB_WRITE_BUFFER_SIZE
 #else
 #if (CONFIG_STORAGE & STORAGE_SD)
+#if CONFIG_CPU == AS3525
+/* We'd need to implement multidescriptor dma for sizes >65535 */
+#define WRITE_BUFFER_SIZE (1024*63)
+#else
 #define WRITE_BUFFER_SIZE (1024*64)
+#endif /* CONFIG_CPU == AS3525 */
 #else
 #define WRITE_BUFFER_SIZE (1024*24)
-#endif
-#endif
+#endif /* (CONFIG_STORAGE & STORAGE_SD) */
+#endif /* USB_WRITE_BUFFER_SIZE */
 
 #ifdef HAVE_NEW_USB_API
 /* FIXME: this should probably depend on the usb driver because one slot
@@ -474,7 +483,7 @@ void usb_storage_init_connection(void)
     unsigned char * audio_buffer;
 
     audio_buffer = audio_get_buffer(false,&bufsize);
-#ifdef UNCACHED_ADDR
+#if defined(UNCACHED_ADDR) && CONFIG_CPU != AS3525
     cbw_buffer = (void *)UNCACHED_ADDR((unsigned int)(audio_buffer+31) & 0xffffffe0);
 #else
     cbw_buffer = (void *)((unsigned int)(audio_buffer+31) & 0xffffffe0);

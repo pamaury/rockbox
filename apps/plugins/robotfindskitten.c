@@ -34,7 +34,7 @@
 
 /* This macros must always be included. Should be placed at the top by
    convention, although the actual position doesn't matter */
-PLUGIN_HEADER
+
 
 /*Be sure to change MESSAGES when you change the array, or bad things
   will happen.*/
@@ -598,11 +598,9 @@ int screen[X_MAX + 1][Y_MAX + 1];
  *
  *****************************************************************************/
 
-static void drawchar(int x, int y, char c)
+static inline void drawchar(int x, int y, char c)
 {
-  char str[2];
-  rb->snprintf(str, sizeof(str), "%c", c);
-  rb->lcd_putsxy(x*SYSFONT_WIDTH, y*SYSFONT_HEIGHT, str);
+  rb->lcd_putsxyf(x*SYSFONT_WIDTH, y*SYSFONT_HEIGHT, "%c", c);
 }
 
 static void draw(struct screen_object o)

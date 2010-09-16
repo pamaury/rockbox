@@ -19,10 +19,7 @@
 
 #include "plugin.h"
 #include "lib/helper.h"
-
-#ifdef HAVE_LCD_BITMAP /* and also not for the Player */
-
-PLUGIN_HEADER
+#include "lib/pluginlib_exit.h"
 
 /******************************* Globals ***********************************/
 
@@ -380,7 +377,6 @@ static struct starfield starfield;
 
 int plugin_main(void)
 {
-    char str_buffer[40];
     int button, avg_peak, t_disp=0;
     int font_h, font_w;
     bool pulse=true;
@@ -452,14 +448,11 @@ int plugin_main(void)
         if (t_disp > 0)
         {
             --t_disp;
-            rb->snprintf(str_buffer, sizeof(str_buffer),
-                         "star:%d speed:%d",
-                         starfield.nb_stars,
-                         starfield.z_move);
 #ifdef HAVE_LCD_COLOR
             rb->lcd_set_foreground(LCD_WHITE);
 #endif
-            rb->lcd_putsxy(0, LCD_HEIGHT-font_h, str_buffer);
+            rb->lcd_putsxyf(0, LCD_HEIGHT-font_h, "star:%d speed:%d",
+                           starfield.nb_stars, starfield.z_move);
         }
         rb->lcd_update();
 
@@ -497,8 +490,10 @@ int plugin_main(void)
             case STARFIELD_RC_QUIT:
 #endif
             case(STARFIELD_QUIT):
-            case(SYS_USB_CONNECTED):
                 return PLUGIN_OK;
+                break;
+            default:
+                exit_on_usb(button);
                 break;
         }
     }
@@ -521,5 +516,3 @@ enum plugin_status plugin_start(const void* parameter)
 
     return ret;
 }
-
-#endif /* #ifdef HAVE_LCD_BITMAP */

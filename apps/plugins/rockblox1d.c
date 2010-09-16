@@ -22,11 +22,6 @@
 
 #include "plugin.h"
 
-PLUGIN_HEADER
-
-
-#ifdef HAVE_LCD_BITMAP
-
 #if CONFIG_KEYPAD == RECORDER_PAD
 #define ONEDROCKBLOX_DOWN              BUTTON_PLAY
 #define ONEDROCKBLOX_QUIT              BUTTON_OFF
@@ -211,7 +206,6 @@ enum plugin_status plugin_start(const void* parameter)
     int type_next_brick = 0;
     
     unsigned long int score = 34126;
-    char score_buf[10];
     
     (void)parameter;
 
@@ -283,8 +277,7 @@ enum plugin_status plugin_start(const void* parameter)
         } 
 
         /* Score box */
-        rb->snprintf(score_buf, sizeof(score_buf), "%8ld0", score);
-        rb->lcd_putsxy(score_x, SCORE_Y, score_buf);
+        rb->lcd_putsxyf(score_x, SCORE_Y, "%8ld0", score);
 
         rb->lcd_update();
 
@@ -323,4 +316,3 @@ enum plugin_status plugin_start(const void* parameter)
  
     return PLUGIN_OK;
 }
-#endif

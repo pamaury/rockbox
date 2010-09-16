@@ -40,6 +40,7 @@
 #include "appevents.h"
 #include "viewport.h"
 #include "statusbar-skinned.h"
+#include "skin_engine/skin_engine.h"
 
 #if LCD_DEPTH > 1
 /**
@@ -49,7 +50,7 @@ static int clear_main_backdrop(void)
 {
     global_settings.backdrop_file[0] = '-';
     global_settings.backdrop_file[1] = '\0';
-    sb_set_backdrop(SCREEN_MAIN, NULL);
+    skin_backdrop_load_setting();
     viewportmanager_theme_enable(SCREEN_MAIN, false, NULL);
     viewportmanager_theme_undo(SCREEN_MAIN, true);
     settings_save();
@@ -97,6 +98,7 @@ static int set_color_func(void* color)
                          colors[c].setting, banned_color);
     settings_save();
     settings_apply(false);
+    settings_apply_skins();
     return res;
 }
 
@@ -240,9 +242,11 @@ static struct browse_folder_info themes = {THEME_DIR, SHOW_CFG};
 
 int browse_folder(void *param)
 {
+    char path[MAX_PATH];
     const struct browse_folder_info *info =
         (const struct browse_folder_info*)param;
-    return rockbox_browse(info->dir, info->show_options);
+    return rockbox_browse(get_user_file_path(info->dir, 0, path, sizeof(path)),
+                          info->show_options);
 }
 
 #ifdef HAVE_LCD_BITMAP
@@ -255,7 +259,7 @@ MENUITEM_FUNCTION(browse_sbs, MENU_FUNC_USEPARAM,
         browse_folder, (void*)&sbs, NULL, Icon_Wps);
 #if CONFIG_TUNER
 MENUITEM_FUNCTION(browse_fms, MENU_FUNC_USEPARAM, 
-        ID2P(LANG_FM_RADIO), 
+        ID2P(LANG_RADIOSCREEN), 
         browse_folder, (void*)&fms, NULL, Icon_Wps);
 #endif
 #endif
@@ -271,7 +275,7 @@ MENUITEM_FUNCTION(browse_rsbs, MENU_FUNC_USEPARAM,
         browse_folder, (void*)&rsbs, NULL, Icon_Wps);
 #if CONFIG_TUNER
 MENUITEM_FUNCTION(browse_rfms, MENU_FUNC_USEPARAM, 
-        ID2P(LANG_REMOTE_FMRADIO), 
+        ID2P(LANG_REMOTE_RADIOSCREEN), 
         browse_folder, (void*)&rfms, NULL, Icon_Wps);
 #endif
 #endif

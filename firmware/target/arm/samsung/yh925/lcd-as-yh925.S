@@ -232,7 +232,7 @@ lcd_write_yuv420_lines:
     subs        r1, r1, #2              @ subtract block from width
     bgt         10b @ loop line         @
                                         @
-    ldmfd       sp!, { r4-r11, pc }     @ restore registers and return
+    ldmpc       regs=r4-r11             @ restore registers and return
     .ltorg                              @ dump constant pool
     .size   lcd_write_yuv420_lines, .-lcd_write_yuv420_lines
 
@@ -278,7 +278,7 @@ lcd_write_yuv420_lines_odither:
                                         @ r5 = yuv_src[1] = Cb_p
                                         @ r6 = yuv_src[2] = Cr_p
                                         @
-    ldr         r0, [sp, #40]           @ Line up pattern and kernel quadrant
+    ldr         r0, [sp, #36]           @ Line up pattern and kernel quadrant
     eor         r14, r3, r0             @
     and         r14, r14, #0x2          @
     mov         r14, r14, lsl #6        @ 0x00 or 0x80
@@ -533,6 +533,6 @@ lcd_write_yuv420_lines_odither:
     subs        r1, r1, #2              @ subtract block from width
     bgt         10b @ loop line         @
                                         @
-    ldmfd       sp!, { r4-r11, pc }     @ restore registers and return
+    ldmpc       regs=r4-r11             @ restore registers and return
     .ltorg                              @ dump constant pool
     .size   lcd_write_yuv420_lines_odither, .-lcd_write_yuv420_lines_odither

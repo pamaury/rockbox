@@ -30,15 +30,14 @@ void usb_init_device(void)
     /* GPIO42 is USB detect input
      * but it also serves as MCLK2 for DAC
      */
-    and_l(~(1<<4), &GPIO1_OUT);
-    or_l((1<<4)|(1<<18), &GPIO1_ENABLE);   /* GPIO36 GPIO50 */
-    or_l((1<<4)|(1<<5)|(1<<18), &GPIO1_FUNCTION); /* GPIO36 GPIO37 GPIO50 */
+    and_l(~(1<<4), &GPIO1_OUT);           /* GPIO36 low */
+    or_l((1<<4), &GPIO1_ENABLE);          /* GPIO36 */
+    or_l((1<<4)|(1<<5), &GPIO1_FUNCTION); /* GPIO36 GPIO37 */
 
-     /* GPIO22 GPIO30*/
-     /* GPIO31 has to be low to ATA work */
+     /* GPIO22 GPIO30 high */
     or_l((1<<22)|(1<<30), &GPIO_OUT);
-    or_l((1<<22)|(1<<30)|(1<<31), &GPIO_ENABLE);
-    or_l((1<<22)|(1<<30)|(1<<31), &GPIO_FUNCTION);
+    or_l((1<<22)|(1<<30), &GPIO_ENABLE);
+    or_l((1<<22)|(1<<30), &GPIO_FUNCTION);
 }
 
 int usb_detect(void)
@@ -49,34 +48,28 @@ int usb_detect(void)
 
 void usb_enable(bool on)
 {
+    /* one second timeout */
+    unsigned char timeout = 10;
    
     if(on)
     {
-        or_l((1<<18),&GPIO1_OUT); /* GPIO50 high */
-
         and_l(~(1<<30),&GPIO_OUT);  /* GPIO30 low */
-        /* GPIO36 low delay GPIO36 high delay */
-        and_l(~(1<<4),&GPIO1_OUT);
-        or_l((1<<4),&GPIO1_OUT);
+        and_l(~(1<<22),&GPIO_OUT);  /* GPIO22 low */
 
-        and_l(~(1<<18),&GPIO1_OUT); /* GPIO50 low */
-        sleep(HZ/5); /* delay 200 ms */
-        and_l(~(1<<22),&GPIO_OUT); /* GPIO22 low */
+        or_l((1<<4),&GPIO1_OUT);    /* GPIO36 high */
+
     }
     else
     {
-        /* GPIO36 low delay GPIO36 high delay */
-        and_l(~(1<<4),&GPIO1_OUT);
-        sleep(HZ/100);
-        or_l((1<<4),&GPIO1_OUT);
-        sleep(HZ/100);
-
         or_l((1<<22),&GPIO_OUT);  /* GPIO22 high */
         or_l((1<<30),&GPIO_OUT);  /* GPIO30 high */
 
         and_l(~(1<<4),&GPIO1_OUT); /* GPIO36 low */
 
-       while ( !(GPIO1_READ & (1<<5)) ) {}
-       sleep(HZ);
+        while ( !(GPIO1_READ & (1<<5)) && timeout--)
+        {
+            sleep(HZ/10);
+        }
+        sleep(HZ);
     }
 }

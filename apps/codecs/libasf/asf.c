@@ -191,7 +191,8 @@ int asf_read_packet(uint8_t** audiobuf, int* audiobufsize, int* packetlength,
     buf = ci->request_buffer(&bufsize, length);
     datap = buf;
 
-    if (bufsize != length) {
+#define ASF_MAX_REQUEST (1L<<15) /* 32KB */
+    if (bufsize != length && length >= ASF_MAX_REQUEST) {
         /* This should only happen with packets larger than 32KB (the
            guard buffer size).  All the streams I've seen have
            relatively small packets less than about 8KB), but I don't
@@ -375,4 +376,56 @@ int asf_get_timestamp(int *duration)
     ci->seek_buffer(ci->curpos-bytesread);
 
     return send_time;
+}
+
+/*entry point for seeks*/
+int asf_seek(int ms, asf_waveformatex_t* wfx)
+{
+    int time, duration, delta, temp, count=0;
+
+    /*estimate packet number from bitrate*/
+    int initial_packet = ci->curpos/wfx->packet_size;
+    int packet_num = (((int64_t)ms)*(wfx->bitrate>>3))/wfx->packet_size/1000;
+    int last_packet = ci->id3->filesize / wfx->packet_size;
+
+    if (packet_num > last_packet) {
+        packet_num = last_packet;
+    }
+
+    /*calculate byte address of the start of that packet*/
+    int packet_offset = packet_num*wfx->packet_size;
+
+    /*seek to estimated packet*/
+    ci->seek_buffer(ci->id3->first_frame_offset+packet_offset);
+    temp = ms;
+    while (1)
+    {
+        /*for very large files it can be difficult and unimportant to find the exact packet*/
+        count++;
+
+        /*check the time stamp of our packet*/
+        time = asf_get_timestamp(&duration);
+        /*DEBUGF("seeked to %d ms with duration %d\n", time, duration);*/
+
+        if (time < 0) {
+            /*unknown error, try to recover*/
+            DEBUGF("UKNOWN SEEK ERROR\n");
+            ci->seek_buffer(ci->id3->first_frame_offset+initial_packet*wfx->packet_size);
+            /*seek failed so return time stamp of the initial packet*/
+            return asf_get_timestamp(&duration);
+        }
+
+        if ((time+duration>=ms && time<=ms) || count > 10) {
+            /*DEBUGF("Found our packet! Now at %d packet\n", packet_num);*/
+            return time;
+        } else {
+            /*seek again*/
+            delta = ms-time;
+            /*estimate new packet number from bitrate and our current position*/
+            temp += delta;
+            packet_num = ((temp/1000)*(wfx->bitrate>>3) - (wfx->packet_size>>1))/wfx->packet_size;  //round down!
+            packet_offset = packet_num*wfx->packet_size;
+            ci->seek_buffer(ci->id3->first_frame_offset+packet_offset);
+        }
+    }
 }

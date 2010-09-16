@@ -21,6 +21,7 @@
 
 #include "kernel.h"
 #include "system.h"
+#include "gcc_extensions.h"
 #include "panic.h"
 #include "avic-imx31.h"
 #include "gpio-imx31.h"
@@ -48,7 +49,7 @@ unsigned int iim_prod_rev(void)
     return product_rev;
 }
 
-static void iim_init(void)
+static void INIT_ATTR iim_init(void)
 {
     /* Initialize the IC revision info (required by SDMA) */
     ccm_module_clock_gating(CG_IIM, CGM_ON_RUN_WAIT);
@@ -136,7 +137,7 @@ void system_exception_wait(void)
     system_halt();
 }
 
-void system_init(void)
+void INIT_ATTR system_init(void)
 {
     static const int disable_clocks[] =
     {
@@ -186,18 +187,18 @@ void system_init(void)
     cpu_frequency = ccm_get_mcu_clk();
 
     /* MCR WFI enables wait mode (CCM_CCMR_LPM_WAIT_MODE = 0) */
-    imx31_regclr32(&CCM_CCMR, CCM_CCMR_LPM);
+    bitclr32(&CCM_CCMR, CCM_CCMR_LPM);
 
     iim_init();
 
-    imx31_regset32(&SDHC1_CLOCK_CONTROL, STOP_CLK);
-    imx31_regset32(&SDHC2_CLOCK_CONTROL, STOP_CLK);
-    imx31_regset32(&RNGA_CONTROL, RNGA_CONTROL_SLEEP);
-    imx31_regclr32(&UCR1_1, EUARTUCR1_UARTEN);
-    imx31_regclr32(&UCR1_2, EUARTUCR1_UARTEN);
-    imx31_regclr32(&UCR1_3, EUARTUCR1_UARTEN);
-    imx31_regclr32(&UCR1_4, EUARTUCR1_UARTEN);
-    imx31_regclr32(&UCR1_5, EUARTUCR1_UARTEN);
+    bitset32(&SDHC1_CLOCK_CONTROL, STOP_CLK);
+    bitset32(&SDHC2_CLOCK_CONTROL, STOP_CLK);
+    bitset32(&RNGA_CONTROL, RNGA_CONTROL_SLEEP);
+    bitclr32(&UCR1_1, EUARTUCR1_UARTEN);
+    bitclr32(&UCR1_2, EUARTUCR1_UARTEN);
+    bitclr32(&UCR1_3, EUARTUCR1_UARTEN);
+    bitclr32(&UCR1_4, EUARTUCR1_UARTEN);
+    bitclr32(&UCR1_5, EUARTUCR1_UARTEN);
 
     for (i = 0; i < ARRAYLEN(disable_clocks); i++)
         ccm_module_clock_gating(disable_clocks[i], CGM_OFF);
@@ -206,49 +207,6 @@ void system_init(void)
     gpt_start();
     gpio_init();
 }
-
-void  __attribute__((naked)) imx31_regmod32(volatile uint32_t *reg_p,
-                                            uint32_t value,
-                                            uint32_t mask)
-{
-    asm volatile("and    r1, r1, r2 \n"
-                 "mrs    ip, cpsr   \n"
-                 "cpsid  if         \n"
-                 "ldr    r3, [r0]   \n"
-                 "bic    r3, r3, r2 \n" 
-                 "orr    r3, r3, r1 \n"
-                 "str    r3, [r0]   \n"
-                 "msr    cpsr_c, ip \n"
-                 "bx     lr         \n");
-    (void)reg_p; (void)value; (void)mask;
-}
-
-void __attribute__((naked)) imx31_regset32(volatile uint32_t *reg_p,
-                                           uint32_t mask)
-{
-    asm volatile("mrs    r3, cpsr   \n"
-                 "cpsid  if         \n"
-                 "ldr    r2, [r0]   \n"
-                 "orr    r2, r2, r1 \n"
-                 "str    r2, [r0]   \n"
-                 "msr    cpsr_c, r3 \n"
-                 "bx     lr         \n");
-    (void)reg_p; (void)mask;
-}
-
-void __attribute__((naked)) imx31_regclr32(volatile uint32_t *reg_p,
-                                           uint32_t mask)
-{
-    asm volatile("mrs    r3, cpsr   \n"
-                 "cpsid  if         \n"
-                 "ldr    r2, [r0]   \n"
-                 "bic    r2, r2, r1 \n"
-                 "str    r2, [r0]   \n"
-                 "msr    cpsr_c, r3 \n"
-                 "bx     lr         \n");
-    (void)reg_p; (void)mask;
-}
-
 
 void system_prepare_fw_start(void)
 {
@@ -262,9 +220,9 @@ void system_prepare_fw_start(void)
 
 #ifndef BOOTLOADER
 void rolo_restart_firmware(const unsigned char *source, unsigned char *dest,
-                           int length) __attribute__((noreturn));
+                           int length) NORETURN_ATTR;
 
-void __attribute__((noreturn))
+void NORETURN_ATTR
 rolo_restart(const unsigned char *source, unsigned char *dest, int length)
 {
     /* Some housekeeping tasks must be performed for a safe changeover */
@@ -277,7 +235,7 @@ rolo_restart(const unsigned char *source, unsigned char *dest, int length)
 #endif /* BOOTLOADER */
 
 
-inline void dumpregs(void) 
+void dumpregs(void)
 {
     asm volatile ("mov %0,r0\n\t"
                   "mov %1,r1\n\t"

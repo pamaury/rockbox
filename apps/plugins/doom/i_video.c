@@ -222,6 +222,16 @@ void I_ShutdownGraphics(void)
 #define DOOMBUTTON_ESC     BUTTON_POWER
 #define DOOMBUTTON_ENTER   BUTTON_SELECT
 #define DOOMBUTTON_WEAPON  BUTTON_VOL_UP
+#elif CONFIG_KEYPAD == SANSA_CLIP_PAD
+#define DOOMBUTTON_UP      BUTTON_UP
+#define DOOMBUTTON_DOWN    BUTTON_DOWN
+#define DOOMBUTTON_LEFT    BUTTON_LEFT
+#define DOOMBUTTON_RIGHT   BUTTON_RIGHT
+#define DOOMBUTTON_SHOOT   BUTTON_SELECT
+#define DOOMBUTTON_OPEN    BUTTON_HOME
+#define DOOMBUTTON_ESC     BUTTON_POWER
+#define DOOMBUTTON_ENTER   BUTTON_SELECT
+#define DOOMBUTTON_WEAPON  BUTTON_VOL_UP
 #elif CONFIG_KEYPAD == GIGABEAT_PAD
 #define DOOMBUTTON_UP      BUTTON_UP
 #define DOOMBUTTON_DOWN    BUTTON_DOWN
@@ -425,7 +435,7 @@ static inline unsigned int read_scroll_wheel(void)
 }
 #endif
 
-inline void getkey()
+static inline void getkey()
 {
    event_t event;
    /* Same button handling as rockboy */
@@ -599,7 +609,7 @@ inline void getkey()
    }
 }
 
-inline void I_StartTic (void)
+void I_StartTic (void)
 {
    getkey();
 }

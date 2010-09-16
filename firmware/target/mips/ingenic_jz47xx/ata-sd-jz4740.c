@@ -20,6 +20,7 @@
  ****************************************************************************/
 
 #include "config.h"
+#include "gcc_extensions.h"
 #include "jz4740.h"
 #include "ata.h"
 #include "ata_idle_notify.h"
@@ -27,7 +28,7 @@
 #include "disk.h"
 #include "fat.h"
 #include "led.h"
-#include "hotswap.h"
+#include "sdmmc.h"
 #include "logf.h"
 #include "sd.h"
 #include "system.h"
@@ -47,7 +48,7 @@ static const char         sd_thread_name[] = "ata/sd";
 static struct event_queue sd_queue;
 static struct mutex       sd_mtx;
 static struct wakeup      sd_wakeup;
-static void               sd_thread(void) __attribute__((noreturn));
+static void               sd_thread(void) NORETURN_ATTR;
 
 static int                use_4bit;
 static int                num_6;
@@ -1395,7 +1396,7 @@ void sd_sleepnow(void)
 
 bool sd_disk_is_active(void)
 {
-    return sd_mtx.locked;
+    return false;
 }
 
 int sd_soft_reset(void)
@@ -1410,14 +1411,6 @@ bool sd_removable(IF_MV_NONVOID(int drive))
     (void)drive;
 #endif
     return true;
-}
-
-void card_enable_monitoring_target(bool on)
-{
-    if(on)
-        sd_gpio_setup_irq(card_detect_target());
-    else
-        __gpio_mask_irq(MMC_CD_PIN);
 }
 
 static int sd_oneshot_callback(struct timeout *tmo)

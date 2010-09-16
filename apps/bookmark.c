@@ -94,7 +94,7 @@ static const char* get_bookmark_info(int list_index,
                                      char *buffer,
                                      size_t buffer_len);
 static char* select_bookmark(const char* bookmark_file_name, bool show_dont_resume);
-static bool  system_check(void);
+static bool  is_bookmarkable_state(void);
 static bool  write_bookmark(bool create_bookmark_file, const char *bookmark);
 static int   get_bookmark_count(const char* bookmark_file_name);
 
@@ -125,7 +125,7 @@ bool bookmark_create_menu(void)
 /* ----------------------------------------------------------------------- */
 bool bookmark_load_menu(void)
 {
-    if (system_check())
+    if (is_bookmarkable_state())
     {
         char* name = playlist_get_name(NULL, global_temp_buffer,
                                        sizeof(global_temp_buffer));
@@ -166,16 +166,23 @@ bool bookmark_mrb_load()
 bool bookmark_autobookmark(bool prompt_ok)
 {
     char*  bookmark;
-    if (!system_check())
+    bool update;
+
+    if (!is_bookmarkable_state())
         return false;
 
     audio_pause();    /* first pause playback */
+    update = (global_settings.autoupdatebookmark && bookmark_exists());
     bookmark = create_bookmark();
     /* Workaround for inability to speak when paused: all callers will
        just do audio_stop() when we return, so we can do it right
        away. This makes it possible to speak the "Create a Bookmark?"
        prompt and the "Bookmark Created" splash. */
     audio_stop();
+
+    if (update)
+        return write_bookmark(true, bookmark);
+
     switch (global_settings.autocreatebookmark)
     {
         case BOOKMARK_YES:
@@ -319,7 +326,7 @@ static char* create_bookmark()
     int resume_index = 0;
     char *file;
 
-    if (!system_check())
+    if (!is_bookmarkable_state())
         return NULL; /* something didn't happen correctly, do nothing */
 
     /* grab the currently playing track */
@@ -1058,11 +1065,11 @@ static bool generate_bookmark_file_name(const char *in)
 /* ----------------------------------------------------------------------- */
 /* Returns true if a bookmark file exists for the current playlist         */
 /* ----------------------------------------------------------------------- */
-bool bookmark_exist(void)
+bool bookmark_exists(void)
 {
     bool exist=false;
 
-    if(system_check())
+    if(is_bookmarkable_state())
     {
         char* name = playlist_get_name(NULL, global_temp_buffer,
                                        sizeof(global_temp_buffer));
@@ -1079,7 +1086,7 @@ bool bookmark_exist(void)
 /* Checks the current state of the system and returns true if it is in a   */
 /* bookmarkable state.                                                     */
 /* ----------------------------------------------------------------------- */
-static bool system_check(void)
+static bool is_bookmarkable_state(void)
 {
     int resume_index = 0;
 

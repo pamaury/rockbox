@@ -62,14 +62,14 @@ void fiq_handler(void) __attribute__((interrupt ("FIQ")));
 void pcm_play_lock(void)
 {
     if (++dma_play_lock.locked == 1)
-        s3c_regset32(&INTMSK, DMA2_MASK);
+        bitset32(&INTMSK, DMA2_MASK);
 }
 
 /* Unmask the DMA interrupt if enabled */
 void pcm_play_unlock(void)
 {
     if (--dma_play_lock.locked == 0)
-        s3c_regclr32(&INTMSK, dma_play_lock.state);
+        bitclr32(&INTMSK, dma_play_lock.state);
 }
 
 void pcm_play_dma_init(void)
@@ -77,7 +77,7 @@ void pcm_play_dma_init(void)
     /* There seem to be problems when changing the IIS interface configuration
      * when a clock is not present.
      */
-    s3c_regset32(&CLKCON, 1<<17);
+    bitset32(&CLKCON, 1<<17);
     
 #ifdef HAVE_UDA1341
     /* master, transmit mode, 16 bit samples, BCLK 32fs, PCLK */
@@ -95,7 +95,7 @@ void pcm_play_dma_init(void)
     IISCON |= (1<<3) | (1<<2);
 #endif
 
-    s3c_regclr32(&CLKCON, 1<<17);
+    bitclr32(&CLKCON, 1<<17);
 
     audiohw_init();
 
@@ -112,11 +112,11 @@ void pcm_play_dma_init(void)
     /* Do not service DMA requests, yet */
 
     /* clear any pending int and mask it */
-    s3c_regset32(&INTMSK, DMA2_MASK);
+    bitset32(&INTMSK, DMA2_MASK);
     SRCPND = DMA2_MASK;
 
     /* connect to FIQ */
-    s3c_regset32(&INTMOD, DMA2_MASK);
+    bitset32(&INTMOD, DMA2_MASK);
 }
 
 void pcm_postinit(void)
@@ -172,7 +172,7 @@ static void play_start_pcm(void)
 static void play_stop_pcm(void)
 {
     /* Mask DMA interrupt */
-    s3c_regset32(&INTMSK, DMA2_MASK);
+    bitset32(&INTMSK, DMA2_MASK);
 
     /* De-Activate the DMA channel */
     DMASKTRIG2 = 0x4;
@@ -200,7 +200,7 @@ static void play_stop_pcm(void)
 void pcm_play_dma_start(const void *addr, size_t size)
 {
     /* Enable the IIS clock */
-    s3c_regset32(&CLKCON, 1<<17);
+    bitset32(&CLKCON, 1<<17);
 
     /* stop any DMA in progress - idle IIS */
     play_stop_pcm();
@@ -231,7 +231,7 @@ void pcm_play_dma_stop(void)
     play_stop_pcm();
 
     /* Disconnect the IIS clock */
-    s3c_regclr32(&CLKCON, 1<<17);
+    bitclr32(&CLKCON, 1<<17);
 }
 
 void pcm_play_dma_pause(bool pause)
@@ -254,35 +254,27 @@ void pcm_play_dma_pause(bool pause)
 
 void fiq_handler(void)
 {
-    static unsigned char *start;
-    static size_t         size;
-    register pcm_more_callback_type get_more;   /* No stack for this */
+    static void *start;
+    static size_t size;
 
     /* clear any pending interrupt */
     SRCPND = DMA2_MASK;
 
     /* Buffer empty.  Try to get more. */
-    get_more = pcm_callback_for_more;
-    size = 0;
+    pcm_play_get_more_callback(&start, &size);
 
-    if (get_more == NULL || (get_more(&start, &size), size == 0))
-    {
-        /* Callback missing or no more DMA to do */
-        pcm_play_dma_stop();
-        pcm_play_dma_stopped_callback();
-    }
-    else
-    {
-        /* Flush any pending cache writes */
-        clean_dcache_range(start, size);
+    if (size == 0)
+        return;
 
-        /* set the new DMA values */
-        DCON2 = DMA_CONTROL_SETUP | (size >> 1);
-        DISRC2 = (unsigned int)start + 0x30000000;
+    /* Flush any pending cache writes */
+    clean_dcache_range(start, size);
 
-        /* Re-Activate the channel */
-        DMASKTRIG2 = 0x2;
-    }
+    /* set the new DMA values */
+    DCON2 = DMA_CONTROL_SETUP | (size >> 1);
+    DISRC2 = (unsigned int)start + 0x30000000;
+
+    /* Re-Activate the channel */
+    DMASKTRIG2 = 0x2;
 }
 
 size_t pcm_get_bytes_waiting(void)

@@ -25,8 +25,11 @@
 #include "lcd-clip.h"
 #include "system.h"
 #include "cpu.h"
+#include "ascodec.h"
 
-void lcd_hw_init(void)
+#define LCD_DELAY 1
+
+int lcd_hw_init(void)
 {
 /* DBOP initialisation, do what OF does */
     CGU_DBOP = (1<<3) | AS3525_DBOP_DIV;
@@ -45,9 +48,9 @@ void lcd_hw_init(void)
     GPIOA_PIN(0) = (1<<0);
     GPIOA_PIN(4) = 0;
     GPIOB_PIN(6) = (1<<6);
-}
 
-#define LCD_DELAY 1
+    return 0;
+}
 
 void lcd_write_command(int byte)
 {
@@ -88,3 +91,9 @@ void lcd_write_data(const fb_data* p_bytes, int count)
     /* While push fifo is not empty */
     while ((DBOP_STAT & (1<<10)) == 0);
 }
+
+void lcd_enable_power(bool onoff)
+{
+    ascodec_write(AS3514_DCDC15, onoff ? 1 : 0);
+}
+

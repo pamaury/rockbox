@@ -31,13 +31,15 @@ Layout of a Sansa AMS original firmware file:
  ----------------------  0x0
 |        HEADER        |
 |----------------------| 0x400
+|    FIRMWARE BLOCK    | (contains the OF version on some fuzev2 firmwares
+|----------------------| 0x600
 |    FIRMWARE BLOCK    |
 |----------------------| 0x400 + firmware block size
 |    LIBRARIES/DATA    |
  ----------------------  END
 
-We replace the main firmware block (bytes 0x400..0x400+firmware_size)
-as follows:
+We replace the main firmware block while preserving the potential OF version
+(bytes 0x600..0x400+firmware_size) as follows:
 
 
  ----------------------  0x0
@@ -245,19 +247,18 @@ static struct md5sums sansasums[] = {
 
 static unsigned int model_memory_size(int model)
 {
+    /* The OF boots with IRAM (320kB) mapped at 0x0 */
+
     if(model == MODEL_CLIPV2)
     {
         /* The decompressed Clipv2 OF is around 380kB.
-         * Since it doesn't fit in the 0x50000 bytes IRAM, the OF starts
-         * with DRAM mapped at 0x0
-         *
-         * We could use all the available memory (supposedly 8MB)
-         * but 1MB ought to be enough for our use
+         * Let's use the full IRAM (1MB on AMSv2)
          */
         return 1 << 20;
     }
     else
-    {   /* The OF boots with IRAM (320kB) mapped at 0x0 */
+    {
+        /* The IRAM is 320kB on AMSv1, and 320 will be enough on Fuzev1/Clip+ */
         return 320 << 10;
     }
 }
@@ -323,30 +324,6 @@ static uint32_t calc_checksum(unsigned char* buf, uint32_t n)
     return sum;
 }
 
-static int get_model(int model_id)
-{
-    switch(model_id) {
-        case 0x1e:
-            return MODEL_FUZE;
-        case 0x22:
-            return MODEL_CLIP;
-        case 0x23:
-            return MODEL_C200V2;
-        case 0x24:
-            return MODEL_E200V2;
-        case 0x25:
-            return MODEL_M200V4;
-        case 0x27:
-            return MODEL_CLIPV2;
-        case 0x28:
-            return MODEL_CLIPPLUS;
-        case 0x70:
-            return MODEL_FUZEV2;
-    }
-
-    return MODEL_UNKNOWN;
-}
-
 /* Compress using nrv2e algorithm : Thumb decompressor fits in 168 bytes ! */
 static unsigned char* uclpack(unsigned char* inbuf, int insize, int* outsize)
 {
@@ -388,7 +365,7 @@ static unsigned char* uclpack(unsigned char* inbuf, int insize, int* outsize)
 
 /* Loads a Sansa AMS Original Firmware file into memory */
 unsigned char* load_of_file(
-        char* filename, off_t* bufsize, struct md5sums *sum,
+        char* filename, int model, off_t* bufsize, struct md5sums *sum,
         int* firmware_size, unsigned char** of_packed,
         int* of_packedsize, char* errstr, int errstrsize)
 {
@@ -397,7 +374,6 @@ unsigned char* load_of_file(
     off_t n;
     unsigned int i=0;
     uint32_t checksum;
-    int model_id;
     unsigned int last_word;
 
     fd = open(filename, O_RDONLY|O_BINARY);
@@ -425,21 +401,20 @@ unsigned char* load_of_file(
 
     if (i < NUM_MD5S) {
         *sum = sansasums[i];
+        if(sum->model != model) {
+            ERROR("[ERR]  OF File provided is %sv%d version %s, not for %sv%d\n",
+                model_names[sum->model], hw_revisions[sum->model],
+                sum->version, model_names[model], hw_revisions[model]
+            );
+        }
     } else {
-        int fw_version = (get_uint32le(&buf[0x204]) == 0x0000f000) ? 2 : 1;
-        model_id = buf[(fw_version == 2) ? 0x219 : 0x215];
-        sum->model = get_model(model_id);
+        /* OF unknown, give a list of tested versions for the requested model */
 
-        if (sum->model == MODEL_UNKNOWN)
-            ERROR("[ERR]  Unknown firmware model (v%d) - model id 0x%02x\n",
-                  fw_version, model_id);
-
-#if 1   /* comment to test new OFs */
         char tested_versions[100];
         tested_versions[0] = '\0';
 
         for (i = 0; i < NUM_MD5S ; i++)
-            if (sansasums[i].model == sum->model) {
+            if (sansasums[i].model == model) {
                 if (tested_versions[0] != '\0') {
                     strncat(tested_versions, ", ",
                         sizeof(tested_versions) - strlen(tested_versions) - 1);
@@ -449,9 +424,8 @@ unsigned char* load_of_file(
             }
 
         ERROR("[ERR]  Original firmware unknown, please try an other version." \
-              " Tested %s versions are : %s\n",
-              model_names[sum->model], tested_versions);
-#endif
+              " Tested %sv%d versions are : %s\n",
+              model_names[model], hw_revisions[model], tested_versions);
     }
 
     /* TODO: Do some more sanity checks on the OF image. Some images (like
@@ -484,7 +458,7 @@ error:
 
 /* Loads a rockbox bootloader file into memory */
 unsigned char* load_rockbox_file(
-            char* filename, int model, int* bufsize, int* rb_packedsize,
+            char* filename, int *model, int* bufsize, int* rb_packedsize,
             char* errstr, int errstrsize)
 {
     int fd;
@@ -504,10 +478,12 @@ unsigned char* load_rockbox_file(
     if (n != sizeof(header))
         ERROR("[ERR]  Could not read file %s\n", filename);
 
-    /* Check for correct model string */
-    if (memcmp(rb_model_names[model], header + 4, 4)!=0)
-        ERROR("[ERR]  Expected model name \"%s\" in %s, not \"%4.4s\"\n",
-                       rb_model_names[model], filename, (char*)header+4);
+    for(*model = 0; *model < NUM_MODELS; (*model)++)
+        if (memcmp(rb_model_names[*model], header + 4, 4) == 0)
+            break;
+
+    if(*model == NUM_MODELS)
+        ERROR("[ERR]  Model name \"%4.4s\" unknown. Is this really a rockbox bootloader?\n", header + 4);
 
     *bufsize = filesize(fd) - sizeof(header);
 
@@ -521,7 +497,7 @@ unsigned char* load_rockbox_file(
         ERROR("[ERR]  Could not read file %s\n", filename);
 
     /* Check checksum */
-    sum = rb_model_num[model];
+    sum = rb_model_num[*model];
     for (i = 0; i < *bufsize; i++) {
          /* add 8 unsigned bits but keep a 32 bit sum */
          sum += buf[i];
@@ -556,10 +532,22 @@ void patch_firmware(
     unsigned int i;
 
     /* Zero the original firmware area - not needed, but helps debugging */
-    memset(buf + 0x400, 0, firmware_size);
+    memset(buf + 0x600, 0, firmware_size);
 
-    /* Insert dual-boot bootloader at offset 0 */
-    memcpy(buf + 0x400, bootloaders[model], bootloader_sizes[model]);
+    /* Insert dual-boot bootloader at offset 0x200, we preserve the OF
+     * version string located between 0x0 and 0x200 */
+    memcpy(buf + 0x600, bootloaders[model], bootloader_sizes[model]);
+
+    /* Insert vectors, they won't overwrite the OF version string */
+
+    /* Reset vector: branch 0x200 bytes away, to our dualboot code */
+    static const uint8_t b_0x200[4] = { 0x7e, 0x00, 0x00, 0xea }; // b 0x200
+    memcpy(buf + 0x400, b_0x200, sizeof(b_0x200));
+
+    /* Other vectors: infinite loops */
+    static const uint8_t b_1b[4]    = { 0xfe, 0xff, 0xff, 0xea }; // 1: b 1b
+    for (i=1; i < 8; i++)
+        memcpy(buf + 0x400 + 4*i, b_1b, sizeof(b_1b));
 
     /* We are filling the firmware buffer backwards from the end */
     p = buf + 0x400 + firmware_size;
@@ -581,20 +569,20 @@ void patch_firmware(
        in each image, along with the size in bytes */
 
     /* UCL unpack function */
-    put_uint32le(&buf[0x420], firmware_size - 1);
-    put_uint32le(&buf[0x424], sizeof(nrv2e_d8));
+    put_uint32le(&buf[0x604], firmware_size - 1);
+    put_uint32le(&buf[0x608], sizeof(nrv2e_d8));
 
     /* Compressed original firmware image */
-    put_uint32le(&buf[0x428], firmware_size - sizeof(nrv2e_d8) - 1);
-    put_uint32le(&buf[0x42c], of_packedsize);
+    put_uint32le(&buf[0x60c], firmware_size - sizeof(nrv2e_d8) - 1);
+    put_uint32le(&buf[0x610], of_packedsize);
 
     /* Compressed Rockbox image */
-    put_uint32le(&buf[0x430], firmware_size - sizeof(nrv2e_d8) - of_packedsize
+    put_uint32le(&buf[0x614], firmware_size - sizeof(nrv2e_d8) - of_packedsize
             - 1);
-    put_uint32le(&buf[0x434], rb_packedsize);
+    put_uint32le(&buf[0x618], rb_packedsize);
 
     ucl_dest = model_memory_size(model) - 1; /* last byte of memory */
-    put_uint32le(&buf[0x438], ucl_dest);
+    put_uint32le(&buf[0x61c], ucl_dest);
 
     /* Update the firmware block checksum */
     sum = calc_checksum(buf + 0x400, firmware_size);
@@ -624,8 +612,10 @@ int check_sizes(int model, int rb_packed_size, int rb_unpacked_size,
         int of_packed_size, int of_unpacked_size, int *total_size,
         char *errstr, int errstrsize)
 {
+    /* XXX: we keep the first 0x200 bytes block unmodified, we just replace
+     * the ARM vectors */
     unsigned int packed_size = bootloader_sizes[model] + sizeof(nrv2e_d8) +
-            of_packed_size + rb_packed_size;
+            of_packed_size + rb_packed_size + 0x200;
 
     /* how much memory is available */
     unsigned int memory_size = model_memory_size(model);

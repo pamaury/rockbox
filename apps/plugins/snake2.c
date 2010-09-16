@@ -30,11 +30,11 @@ Head and Tail are stored
 */
 
 #include "plugin.h"
-#ifdef HAVE_LCD_BITMAP
+
 #include "lib/highscore.h"
 #include "lib/playback_control.h"
 
-PLUGIN_HEADER
+
 
 #define WIDTH  28
 #define HEIGHT 16
@@ -1525,5 +1525,3 @@ enum plugin_status plugin_start(const void* parameter)
 
     return (quit==1) ? PLUGIN_OK : PLUGIN_USB_CONNECTED;
 }
-
-#endif

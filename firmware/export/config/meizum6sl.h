@@ -58,6 +58,9 @@
 
 #define CONFIG_NAND NAND_SAMSUNG
 
+/* The NAND flash has 512-byte sectors, and is our only storage */
+#define SECTOR_SIZE 512
+
 /* LCD dimensions */
 #define LCD_WIDTH  320
 #define LCD_HEIGHT 240
@@ -73,7 +76,7 @@
 
 #define CONFIG_KEYPAD MEIZU_M6SL_PAD
 
-//#define AB_REPEAT_ENABLE 1
+//#define AB_REPEAT_ENABLE
 //#define ACTION_WPSAB_SINGLE ACTION_WPS_BROWSE
 
 /* Define this if you do software codec */

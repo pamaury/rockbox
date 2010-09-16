@@ -2,13 +2,14 @@ gcc-support.c
 pluginlib_actions.c
 helper.c
 md5.c
-pluginlib_exit.c
 jhash.c
 configfile.c
 fixedpoint.c
 playback_control.c
 rgb_hsv.c
 buflib.c
+highscore.c
+simple_viewer.c
 display_text.c
 strncpy.c
 
@@ -26,18 +27,16 @@ grey_sh.S
 
 #endif /* HAVE_LCD_BITMAP && LCD_DEPTH < 4 */
 
-highscore.c
-
-#ifndef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
 overlay.c
-#endif
-
-#ifdef HAVE_LCD_CHARCELLS
-playergfx.c
 #endif
 
 #ifdef RB_PROFILE
 profile_plugin.c
+#endif
+
+#ifdef HAVE_LCD_CHARCELLS
+playergfx.c
 #endif
 
 #ifdef HAVE_LCD_BITMAP
@@ -75,19 +74,3 @@ pluginlib_albumart.c
 #ifdef HAVE_TOUCHSCREEN
 pluginlib_touchscreen.c
 #endif
-
-#ifndef SIMULATOR
-
-#ifdef CPU_ARM
-../../codecs/lib/setjmp_arm.S
-#endif
-
-#ifdef CPU_COLDFIRE
-../../codecs/lib/setjmp_cf.S
-#endif
-
-#ifdef CPU_MIPS
-../../codecs/lib/setjmp_mips.S
-#endif
-
-#endif /* !SIMULATOR */

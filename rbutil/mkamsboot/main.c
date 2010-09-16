@@ -59,6 +59,7 @@ int main(int argc, char* argv[])
     int rb_packedsize;
     int patchable;
     int totalsize;
+    int model;
     char errstr[200];
     struct md5sums sum;
     char md5sum[33]; /* 32 digits + \0 */
@@ -81,11 +82,21 @@ int main(int argc, char* argv[])
     bootfile = argv[2];
     outfile = argv[3];
 
+    /* Load bootloader file */
+    rb_packed = load_rockbox_file(bootfile, &model, &bootloader_size,
+            &rb_packedsize, errstr, sizeof(errstr));
+    if (rb_packed == NULL) {
+        fprintf(stderr, "%s", errstr);
+        fprintf(stderr, "[ERR]  Could not load %s\n", bootfile);
+        return 1;
+    }
+
     /* Load original firmware file */
-    buf = load_of_file(infile, &len, &sum,
+    buf = load_of_file(infile, model, &len, &sum,
             &firmware_size, &of_packed, &of_packedsize, errstr, sizeof(errstr));
 
     if (buf == NULL) {
+        free(rb_packed);
         fprintf(stderr, "%s", errstr);
         fprintf(stderr, "[ERR]  Could not load %s\n", infile);
         return 1;
@@ -96,36 +107,27 @@ int main(int argc, char* argv[])
             model_names[sum.model], hw_revisions[sum.model], sum.version);
 
 
-    /* Load bootloader file */
-    rb_packed = load_rockbox_file(bootfile, sum.model, &bootloader_size,
-            &rb_packedsize, errstr, sizeof(errstr));
-    if (rb_packed == NULL) {
-        fprintf(stderr, "%s", errstr);
-        fprintf(stderr, "[ERR]  Could not load %s\n", bootfile);
-        free(buf);
-        free(of_packed);
-        return 1;
-    }
-
     printf("[INFO] Firmware patching has begun !\n\n");
 
-    fprintf(stderr, "[INFO] Original firmware size:   %d bytes\n",
+    fprintf(stderr, "[INFO] Original firmware size:    %8d bytes\n",
             firmware_size);
-    fprintf(stderr, "[INFO] Packed OF size:           %d bytes\n",
+    fprintf(stderr, "[INFO] Packed OF size:            %8d bytes\n",
             of_packedsize);
-    fprintf(stderr, "[INFO] Bootloader size:          %d bytes\n",
+    fprintf(stderr, "[INFO] Bootloader size:           %8d bytes\n",
             (int)bootloader_size);
-    fprintf(stderr, "[INFO] Packed bootloader size:   %d bytes\n",
+    fprintf(stderr, "[INFO] Packed bootloader size:    %8d bytes\n",
             rb_packedsize);
-    fprintf(stderr, "[INFO] Dual-boot function size:  %d bytes\n",
+    fprintf(stderr, "[INFO] Dual-boot function size:   %8d bytes\n",
             bootloader_sizes[sum.model]);
-    fprintf(stderr, "[INFO] UCL unpack function size: %u bytes\n",
+    fprintf(stderr, "[INFO] UCL unpack function size:  %8u bytes\n",
             (unsigned int)sizeof(nrv2e_d8));
+    fprintf(stderr, "[INFO] Original firmware version: %8u bytes\n",
+            0x200);
 
     patchable = check_sizes(sum.model, rb_packedsize, bootloader_size,
         of_packedsize, firmware_size, &totalsize, errstr, sizeof(errstr));
 
-    fprintf(stderr, "[INFO] Total size of new image:  %d bytes\n", totalsize);
+    fprintf(stderr, "[INFO] Total size of new image:   %8d bytes\n", totalsize);
 
     if (!patchable) {
         fprintf(stderr, "%s", errstr);

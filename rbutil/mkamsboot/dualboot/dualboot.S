@@ -28,6 +28,8 @@
 .set GPIOD,     0xC80E0000
 .set CGU_PROC,  0xC80F0010
 .set CGU_PERI,  0xC80F0014
+.set CGU_DBOP,  0xC80F0038
+.set DBOP,      0xC8120000
 .set I2C_BASE,  0xC8070000
 .set I2C_DATA,  0x00
 .set I2C_SLAD0, 0x04
@@ -49,20 +51,9 @@
 #error i2c prescaler too big!
 #endif
 
-/* Vectors */
+        b start     @ skip our data
 
-        ldr   pc, =start    /* reset vector */
-        /* next vectors are unused, halt cpu */
-1:      b 1b
-1:      b 1b
-1:      b 1b
-1:      b 1b
-1:      b 1b
-1:      b 1b
-1:      b 1b
-
-
-/* These values are filled in by mkamsboot - don't move them from offset 0x20 */
+/* These values are filled in by mkamsboot - don't move them from offset 0x4 */
 
 uclunpack_end:   .word   0 /* End of the ucl_unpack function */
 uclunpack_size:  .word   0 /* Size in bytes of the ucl_unpack function */
@@ -99,77 +90,17 @@ uclcopy:
         str     r1, [r0]
 
 
-/* TODO : M200V4 ? */
-#if defined(SANSA_CLIP) || defined(SANSA_CLIPV2)
-#define USB_PIN 6
-#elif defined(SANSA_FUZE) || defined(SANSA_E200V2)
-#define USB_PIN 3
-#endif
-
-#ifdef USB_PIN  /* TODO : remove this check when we'll have an USB driver */
+#ifdef SANSA_CLIPV2 /* TODO : remove this check when we'll have an USB driver */
         ldr     r0, =GPIOA
         mov     r1, #0
         str     r1, [r0, #0x400]
-        ldr     r1, [r0, #(4*(1<<USB_PIN))]
+        ldr     r1, [r0, #(4*(1<<6))]
         cmp     r1, #0
         bne     boot_of
 #endif
-#if defined(SANSA_C200V2)
-        /* Instead of checking the GPIO, check the audio master IRQ_ENRD0
-         * USB_STATUS bit on C200V2 */
-
-        ldr     r0, =CGU_PERI
-        ldr     r1, [r0]
-        /* enable i2c audio master clock */
-        orr     r1, r1, #(1<<17)
-        /* make sure 24MHz clk_main is selected */
-        bic     r1, r1, #0x7f
-        str     r1, [r0]
-
-        ldr     r0, =I2C_BASE
-        /* disable i2c interrupts */
-        mov     r1, #0
-        str     r1, [r0, #I2C_IMR]
-        /* setup prescaler */
-        mov     r1, #I2C_PRESCALER_LOW
-        str     r1, [r0, #I2C_CPSR0]
-        mov     r1, #I2C_PRESCALER_HIGH
-        str     r1, [r0, #I2C_CPSR1]
-        /* setup i2c slave address */
-        mov     r1, #(AS3514_I2C_ADDR << 1)
-        str     r1, [r0, #I2C_SLAD0]
-        mov     r2, #0x51
-        str     r2, [r0, #I2C_CNTRL]
-
-        /* wait for not busy */
-1:
-        ldr     r1, [r0, #I2C_SR]
-        tst     r1, #1
-        bne 1b
-
-        /* start read of irq_enrd0 */
-        mov     r1, #AS3514_IRQ_ENRD0
-        str     r1, [r0, #I2C_SADDR]
-        orr     r2, r2, #(1 << 1)
-        str     r2, [r0, #I2C_CNTRL]
-        mov     r1, #1
-        str     r1, [r0, #I2C_DACNT]
-
-        /* wait for transfer to finish */
-1:
-        ldr     r1, [r0, #I2C_DACNT]
-        cmp     r1, #0
-        bne     1b
-
-        /* load result and test USB_STATUS bit */
-        ldr     r1, [r0, #I2C_DATA]
-        tst     r1, #(1 << 3)
-        bne     boot_of
-#endif
-
-        /* Here are model specific tests, for dual boot without a computer */
-        /* All models use left button */
-        /* /!\ Right button for c200v2 (left button is unkwown) */
+        /* Here are model specific tests for dual boot */
+        /* All models but c200v2 use left button */
+        /* TODO: Left button for c200v2 too (needs DBOP code) */
 
 #ifdef SANSA_CLIP
 .set row, (1<<5) /* enable output on C5 */
@@ -247,14 +178,56 @@ uclcopy:
 
 
 #elif defined(SANSA_C200V2)
-        /* check for RIGHT on C6, should changed to LEFT as soon as it
-         * known in which pin that is in order for consistency  */
-        ldr     r0, =GPIOC
-        mov     r1, #0
-        str     r1, [r0, #0x400]      /* set pin to output */
+.set BUTTON_LEFT,      (1<< 2)
+.set BUTTON_DOWN,      (1<< 3)
+.set BUTTON_SELECT,    (1<< 4)
+.set BUTTON_UP,        (1<< 5)
+.set BUTTON_RIGHT,     (1<< 6)
+.set BUTTON_HOLD,      (1<<12)
 
-        ldr     r1, [r0, #256]        /* 1<<(6+2) */
-        cmp     r1, #0                /* C6 low means button pressed */
+        ldr     r0, =CGU_DBOP
+        mov     r1, #(1<<3)         @ DBOP freq = PCLK, clock enabled
+        str     r1, [r0]
+
+        @ AFSEL needs to be set for this to work
+        ldr     r2, =GPIOB
+        mov     r1, #0xc
+        str     r1, [r2, #0x420]    @ GPIOB_AFSEL
+        ldr     r2, =GPIOC
+        mov     r1, #0xff
+        str     r1, [r2, #0x420]    @ GPIOC_AFSEL
+
+        ldr     r0, =DBOP
+        @ TIMPOL doesn't matter here since we don't need
+        @ the control signals.
+
+        @ 16 bit data width
+        @ enable write
+        @ tri-state output
+        ldr     r1, =0x00091000
+        str     r1, [r0, #8]        @ DBOP_CTRL
+
+        ldr     r1, =0xf0ff         @ precharge
+        str     r1, [r0, #0x10]     @ DBOP_DOUT
+
+2:      ldr     r1, [r0, #0xc]      @ DOBP_STAT
+        ands    r1, r1, #(1<<10)
+        beq     2b                  @ make sure fifo is empty
+
+        @ 16 bit data width
+        @ start read
+        @ tri-state output
+        @ strobe time 31
+        ldr     r1, =0x0008901f
+        str     r1, [r0, #8]        @ DBOP_CTRL
+
+3:      ldr     r1, [r0, #0xc]      @ DOBP_STAT
+        ands    r1, r1, #(1<<16)
+        beq     3b                  @ wait for valid data
+
+        ldrh    r1, [r0, #0x14]     @ DBOP_DIN
+
+        tst     r1, #BUTTON_LEFT    @ boot of?
         beq     boot_of
 #elif defined(SANSA_M200V4)
 .set row, (1<<5) /* enable output on A5 */

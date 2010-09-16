@@ -30,11 +30,7 @@
 #include "wmadata.h"
 
 static void wma_lsp_to_curve_init(WMADecodeContext *s, int frame_len);
-inline void vector_fmul_add_add(fixed32 *dst, const fixed32 *data,
-                         const fixed32 *window, int n);
-inline void vector_fmul_reverse(fixed32 *dst, const fixed32 *src0, 
-                        const fixed32 *src1, int len);
-                        
+
 /*declarations of statically allocated variables used to remove malloc calls*/
 
 fixed32 coefsarray[MAX_CHANNELS][BLOCK_MAX_SIZE] IBSS_ATTR;
@@ -47,8 +43,7 @@ fixed32 stat0[2048], stat1[1024], stat2[512], stat3[256], stat4[128];
 /*VLC lookup tables*/
 uint16_t *runtabarray[2], *levtabarray[2];                                        
 
-/*these could be made smaller since only one can be 1336*/
-uint16_t runtab0[1336], runtab1[1336], levtab0[1336], levtab1[1336];               
+uint16_t runtab_big[1336], runtab_small[1072], levtab_big[1336], levtab_small[1072];
 
 #define VLCBUF1SIZE 4598
 #define VLCBUF2SIZE 3574
@@ -59,7 +54,8 @@ uint16_t runtab0[1336], runtab1[1336], levtab0[1336], levtab1[1336];
 
 VLC_TYPE vlcbuf1[VLCBUF1SIZE][2];
 VLC_TYPE vlcbuf2[VLCBUF2SIZE][2];
-VLC_TYPE vlcbuf3[VLCBUF3SIZE][2];
+/* This buffer gets reused for lsp tables */
+VLC_TYPE vlcbuf3[VLCBUF3SIZE][2] __attribute__((aligned (sizeof(fixed32))));
 VLC_TYPE vlcbuf4[VLCBUF4SIZE][2];
 
 
@@ -144,7 +140,7 @@ static void init_coef_vlc(VLC *vlc,
     int i, l, j, level;
 
 
-    init_vlc(vlc, VLCBITS, n, table_bits, 1, 1, table_codes, 4, 4, 0);
+    init_vlc(vlc, VLCBITS, n, table_bits, 1, 1, table_codes, 4, 4, INIT_VLC_USE_NEW_STATIC);
 
     run_table = runtabarray[tab];
     level_table= levtabarray[tab];
@@ -170,7 +166,7 @@ static void init_coef_vlc(VLC *vlc,
 int wma_decode_init(WMADecodeContext* s, asf_waveformatex_t *wfx)
 {
     
-    int i, flags1, flags2;
+    int i, flags2;
     fixed32 *window;
     uint8_t *extradata;
     fixed64 bps1;
@@ -206,15 +202,11 @@ int wma_decode_init(WMADecodeContext* s, asf_waveformatex_t *wfx)
     }
 
     /* extract flag infos */
-    flags1 = 0;
     flags2 = 0;
     extradata = wfx->data;
     if (s->version == 1 && wfx->datalen >= 4) {
-        flags1 = extradata[0] | (extradata[1] << 8);
         flags2 = extradata[2] | (extradata[3] << 8);
     }else if (s->version == 2 && wfx->datalen >= 6){
-        flags1 = extradata[0] | (extradata[1] << 8) |
-                 (extradata[2] << 16) | (extradata[3] << 24);
         flags2 = extradata[4] | (extradata[5] << 8);
     }
     s->use_exp_vlc = flags2 & 0x0001;
@@ -522,7 +514,7 @@ int wma_decode_init(WMADecodeContext* s, asf_waveformatex_t *wfx)
          s->hgain_vlc.table_allocated = VLCBUF4SIZE;
          init_vlc(&s->hgain_vlc, HGAINVLCBITS, sizeof(hgain_huffbits),
                   hgain_huffbits, 1, 1,
-                  hgain_huffcodes, 2, 2, 0);
+                  hgain_huffcodes, 2, 2, INIT_VLC_USE_NEW_STATIC);
     }
 
     if (s->use_exp_vlc)
@@ -533,7 +525,7 @@ int wma_decode_init(WMADecodeContext* s, asf_waveformatex_t *wfx)
 
          init_vlc(&s->exp_vlc, EXPVLCBITS, sizeof(scale_huffbits),
                   scale_huffbits, 1, 1,
-                  scale_huffcodes, 4, 4, 0);
+                  scale_huffcodes, 4, 4, INIT_VLC_USE_NEW_STATIC);
     }
     else
     {
@@ -550,8 +542,10 @@ int wma_decode_init(WMADecodeContext* s, asf_waveformatex_t *wfx)
             coef_vlc_table = 1;
     }
 
-    runtabarray[0] = runtab0; runtabarray[1] = runtab1;
-    levtabarray[0] = levtab0; levtabarray[1] = levtab1;
+    /* since the coef2 table is the biggest and that has index 2 in coef_vlcs
+       it's safe to always assign like this */
+    runtabarray[0] = runtab_big; runtabarray[1] = runtab_small;
+    levtabarray[0] = levtab_big; levtabarray[1] = levtab_small;
 
     s->coef_vlc[0].table = vlcbuf1;
     s->coef_vlc[0].table_allocated = VLCBUF1SIZE;
@@ -589,8 +583,8 @@ static inline fixed32 pow_m1_4(WMADecodeContext *s, fixed32 x)
     m = (u.v >> (23 - LSP_POW_BITS)) & ((1 << LSP_POW_BITS) - 1);
     /* build interpolation scale: 1 <= t < 2. */
     t.v = ((u.v << LSP_POW_BITS) & ((1 << 23) - 1)) | (127 << 23);
-    a = s->lsp_pow_m_table1[m];
-    b = s->lsp_pow_m_table2[m];
+    a = ((fixed32*)s->lsp_pow_m_table1)[m];
+    b = ((fixed32*)s->lsp_pow_m_table2)[m];
 
     /* lsp_pow_e_table contains 32.32 format */
     /* TODO:  Since we're unlikely have value that cover the whole
@@ -619,13 +613,16 @@ static void wma_lsp_to_curve_init(WMADecodeContext *s, int frame_len)
     b = itofix32(1);
     int ix = 0;
 
+    s->lsp_pow_m_table1 = &vlcbuf3[0];
+    s->lsp_pow_m_table2 = &vlcbuf3[VLCBUF3SIZE];
+
     /*double check this later*/
     for(i=(1 << LSP_POW_BITS) - 1;i>=0;i--)
     {
         m = (1 << LSP_POW_BITS) + i;
         a = pow_a_table[ix++]<<4;
-        s->lsp_pow_m_table1[i] = 2 * a - b;
-        s->lsp_pow_m_table2[i] = b - a;
+        ((fixed32*)s->lsp_pow_m_table1)[i] = 2 * a - b;
+        ((fixed32*)s->lsp_pow_m_table2)[i] = b - a;
         b = a;
     }
 
@@ -767,7 +764,7 @@ static int decode_exp_vlc(WMADecodeContext *s, int ch)
 
 /* return 0 if OK. return 1 if last block of frame. return -1 if
    unrecorrable error. */
-static int wma_decode_block(WMADecodeContext *s, int32_t *scratch_buffer)
+static int wma_decode_block(WMADecodeContext *s)
 {
     int n, v, a, ch, code, bsize;
     int coef_nb_bits, total_gain;
@@ -1235,20 +1232,22 @@ static int wma_decode_block(WMADecodeContext *s, int32_t *scratch_buffer)
     }
 
     for(ch = 0; ch < s->nb_channels; ++ch)
-    {
+    { 
+        /* BLOCK_MAX_SIZE is 2048 (samples) and MAX_CHANNELS is 2. */
+    	static uint32_t scratch_buf[BLOCK_MAX_SIZE * MAX_CHANNELS] IBSS_ATTR;
         if (s->channel_coded[ch])
         {
             int n4, index;
 
             n4 = s->block_len >>1;
 
-            ff_imdct_calc( (s->frame_len_bits - bsize + 1),
-                          (int32_t*)scratch_buffer,
+            ff_imdct_calc((s->frame_len_bits - bsize + 1),
+                          scratch_buf,
                           (*(s->coefs))[ch]);
 
             /* add in the frame */
             index = (s->frame_len / 2) + s->block_pos - n4;
-            wma_window(s, scratch_buffer, &((*s->frame_out)[ch][index]));
+            wma_window(s, scratch_buf, &((*s->frame_out)[ch][index]));
 
 
 
@@ -1256,7 +1255,7 @@ static int wma_decode_block(WMADecodeContext *s, int32_t *scratch_buffer)
                channel if it is not coded */
             if (s->ms_stereo && !s->channel_coded[1])
             {
-                wma_window(s, scratch_buffer, &((*s->frame_out)[1][index]));
+                wma_window(s, scratch_buf, &((*s->frame_out)[1][index]));
             }
         }
     }
@@ -1275,11 +1274,9 @@ next:
 }
 
 /* decode a frame of frame_len samples */
-static int wma_decode_frame(WMADecodeContext *s, int32_t *samples)
+static int wma_decode_frame(WMADecodeContext *s)
 {
-    int ret, i, n, ch, incr;
-    int32_t *ptr;
-    fixed32 *iptr;
+    int ret;
 
     /* read each block */
     s->block_num = 0;
@@ -1288,7 +1285,7 @@ static int wma_decode_frame(WMADecodeContext *s, int32_t *samples)
 
     for(;;)
     {
-        ret = wma_decode_block(s, samples);
+        ret = wma_decode_block(s);
         if (ret < 0)
         {
 
@@ -1300,25 +1297,7 @@ static int wma_decode_frame(WMADecodeContext *s, int32_t *samples)
             break;
         }
     }
-
-    /* return frame with full 30-bit precision */
-    n = s->frame_len;
-    incr = s->nb_channels;
-    for(ch = 0; ch < s->nb_channels; ++ch)
-    {
-        ptr = samples + ch;
-        iptr = &((*s->frame_out)[ch][0]);
-
-        for (i=0;i<n;++i)
-        {
-            *ptr = (*iptr++);
-            ptr += incr;
-        }
-
-        memmove(&((*s->frame_out)[ch][0]), &((*s->frame_out)[ch][s->frame_len]),
-            s->frame_len * sizeof(fixed32));
-    }
-
+    
     return 0;
 }
 
@@ -1363,13 +1342,18 @@ int wma_decode_superframe_init(WMADecodeContext* s,
 */
 
 int wma_decode_superframe_frame(WMADecodeContext* s,
-                                int32_t* samples, /*output*/
                                 const uint8_t *buf,  /*input*/
                                 int buf_size)
 {
-    int pos, len;
+    int pos, len, ch;
     uint8_t *q;
     int done = 0;
+    
+    for(ch = 0; ch < s->nb_channels; ch++)
+		memmove(&((*s->frame_out)[ch][0]), 
+		        &((*s->frame_out)[ch][s->frame_len]),
+				s->frame_len * sizeof(fixed32));
+    
     if ((s->use_bit_reservoir) && (s->current_frame == 0))
     {
         if (s->last_superframe_len > 0)
@@ -1401,7 +1385,7 @@ int wma_decode_superframe_frame(WMADecodeContext* s,
 
             /* this frame is stored in the last superframe and in the
                current one */
-            if (wma_decode_frame(s, samples) < 0)
+            if (wma_decode_frame(s) < 0)
             {
                 goto fail;
             }
@@ -1421,7 +1405,7 @@ int wma_decode_superframe_frame(WMADecodeContext* s,
     /* If we haven't decoded a frame yet, do it now */
     if (!done)
         {
-            if (wma_decode_frame(s, samples) < 0)
+            if (wma_decode_frame(s) < 0)
             {
                 goto fail;
             }

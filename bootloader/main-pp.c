@@ -39,6 +39,7 @@
 #include "crc32-mi4.h"
 #include <string.h>
 #include "power.h"
+#include "version.h"
 #if defined(SANSA_E200) || defined(PHILIPS_SA9200)
 #include "i2c.h"
 #include "backlight-target.h"
@@ -95,9 +96,6 @@ extern int show_logo(void);
 /* A buffer to load the original firmware or Rockbox into */
 unsigned char *loadbuffer = (unsigned char *)DRAM_START;
 
-/* Bootloader version */
-char version[] = APPSVERSION;
-        
 /* Locations and sizes in hidden partition on Sansa */
 #if (CONFIG_STORAGE & STORAGE_SD)
 #define PPMI_SECTOR_OFFSET  1024
@@ -525,7 +523,7 @@ void* main(void)
     lcd_setfont(FONT_SYSFIXED);
 
     printf("Rockbox boot loader");
-    printf("Version: %s", version);
+    printf("Version: " RBVERSION);
     printf(MODEL_NAME);
 
     i=storage_init();
@@ -542,7 +540,7 @@ void* main(void)
         }
         printf(buf);
     } else {
-        error(EATA, i);
+        error(EATA, i, true);
     }
 #endif
 
@@ -550,7 +548,7 @@ void* main(void)
     num_partitions = disk_mount_all();
     if (num_partitions<=0)
     {
-        error(EDISK,num_partitions);
+        error(EDISK,num_partitions, true);
     }
 
     /* Just list the first 2 partitions since we don't have any devices yet 
@@ -645,7 +643,7 @@ void* main(void)
             return (void*)loadbuffer;
         }
         
-        error(0, 0);
+        error(0, 0, true);
     }
     return (void*)loadbuffer;
 }

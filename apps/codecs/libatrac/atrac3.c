@@ -124,7 +124,68 @@ static channel_unit channel_units[2] IBSS_ATTR_LARGE_IRAM;
                             int32_t *in,
                             int32_t *win,
                             unsigned int nIn);
+#elif defined (CPU_COLDFIRE)
+    #define MULTIPLY_ADD_BLOCK \
+        "movem.l (%[win]), %%d0-%%d7             \n\t" \
+        "lea.l (8*4, %[win]), %[win]             \n\t" \
+        "mac.l %%d0, %%a5, (%[in])+, %%a5, %%acc0\n\t" \
+        "mac.l %%d1, %%a5, (%[in])+, %%a5, %%acc1\n\t" \
+        "mac.l %%d2, %%a5, (%[in])+, %%a5, %%acc0\n\t" \
+        "mac.l %%d3, %%a5, (%[in])+, %%a5, %%acc1\n\t" \
+        "mac.l %%d4, %%a5, (%[in])+, %%a5, %%acc0\n\t" \
+        "mac.l %%d5, %%a5, (%[in])+, %%a5, %%acc1\n\t" \
+        "mac.l %%d6, %%a5, (%[in])+, %%a5, %%acc0\n\t" \
+        "mac.l %%d7, %%a5, (%[in])+, %%a5, %%acc1\n\t" \
+
+
+    static inline void
+    atrac3_iqmf_dewindowing(int32_t *out,
+                            int32_t *in,
+                            int32_t *win,
+                            unsigned int nIn)
+    {
+        int32_t j;
+        int32_t *_in, *_win;
+        for (j = nIn; j != 0; j--, in+=2, out+=2) {
+            _in = in;
+            _win = win;
+            
+            asm volatile (
+            "move.l (%[in])+, %%a5                    \n\t" /* preload frist in value */
+            MULTIPLY_ADD_BLOCK /*  0.. 7 */
+            MULTIPLY_ADD_BLOCK /*  8..15 */
+            MULTIPLY_ADD_BLOCK /* 16..23 */
+            MULTIPLY_ADD_BLOCK /* 24..31 */
+            MULTIPLY_ADD_BLOCK /* 32..39 */
+                               /* 40..47 */
+            "movem.l (%[win]), %%d0-%%d7              \n\t"
+            "mac.l %%d0, %%a5, (%[in])+, %%a5, %%acc0 \n\t"
+            "mac.l %%d1, %%a5, (%[in])+, %%a5, %%acc1 \n\t"
+            "mac.l %%d2, %%a5, (%[in])+, %%a5, %%acc0 \n\t"
+            "mac.l %%d3, %%a5, (%[in])+, %%a5, %%acc1 \n\t"
+            "mac.l %%d4, %%a5, (%[in])+, %%a5, %%acc0 \n\t"
+            "mac.l %%d5, %%a5, (%[in])+, %%a5, %%acc1 \n\t"
+            "mac.l %%d6, %%a5, (%[in])+, %%a5, %%acc0 \n\t"
+            "mac.l %%d7, %%a5,                 %%acc1 \n\t"
+            "movclr.l %%acc0, %%d1                    \n\t" /* s1 */
+            "movclr.l %%acc1, %%d0                    \n\t" /* s2 */
+            "movem.l  %%d0-%%d1, (%[out])             \n\t"
+            : [in] "+a" (_in), [win] "+a" (_win)
+            : [out] "a" (out)
+            : "d0", "d1", "d2", "d3", "d4", "d5", "d6", "d7", "a5", "memory");
+        }
+    }
 #else
+    #define MULTIPLY_ADD_BLOCK(y1, y2, x, c, k) \
+        y1 += fixmul31(c[k], x[k]); k++; \
+        y2 += fixmul31(c[k], x[k]); k++; \
+        y1 += fixmul31(c[k], x[k]); k++; \
+        y2 += fixmul31(c[k], x[k]); k++; \
+        y1 += fixmul31(c[k], x[k]); k++; \
+        y2 += fixmul31(c[k], x[k]); k++; \
+        y1 += fixmul31(c[k], x[k]); k++; \
+        y2 += fixmul31(c[k], x[k]); k++;
+
     static inline void
     atrac3_iqmf_dewindowing(int32_t *out,
                             int32_t *in,
@@ -133,68 +194,18 @@ static channel_unit channel_units[2] IBSS_ATTR_LARGE_IRAM;
     {
         int32_t i, j, s1, s2;
         
-        for (j = nIn; j != 0; j--) {
-            i = 0;
-            /*  0.. 7 */
-            s1  = fixmul31(win[i], in[i]); i++;
-            s2  = fixmul31(win[i], in[i]); i++;
-            s1 += fixmul31(win[i], in[i]); i++;
-            s2 += fixmul31(win[i], in[i]); i++;
-            s1 += fixmul31(win[i], in[i]); i++;
-            s2 += fixmul31(win[i], in[i]); i++;
-            s1 += fixmul31(win[i], in[i]); i++;
-            s2 += fixmul31(win[i], in[i]); i++;
-            /*  8..15 */
-            s1 += fixmul31(win[i], in[i]); i++;
-            s2 += fixmul31(win[i], in[i]); i++;
-            s1 += fixmul31(win[i], in[i]); i++;
-            s2 += fixmul31(win[i], in[i]); i++;
-            s1 += fixmul31(win[i], in[i]); i++;
-            s2 += fixmul31(win[i], in[i]); i++;
-            s1 += fixmul31(win[i], in[i]); i++;
-            s2 += fixmul31(win[i], in[i]); i++;
-            /* 16..23 */
-            s1 += fixmul31(win[i], in[i]); i++;
-            s2 += fixmul31(win[i], in[i]); i++;
-            s1 += fixmul31(win[i], in[i]); i++;
-            s2 += fixmul31(win[i], in[i]); i++;
-            s1 += fixmul31(win[i], in[i]); i++;
-            s2 += fixmul31(win[i], in[i]); i++;
-            s1 += fixmul31(win[i], in[i]); i++;
-            s2 += fixmul31(win[i], in[i]); i++;
-            /* 24..31 */
-            s1 += fixmul31(win[i], in[i]); i++;
-            s2 += fixmul31(win[i], in[i]); i++;
-            s1 += fixmul31(win[i], in[i]); i++;
-            s2 += fixmul31(win[i], in[i]); i++;
-            s1 += fixmul31(win[i], in[i]); i++;
-            s2 += fixmul31(win[i], in[i]); i++;
-            s1 += fixmul31(win[i], in[i]); i++;
-            s2 += fixmul31(win[i], in[i]); i++;
-            /* 32..39 */
-            s1 += fixmul31(win[i], in[i]); i++;
-            s2 += fixmul31(win[i], in[i]); i++;
-            s1 += fixmul31(win[i], in[i]); i++;
-            s2 += fixmul31(win[i], in[i]); i++;
-            s1 += fixmul31(win[i], in[i]); i++;
-            s2 += fixmul31(win[i], in[i]); i++;
-            s1 += fixmul31(win[i], in[i]); i++;
-            s2 += fixmul31(win[i], in[i]); i++;
-            /* 40..47 */
-            s1 += fixmul31(win[i], in[i]); i++;
-            s2 += fixmul31(win[i], in[i]); i++;
-            s1 += fixmul31(win[i], in[i]); i++;
-            s2 += fixmul31(win[i], in[i]); i++;
-            s1 += fixmul31(win[i], in[i]); i++;
-            s2 += fixmul31(win[i], in[i]); i++;
-            s1 += fixmul31(win[i], in[i]); i++;
-            s2 += fixmul31(win[i], in[i]);
+        for (j = nIn; j != 0; j--, in+=2, out+=2) {
+            s1 = s2 = i = 0;
+            
+            MULTIPLY_ADD_BLOCK(s1, s2, in, win, i); /*  0.. 7 */
+            MULTIPLY_ADD_BLOCK(s1, s2, in, win, i); /*  8..15 */
+            MULTIPLY_ADD_BLOCK(s1, s2, in, win, i); /* 16..23 */
+            MULTIPLY_ADD_BLOCK(s1, s2, in, win, i); /* 24..31 */
+            MULTIPLY_ADD_BLOCK(s1, s2, in, win, i); /* 32..39 */
+            MULTIPLY_ADD_BLOCK(s1, s2, in, win, i); /* 40..47 */
 
             out[0] = s2;
             out[1] = s1;
-    
-            in += 2;
-            out += 2;
         }
     }
 #endif
@@ -1117,6 +1128,10 @@ int atrac3_decode_init(ATRAC3Context *q, struct mp3entry *id3)
     uint8_t *edata_ptr = (uint8_t*)&id3->id3v2buf;
     static VLC_TYPE atrac3_vlc_table[4096][2];
     static int vlcs_initialized = 0;
+
+#if defined(CPU_COLDFIRE)
+    coldfire_set_macsr(EMAC_FRACTIONAL | EMAC_SATURATE);
+#endif
 
     /* Take data from the RM container. */
     q->sample_rate = id3->frequency;

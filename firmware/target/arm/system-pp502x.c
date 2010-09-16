@@ -42,6 +42,10 @@ extern void SERIAL0(void);
 static struct corelock cpufreq_cl SHAREDBSS_ATTR;
 #endif
 
+#if defined(IPOD_VIDEO) && !defined(BOOTLOADER)
+unsigned char probed_ramsize;
+#endif
+
 void __attribute__((interrupt("IRQ"))) irq_handler(void)
 {
     if(CURRENT_CORE == CPU)
@@ -189,7 +193,7 @@ void __attribute__((interrupt("IRQ"))) irq_handler(void)
    to extend the funtions to do alternate cache configurations. */
 
 #ifndef BOOTLOADER
-void ICODE_ATTR cpucache_flush(void)
+void ICODE_ATTR cpucache_commit(void)
 {
     if (CACHE_CTL & CACHE_CTL_ENABLE)
     {
@@ -198,8 +202,9 @@ void ICODE_ATTR cpucache_flush(void)
         nop; nop; nop; nop;
     }
 }
+void cpucache_flush(void) __attribute__((alias("cpucache_commit")));
 
-void ICODE_ATTR cpucache_invalidate(void)
+void ICODE_ATTR cpucache_commit_discard(void)
 {
     if (CACHE_CTL & CACHE_CTL_ENABLE)
     {
@@ -208,6 +213,7 @@ void ICODE_ATTR cpucache_invalidate(void)
         nop; nop; nop; nop;
     }
 }
+void cpucache_invalidate(void) __attribute__((alias("cpucache_commit_discard")));
 
 static void init_cache(void)
 {
@@ -517,6 +523,13 @@ void system_init(void)
 #endif
 #else
         pp_set_cpu_frequency(CPUFREQ_MAX);
+#endif
+
+#if defined(IPOD_VIDEO)
+        /* crt0-pp.S wrote the ram size to the last byte of the first 32MB
+           ram bank. See the comment there for how we determine it. */
+        volatile unsigned char *end32 = (volatile unsigned char *)0x01ffffff;
+        probed_ramsize = *end32;
 #endif
     }
 

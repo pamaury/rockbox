@@ -41,10 +41,10 @@
 */
 
 static volatile int locked = 0;
-size_t nextsize;
-size_t dblbufsize;
-int dmamode;
-const unsigned char* dblbuf;
+static size_t nextsize;
+static size_t dblbufsize;
+static int dmamode;
+static const unsigned char* dblbuf;
 
 /* table of recommended PLL/MCLK dividers for mode 256Fs from the datasheet */
 static const struct div_entry {
@@ -102,11 +102,11 @@ static const void* dma_callback(void)
 {
     if (dmamode)
     {
-        unsigned char *dma_start_addr;
-        register pcm_more_callback_type get_more = pcm_callback_for_more;
-        if (get_more)
+        void *dma_start_addr;
+        pcm_play_get_more_callback(&dma_start_addr, &nextsize);
+
+        if (nextsize != 0)
         {
-            get_more(&dma_start_addr, &nextsize);
             if (nextsize >= 4096)
             {
                 dblbufsize = (nextsize >> 4) & ~3;
@@ -148,10 +148,7 @@ void fiq_handler(void)
         "mov    r10, #0x00000400                   \n"  /* INT_DMA */
         "str    r10, [r11]                         \n"  /* ACK FIQ */
         "stmfd  sp!, {r0-r3,lr}                    \n"
-        "ldreq  r0, =pcm_play_dma_stopped_callback \n"
-        "ldrne  r0, =dma_callback                  \n"
-        "mov    lr, pc                             \n"
-        "bx     r0                                 \n"
+        "bl     dma_callback                       \n"
         "mov    r10, r0                            \n"
         "ldmfd  sp!, {r0-r3,lr}                    \n"
         "ldr    r11, =nextsize                     \n"
@@ -225,13 +222,6 @@ void pcm_play_dma_start(const void *addr_in, size_t size)
 #endif
     
     /* S3: DMA channel 0 on */
-    if (!size)
-    {
-        register pcm_more_callback_type get_more = pcm_callback_for_more;
-        if (get_more) get_more(&addr, &size);
-        else return;  /* Nothing to play!? */
-    }
-    if (!size) return;  /* Nothing to play!? */
     clean_dcache();
     if (size >= 4096)
     {
@@ -365,12 +355,6 @@ void pcm_rec_lock(void)
 
 void pcm_rec_unlock(void)
 {
-}
-
-void pcm_rec_dma_record_more(void *start, size_t size)
-{
-    (void)start;
-    (void)size;
 }
 
 void pcm_rec_dma_stop(void)

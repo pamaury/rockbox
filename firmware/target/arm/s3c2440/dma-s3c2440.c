@@ -35,7 +35,7 @@ static int dma_used = 0;
 /* Status flags */
 #define STATUS_CHANNEL_ACTIVE (1<<0)
 
-struct dma_channel_state 
+static struct dma_channel_state 
 {
     volatile unsigned status;
     void (*callback)(void);
@@ -76,8 +76,8 @@ void dma_init(void)
     INTPND = DMA0_MASK | DMA1_MASK | DMA2_MASK | DMA3_MASK;
     
     /* Enable interrupt in controller */
-    s3c_regclr32(&INTMOD, DMA0_MASK | DMA1_MASK | DMA2_MASK | DMA3_MASK);
-    s3c_regclr32(&INTMSK, DMA0_MASK | DMA1_MASK | DMA2_MASK | DMA3_MASK);
+    bitclr32(&INTMOD, DMA0_MASK | DMA1_MASK | DMA2_MASK | DMA3_MASK);
+    bitclr32(&INTMSK, DMA0_MASK | DMA1_MASK | DMA2_MASK | DMA3_MASK);
 }
 
 void dma_retain(void)
@@ -162,7 +162,7 @@ void dma_enable_channel(int channel, struct dma_request *request)
 }
 
 /* ISRs */
-inline void generic_isr (unsigned channel)
+static inline void generic_isr (unsigned channel)
 {
     if (dma_state [channel].status | STATUS_CHANNEL_ACTIVE)
     {

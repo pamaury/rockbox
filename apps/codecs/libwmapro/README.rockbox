@@ -14,20 +14,7 @@ IMPORT DETAILS
 
 Based on ffmpeg svn r22886 dated 15 April 2010.
 
-Currently, the files contain minimal changes from their original state in order
-to be able to compile cleanly. 
-
-The file wmaprodec.c contains a main function that is just a stub to make sure 
-linking is done properly and without errors.
-
-COMPILING
-
-A make file is included that would compile and link the files when the "make"
-command is executed without arguments in any Unix-like environment.
-
-The file porduces an output binary called "test" that, as of now (30 April 2010)
-, is still useless. 
-
-To clean the compiler output and retain just the source code, the following 
-command should be executed:
-make clean
+The decoder is a heavily modified version of the original ffmpeg floating point
+implementation. It's been modified to use fixed point arithmetic and now plays
+and seeks on all the targets that Rockbox supports. Currently only supports mono
+and stereo streams, streams with more than 2 channels are not yet supported.

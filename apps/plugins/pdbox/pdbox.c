@@ -7,7 +7,7 @@
  *                     \/            \/     \/    \/            \/
  * $Id$
  *
- * Copyright (C) 2009 Wincent Balin
+ * Copyright (C) 2009, 2010 Wincent Balin
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -22,18 +22,18 @@
 #include "plugin.h"
 #include "pdbox.h"
 
+#include "lib/helper.h"
+
 #include "PDa/src/m_pd.h"
 #include "PDa/src/s_stuff.h"
 
 /* Welcome to the PDBox plugin */
-PLUGIN_HEADER
-PLUGIN_IRAM_DECLARE
 
 /* Name of the file to open. */
 char* filename;
 
 /* Running time. */
-uint64_t runningtime = 0;
+uint64_t runningtime IBSS_ATTR = 0;
 
 /* Variables for Pure Data. */
 int sys_verbose;
@@ -57,19 +57,19 @@ rates we expect to see: 32000, 44100, 48000, 88200, 96000. */
 
 
 /* Quit flag. */
-bool quit = false;
+bool quit IBSS_ATTR = false;
 
 /* Stack sizes for threads. */
 #define CORESTACKSIZE (1 * 1024 * 1024)
 #define GUISTACKSIZE (512 * 1024)
 
 /* Thread stacks. */
-void* core_stack;
-void* gui_stack;
+void* core_stack IBSS_ATTR;
+void* gui_stack IBSS_ATTR;
 
 /* Thread IDs. */
-unsigned int core_thread_id;
-unsigned int gui_thread_id;
+unsigned int core_thread_id IBSS_ATTR;
+unsigned int gui_thread_id IBSS_ATTR;
 
 
 /* GUI thread */
@@ -124,7 +124,7 @@ void gui_thread(void)
 /* Core thread */
 void core_thread(void)
 {
-    /* Add the directory the called .pd resides in to lib directories. */
+    /* Add the directory the called .pd file resides in to lib directories. */
     sys_findlibdir(filename);
 
     /* Open the PD design file. */
@@ -146,7 +146,7 @@ void core_thread(void)
         while(sys_send_dacs() != SENDDACS_NO)
             sched_tick(sys_time + sys_time_per_dsp_tick);
 
-        yield();
+        rb->sleep(1);
     }
 
     rb->thread_exit();
@@ -157,8 +157,6 @@ void core_thread(void)
 /* Plug-in entry point */
 enum plugin_status plugin_start(const void* parameter)
 {
-    PLUGIN_IRAM_INIT(rb)
-
     /* Memory pool variables. */
     size_t mem_size;
     void* mem_pool;
@@ -178,12 +176,8 @@ enum plugin_status plugin_start(const void* parameter)
         rb->splash(HZ, "Not enough memory!");
         return PLUGIN_ERROR;
     }
-#if 1
+
     init_memory_pool(mem_size, mem_pool);
-#endif
-#if 0
-    set_memory_pool(mem_pool, mem_size);
-#endif
 
     /* Initialize net. */
     net_init();
@@ -207,6 +201,12 @@ enum plugin_status plugin_start(const void* parameter)
                    DEFAULTADVANCE, /* Scheduler advance */
                    1 /* Enable */);
 
+    /* Initialize scheduler time variables. */
+    sys_time = 0;
+    sys_time_per_dsp_tick = (TIMEUNITPERSEC) *
+                            ((double) sys_schedblocksize) / sys_dacsr;
+
+
     /* Create stacks for threads. */
     core_stack = getbytes(CORESTACKSIZE);
     gui_stack = getbytes(GUISTACKSIZE);
@@ -216,8 +216,10 @@ enum plugin_status plugin_start(const void* parameter)
         return PLUGIN_ERROR;
     }
 
+#ifdef HAVE_SCHEDULER_BOOSTCTRL
     /* Boost CPU. */
-    cpu_boost(true);
+    rb->trigger_cpu_boost();
+#endif
 
     /* Start threads. */
     core_thread_id =
@@ -241,12 +243,9 @@ enum plugin_status plugin_start(const void* parameter)
     /* If having an error creating threads, bail out. */
     if(core_thread_id == 0 || gui_thread_id == 0)
         return PLUGIN_ERROR;
-
-    /* Initialize scheduler time variables. */
-    sys_time = 0;
-    sys_time_per_dsp_tick = (TIMEUNITPERSEC) *
-                            ((double) sys_schedblocksize) / sys_dacsr;
-
+    
+    /* Make backlight remain on -- making music requires attention. */
+    backlight_force_on();
 
     /* Main loop. */
     while(!quit)
@@ -257,13 +256,18 @@ enum plugin_status plugin_start(const void* parameter)
         /* Sleep to the next time slice. */
         rb->sleep(1);
     }
+    
+    /* Restore backlight. */
+    backlight_use_settings();
 
     /* Wait for threads to complete. */
     rb->thread_wait(gui_thread_id);
     rb->thread_wait(core_thread_id);
 
+#ifdef HAVE_SCHEDULER_BOOSTCTRL
     /* Unboost CPU. */
-    cpu_boost(false);
+    rb->cancel_cpu_boost();
+#endif
 
     /* Close audio subsystem. */
     sys_close_audio();
@@ -272,12 +276,8 @@ enum plugin_status plugin_start(const void* parameter)
     net_destroy();
 
     /* Clear memory pool. */
-#if 1
     destroy_memory_pool(mem_pool);
-#endif
-#if 0
-    clear_memory_pool();
-#endif
 
     return PLUGIN_OK;
 }
+

@@ -52,6 +52,7 @@
 #include "talk.h"
 #include "filetypes.h"
 #include "misc.h"
+#include "filefuncs.h"
 #include "filetree.h"
 #include "tagtree.h"
 #ifdef HAVE_RECORDING
@@ -260,7 +261,8 @@ static int tree_voice_cb(int selected_item, void * data)
 
 bool check_rockboxdir(void)
 {
-    if(!dir_exists(ROCKBOX_DIR))
+    char path[MAX_PATH];
+    if(!dir_exists(get_user_file_path(ROCKBOX_DIR, 0, path, sizeof(path))))
     {   /* No need to localise this message.
            If .rockbox is missing, it wouldn't work anyway */
         int i;
@@ -509,17 +511,17 @@ void resume_directory(const char *dir)
 
 /* Returns the current working directory and also writes cwd to buf if
    non-NULL.  In case of error, returns NULL. */
-char *getcwd(char *buf, int size)
+char *getcwd(char *buf, getcwd_size_t size)
 {
     if (!buf)
         return tc.currdir;
-    else if (size > 0)
+    else if (size)
     {
-        strlcpy(buf, tc.currdir, size);
-        return buf;
+        if ((getcwd_size_t)strlcpy(buf, tc.currdir, size) < size)
+            return buf;
     }
-    else
-        return NULL;
+    /* size == 0, or truncation in strlcpy */
+    return NULL;
 }
 
 /* Force a reload of the directory next time directory browser is called */
@@ -528,19 +530,28 @@ void reload_directory(void)
     reload_dir = true;
 }
 
-void get_current_file(char* buffer, int buffer_len)
+char* get_current_file(char* buffer, size_t buffer_len)
 {
 #ifdef HAVE_TAGCACHE
     /* in ID3DB mode it is a bad idea to call this function */
     /* (only happens with `follow playlist') */
     if( *tc.dirfilter == SHOW_ID3DB )
-        return;
+        return NULL;
 #endif
 
     struct entry* dc = tc.dircache;
     struct entry* e = &dc[tc.selected_item];
-    snprintf(buffer, buffer_len, "%s/%s", getcwd(NULL,0),
-                                          tc.dirlength ? e->name : "");
+    if (getcwd(buffer, buffer_len))
+    {
+        if (tc.dirlength)
+        {
+            strlcat(buffer, "/", buffer_len);
+            if (strlcat(buffer, e->name, buffer_len) >= buffer_len)
+                return NULL;
+        }
+        return buffer;
+    }
+    return NULL;
 }
 
 /* Allow apps to change our dirfilter directly (required for sub browsers) 
@@ -680,9 +691,14 @@ static int dirbrowse()
                 switch (ft_enter(&tc))
 #endif
                 {
-                    case 1: reload_dir = true; break;
-                    case 2: start_wps = true; break;
-                    case 3: exit_func = true; break;
+                    case GO_TO_FILEBROWSER: reload_dir = true; break;
+                    case GO_TO_WPS:
+                        return GO_TO_WPS;
+#if CONFIG_TUNER
+                    case GO_TO_FM:
+                        return GO_TO_FM;
+#endif
+                    case GO_TO_ROOT: exit_func = true; break;
                     default: break;
                 }
                 restore = true;
@@ -921,8 +937,8 @@ int rockbox_browse(const char *root, int dirfilter)
     if (dirfilter >= NUM_FILTER_MODES)
     {
         static struct tree_context backup;
-        char current[MAX_PATH];
         int last_context;
+        const char *dir, *ext, *setting = NULL;
         
         backup = tc;
         tc.selected_item = 0;
@@ -930,66 +946,80 @@ int rockbox_browse(const char *root, int dirfilter)
         memcpy(tc.currdir, root, sizeof(tc.currdir));
         start_wps = false;
         last_context = curr_context;
-        
-        /* Center on the currently loaded language when browsing languages. */
-        if (dirfilter == SHOW_LNG)
+
+        /* if we are in a special settings folder, center the current setting */
+        switch(dirfilter)
         {
-            if (global_settings.lang_file[0])
-            {
-                snprintf(current, sizeof(current), LANG_DIR "/%s.lng",
-                        global_settings.lang_file);
-            }
-            else
-            {
-                strlcpy(current, LANG_DIR "/english.lng", sizeof(current));
-            }
-        }
-        /* Center on currently loaded WPS */
-        else if (dirfilter == SHOW_WPS)
-        {
-            snprintf(current, sizeof(current), WPS_DIR "/%s.wps",
-                    global_settings.wps_file);
-        }
+            case SHOW_LNG:
+                dir = LANG_DIR;
+                ext = "lng";
+                if (global_settings.lang_file[0])
+                    setting = global_settings.lang_file;
+                else
+                    setting = "english";
+                break;
+            case SHOW_WPS:
+                dir = WPS_DIR;
+                ext = "wps";
+                setting = global_settings.wps_file;
+                break;
 #ifdef HAVE_REMOTE_LCD
-        /* Center on currently loaded RWPS */
-        else if (dirfilter == SHOW_RWPS)
-        {
-            snprintf(current, sizeof(current), WPS_DIR "/%s.rwps",
-                    global_settings.rwps_file);
-        }
-        else if (dirfilter == SHOW_RSBS)
-        {
-            snprintf(current, sizeof(current), SBS_DIR "/%s.rsbs",
-                    global_settings.rsbs_file);
-        }
+            case SHOW_RWPS:
+                dir = WPS_DIR;
+                ext = "rwps";
+                setting = global_settings.rwps_file;
+                break;
+            case SHOW_RSBS:
+                dir = WPS_DIR;
+                ext = "rsbs";
+                setting = global_settings.rsbs_file;
+                break;
+#if CONFIG_TUNER
+            case SHOW_RFMS:
+                dir = WPS_DIR;
+                ext = "rfms";
+                setting = global_settings.rfms_file;
+                break;
+#endif /* CONFIG_TUNER */
 #endif
 #ifdef HAVE_LCD_BITMAP
-        /* Center on the currently loaded font when browsing fonts */
-        else if (dirfilter == SHOW_FONT)
-        {
-            snprintf(current, sizeof(current), FONT_DIR "/%s.fnt",
-                    global_settings.font_file);
-        }
-        else if (dirfilter == SHOW_SBS)
-        {
-            snprintf(current, sizeof(current), SBS_DIR "/%s.sbs",
-                    global_settings.sbs_file);
-        }
+            case SHOW_FONT:
+                dir = FONT_DIR;
+                ext = "fnt";
+                setting = global_settings.font_file;
+                break;
+            case SHOW_SBS:
+                dir = WPS_DIR;
+                ext = "sbs";
+                setting = global_settings.sbs_file;
+                break;
+#if CONFIG_TUNER
+            case SHOW_FMS:
+                dir = WPS_DIR;
+                ext = "fms";
+                setting = global_settings.fms_file;
+                break;
+#endif /* CONFIG_TUNER */
 #endif
 #if CONFIG_TUNER
-        /* Center on the currently loaded FM preset when browsing those */
-        else if (dirfilter == SHOW_FMR)
-        {
-            snprintf(current, sizeof(current), FMPRESET_PATH "/%s.fmr",
-                    global_settings.fmr_file);
-        }
+            case SHOW_FMR:
+                dir = FMPRESET_PATH;
+                ext = "fmr";
+                setting = global_settings.fmr_file;
+                break;
 #endif
-        else /* reset current[] */
-            current[0] = '\0';
+            default:
+                dir = ext = setting = NULL;
+                break;
+            }
 
         /* If we've found a file to center on, do it */
-        if (current[0] == '/')
+        if (setting)
         {
+            char current[MAX_PATH], _dir[MAX_PATH];
+            /* if setting != NULL, ext and dir are not used uninitialized */
+            snprintf(current, sizeof(current), "%s/%s.%s",
+                     get_user_file_path(dir, 0, _dir, sizeof(_dir)), setting, ext);
             set_current_file(current);
             /* set_current_file changes dirlevel, change it back */
             tc.dirlevel = 0; 
@@ -1073,6 +1103,7 @@ bool bookmark_play(char *resume_file, int index, int offset, int seed,
         lastdir[0]='\0';
         if (playlist_create(resume_file, NULL) != -1)
         {
+            char filename_buf[MAX_PATH + 1];
             const char* peek_filename;
             resume_directory(resume_file);
             if (global_settings.playlist_shuffle)
@@ -1080,13 +1111,15 @@ bool bookmark_play(char *resume_file, int index, int offset, int seed,
 
             /* Check if the file is at the same spot in the directory,
                else search for it */
-            peek_filename = playlist_peek(index);
+            peek_filename = playlist_peek(index, filename_buf,
+                sizeof(filename_buf));
             
             if (peek_filename == NULL)
             {
                 /* playlist has shrunk, search from the top */
                 index = 0;
-                peek_filename = playlist_peek(index);
+                peek_filename = playlist_peek(index, filename_buf,
+                    sizeof(filename_buf));
                 if (peek_filename == NULL)
                     return false;
             }
@@ -1095,7 +1128,8 @@ bool bookmark_play(char *resume_file, int index, int offset, int seed,
             {
                 for ( i=0; i < playlist_amount(); i++ )
                 {
-                    peek_filename = playlist_peek(i);
+                    peek_filename = playlist_peek(i, filename_buf,
+                        sizeof(filename_buf));
 
                     if (peek_filename == NULL)
                         return false;

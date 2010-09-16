@@ -45,6 +45,7 @@
 #include "time.h"
 #include "timefuncs.h"
 #endif
+#include "rbpaths.h"
 
 /* Queue commands. */
 #define DIRCACHE_BUILD 1
@@ -82,6 +83,31 @@ static int fdbind_idx = 0;
 
 /* --- Internal cache structure control functions --- */
 
+#ifdef HAVE_EEPROM_SETTINGS
+/**
+ * Open the dircache file to save a snapshot on disk
+ */
+static int open_dircache_file(unsigned flags, int permissions)
+{
+    char path[MAX_PATH];
+    const char *file = get_user_file_path(DIRCACHE_FILE, IS_FILE|NEED_WRITE,
+                                path, sizeof(path));
+    if (permissions != 0)
+        return open(file, flags, permissions);
+
+    return open(file, flags);
+}
+
+/**
+ * Remove the snapshot file
+ */
+static int remove_dircache_file(void)
+{
+    char path[MAX_PATH];
+    return remove(get_user_file_path(DIRCACHE_FILE, IS_FILE|NEED_WRITE,
+                                path, sizeof(path)));
+}
+#endif
 /** 
  * Internal function to allocate a new dircache_entry from memory.
  */
@@ -171,7 +197,7 @@ static bool check_event_queue(void)
     return false;
 }
 
-#ifndef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
 /* scan and build static data (avoid redundancy on stack) */
 static struct
 {
@@ -211,19 +237,19 @@ static int sab_process_dir(unsigned long startcluster, struct dircache_entry *ce
                 !strcmp("..", sab.direntry->name))
             continue;
         
-        ce->attribute = sab.direntry->attr;
         ce->name_len = strlen(sab.direntry->name) + 1;
         ce->d_name = ((char *)dircache_root + dircache_size);
         ce->startcluster = sab.direntry->firstcluster;
-        ce->size = sab.direntry->filesize;
-        ce->wrtdate = sab.direntry->wrtdate;
-        ce->wrttime = sab.direntry->wrttime;
+        ce->info.size = sab.direntry->filesize;
+        ce->info.attribute = sab.direntry->attr;
+        ce->info.wrtdate = sab.direntry->wrtdate;
+        ce->info.wrttime = sab.direntry->wrttime;
         memcpy(ce->d_name, sab.direntry->name, ce->name_len);
         
         dircache_size += ce->name_len;
         entry_count++;
         
-        if(ce->attribute & FAT_ATTR_DIRECTORY)
+        if(ce->info.attribute & FAT_ATTR_DIRECTORY)
             dircache_gen_down(ce);
                 
         ce = dircache_gen_next(ce);
@@ -243,18 +269,18 @@ static int sab_process_dir(unsigned long startcluster, struct dircache_entry *ce
     /* add "." and ".." */
     ce->d_name = ".";
     ce->name_len = 2;
-    ce->attribute = FAT_ATTR_DIRECTORY;
+    ce->info.attribute = FAT_ATTR_DIRECTORY;
     ce->startcluster = startcluster;
-    ce->size = 0;
+    ce->info.size = 0;
     ce->down = first_ce;
     
     ce = dircache_gen_next(ce);
     
     ce->d_name = "..";
     ce->name_len = 3;
-    ce->attribute = FAT_ATTR_DIRECTORY;
+    ce->info.attribute = FAT_ATTR_DIRECTORY;
     ce->startcluster = (first_ce->up ? first_ce->up->startcluster : 0);
-    ce->size = 0;
+    ce->info.size = 0;
     ce->down = first_ce->up;
     
     /* second pass: recurse ! */
@@ -285,8 +311,8 @@ static int dircache_scan_and_build(IF_MV2(int volume,) struct dircache_entry *ce
         snprintf(ce->d_name, VOL_ENUM_POS + 3, VOL_NAMES, volume);
         ce->name_len = VOL_ENUM_POS + 3;
         dircache_size += ce->name_len;
-        ce->attribute = FAT_ATTR_DIRECTORY | FAT_ATTR_VOLUME;
-        ce->size = 0;
+        ce->info.attribute = FAT_ATTR_DIRECTORY | FAT_ATTR_VOLUME;
+        ce->info.size = 0;
         append_position = dircache_gen_next(ce);
         ce = dircache_gen_down(ce);
     }
@@ -301,7 +327,7 @@ static int dircache_scan_and_build(IF_MV2(int volume,) struct dircache_entry *ce
     
     return sab_process_dir(0, ce);
 }
-#else /* !SIMULATOR */
+#elif (CONFIG_PLATFORM & PLATFORM_HOSTED) /* PLATFORM_HOSTED */
 static char sab_path[MAX_PATH];
 
 static int sab_process_dir(struct dircache_entry *ce)
@@ -321,18 +347,15 @@ static int sab_process_dir(struct dircache_entry *ce)
                 !strcmp("..", entry->d_name))
             continue;
         
-        ce->attribute = entry->attribute;
         ce->name_len = strlen(entry->d_name) + 1;
         ce->d_name = ((char *)dircache_root + dircache_size);
-        ce->size = entry->size;
-        ce->wrtdate = entry->wrtdate;
-        ce->wrttime = entry->wrttime;
+        ce->info = entry->info;
         memcpy(ce->d_name, entry->d_name, ce->name_len);
         
         dircache_size += ce->name_len;
         entry_count++;
         
-        if(entry->attribute & ATTR_DIRECTORY)
+        if(entry->info.attribute & ATTR_DIRECTORY)
         {
             dircache_gen_down(ce);
             if(ce->down == NULL)
@@ -374,16 +397,16 @@ static int sab_process_dir(struct dircache_entry *ce)
     /* add "." and ".." */
     ce->d_name = ".";
     ce->name_len = 2;
-    ce->attribute = ATTR_DIRECTORY;
-    ce->size = 0;
+    ce->info.attribute = ATTR_DIRECTORY;
+    ce->info.size = 0;
     ce->down = first_ce;
     
     ce = dircache_gen_next(ce);
     
     ce->d_name = "..";
     ce->name_len = 3;
-    ce->attribute = ATTR_DIRECTORY;
-    ce->size = 0;
+    ce->info.attribute = ATTR_DIRECTORY;
+    ce->info.size = 0;
     ce->down = first_ce->up;
     
     closedir_uncached(dir);
@@ -400,7 +423,7 @@ static int dircache_scan_and_build(IF_MV2(int volume,) struct dircache_entry *ce
     strlcpy(sab_path, "/", sizeof sab_path);
     return sab_process_dir(ce);
 }
-#endif /* SIMULATOR */
+#endif /* PLATFORM_NATIVE */
 
 /**
  * Internal function to get a pointer to dircache_entry for a given filename.
@@ -494,7 +517,7 @@ int dircache_load(void)
     logf("Loading directory cache");
     dircache_size = 0;
     
-    fd = open(DIRCACHE_FILE, O_RDONLY);
+    fd = open_dircache_file(O_RDONLY, 0);
     if (fd < 0)
         return -2;
         
@@ -504,7 +527,7 @@ int dircache_load(void)
     {
         logf("Dircache file header error");
         close(fd);
-        remove(DIRCACHE_FILE);
+        remove_dircache_file();
         return -3;
     }
 
@@ -513,7 +536,7 @@ int dircache_load(void)
     {
         logf("Position missmatch");
         close(fd);
-        remove(DIRCACHE_FILE);
+        remove_dircache_file();
         return -4;
     }
     
@@ -522,7 +545,7 @@ int dircache_load(void)
     appflags = maindata.appflags;
     bytes_read = read(fd, dircache_root, MIN(DIRCACHE_LIMIT, maindata.size));
     close(fd);
-    remove(DIRCACHE_FILE);
+    remove_dircache_file();
     
     if (bytes_read != maindata.size)
     {
@@ -551,13 +574,13 @@ int dircache_save(void)
     int fd;
     unsigned long bytes_written;
 
-    remove(DIRCACHE_FILE);
+    remove_dircache_file();
     
     if (!dircache_initialized)
         return -1;
 
     logf("Saving directory cache");
-    fd = open(DIRCACHE_FILE, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+    fd = open_dircache_file(O_WRONLY | O_CREAT | O_TRUNC, 0666);
 
     maindata.magic = DIRCACHE_MAGIC;
     maindata.size = dircache_size;
@@ -585,7 +608,7 @@ int dircache_save(void)
     
     return 0;
 }
-#endif /* #if 0 */
+#endif /* HAVE_EEPROM_SETTINGS */
 
 /**
  * Internal function which scans the disk and creates the dircache structure.
@@ -689,7 +712,7 @@ static void dircache_thread(void)
                 dircache_initialized = false;
                 break ;
             
-#ifndef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
             case SYS_USB_CONNECTED:
                 usb_acknowledge(SYS_USB_CONNECTED_ACK);
                 usb_wait_for_disconnect(&dircache_queue);
@@ -709,8 +732,10 @@ int dircache_build(int last_size)
         return -3;
 
     logf("Building directory cache");
-    remove(DIRCACHE_FILE);
-    
+#ifdef HAVE_EEPROM_SETTINGS
+    remove_dircache_file();
+#endif
+
     /* Background build, dircache has been previously allocated */
     if (dircache_size > 0)
     {
@@ -994,13 +1019,11 @@ static struct dircache_entry* dircache_new_entry(const char *path, int attribute
         return NULL;
     }
         
-    entry->attribute = attribute;
     entry->name_len = MIN(254, strlen(new)) + 1;
     entry->d_name = ((char *)dircache_root+dircache_size);
     entry->startcluster = 0;
-    entry->wrtdate = 0;
-    entry->wrttime = 0;
-    entry->size = 0;
+    memset(&entry->info, 0, sizeof(entry->info));
+    entry->info.attribute = attribute;
     memcpy(entry->d_name, new, entry->name_len);
     dircache_size += entry->name_len;
 
@@ -1058,7 +1081,7 @@ void dircache_update_filesize(int fd, long newsize, long startcluster)
         return ;
     }
     
-    fd_bindings[fd]->size = newsize;
+    fd_bindings[fd]->info.size = newsize;
     fd_bindings[fd]->startcluster = startcluster;
 }
 void dircache_update_filetime(int fd)
@@ -1078,12 +1101,12 @@ void dircache_update_filetime(int fd)
         return ;
     }
     year = now->tm_year+1900-1980;
-    fd_bindings[fd]->wrtdate = (((year)&0x7f)<<9)           |
-                               (((now->tm_mon+1)&0xf)<<5)   |
-                               (((now->tm_mday)&0x1f));
-    fd_bindings[fd]->wrttime = (((now->tm_hour)&0x1f)<<11)  |
-                               (((now->tm_min)&0x3f)<<5)    |
-                               (((now->tm_sec/2)&0x1f));
+    fd_bindings[fd]->info.wrtdate = (((year)&0x7f)<<9)           |
+                                    (((now->tm_mon+1)&0xf)<<5)   |
+                                    (((now->tm_mday)&0x1f));
+    fd_bindings[fd]->info.wrttime = (((now->tm_hour)&0x1f)<<11)  |
+                                    (((now->tm_min)&0x3f)<<5)    |
+                                    (((now->tm_sec/2)&0x1f));
 #endif
 }
 
@@ -1183,7 +1206,7 @@ void dircache_rename(const char *oldpath, const char *newpath)
         newpath = absolute_path;
     }
     
-    newentry = dircache_new_entry(newpath, entry->attribute);
+    newentry = dircache_new_entry(newpath, entry->info.attribute);
     if (newentry == NULL)
     {
         dircache_initialized = false;
@@ -1191,10 +1214,10 @@ void dircache_rename(const char *oldpath, const char *newpath)
     }
 
     newentry->down = oldentry.down;
-    newentry->size = oldentry.size;
     newentry->startcluster = oldentry.startcluster;
-    newentry->wrttime = oldentry.wrttime;
-    newentry->wrtdate = oldentry.wrtdate;
+    newentry->info.size    = oldentry.info.size;
+    newentry->info.wrtdate = oldentry.info.wrtdate;
+    newentry->info.wrttime = oldentry.info.wrttime;
 }
 
 void dircache_add_file(const char *path, long startcluster)
@@ -1251,7 +1274,7 @@ DIR_CACHED* opendir_cached(const char* name)
     {
         pdir->regulardir = NULL;
         pdir->internal_entry = dircache_get_entry(name, true);
-        pdir->theent.attribute = -1; /* used to make readdir_cached aware of the first call */
+        pdir->theent.info.attribute = -1; /* used to make readdir_cached aware of the first call */
     }
 
     if (pdir->internal_entry == NULL && pdir->regulardir == NULL)
@@ -1278,11 +1301,8 @@ struct dirent_cached* readdir_cached(DIR_CACHED* dir)
             return NULL;
 
         strlcpy(dir->theent.d_name, regentry->d_name, MAX_PATH);
-        dir->theent.size = regentry->size;
         dir->theent.startcluster = regentry->startcluster;
-        dir->theent.attribute = regentry->attribute;
-        dir->theent.wrttime = regentry->wrttime;
-        dir->theent.wrtdate = regentry->wrtdate;
+        dir->theent.info = regentry->info;
         
         return &dir->theent;
     }
@@ -1290,7 +1310,7 @@ struct dirent_cached* readdir_cached(DIR_CACHED* dir)
     /* if theent.attribute=-1 then this is the first call */
     /* otherwise, this is is not so we first take the entry's ->next */
     /* NOTE: normal file can't have attribute=-1 */
-    if(dir->theent.attribute != -1)
+    if(dir->theent.info.attribute != -1)
         ce = ce->next;
     /* skip unused entries */
     while(ce != NULL && ce->name_len == 0)
@@ -1302,11 +1322,8 @@ struct dirent_cached* readdir_cached(DIR_CACHED* dir)
     strlcpy(dir->theent.d_name, ce->d_name, MAX_PATH);
     /* Can't do `dir->theent = *ce`
        because that modifies the d_name pointer. */
-    dir->theent.size = ce->size;
     dir->theent.startcluster = ce->startcluster;
-    dir->theent.attribute = ce->attribute;
-    dir->theent.wrttime = ce->wrttime;
-    dir->theent.wrtdate = ce->wrtdate;
+    dir->theent.info = ce->info;
     dir->internal_entry = ce;
 
     //logf("-> %s", ce->name);

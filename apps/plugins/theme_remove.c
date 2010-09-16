@@ -20,7 +20,7 @@
 #include "plugin.h"
 #include "lib/configfile.h"
 
-PLUGIN_HEADER
+
 
 /* taken from apps/gui/wps_parser.c */
 #define WPS_DEFAULTCFG WPS_DIR "/rockbox_default.wps"
@@ -236,7 +236,8 @@ static int remove_dir(char* dirname, int len)
 
         /* append name to current directory */
         rb->snprintf(dirname+dirlen, len-dirlen, "/%s", entry->d_name);
-        if (entry->attribute & ATTR_DIRECTORY)
+        struct dirinfo info = rb->dir_get_info(dir, entry);
+        if (info.attribute & ATTR_DIRECTORY)
         {
             /* remove a subdirectory */
             if (!rb->strcmp((char *)entry->d_name, ".") ||

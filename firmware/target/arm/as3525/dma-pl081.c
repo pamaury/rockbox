@@ -19,12 +19,11 @@
  *
  ****************************************************************************/
 
-#include <stdbool.h>
-#include "as3525.h"
+#include "config.h"
+#include "system.h"
 #include "pl081.h"
 #include "dma-target.h"
 #include "panic.h"
-#include "config.h"
 
 static int dma_used = 0;
 static void (*dma_callback[2])(void); /* 2 channels */
@@ -33,7 +32,7 @@ void dma_retain(void)
 {
     if(++dma_used == 1)
     {
-        CGU_PERI |= CGU_DMA_CLOCK_ENABLE;
+        bitset32(&CGU_PERI, CGU_DMA_CLOCK_ENABLE);
         DMAC_CONFIGURATION |= (1<<0);
     }
 }
@@ -43,8 +42,10 @@ void dma_release(void)
     if(--dma_used == 0)
     {
         DMAC_CONFIGURATION &= ~(1<<0);
-        CGU_PERI &= ~CGU_DMA_CLOCK_ENABLE;
+        bitclr32(&CGU_PERI, CGU_DMA_CLOCK_ENABLE);
     }
+    if (dma_used < 0)
+        panicf("dma_used < 0!");
 }
 
 void dma_init(void)
@@ -55,7 +56,7 @@ void dma_init(void)
     VIC_INT_ENABLE = INTERRUPT_DMAC;
 }
 
-inline void dma_disable_channel(int channel)
+void dma_disable_channel(int channel)
 {
     DMAC_CH_CONFIGURATION(channel) &= ~(1<<0);
 }

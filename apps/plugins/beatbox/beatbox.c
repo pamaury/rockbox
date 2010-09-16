@@ -26,8 +26,6 @@
 #include "midi/sequencer.h"
 #include "midi/midifile.h"
 
-PLUGIN_HEADER
-PLUGIN_IRAM_DECLARE
 
 /* variable button definitions */
 #if CONFIG_KEYPAD == RECORDER_PAD
@@ -125,7 +123,7 @@ PLUGIN_IRAM_DECLARE
 
 #undef SYNC
 
-#ifdef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
     #define SYNC
 #endif
 
@@ -248,8 +246,6 @@ int playState=STATE_STOPPED, stepFlag=0;
 enum plugin_status plugin_start(const void* parameter)
 {
     int retval = 0;
-
-    PLUGIN_IRAM_INIT(rb)
 
     rb->lcd_setfont(0);
 

@@ -25,7 +25,7 @@
 #include <lib/configfile.h>
 #include "imageviewer.h"
 
-PLUGIN_HEADER
+
 
 #ifdef USEGSLIB
 GREY_INFO_STRUCT
@@ -97,7 +97,6 @@ static fb_data rgb_linebuf[LCD_WIDTH];  /* Line buffer for scrolling when
 #endif
 
 /* my memory pool (from the mp3 buffer) */
-static char print[32]; /* use a common snprintf() buffer */
 /* the remaining free part of the buffer for loaded+resized images */
 static unsigned char* buf;
 static size_t buf_size;
@@ -416,10 +415,10 @@ static void pan_view_right(struct image_info *info)
     move = MIN(HSCROLL, info->width - info->x - LCD_WIDTH);
     if (move > 0)
     {
-        MYXLCD(scroll_left)(move); /* scroll left */
+        mylcd_ub_scroll_left(move); /* scroll left */
         info->x += move;
         draw_image_rect(info, LCD_WIDTH - move, 0, move, info->height-info->y);
-        MYLCD_UPDATE();
+        mylcd_ub_update();
     }
 }
 
@@ -432,10 +431,10 @@ static void pan_view_left(struct image_info *info)
     move = MIN(HSCROLL, info->x);
     if (move > 0)
     {
-        MYXLCD(scroll_right)(move); /* scroll right */
+        mylcd_ub_scroll_right(move); /* scroll right */
         info->x -= move;
         draw_image_rect(info, 0, 0, move, info->height-info->y);
-        MYLCD_UPDATE();
+        mylcd_ub_update();
     }
 }
 
@@ -448,7 +447,7 @@ static void pan_view_up(struct image_info *info)
     move = MIN(VSCROLL, info->y);
     if (move > 0)
     {
-        MYXLCD(scroll_down)(move); /* scroll down */
+        mylcd_ub_scroll_down(move); /* scroll down */
         info->y -= move;
 #if defined(HAVE_LCD_COLOR) && defined(JPEG_VIEWER)
         if (settings.jpeg_dither_mode == DITHER_DIFFUSION)
@@ -459,7 +458,7 @@ static void pan_view_up(struct image_info *info)
         }
 #endif
         draw_image_rect(info, 0, 0, info->width-info->x, move);
-        MYLCD_UPDATE();
+        mylcd_ub_update();
     }
 }
 
@@ -472,7 +471,7 @@ static void pan_view_down(struct image_info *info)
     move = MIN(VSCROLL, info->height - info->y - LCD_HEIGHT);
     if (move > 0)
     {
-        MYXLCD(scroll_up)(move); /* scroll up */
+        mylcd_ub_scroll_up(move); /* scroll up */
         info->y += move;
 #if defined(HAVE_LCD_COLOR) && defined(JPEG_VIEWER)
         if (settings.jpeg_dither_mode == DITHER_DIFFUSION)
@@ -499,7 +498,7 @@ static void pan_view_down(struct image_info *info)
             info->y++;
         }
 #endif
-        MYLCD_UPDATE();
+        mylcd_ub_update();
     }
 }
 
@@ -611,7 +610,7 @@ static int scroll_bmp(struct image_info *info)
 #else
             draw_image_rect(info, 0, 0,
                             info->width-info->x, info->height-info->y);
-            MYLCD_UPDATE();
+            mylcd_ub_update();
 #endif
             break;
 
@@ -777,16 +776,14 @@ static int load_and_show(char* filename, struct image_info *info)
 
         if(!running_slideshow)
         {
-            rb->snprintf(print, sizeof(print), "showing %dx%d",
-                            info->width, info->height);
-            rb->lcd_puts(0, 3, print);
+            rb->lcd_putsf(0, 3, "showing %dx%d", info->width, info->height);
             rb->lcd_update();
         }
 
-        MYLCD(clear_display)();
+        mylcd_ub_clear_display();
         draw_image_rect(info, 0, 0,
                         info->width-info->x, info->height-info->y);
-        MYLCD_UPDATE();
+        mylcd_ub_update();
 
 #ifdef USEGSLIB
         grey_show(true); /* switch on greyscale overlay */

@@ -25,68 +25,8 @@
 
 CODEC_HEADER
 
-/* The output buffer containing the decoded samples (channels 0 and 1)
-   BLOCK_MAX_SIZE is 2048 (samples) and MAX_CHANNELS is 2.
- */
-
-static uint32_t decoded[BLOCK_MAX_SIZE * MAX_CHANNELS] IBSS_ATTR;
-
 /* NOTE: WMADecodeContext is 120152 bytes (on x86) */
 static WMADecodeContext wmadec;
-
-/*entry point for seeks*/
-static int seek(int ms, asf_waveformatex_t* wfx)
-{
-    int time, duration, delta, temp, count=0;
-
-    /*estimate packet number from bitrate*/
-    int initial_packet = ci->curpos/wfx->packet_size;
-    int packet_num = (((int64_t)ms)*(wfx->bitrate>>3))/wfx->packet_size/1000;
-    int last_packet = ci->id3->filesize / wfx->packet_size;
-
-    if (packet_num > last_packet) {
-        packet_num = last_packet;
-    }
-
-    /*calculate byte address of the start of that packet*/
-    int packet_offset = packet_num*wfx->packet_size;
-
-    /*seek to estimated packet*/
-    ci->seek_buffer(ci->id3->first_frame_offset+packet_offset);
-    temp = ms;
-    while (1)
-    {
-        /*for very large files it can be difficult and unimportant to find the exact packet*/
-        count++;
-
-        /*check the time stamp of our packet*/
-        time = asf_get_timestamp(&duration);
-        DEBUGF("seeked to %d ms with duration %d\n", time, duration);
-
-        if (time < 0) {
-            /*unknown error, try to recover*/
-            DEBUGF("UKNOWN SEEK ERROR\n");
-            ci->seek_buffer(ci->id3->first_frame_offset+initial_packet*wfx->packet_size);
-            /*seek failed so return time stamp of the initial packet*/
-            return asf_get_timestamp(&duration);
-        }
-
-        if ((time+duration>=ms && time<=ms) || count > 10) {
-            DEBUGF("Found our packet! Now at %d packet\n", packet_num);
-            return time;
-        } else {
-            /*seek again*/
-            delta = ms-time;
-            /*estimate new packet number from bitrate and our current position*/
-            temp += delta;
-            packet_num = ((temp/1000)*(wfx->bitrate>>3) - (wfx->packet_size>>1))/wfx->packet_size;  //round down!
-            packet_offset = packet_num*wfx->packet_size;
-            ci->seek_buffer(ci->id3->first_frame_offset+packet_offset);
-        }
-    }
-}
-
-
 
 /* this is the codec entry point */
 enum codec_status codec_main(void)
@@ -133,8 +73,6 @@ restart_track:
         goto exit;
     }
 
-    DEBUGF("**************** IN WMA.C ******************\n");
-
     if (resume_offset > ci->id3->first_frame_offset)
     {
         /* Get start of current packet */
@@ -154,7 +92,7 @@ restart_track:
     resume_offset = 0;
     ci->configure(DSP_SWITCH_FREQUENCY, wfx.rate);
     ci->configure(DSP_SET_STEREO_MODE, wfx.channels == 1 ?
-                  STEREO_MONO : STEREO_INTERLEAVED);
+                  STEREO_MONO : STEREO_NONINTERLEAVED);
     codec_set_replaygain(ci->id3);
 
     /* The main decoding loop */
@@ -175,7 +113,7 @@ restart_track:
                 goto restart_track; /* Pretend you never saw this... */
             }
 
-            elapsedtime = seek(ci->seek_time, &wfx);
+            elapsedtime = asf_seek(ci->seek_time, &wfx);
             if (elapsedtime < 1){
                 ci->seek_complete();
                 goto next_track;
@@ -211,7 +149,6 @@ new_packet:
             for (i=0; i < wmadec.nb_frames; i++)
             {
                 wmares = wma_decode_superframe_frame(&wmadec,
-                                                     decoded,
                                                      audiobuf, audiobufsize);
 
                 ci->yield ();
@@ -227,7 +164,7 @@ new_packet:
                         goto new_packet;
                     }
                 } else if (wmares > 0) {
-                    ci->pcmbuf_insert(decoded, NULL, wmares);
+                    ci->pcmbuf_insert((*wmadec.frame_out)[0], (*wmadec.frame_out)[1], wmares);
                     elapsedtime += (wmares*10)/(wfx.rate/100);
                     ci->set_elapsed(elapsedtime);
                 }

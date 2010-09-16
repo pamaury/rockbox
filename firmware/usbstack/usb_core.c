@@ -178,6 +178,21 @@ static int usb_address = 0;
 static bool initialized = false;
 static enum { DEFAULT, ADDRESS, CONFIGURED } usb_state;
 
+#ifdef HAVE_USB_CHARGING_ENABLE
+static int usb_charging_mode = USB_CHARGING_DISABLE;
+static int usb_charging_current_requested = 500;
+static struct timeout usb_no_host_timeout;
+static bool usb_no_host = false;
+
+static int usb_no_host_callback(struct timeout *tmo)
+{
+    (void)tmo;
+    usb_no_host = true;
+    usb_charger_update();
+    return 0;
+}
+#endif
+
 static int usb_core_num_interfaces;
 
 #ifdef HAVE_NEW_USB_API
@@ -359,17 +374,17 @@ static void set_serial_descriptor(void)
 #elif defined(HAVE_AS3514)
 static void set_serial_descriptor(void)
 {
-    unsigned char serial[16];
+    unsigned char serial[AS3514_UID_LEN];
     /* Align 32 digits right in the 40-digit serial number */
     short* p = &usb_string_iSerial.wString[1];
     int i;
 
-    ascodec_readbytes(AS3514_UID_0, 0x10, serial);
-    for(i = 0; i < 16; i++) {
+    ascodec_readbytes(AS3514_UID_0, AS3514_UID_LEN, serial);
+    for(i = 0; i < AS3514_UID_LEN; i++) {
         *p++ = hex[(serial[i] >> 4) & 0xF];
         *p++ = hex[(serial[i] >> 0) & 0xF];
     }
-    usb_string_iSerial.bLength = 68;
+    usb_string_iSerial.bLength = 36 + (2 * AS3514_UID_LEN);
 }
 #elif (CONFIG_STORAGE & STORAGE_ATA)
 /* If we don't know the device serial number, use the one
@@ -433,6 +448,10 @@ void usb_core_init(void)
 
     initialized = true;
     usb_state = DEFAULT;
+#ifdef HAVE_USB_CHARGING_ENABLE
+    usb_no_host = false;
+    timeout_register(&usb_no_host_timeout, usb_no_host_callback, HZ*10, 0);
+#endif
     logf("usb_core_init() finished");
 }
 
@@ -450,6 +469,10 @@ void usb_core_exit(void)
         initialized = false;
     }
     usb_state = DEFAULT;
+#ifdef HAVE_USB_CHARGING_ENABLE
+    usb_no_host = false;
+    usb_charging_maxcurrent_change(usb_charging_maxcurrent());
+#endif
     logf("usb_core_exit() finished");
 }
 
@@ -662,6 +685,16 @@ static void request_handler_device_get_descriptor(struct usb_ctrlrequest* req)
                     config_descriptor.bDescriptorType =
                         USB_DT_OTHER_SPEED_CONFIG;
                 }
+#ifdef HAVE_USB_CHARGING_ENABLE
+                if (usb_charging_mode == USB_CHARGING_DISABLE) {
+                    config_descriptor.bMaxPower = (100+1)/2;
+                    usb_charging_current_requested = 100;
+                }
+                else {
+                    config_descriptor.bMaxPower = (500+1)/2;
+                    usb_charging_current_requested = 500;
+                }
+#endif
                 size = sizeof(struct usb_config_descriptor);
 
                 for(i = 0; i < USB_NUM_DRIVERS; i++)
@@ -752,6 +785,9 @@ static void request_handler_device(struct usb_ctrlrequest* req)
                 else
                     usb_state = ADDRESS;
                 usb_drv_send_blocking(EP_CONTROL, NULL, 0); /* ack */
+#ifdef HAVE_USB_CHARGING_ENABLE
+                usb_charging_maxcurrent_change(usb_charging_maxcurrent());
+#endif
                 break;
             }
         case USB_REQ_SET_ADDRESS: {
@@ -912,6 +948,13 @@ static void request_handler_endpoint(struct usb_ctrlrequest* req)
 /* Handling USB requests starts here */
 static void usb_core_control_request_handler(struct usb_ctrlrequest* req)
 {
+#ifdef HAVE_USB_CHARGING_ENABLE
+    timeout_cancel(&usb_no_host_timeout);
+    if(usb_no_host) {
+	usb_no_host = false;
+	usb_charging_maxcurrent_change(usb_charging_maxcurrent());
+    }
+#endif
     if(usb_state == DEFAULT) {
         set_serial_descriptor();
         usb_core_set_serial_function_id();
@@ -947,6 +990,9 @@ void usb_core_bus_reset(void)
 {
     usb_address = 0;
     usb_state = DEFAULT;
+#ifdef HAVE_USB_CHARGING_ENABLE
+    usb_charging_maxcurrent_change(usb_charging_maxcurrent());
+#endif
 }
 
 /* called by usb_drv_transfer_completed() */
@@ -1002,10 +1048,22 @@ void usb_core_control_request(struct usb_ctrlrequest* req)
     usb_signal_transfer_completion(completion_event);
 }
 
-#ifdef HAVE_USB_POWER
-unsigned short usb_allowed_current()
+#ifdef HAVE_USB_CHARGING_ENABLE
+void usb_charging_enable(int state)
 {
-    return (usb_state == CONFIGURED) ? MAX(USB_MAX_CURRENT, 100) : 100;
+    usb_charging_mode = state;
+    usb_charging_maxcurrent_change(usb_charging_maxcurrent());
+}
+
+int usb_charging_maxcurrent()
+{
+    if (!initialized || usb_charging_mode == USB_CHARGING_DISABLE)
+        return 100;
+    if (usb_state == CONFIGURED)
+	return usb_charging_current_requested;
+    if (usb_charging_mode == USB_CHARGING_FORCE && usb_no_host)
+	return 500;
+    return 100;
 }
 #endif
 

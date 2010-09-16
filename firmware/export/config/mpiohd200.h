@@ -14,26 +14,18 @@
 #define ATA_SWAP_WORDS
 
 /* define this if you have recording possibility */
-/* not implemented yet 
- * #define HAVE_RECORDING
- */
-
+#define HAVE_RECORDING
 
 /* Define bitmask of input sources - recordable bitmask can be defined
  *  explicitly if different
- * not implemented yet
  */
-
 #define INPUT_SRC_CAPS (SRC_CAP_MIC | SRC_CAP_LINEIN | SRC_CAP_FMRADIO)
-
 
 /* define the bitmask of hardware sample rates */
 #define HW_SAMPR_CAPS   (SAMPR_CAP_88 | SAMPR_CAP_44 | SAMPR_CAP_22 | SAMPR_CAP_11)
 
-/* define the bitmask of recording sample rates
- * not implemented yet
- *#define REC_SAMPR_CAPS  (SAMPR_CAP_88 | SAMPR_CAP_44 | SAMPR_CAP_22 | SAMPR_CAP_11)
- */
+/* define the bitmask of recording sample rates */
+#define REC_SAMPR_CAPS  (SAMPR_CAP_88 | SAMPR_CAP_44 | SAMPR_CAP_22 | SAMPR_CAP_11)
 
 /* define this if you have a bitmap LCD display */
 #define HAVE_LCD_BITMAP
@@ -77,9 +69,6 @@
 
 #define CONFIG_KEYPAD MPIO_HD200_PAD
 
-#define AB_REPEAT_ENABLE 1
-#define ACTION_WPSAB_SINGLE ACTION_WPS_BROWSE
-
 /* Define this if you do software codec */
 #define CONFIG_CODEC SWCODEC
 
@@ -114,23 +103,32 @@
 #define CONFIG_TUNER_XTAL  32768
 
 
-/* we have WM8750 codec in I2S slave mode */
+/* we have WM8750 codec in I2S master mode */
 #define HAVE_WM8750
-#define CODEC_SLAVE
 
-#define BATTERY_CAPACITY_DEFAULT 950 /* default battery capacity */
-#define BATTERY_CAPACITY_MIN    950   /* min. capacity selectable */
-#define BATTERY_CAPACITY_MAX    2250  /* max. capacity selectable */
-#define BATTERY_CAPACITY_INC    50    /* capacity increment */
-#define BATTERY_TYPES_COUNT     1     /* only one type */
+/* clocking setup based on 11.2896 MHz master clock
+ * provided to the codec by MCU
+ * WM8750L Datasheet Table 40, page 46
+ */
+#define CODEC_SRCTRL_11025HZ (0x18 << 1)
+#define CODEC_SRCTRL_22050HZ (0x1A << 1)
+#define CODEC_SRCTRL_44100HZ (0x10 << 1)
+#define CODEC_SRCTRL_88200HZ (0x1E << 1)
+
+#define BATTERY_TYPES_COUNT 1
+#define BATTERY_CAPACITY_DEFAULT  850  /* this is wild guess */
+#define BATTERY_CAPACITY_MIN      800  /* min. capacity selectable */
+#define BATTERY_CAPACITY_MAX     2500  /* max. capacity selectable */
+#define BATTERY_CAPACITY_INC       50  /* capacity increment */
+
+#define CURRENT_NORMAL     68  /* measured during playback unboosted */
+#define CURRENT_BACKLIGHT  24  /* measured */
+#define CURRENT_RECORD     40  /* additional current while recording */
+#define CURRENT_ATA       100  /* additional current when ata system is ON */
+/* #define CURRENT_REMOTE      0  additional current when remote connected */
 
 #define CONFIG_CHARGING CHARGING_MONITOR
 
-/* define current usage levels */
-/* additional current when remote connected */
-/*
-#define CURRENT_REMOTE      8 
-*/
 #ifndef SIMULATOR
 
 /* Define this if your LCD can set contrast */
@@ -141,12 +139,6 @@
 
 /* Define this if you want to use coldfire's i2c interface */
 #define CONFIG_I2C I2C_COLDFIRE
-
-/* OF resets device instead of poweroff while charging
- * this triggers bootloader code which takes care of charging.
- * I have feeling that powering off while charging may cause
- * partition table corruption I am experiencing from time to time
- */
 
 /* define this if the hardware can be powered off while charging */
 /* #define HAVE_POWEROFF_WHILE_CHARGING */

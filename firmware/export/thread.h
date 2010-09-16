@@ -25,6 +25,7 @@
 #include <inttypes.h>
 #include <stddef.h>
 #include <stdbool.h>
+#include "gcc_extensions.h"
 
 /* Priority scheduling (when enabled with HAVE_PRIORITY_SCHEDULING) works
  * by giving high priority threads more CPU time than lower priority threads
@@ -79,9 +80,19 @@
 
 #define MAXTHREADS (BASETHREADS+TARGET_EXTRA_THREADS)
 
+/*
+ * We need more stack when we run under a host
+ * maybe more expensive C lib functions?
+ *
+ * simulator doesn't simulate stack usage anyway but well ... */
+#if ((CONFIG_PLATFORM & PLATFORM_NATIVE) || defined(SIMULATOR))
 #define DEFAULT_STACK_SIZE 0x400 /* Bytes */
+#else
+#define DEFAULT_STACK_SIZE 0x1000 /* Bytes */
+#endif
 
-#ifndef SIMULATOR
+
+#if (CONFIG_PLATFORM & (PLATFORM_NATIVE|PLATFORM_ANDROID))
 /* Need to keep structures inside the header file because debug_menu
  * needs them. */
 #ifdef CPU_COLDFIRE
@@ -101,7 +112,7 @@ struct regs
     uint32_t pr;    /*    32 - Procedure register */
     uint32_t start; /*    36 - Thread start address, or NULL when started */
 };
-#elif defined(CPU_ARM)
+#elif defined(CPU_ARM) || (CONFIG_PLATFORM & PLATFORM_ANDROID)
 struct regs
 {
     uint32_t r[8];  /*  0-28 - Registers r4-r11 */
@@ -109,6 +120,23 @@ struct regs
     uint32_t lr;    /*    36 - r14 (lr) */
     uint32_t start; /*    40 - Thread start address, or NULL when started */
 };
+
+#ifdef CPU_PP
+#ifdef HAVE_CORELOCK_OBJECT
+/* No reliable atomic instruction available - use Peterson's algorithm */
+struct corelock
+{
+    volatile unsigned char myl[NUM_CORES];
+    volatile unsigned char turn;
+} __attribute__((packed));
+
+/* Too big to inline everywhere */
+void corelock_init(struct corelock *cl);
+void corelock_lock(struct corelock *cl);
+int corelock_try_lock(struct corelock *cl);
+void corelock_unlock(struct corelock *cl);
+#endif /* HAVE_CORELOCK_OBJECT */
+#endif /* CPU_PP */
 #elif defined(CPU_MIPS)
 struct regs
 {
@@ -118,14 +146,15 @@ struct regs
     uint32_t start; /*   44 - Thread start address, or NULL when started */
 };
 #endif /* CONFIG_CPU */
-#else
+#elif (CONFIG_PLATFORM & PLATFORM_HOSTED)
 struct regs
 {
-    void *t;             /* Simulator OS thread */
+    void *t;             /* OS thread */
+    void *told;          /* Last thread in slot (explained in thead-sdl.c) */
     void *s;             /* Semaphore for blocking and wakeup */
     void (*start)(void); /* Start function */
 };
-#endif /* !SIMULATOR */
+#endif /* PLATFORM_NATIVE */
 
 /* NOTE: The use of the word "queue" may also refer to a linked list of
    threads being maintained that are normally dealt with in FIFO order
@@ -161,41 +190,13 @@ struct thread_list
     struct thread_entry *next; /* Next thread in a list */
 };
 
-/* Small objects for core-wise mutual exclusion */
-#if CONFIG_CORELOCK == SW_CORELOCK
-/* No reliable atomic instruction available - use Peterson's algorithm */
-struct corelock
-{
-    volatile unsigned char myl[NUM_CORES];
-    volatile unsigned char turn;
-} __attribute__((packed));
-
-void corelock_init(struct corelock *cl);
-void corelock_lock(struct corelock *cl);
-int corelock_try_lock(struct corelock *cl);
-void corelock_unlock(struct corelock *cl);
-#elif CONFIG_CORELOCK == CORELOCK_SWAP
-/* Use native atomic swap/exchange instruction */
-struct corelock
-{
-    volatile unsigned char locked;
-} __attribute__((packed));
-
-#define corelock_init(cl) \
-    ({ (cl)->locked = 0; })
-#define corelock_lock(cl) \
-    ({ while (test_and_set(&(cl)->locked, 1)); })
-#define corelock_try_lock(cl) \
-    ({ test_and_set(&(cl)->locked, 1) ? 0 : 1; })
-#define corelock_unlock(cl) \
-    ({ (cl)->locked = 0; })
-#else
+#ifndef HAVE_CORELOCK_OBJECT
 /* No atomic corelock op needed or just none defined */
 #define corelock_init(cl)
 #define corelock_lock(cl)
 #define corelock_try_lock(cl)
 #define corelock_unlock(cl)
-#endif /* core locking selection */
+#endif /* HAVE_CORELOCK_OBJECT */
 
 #ifdef HAVE_PRIORITY_SCHEDULING
 struct blocker
@@ -355,127 +356,6 @@ struct core_entry
 #define IFN_PRIO(...)   __VA_ARGS__
 #endif
 
-/* Macros generate better code than an inline function is this case */
-#if (defined (CPU_PP) || defined (CPU_ARM))
-/* atomic */
-#if CONFIG_CORELOCK == SW_CORELOCK
-#define test_and_set(a, v, cl) \
-    xchg8((a), (v), (cl))
-/* atomic */
-#define xchg8(a, v, cl) \
-({  uint32_t o;            \
-    corelock_lock(cl);     \
-    o = *(uint8_t *)(a);   \
-    *(uint8_t *)(a) = (v); \
-    corelock_unlock(cl);   \
-    o; })
-#define xchg32(a, v, cl) \
-({  uint32_t o;             \
-    corelock_lock(cl);      \
-    o = *(uint32_t *)(a);   \
-    *(uint32_t *)(a) = (v); \
-    corelock_unlock(cl);    \
-    o; })
-#define xchgptr(a, v, cl) \
-({  typeof (*(a)) o;     \
-    corelock_lock(cl);   \
-    o = *(a);            \
-    *(a) = (v);          \
-    corelock_unlock(cl); \
-    o; })
-#elif CONFIG_CORELOCK == CORELOCK_SWAP
-/* atomic */
-#define test_and_set(a, v, ...) \
-    xchg8((a), (v))
-#define xchg8(a, v, ...) \
-({  uint32_t o;                \
-    asm volatile(              \
-        "swpb %0, %1, [%2]"    \
-        : "=&r"(o)             \
-        : "r"(v),              \
-          "r"((uint8_t*)(a))); \
-    o; })
-/* atomic */
-#define xchg32(a, v, ...) \
-({  uint32_t o;                 \
-    asm volatile(               \
-        "swp %0, %1, [%2]"      \
-        : "=&r"(o)              \
-        : "r"((uint32_t)(v)),   \
-          "r"((uint32_t*)(a))); \
-    o; })
-/* atomic */
-#define xchgptr(a, v, ...) \
-({  typeof (*(a)) o;        \
-    asm volatile(           \
-        "swp %0, %1, [%2]"  \
-        : "=&r"(o)          \
-        : "r"(v), "r"(a));  \
-    o; })
-#endif /* locking selection */
-#elif defined (CPU_COLDFIRE)
-/* atomic */
-/* one branch will be optimized away if v is a constant expression */
-#define test_and_set(a, v, ...) \
-({  uint32_t o = 0;                \
-    if (v) {                       \
-        asm volatile (             \
-            "bset.b #0, (%0)"      \
-            : : "a"((uint8_t*)(a)) \
-            : "cc");               \
-    } else {                       \
-        asm volatile (             \
-            "bclr.b #0, (%0)"      \
-            : : "a"((uint8_t*)(a)) \
-            : "cc");               \
-    }                              \
-    asm volatile ("sne.b %0"       \
-        : "+d"(o));                \
-    o; })
-#elif CONFIG_CPU == SH7034
-/* atomic */
-#define test_and_set(a, v, ...) \
-({  uint32_t o;                 \
-    asm volatile (              \
-        "tas.b  @%2     \n"     \
-        "mov    #-1, %0 \n"     \
-        "negc   %0, %0  \n"     \
-        : "=r"(o)               \
-        : "M"((uint32_t)(v)),   /* Value of_v must be 1 */ \
-          "r"((uint8_t *)(a))); \
-    o; })
-#endif /* CONFIG_CPU == */
-
-/* defaults for no asm version */
-#ifndef test_and_set
-/* not atomic */
-#define test_and_set(a, v, ...) \
-({  uint32_t o = *(uint8_t *)(a); \
-    *(uint8_t *)(a) = (v);        \
-    o; })
-#endif /* test_and_set */
-#ifndef xchg8
-/* not atomic */
-#define xchg8(a, v, ...) \
-({  uint32_t o = *(uint8_t *)(a); \
-    *(uint8_t *)(a) = (v);        \
-    o; })
-#endif /* xchg8 */
-#ifndef xchg32
-/* not atomic */
-#define xchg32(a, v, ...) \
-({  uint32_t o = *(uint32_t *)(a); \
-    *(uint32_t *)(a) = (v);        \
-    o; })
-#endif /* xchg32 */
-#ifndef xchgptr
-/* not atomic */
-#define xchgptr(a, v, ...) \
-({  typeof (*(a)) o = *(a); \
-    *(a) = (v);             \
-    o; })
-#endif /* xchgptr */
-
 void core_idle(void);
 void core_wake(IF_COP_VOID(unsigned int core));
 
@@ -506,7 +386,7 @@ void thread_thaw(unsigned int thread_id);
 /* Wait for a thread to exit */
 void thread_wait(unsigned int thread_id);
 /* Exit the current thread */
-void thread_exit(void);
+void thread_exit(void) NORETURN_ATTR;
 #if defined(DEBUG) || defined(ROCKBOX_HAS_LOGF)
 #define ALLOW_REMOVE_THREAD
 /* Remove a thread from the scheduler */

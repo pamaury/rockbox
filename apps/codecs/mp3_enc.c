@@ -32,8 +32,6 @@
 //    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 //    Library General Public License for more details.
 
-#ifndef SIMULATOR
-
 #include <inttypes.h>
 #include "codeclib.h"
 
@@ -2095,8 +2093,8 @@ STATICIRAM void to_mono_mm(void)
 
     inline void to_mono(uint16_t **samp)
     {
-        int16_t r = **samp;
-        int16_t l = *(*samp+1);
+        int16_t l = **samp;
+        int16_t r = *(*samp+1);
         int32_t m;
 
         switch(cfg.rec_mono_mode)
@@ -2137,8 +2135,6 @@ STATICIRAM void to_mono_mm(void)
 
 #ifdef ROCKBOX_LITTLE_ENDIAN
 /* Swaps a frame to big endian */
-static inline void byte_swap_frame32(uint32_t *dst, uint32_t *src,
-                                     size_t size) ICODE_ATTR;
 static inline void byte_swap_frame32(uint32_t *dst, uint32_t *src,
                                      size_t size)
 {
@@ -2386,7 +2382,6 @@ STATICIRAM void encode_frame(char *buffer, struct enc_chunk_hdr *chunk)
 } /* encode_frame */
 
 /* called very often - inline */
-static inline bool is_file_data_ok(struct enc_file_event_data *filed) ICODE_ATTR;
 static inline bool is_file_data_ok(struct enc_file_event_data *filed)
 {
     return filed->rec_file >= 0 && (long)filed->chunk->flags >= 0;
@@ -2396,7 +2391,6 @@ static unsigned char mp3_data[16384] __attribute__((aligned(4)));
 static unsigned int  mp3_data_len; /* current data size in buffer */
 
 /* called very often - inline */
-static inline bool on_write_chunk(struct enc_file_event_data *data) ICODE_ATTR;
 static inline bool on_write_chunk(struct enc_file_event_data *data)
 {
     if (!is_file_data_ok(data))
@@ -2514,9 +2508,7 @@ static void on_rec_new_stream(struct enc_buffer_event_data *data)
     }
 } /* on_rec_new_stream */
 
-STATICIRAM void enc_events_callback(enum enc_events event, void *data)
-                                    ICODE_ATTR;
-STATICIRAM void enc_events_callback(enum enc_events event, void *data)
+static void enc_events_callback(enum enc_events event, void *data)
 {
     switch (event)
     {
@@ -2643,5 +2635,3 @@ enum codec_status codec_main(void)
 
     return CODEC_OK;
 } /* codec_start */
-
-#endif /* ndef SIMULATOR */

@@ -12,6 +12,13 @@ extern "C" {
 #define PD_MAJOR_VERSION 0  /* ... use these two instead. */
 #define PD_MINOR_VERSION 37   
 
+#ifdef ROCKBOX
+#define FIXEDPOINT 
+#define STATIC 
+#define PD 
+#define USEAPI_ROCKBOX
+#endif
+
 /* old name for "MSW" flag -- we have to take it for the sake of many old
 "nmakefiles" for externs, which will define NT and not MSW */
 #if defined(NT) && !defined(MSW)
@@ -121,7 +128,7 @@ typedef union word
     int w_index;
 } t_word;
 
-typedef enum
+enum
 {
     A_NULL,
     A_FLOAT,
@@ -135,7 +142,8 @@ typedef enum
     A_DOLLSYM,
     A_GIMME,
     A_CANT
-}  t_atomtype;
+};
+typedef unsigned int t_atomtype;
 
 #define A_DEFSYMBOL A_DEFSYM	/* better name for this */
 

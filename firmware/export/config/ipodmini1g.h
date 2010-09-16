@@ -79,6 +79,12 @@
 #define CONFIG_KEYPAD IPOD_4G_PAD
 
 #define HAVE_SCROLLWHEEL
+/* define to activate advanced wheel acceleration code */
+#define HAVE_WHEEL_ACCELERATION
+/* define from which rotation speed [degree/sec] on the acceleration starts */
+#define WHEEL_ACCEL_START 360
+/* define type of acceleration (1 = ^2, 2 = ^3, 3 = ^4) */
+#define WHEEL_ACCELERATION 1
 
 /* Define this to enable morse code input */
 #define HAVE_MORSE_INPUT
@@ -110,7 +116,7 @@
 /* WM8721 has no tone controls, so we use the software ones */
 #define HAVE_SW_TONE_CONTROLS
 
-#define AB_REPEAT_ENABLE 1
+#define AB_REPEAT_ENABLE
 #define ACTION_WPSAB_SINGLE ACTION_WPS_BROWSE
 
 /* define this if you have a disk storage, i.e. something
@@ -142,6 +148,11 @@
 
 /* define this if the unit can be powered or charged via USB */
 #define HAVE_USB_POWER
+
+/* define this if the unit can have USB charging disabled by user -
+:Qa
+ * if USB/MAIN power is discernable and hardware doesn't compel charging */
+#define HAVE_USB_CHARGING_ENABLE
 
 /* Define this if you have a PortalPlayer PP5020 */
 #define CONFIG_CPU PP5020

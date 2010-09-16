@@ -35,23 +35,32 @@
                                       * and the number of 32bits words has to
                                       * fit in 11 bits of DMA register */
 
-static unsigned char *dma_start_addr;
+static void *dma_start_addr;
 static size_t      dma_size;   /* in 4*32 bits */
 static void dma_callback(void);
 static int locked = 0;
+static bool is_playing = false;
+static bool play_callback_pending = false;
 
 /* Mask the DMA interrupt */
 void pcm_play_lock(void)
 {
-    if(++locked == 1)
-        VIC_INT_EN_CLEAR = INTERRUPT_DMAC;
+    ++locked;
 }
 
 /* Unmask the DMA interrupt if enabled */
 void pcm_play_unlock(void)
 {
-    if(--locked == 0)
-        VIC_INT_ENABLE = INTERRUPT_DMAC;
+    if(--locked == 0 && is_playing)
+    {
+        int old = disable_irq_save();
+        if(play_callback_pending)
+        {
+            play_callback_pending = false;
+            dma_callback();
+        }
+        restore_irq(old);
+    }
 }
 
 static void play_start_pcm(void)
@@ -72,20 +81,21 @@ static void play_start_pcm(void)
 
 static void dma_callback(void)
 {
-    if(!dma_size)
+    if(locked)
     {
-        register pcm_more_callback_type get_more = pcm_callback_for_more;
-        if(get_more)
-            get_more(&dma_start_addr, &dma_size);
+        play_callback_pending = is_playing;
+        return;
     }
 
     if(!dma_size)
     {
-        pcm_play_dma_stop();
-        pcm_play_dma_stopped_callback();
+        pcm_play_get_more_callback(&dma_start_addr, &dma_size);
+
+        if (!dma_size)
+            return;
     }
-    else
-        play_start_pcm();
+
+    play_start_pcm();
 }
 
 void pcm_play_dma_start(const void *addr, size_t size)
@@ -93,27 +103,32 @@ void pcm_play_dma_start(const void *addr, size_t size)
     dma_size = size;
     dma_start_addr = (unsigned char*)addr;
 
-    CGU_PERI |= CGU_I2SOUT_APB_CLOCK_ENABLE;
+    bitset32(&CGU_PERI, CGU_I2SOUT_APB_CLOCK_ENABLE);
     CGU_AUDIO |= (1<<11);
 
     dma_retain();
+
+    is_playing = true;
 
     play_start_pcm();
 }
 
 void pcm_play_dma_stop(void)
 {
+    is_playing = false;
     dma_disable_channel(1);
     dma_size = 0;
 
     dma_release();
 
-    CGU_PERI &= ~CGU_I2SOUT_APB_CLOCK_ENABLE;
+    bitclr32(&CGU_PERI, CGU_I2SOUT_APB_CLOCK_ENABLE);
     CGU_AUDIO &= ~(1<<11);
 }
 
 void pcm_play_dma_pause(bool pause)
 {
+    is_playing = !pause;
+
     if(pause)
         dma_disable_channel(1);
     else
@@ -122,7 +137,7 @@ void pcm_play_dma_pause(bool pause)
 
 void pcm_play_dma_init(void)
 {
-    CGU_PERI |= CGU_I2SOUT_APB_CLOCK_ENABLE;
+    bitset32(&CGU_PERI, CGU_I2SOUT_APB_CLOCK_ENABLE);
 
     I2SOUT_CONTROL = (1<<6)|(1<<3)  /* enable dma, stereo */;
 
@@ -172,8 +187,11 @@ size_t pcm_get_bytes_waiting(void)
 
 const void * pcm_play_dma_get_peak_buffer(int *count)
 {
-    *count = dma_size >> 2;
-    return (const void*)dma_start_addr;
+    pcm_play_lock();
+    void *addr = (void*)DMAC_CH_SRC_ADDR(1);
+    *count = (dma_size - (addr - dma_start_addr)) >> 2;
+    pcm_play_unlock();
+    return AS3525_UNCACHED_ADDR(addr);
 }
 
 #ifdef HAVE_PCM_DMA_ADDRESS
@@ -192,7 +210,9 @@ void * pcm_dma_addr(void *addr)
 #ifdef HAVE_RECORDING
 
 static int rec_locked = 0;
-static unsigned char *rec_dma_start_addr;
+static bool is_recording = false;
+static bool rec_callback_pending = false;
+static void *rec_dma_start_addr;
 static size_t rec_dma_size, rec_dma_transfer_size;
 static void rec_dma_callback(void);
 #if CONFIG_CPU == AS3525
@@ -203,15 +223,22 @@ static int16_t *mono_samples;
 
 void pcm_rec_lock(void)
 {
-    if(++rec_locked == 1)
-        VIC_INT_EN_CLEAR = INTERRUPT_DMAC;
+    ++rec_locked;
 }
 
 
 void pcm_rec_unlock(void)
 {
-    if(--rec_locked == 0)
-        VIC_INT_ENABLE = INTERRUPT_DMAC;
+    if(--rec_locked == 0 && is_recording)
+    {
+        int old = disable_irq_save();
+        if(rec_callback_pending)
+        {
+            rec_callback_pending = false;
+            rec_dma_callback();
+        }
+        restore_irq(old);
+    }
 }
 
 
@@ -230,10 +257,10 @@ static void rec_dma_start(void)
 }
 
 
+#if CONFIG_CPU == AS3525
 /* if needed, duplicate samples of the working channel until the given bound */
 static inline void mono2stereo(int16_t *end)
 {
-#if CONFIG_CPU == AS3525
     if(audio_channels != 1) /* only for microphone */
         return;
 #if 0
@@ -254,63 +281,66 @@ static inline void mono2stereo(int16_t *end)
         "   strh %0, [%1], #2   \n" // copy it in the right-channel
         "   cmp %1, %2          \n" // are we finished?
         "   bne  1b             \n"
-        : "=r"(left), "+r"(mono_samples)
+        : "=&r"(left), "+r"(mono_samples)
         : "r"(end)
         : "memory"
     );
 #endif /* C / ASM */
-#else
-    /* microphone recording is stereo on as3525v2 */
-    (void)end;
-#endif
 }
+#endif /* CONFIG_CPU == AS3525 */
 
 static void rec_dma_callback(void)
 {
-    rec_dma_size -= rec_dma_transfer_size;
-    rec_dma_start_addr += rec_dma_transfer_size;
+    if(rec_dma_transfer_size)
+    {
+        rec_dma_size -= rec_dma_transfer_size;
+        rec_dma_start_addr += rec_dma_transfer_size;
 
-    /* the 2nd channel is silent when recording microphone on as3525v1 */
-    mono2stereo(AS3525_UNCACHED_ADDR((int16_t*)rec_dma_start_addr));
+        /* don't act like we just transferred data when we are called from
+         * pcm_rec_unlock() */
+        rec_dma_transfer_size = 0;
+
+#if CONFIG_CPU == AS3525
+        /* the 2nd channel is silent when recording microphone on as3525v1 */
+        mono2stereo(AS3525_UNCACHED_ADDR((int16_t*)rec_dma_start_addr));
+#endif
+
+        if(locked)
+        {
+            rec_callback_pending = is_recording;
+            return;
+        }
+    }
 
     if(!rec_dma_size)
     {
-        register pcm_more_callback_type2 more_ready = pcm_callback_more_ready;
-        if (!more_ready || more_ready(0) < 0)
-        {
-            /* Finished recording */
-            pcm_rec_dma_stop();
-            pcm_rec_dma_stopped_callback();
+        pcm_rec_more_ready_callback(0, &rec_dma_start_addr,
+                                    &rec_dma_size);
+
+        if(rec_dma_size == 0)
             return;
-        }
+
+        dump_dcache_range(rec_dma_start_addr, rec_dma_size);
+#if CONFIG_CPU == AS3525
+        mono_samples = AS3525_UNCACHED_ADDR((int16_t*)rec_dma_start_addr);
+#endif
     }
 
     rec_dma_start();
 }
 
-
-void pcm_rec_dma_record_more(void *start, size_t size)
-{
-    dump_dcache_range(start, size);
-    rec_dma_start_addr = start;
-#if CONFIG_CPU == AS3525
-    mono_samples = AS3525_UNCACHED_ADDR(start);
-#endif
-    rec_dma_size = size;
-}
-
-
 void pcm_rec_dma_stop(void)
 {
+    is_recording = false;
     dma_disable_channel(1);
     dma_release();
     rec_dma_size = 0;
 
-    I2SOUT_CONTROL &= ~(1<<5); /* source = i2soutif fifo */
     I2SIN_CONTROL &= ~(1<<11); /* disable dma */
 
     CGU_AUDIO &= ~((1<<23)|(1<<11));
-    CGU_PERI &= ~(CGU_I2SIN_APB_CLOCK_ENABLE|CGU_I2SOUT_APB_CLOCK_ENABLE);
+    bitclr32(&CGU_PERI, CGU_I2SIN_APB_CLOCK_ENABLE |
+                        CGU_I2SOUT_APB_CLOCK_ENABLE);
 }
 
 
@@ -325,12 +355,13 @@ void pcm_rec_dma_start(void *addr, size_t size)
 
     dma_retain();
 
-    CGU_PERI |= CGU_I2SIN_APB_CLOCK_ENABLE|CGU_I2SOUT_APB_CLOCK_ENABLE;
+    bitset32(&CGU_PERI, CGU_I2SIN_APB_CLOCK_ENABLE |
+                        CGU_I2SOUT_APB_CLOCK_ENABLE);
     CGU_AUDIO |= ((1<<23)|(1<<11));
 
-    I2SOUT_CONTROL |= 1<<5; /* source = loopback from i2sin fifo */
-
     I2SIN_CONTROL |= (1<<11)|(1<<5); /* enable dma, 14bits samples */
+
+    is_recording = true;
 
     rec_dma_start();
 }
@@ -353,17 +384,29 @@ void pcm_rec_dma_init(void)
     /* i2c clk src = I2SOUTIF, sdata src = AFE,
      * data valid at positive edge of SCLK */
     I2SIN_CONTROL = (1<<2);
+    I2SIN_MASK = 0; /* disables all interrupts */
 }
 
 
 const void * pcm_rec_dma_get_peak_buffer(void)
 {
-    pcm_rec_lock();
+#if CONFIG_CPU == AS3525
+    /*
+     * We need to prevent the DMA callback from kicking in while we are
+     * faking the right channel with data from left channel.
+     */
+
+    int old = disable_irq_save();
     int16_t *addr = AS3525_UNCACHED_ADDR((int16_t *)DMAC_CH_DST_ADDR(1));
     mono2stereo(addr);
-    pcm_rec_unlock();
+    restore_irq(old);
 
     return addr;
+
+#else
+    /* Microphone recording is stereo on as3525v2 */
+    return AS3525_UNCACHED_ADDR((int16_t *)DMAC_CH_DST_ADDR(1));
+#endif
 }
 
 #endif /* HAVE_RECORDING */

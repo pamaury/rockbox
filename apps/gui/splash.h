@@ -21,8 +21,9 @@
 
 #ifndef _GUI_SPLASH_H_
 #define _GUI_SPLASH_H_
-#include <_ansi.h>
+
 #include "screen_access.h"
+#include "gcc_extensions.h"
 
 /*
  * Puts a splash message centered on all the screens for a given period

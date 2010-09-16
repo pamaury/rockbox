@@ -30,30 +30,38 @@
 #include <stdlib.h>
 #include "config.h"
 #include "icon.h"
-
+#include "skin_engine/skin_engine.h"
 
 void sb_skin_data_load(enum screen_type screen, const char *buf, bool isfile);
 
-void sb_create_from_settings(enum screen_type screen);
+char* sb_create_from_settings(enum screen_type screen);
 void sb_skin_init(void) INIT_ATTR;
-void sb_set_info_vp(enum screen_type screen, char label);
+void sb_set_info_vp(enum screen_type screen, char *label);
 struct viewport *sb_skin_get_info_vp(enum screen_type screen);
 void sb_skin_update(enum screen_type screen, bool force);
 
 void sb_skin_set_update_delay(int delay);
 bool sb_set_title_text(char* title, enum themable_icons icon, enum screen_type screen);
 
-#if (LCD_DEPTH > 1) || (defined(HAVE_REMOTE_LCD) && LCD_REMOTE_DEPTH > 1)
-char* sb_get_backdrop(enum screen_type screen);
-bool sb_set_backdrop(enum screen_type screen, char* filename);
+#ifdef HAVE_TOUCHSCREEN
+void sb_bypass_touchregions(bool enable);
+int sb_touch_to_button(int context);
 #endif
+
+#if (LCD_DEPTH > 1) || (defined(HAVE_REMOTE_LCD) && LCD_REMOTE_DEPTH > 1)
+int sb_get_backdrop(enum screen_type screen);
+#endif
+int sb_preproccess(enum screen_type screen, struct wps_data *data);
+int sb_postproccess(enum screen_type screen, struct wps_data *data);
 
 #else /* CHARCELL */
 #define sb_skin_init()
 #define sb_skin_data_load(a,b,c)
 #define sb_skin_set_update_delay(a)
 #define sb_skin_set_state(a,b)
-#define sb_create_from_settings(a)
+#define sb_create_from_settings NULL
+#define sb_preproccess NULL
+#define sb_postproccess NULL
 #endif
 void do_sbs_update_callback(void *param);
 #endif /* __STATUSBAR_SKINNED_H__ */

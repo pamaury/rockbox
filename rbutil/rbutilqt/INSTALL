@@ -1,0 +1,61 @@
+/***************************************************************************
+ *             __________               __   ___.
+ *   Open      \______   \ ____   ____ |  | _\_ |__   _______  ___
+ *   Source     |       _//  _ \_/ ___\|  |/ /| __ \ /  _ \  \/  /
+ *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
+ *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
+ *                     \/            \/     \/    \/            \/
+ * $Id$
+ *
+ * All files in this archive are subject to the GNU General Public License.
+ * See the file COPYING in the source tree root for full license agreement.
+ *
+ * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
+ * KIND, either express or implied.
+ *
+ ****************************************************************************/
+
+This is Rockbox Utility, the graphical installer and housekeeping utility
+for Rockbox.
+
+Requirements:
+=============
+- Qt 4.5.0 or greater
+- at least the following folders from Rockbox svn:
+  o apps/codecs/libspeex
+  o rbutil/
+  o tools/
+- libusb (Linux, Mac)
+
+Building:
+=========
+- run qmake
+- run make
+
+Build Options:
+==============
+- static
+  add "-config static" to the qmake call to build a static binary. Note that
+  this also requires that you have a statically built version of Qt.
+- dbg
+  add "-config dbg" to build with debug symbols.
+- silent
+  add "-config silent" to the qmake call. This is an undocumented feature of
+  Qt itself. Note that this doesn't seem to work on Windows and Mac OS X.
+
+Installation / Deployment:
+==========================
+Rockbox Utility is build as all-in-one binary. This means for distribution
+you need:
+- RockboxUtility (main binary)
+- rbutil_*.qm (translation files, optional)
+You don't need any other files like configuration files, especially
+rbutil.ini which will get included into the binary.
+
+The script deploy-release.py automates building deployment binaries. For a
+complete list of paths to get from svn to build please check its source.
+
+
+The website for Rockbox Utility is
+http://www.rockbox.org/wiki/RockboxUtility
+

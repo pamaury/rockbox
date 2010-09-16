@@ -69,9 +69,6 @@ bool display_cuesheet_content(char* filename);
 /* finds the index of the current track played within a cuesheet */
 int cue_find_current_track(struct cuesheet *cue, unsigned long curpos);
 
-/* update the id3 info to that of the currently playing track in the cuesheet */
-void cue_spoof_id3(struct cuesheet *cue, struct mp3entry *id3);
-
 /* skip to next track in the cuesheet towards "direction" (which is 1 or -1) */
 bool curr_cuesheet_skip(struct cuesheet *cue, int direction, unsigned long curr_pos);
 

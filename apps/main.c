@@ -20,6 +20,7 @@
  ****************************************************************************/
 #include "config.h"
 
+#include "gcc_extensions.h"
 #include "storage.h"
 #include "disk.h"
 #include "fat.h"
@@ -48,7 +49,6 @@
 #include "backlight.h"
 #include "status.h"
 #include "debug_menu.h"
-#include "version.h"
 #include "font.h"
 #include "language.h"
 #include "wps.h"
@@ -73,6 +73,7 @@
 #include "scrobbler.h"
 #include "icon.h"
 #include "viewport.h"
+#include "skin_engine/skin_engine.h"
 #include "statusbar-skinned.h"
 #include "bootchart.h"
 
@@ -113,31 +114,38 @@
 #include "m5636.h"
 #endif
 
-#ifdef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
+#define MAIN_NORETURN_ATTR NORETURN_ATTR
+#else
+/* gcc adds an implicit 'return 0;' at the end of main(), causing a warning
+ * with noreturn attribute */
+#define MAIN_NORETURN_ATTR
+#endif
+
+#if (CONFIG_PLATFORM & PLATFORM_SDL)
 #include "sim_tasks.h"
 #include "system-sdl.h"
+#define HAVE_ARGV_MAIN
+/* Don't use SDL_main on windows -> no more stdio redirection */
+#if defined(WIN32)
+#undef main
+#endif
 #endif
 
 /*#define AUTOROCK*/ /* define this to check for "autostart.rock" on boot */
 
-const char appsversion[]=APPSVERSION;
-
 static void init(void);
-
-#ifdef HAVE_SDL
-#if defined(WIN32) && defined(main)
-/* Don't use SDL_main on windows -> no more stdio redirection */
-#undef main
-#endif
-int main(int argc, char *argv[])
-{
-    sys_handle_argv(argc, argv);
-#else
 /* main(), and various functions called by main() and init() may be
  * be INIT_ATTR. These functions must not be called after the final call
  * to root_menu() at the end of main()
  * see definition of INIT_ATTR in config.h */
-int main(void)  INIT_ATTR __attribute__((noreturn));
+#ifdef HAVE_ARGV_MAIN
+int main(int argc, char *argv[]) INIT_ATTR MAIN_NORETURN_ATTR ;
+int main(int argc, char *argv[])
+{
+    sys_handle_argv(argc, argv);
+#else
+int main(void) INIT_ATTR MAIN_NORETURN_ATTR;
 int main(void)
 {
 #endif
@@ -163,11 +171,17 @@ int main(void)
 
 #ifdef AUTOROCK
     {
-        static const char filename[] = PLUGIN_APPS_DIR "/autostart.rock";
-
-        if(file_exists(filename)) /* no complaint if it doesn't exist */
+        char filename[MAX_PATH];
+        const char *file = get_user_file_path(
+#ifdef APPLICATION
+                                ROCKBOX_DIR
+#else
+                                PLUGIN_APPS_DIR
+#endif
+            "/autostart.rock", NEED_WRITE|IS_FILE, filename, sizeof(filename));
+        if(file_exists(file)) /* no complaint if it doesn't exist */
         {
-            plugin_load((char*)filename, NULL); /* start if it does */
+            plugin_load(file, NULL); /* start if it does */
         }
     }
 #endif /* #ifdef AUTOROCK */
@@ -315,10 +329,13 @@ static void init_tagcache(void)
 }
 #endif
 
-#ifdef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_HOSTED)
 
 static void init(void)
 {
+#ifdef APPLICATION
+    paths_init();
+#endif
     system_init();
     kernel_init();
     buffer_init();
@@ -331,7 +348,9 @@ static void init(void)
     show_logo();
     button_init();
     backlight_init();
+#if (CONFIG_PLATFORM & PLATFORM_SDL)
     sim_tasks_init();
+#endif
     lang_init(core_language_builtin, language_strings, 
               LANG_LAST_INDEX_IN_ARRAY);
 #ifdef DEBUG
@@ -340,7 +359,7 @@ static void init(void)
     /* Keep the order of this 3 (viewportmanager handles statusbars)
      * Must be done before any code uses the multi-screen API */
     gui_syncstatusbar_init(&statusbars);
-    gui_sync_wps_init();
+    gui_sync_skin_init();
     sb_skin_init();
     viewportmanager_init();
 
@@ -357,6 +376,7 @@ static void init(void)
     tree_mem_init();
     filetype_init();
     playlist_init();
+    theme_init_buffer();
 
 #if CONFIG_CODEC != SWCODEC
     mp3_init( global_settings.volume,
@@ -402,6 +422,13 @@ static void init(void)
 #endif
 
     system_init();
+#if defined(IPOD_VIDEO)
+    audiobufend=(unsigned char *)audiobufend_lds;
+    if(MEM==64 && probed_ramsize!=64)
+    {
+        audiobufend -= (32<<20);
+    }
+#endif
     kernel_init();
 
 #ifdef HAVE_ADJUSTABLE_CPU_FREQ
@@ -484,7 +511,7 @@ static void init(void)
     sb_skin_init();
     CHART("<sb_skin_init");
     CHART(">gui_sync_wps_init");
-    gui_sync_wps_init();
+    gui_sync_skin_init();
     CHART("<gui_sync_wps_init");
     CHART(">viewportmanager_init");
     viewportmanager_init();
@@ -508,6 +535,8 @@ static void init(void)
     }
 #endif
 
+
+    disk_init_subsystem();
     CHART(">storage_init");
     rc = storage_init();
     CHART("<storage_init");
@@ -637,6 +666,7 @@ static void init(void)
 #if CONFIG_CODEC == SWCODEC
     tdspeed_init();
 #endif /* CONFIG_CODEC == SWCODEC */
+    theme_init_buffer();
 
 #if CONFIG_CODEC != SWCODEC
     /* No buffer allocation (see buffer.c) may take place after the call to
@@ -694,6 +724,7 @@ static void init(void)
 }
 
 #ifdef CPU_PP
+void cop_main(void) MAIN_NORETURN_ATTR;
 void cop_main(void)
 {
 /* This is the entry point for the coprocessor
@@ -705,7 +736,6 @@ void cop_main(void)
    destroyed for purposes of continuity. The cop sits idle until at least
    one thread exists on it. */
 
-/* 3G doesn't have Rolo or dual core support yet */
 #if NUM_CORES > 1
     system_init();
     kernel_init();
@@ -717,5 +747,4 @@ void cop_main(void)
 }
 #endif /* CPU_PP */
 
-#endif
-
+#endif /* SIMULATOR */

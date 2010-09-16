@@ -38,11 +38,11 @@
       \opt{ipodmini}{400~mAh (1G) or 630~mAh (2G)}%
       \opt{ipodcolor}{700~mAh}%
       \opt{ipodnano}{300~mAh}%
-      \opt{ipodvideo}{400~mAh (30~GB) or 600~mAh (60/80~GB)}%
+      \opt{ipodvideo}{400~mAh}%
       \opt{ipod4g}{630~mAh}%
       \opt{ipod3g}{630~mAh}%
       \opt{ipod1g2g}{1200~mAh}%
-      \opt{m5,x5}{950~mAh}%
+      \opt{iaudiom3,iaudiom5,iaudiox5}{950~mAh}%
       \opt{gigabeatf}{2000~mAh}%
       \opt{gigabeats}{700~mAh}%
       \opt{cowond2}{1600~mAh}%
@@ -52,10 +52,17 @@
         calculation. Changing this setting has no effect whatsoever on
         actual battery life. This setting only affects the accuracy of the
         runtime estimation as shown on screen.
-      \opt{iaudio}{Rockbox does not automatically distinguish between the
-        ``L'' models and the ``simple'' models which determine the default
-        value. If your dap{} is an \opt{m5}{M5L}\opt{x5}{X5L} set the value
-        to 2250~mAh for more accuracy in the runtime estimation.}
+      \opt{ipodvideo}{Rockbox does not automatically distinguish
+        between the 60/80~GB models and the 30~GB models which determine the
+        default value. If your \dap{} is a 60~GB or 80~GB model 
+        set the value to 600~mAh for more accuracy in the runtime estimation.}
+      \opt{iaudiom3,iaudiom5,iaudiox5}{Rockbox does not automatically distinguish
+        between the ``L'' models and the ``simple'' models which determine the
+        default value. If your \dap{} is an
+            \opt{iaudiom3}{M3L}%
+            \opt{iaudiom5}{M5L}%
+            \opt{iaudiox5}{X5L}
+        set the value to 2250~mAh for more accuracy in the runtime estimation.}
       \opt{ipod,sansa}{This value is fairly meaningless in the \playerman{}
         family at present, and work is on-going into finding a better way to
         determine battery life.}
@@ -65,11 +72,13 @@
         is currently used in the \dap{}. The two supported battery types are
         ``Alkaline'' or ``NiMH''.}
 
-      \opt{h300,ipodnano2g}{
+      \opt{usb_charging_enable}{
       \item [Charge During USB Connection.] This option lets you control whether
         the \dap{} should charge during the USB connection and hence draw the
-        full 500~mA. Turning it \setting{Off} is recommended if the dap{} is
-        connected through an unpowered USB hub or a laptop port.
+        full 500~mA. Turning it \setting{Off} is recommended if the \dap{} is
+        connected through an unpowered USB hub or a laptop port. To use a USB
+        AC adapter, select \setting{Force} to instruct the \dap{} to also
+        charge when USB power is available but no connection is established.
       }
 
      \end{description}

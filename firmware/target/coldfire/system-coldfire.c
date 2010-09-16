@@ -20,6 +20,7 @@
  ****************************************************************************/
 #include <stdio.h>
 #include "config.h"
+#include "gcc_extensions.h"
 #include "adc.h"
 #include "system.h"
 #include "lcd.h"
@@ -200,7 +201,7 @@ static void system_display_exception_info(unsigned long format,
        reliable. The system restarts, but boot often fails with ata error -42. */
 }
 
-static void UIE(void) __attribute__ ((noreturn));
+static void UIE(void) NORETURN_ATTR;
 static void UIE(void)
 {
     asm volatile("subq.l #4,%sp"); /* phony return address - never used */
@@ -368,10 +369,12 @@ void coldfire_set_dataincontrol(unsigned long value)
     restore_irq(level);
 }
 
-void cpucache_invalidate(void)
+void cpucache_commit_discard(void)
 {
    asm volatile ("move.l #0x01000000,%d0\n"
                  "movec.l %d0,%cacr\n"
                  "move.l #0x80000000,%d0\n"
                  "movec.l %d0,%cacr");
 }
+
+void cpucache_invalidate(void) __attribute__((alias("cpucache_commit_discard")));

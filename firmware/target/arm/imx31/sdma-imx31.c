@@ -35,8 +35,6 @@
 
 /* Cut down to bare bones essentials */
 
-/* Script information that depends on system revision */
-static struct sdma_script_start_addrs script_info;
 /* Mask of channels with callback enabled */
 static unsigned long sdma_enabled_ints = 0;
 /* One channel control block per channel in physically mapped device RAM */
@@ -55,92 +53,13 @@ static void __attribute__((interrupt("IRQ"))) SDMA_HANDLER(void)
     SDMA_INTR = pending;          /* Ack all ints */
     pending &= sdma_enabled_ints; /* Only dispatch ints with callback */
 
-    while (1)
+    while (pending)
     {
-        unsigned int channel;
+        unsigned int bit = pending & -pending; /* Isolate bottom bit */
+        pending &= ~bit;          /* Clear it */
 
-        if (pending == 0)
-            break; /* No bits set */
-
-        channel = find_first_set_bit(pending);
-
-        pending &= ~(1ul << channel);
-
-        /* Call callback (required if using an interrupt) */
-        ccb_array[channel].channel_desc->callback();
-    }
-}
-
-/* Initialize script information based upon the system revision */
-static void init_script_info(void)
-{
-    if (iim_system_rev() == IIM_SREV_1_0)
-    {
-        /* Channel script info */
-        script_info.app_2_mcu_addr = app_2_mcu_ADDR_1;
-        script_info.ap_2_ap_addr = ap_2_ap_ADDR_1;
-        script_info.ap_2_bp_addr = -1;
-        script_info.bp_2_ap_addr = -1;
-        script_info.loopback_on_dsp_side_addr = -1;
-        script_info.mcu_2_app_addr = mcu_2_app_ADDR_1;
-        script_info.mcu_2_shp_addr = mcu_2_shp_ADDR_1;
-        script_info.mcu_interrupt_only_addr = -1;
-        script_info.shp_2_mcu_addr = shp_2_mcu_ADDR_1;
-        script_info.uartsh_2_mcu_addr = uartsh_2_mcu_ADDR_1;
-        script_info.uart_2_mcu_addr = uart_2_mcu_ADDR_1;
-        script_info.dptc_dvfs_addr = dptc_dvfs_ADDR_1;
-        script_info.firi_2_mcu_addr = firi_2_mcu_ADDR_1;
-        script_info.firi_2_per_addr = -1;
-        script_info.mshc_2_mcu_addr = mshc_2_mcu_ADDR_1;
-        script_info.per_2_app_addr = -1;
-        script_info.per_2_firi_addr = -1;
-        script_info.per_2_shp_addr = -1;
-        script_info.mcu_2_ata_addr = mcu_2_ata_ADDR_1;
-        script_info.mcu_2_firi_addr = mcu_2_firi_ADDR_1;
-        script_info.mcu_2_mshc_addr = mcu_2_mshc_ADDR_1;
-        script_info.ata_2_mcu_addr = ata_2_mcu_ADDR_1;
-        script_info.uartsh_2_per_addr = -1;
-        script_info.shp_2_per_addr = -1;
-        script_info.uart_2_per_addr = -1;
-        script_info.app_2_per_addr = -1;
-        /* Main code block info */
-        script_info.ram_code_size = RAM_CODE_SIZE_1;
-        script_info.ram_code_start_addr = RAM_CODE_START_ADDR_1;
-        script_info.mcu_start_addr = (unsigned long)sdma_code_1;
-    }
-    else
-    {
-        /* Channel script info */
-        script_info.app_2_mcu_addr = app_2_mcu_patched_ADDR_2;
-        script_info.ap_2_ap_addr = ap_2_ap_ADDR_2;
-        script_info.ap_2_bp_addr = ap_2_bp_ADDR_2;
-        script_info.bp_2_ap_addr = bp_2_ap_ADDR_2;
-        script_info.loopback_on_dsp_side_addr = -1;
-        script_info.mcu_2_app_addr = mcu_2_app_patched_ADDR_2;
-        script_info.mcu_2_shp_addr = mcu_2_shp_patched_ADDR_2;
-        script_info.mcu_interrupt_only_addr = -1;
-        script_info.shp_2_mcu_addr = shp_2_mcu_patched_ADDR_2;
-        script_info.uartsh_2_mcu_addr = uartsh_2_mcu_patched_ADDR_2;
-        script_info.uart_2_mcu_addr = uart_2_mcu_patched_ADDR_2;
-        script_info.dptc_dvfs_addr = -1;
-        script_info.firi_2_mcu_addr = firi_2_mcu_ADDR_2;
-        script_info.firi_2_per_addr = -1;
-        script_info.mshc_2_mcu_addr = -1;
-        script_info.per_2_app_addr = -1;
-        script_info.per_2_firi_addr = -1;
-        script_info.per_2_shp_addr = per_2_shp_ADDR_2;
-        script_info.mcu_2_ata_addr = mcu_2_ata_ADDR_2;
-        script_info.mcu_2_firi_addr = mcu_2_firi_ADDR_2;
-        script_info.mcu_2_mshc_addr = -1;
-        script_info.ata_2_mcu_addr = ata_2_mcu_ADDR_2;
-        script_info.uartsh_2_per_addr = -1;
-        script_info.shp_2_per_addr = shp_2_per_ADDR_2;
-        script_info.uart_2_per_addr = -1;
-        script_info.app_2_per_addr = -1;
-        /* Main code block info */
-        script_info.ram_code_size = RAM_CODE_SIZE_2;
-        script_info.ram_code_start_addr = RAM_CODE_START_ADDR_2;
-        script_info.mcu_start_addr = (unsigned long)sdma_code_2;
+        /* Call callback (required if using an interrupt). bit number = channel */
+        ccb_array[31 - __builtin_clz(bit)].channel_desc->callback();
     }
 }
 
@@ -159,7 +78,7 @@ static unsigned long get_script_pc(unsigned int peripheral_type,
         case SDMA_TRAN_EMI_2_INT:
         case SDMA_TRAN_EMI_2_EMI:
         case SDMA_TRAN_INT_2_EMI:
-            res = script_info.ap_2_ap_addr;
+            res = AP_2_AP_ADDR;
             break;
         }
         break;
@@ -169,16 +88,16 @@ static unsigned long get_script_pc(unsigned int peripheral_type,
         switch (transfer_type)
         {
         case SDMA_TRAN_EMI_2_DSP:
-            res = script_info.ap_2_bp_addr;
+            res = AP_2_BP_ADDR;
             break;
         case SDMA_TRAN_DSP_2_EMI:
-            res = script_info.bp_2_ap_addr;
+            res = BP_2_AP_ADDR;
             break;
         case SDMA_TRAN_DSP_2_EMI_LOOP:
-            res = script_info.loopback_on_dsp_side_addr;
+            res = LOOPBACK_ON_DSP_SIDE_ADDR;
             break;
         case SDMA_TRAN_EMI_2_DSP_LOOP:
-            res = script_info.mcu_interrupt_only_addr;
+            res = MCU_INTERRUPT_ONLY_ADDR;
             break;
         }
         break;
@@ -189,16 +108,16 @@ static unsigned long get_script_pc(unsigned int peripheral_type,
         switch (transfer_type)
         {
         case SDMA_TRAN_PER_2_INT:
-            res = script_info.firi_2_per_addr;
+            res = FIRI_2_PER_ADDR;
             break;
         case SDMA_TRAN_PER_2_EMI:
-            res = script_info.firi_2_mcu_addr;
+            res = FIRI_2_MCU_ADDR;
             break;
         case SDMA_TRAN_INT_2_PER:
-            res = script_info.per_2_firi_addr;
+            res = PER_2_FIRI_ADDR;
             break;
         case SDMA_TRAN_EMI_2_PER:
-            res = script_info.mcu_2_firi_addr;
+            res = MCU_2_FIRI_ADDR;
             break;
         }
         break;
@@ -209,16 +128,16 @@ static unsigned long get_script_pc(unsigned int peripheral_type,
         switch (transfer_type)
         {
         case SDMA_TRAN_PER_2_INT:
-            res = script_info.uart_2_per_addr;
+            res = UART_2_PER_ADDR;
             break;
         case SDMA_TRAN_PER_2_EMI:
-            res = script_info.uart_2_mcu_addr;
+            res = UART_2_MCU_ADDR;
             break;
         case SDMA_TRAN_INT_2_PER:
-            res = script_info.per_2_app_addr;
+            res = PER_2_APP_ADDR;
             break;
         case SDMA_TRAN_EMI_2_PER:
-            res = script_info.mcu_2_app_addr;
+            res = MCU_2_APP_ADDR;
             break;
         }
         break;
@@ -229,16 +148,16 @@ static unsigned long get_script_pc(unsigned int peripheral_type,
         switch (transfer_type)
         {
         case SDMA_TRAN_PER_2_INT:
-            res = script_info.uartsh_2_per_addr;
+            res = UARTSH_2_PER_ADDR;
             break;
         case SDMA_TRAN_PER_2_EMI:
-            res = script_info.uartsh_2_mcu_addr;
+            res = UARTSH_2_MCU_ADDR;
             break;
         case SDMA_TRAN_INT_2_PER:
-            res = script_info.per_2_shp_addr;
+            res = PER_2_SHP_ADDR;
             break;
         case SDMA_TRAN_EMI_2_PER:
-            res = script_info.mcu_2_shp_addr;
+            res = MCU_2_SHP_ADDR;
             break;
         }
         break;
@@ -248,10 +167,10 @@ static unsigned long get_script_pc(unsigned int peripheral_type,
         switch (transfer_type)
         {
         case SDMA_TRAN_PER_2_EMI:
-            res = script_info.ata_2_mcu_addr;
+            res = ATA_2_MCU_ADDR;
             break;
         case SDMA_TRAN_EMI_2_PER:
-            res = script_info.mcu_2_ata_addr;
+            res = MCU_2_ATA_ADDR;
             break;
         }
         break;
@@ -262,16 +181,16 @@ static unsigned long get_script_pc(unsigned int peripheral_type,
         switch (transfer_type)
         {
         case SDMA_TRAN_PER_2_INT:
-            res = script_info.app_2_per_addr;
+            res = APP_2_PER_ADDR;
             break;
         case SDMA_TRAN_PER_2_EMI:
-            res = script_info.app_2_mcu_addr;
+            res = APP_2_MCU_ADDR;
             break;
         case SDMA_TRAN_INT_2_PER:
-            res = script_info.per_2_app_addr;
+            res = PER_2_APP_ADDR;
             break;
         case SDMA_TRAN_EMI_2_PER:
-            res = script_info.mcu_2_app_addr;
+            res = MCU_2_APP_ADDR;
             break;
         }
         break;
@@ -285,16 +204,16 @@ static unsigned long get_script_pc(unsigned int peripheral_type,
         switch (transfer_type)
         {
         case SDMA_TRAN_PER_2_INT:
-            res = script_info.shp_2_per_addr;
+            res = SHP_2_PER_ADDR;
             break;
         case SDMA_TRAN_PER_2_EMI:
-            res = script_info.shp_2_mcu_addr;
+            res = SHP_2_MCU_ADDR;
             break;
         case SDMA_TRAN_INT_2_PER:
-            res = script_info.per_2_shp_addr;
+            res = PER_2_SHP_ADDR;
             break;
         case SDMA_TRAN_EMI_2_PER:
-            res = script_info.mcu_2_shp_addr;
+            res = MCU_2_SHP_ADDR;
             break;
         }
         break;
@@ -303,10 +222,10 @@ static unsigned long get_script_pc(unsigned int peripheral_type,
         switch (transfer_type)
         {
         case SDMA_TRAN_PER_2_EMI:
-            res = script_info.mshc_2_mcu_addr;
+            res = MSHC_2_MCU_ADDR;
             break;
         case SDMA_TRAN_EMI_2_PER:
-            res = script_info.mcu_2_mshc_addr;
+            res = MCU_2_MSHC_ADDR;
             break;
         }
         break;
@@ -315,7 +234,7 @@ static unsigned long get_script_pc(unsigned int peripheral_type,
         switch (transfer_type)
         {
         case SDMA_TRAN_PER_2_EMI:
-            res = script_info.dptc_dvfs_addr;
+            res = DPTC_DVFS_ADDR;
             break;
         }
         break;
@@ -414,12 +333,12 @@ static void set_channel_ownership(unsigned int channel, unsigned int config)
 
     /* DSP side */
 #if 0 /* Not using this */
-    imx31_regmod32(&SDMA_DSPOVR, (config & CH_OWNSHP_DSP) ? 0 : bit, bit);
+    bitmod32(&SDMA_DSPOVR, (config & CH_OWNSHP_DSP) ? 0 : bit, bit);
 #endif
     /* Event */
-    imx31_regmod32(&SDMA_EVTOVR, (config & CH_OWNSHP_EVT) ? 0 : bit, bit);
+    bitmod32(&SDMA_EVTOVR, (config & CH_OWNSHP_EVT) ? 0 : bit, bit);
     /* MCU side */
-    imx31_regmod32(&SDMA_HOSTOVR, (config & CH_OWNSHP_MCU) ? 0 : bit, bit);
+    bitmod32(&SDMA_HOSTOVR, (config & CH_OWNSHP_MCU) ? 0 : bit, bit);
 }
 
 static bool setup_channel(struct channel_control_block *ccb_p)
@@ -485,12 +404,12 @@ static bool setup_channel(struct channel_control_block *ccb_p)
     if (channel_cfg & CH_OWNSHP_EVT)
     {
         /* Set event ID to channel activation bitmapping */
-        imx31_regset32(&SDMA_CHNENBL(cd_p->event_id1), 1ul << channel);
+        bitset32(&SDMA_CHNENBL(cd_p->event_id1), 1ul << channel);
 
         if (cd_p->per_type == SDMA_PER_ATA)
         {
             /* ATA has two */
-            imx31_regset32(&SDMA_CHNENBL(cd_p->event_id2), 1ul << channel);
+            bitset32(&SDMA_CHNENBL(cd_p->event_id2), 1ul << channel);
         }
     }
 
@@ -500,7 +419,7 @@ static bool setup_channel(struct channel_control_block *ccb_p)
 }
 
 /** Public routines **/
-void sdma_init(void)
+void INIT_ATTR sdma_init(void)
 {
     int i;
     unsigned long acr;
@@ -510,8 +429,6 @@ void sdma_init(void)
     /* Reset the controller */
     SDMA_RESET |= SDMA_RESET_RESET;
     while (SDMA_RESET & SDMA_RESET_RESET);
-
-    init_script_info();
 
     /* No channel enabled, all priorities 0 */
     for (i = 0; i < CH_NUM; i++)
@@ -561,9 +478,9 @@ void sdma_init(void)
     set_buffer_descriptor(&c0_buffer_desc.bd,
                           C0_SETPM,
                           BD_DONE | BD_WRAP | BD_EXTD,
-                          script_info.ram_code_size,
-                          (void *)addr_virt_to_phys(script_info.mcu_start_addr),
-                          (void *)(unsigned long)script_info.ram_code_start_addr);
+                          RAM_CODE_SIZE,
+                          (void *)addr_virt_to_phys(MCU_START_ADDR),
+                          (void *)RAM_CODE_START_ADDR);
 
     SDMA_HSTART = 1ul;
     sdma_channel_wait_nonblocking(0);
@@ -676,7 +593,7 @@ void sdma_channel_stop(unsigned int channel)
 
     /* Unlock callback if it was set */
     if (intmsk & chmsk)
-        imx31_regset32(&sdma_enabled_ints, chmsk);
+        bitset32(&sdma_enabled_ints, chmsk);
 
     logf("SDMA ch closed: %d", channel);
 }
@@ -721,7 +638,7 @@ bool sdma_channel_init(unsigned int channel,
 
     /* Enable interrupt if a callback is specified. */
     if (cd_p->callback != NULL)
-        imx31_regset32(&sdma_enabled_ints, 1ul << channel);
+        bitset32(&sdma_enabled_ints, 1ul << channel);
 
     /* Minimum schedulable = 1 */
     sdma_channel_set_priority(channel, 1);
@@ -741,7 +658,7 @@ void sdma_channel_close(unsigned int channel)
     ccb_p = &ccb_array[channel];
 
     /* Block callbacks (if not initialized, it won't be set). */
-    imx31_regclr32(&sdma_enabled_ints, 1ul << channel);
+    bitclr32(&sdma_enabled_ints, 1ul << channel);
 
     if (ccb_p->status.opened_init == 0)
         return;

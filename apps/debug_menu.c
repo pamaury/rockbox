@@ -53,7 +53,7 @@
 #include "lcd-remote.h"
 #include "crc32.h"
 #include "logf.h"
-#ifndef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
 #include "disk.h"
 #include "adc.h"
 #include "power.h"
@@ -64,7 +64,7 @@
 #include "mas.h"
 #include "eeprom_24cxx.h"
 #if (CONFIG_STORAGE & STORAGE_MMC) || (CONFIG_STORAGE & STORAGE_SD)
-#include "hotswap.h"
+#include "sdmmc.h"
 #endif
 #if (CONFIG_STORAGE & STORAGE_ATA)
 #include "ata.h"
@@ -276,7 +276,7 @@ static unsigned int ticks, boost_ticks, freq_sum;
 
 static void dbg_audio_task(void)
 {
-#ifndef SIMULATOR
+#ifdef CPUFREQ_NORMAL
     if(FREQ > CPUFREQ_NORMAL)
         boost_ticks++;
     freq_sum += FREQ/1000000; /* in MHz */
@@ -371,7 +371,7 @@ static bool dbg_buffering_thread(void)
 
             screens[i].putsf(0, line++, "handle count: %d", (int)d.num_handles);
 
-#ifndef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
             screens[i].putsf(0, line++, "cpu freq: %3dMHz",
                              (int)((FREQ + 500000) / 1000000));
 #endif
@@ -460,7 +460,7 @@ static bool dbg_flash_id(unsigned* p_manufacturer, unsigned* p_device,
 }
 #endif /* (CONFIG_CPU == SH7034 || CPU_COLDFIRE) */
 
-#ifndef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
 #ifdef CPU_PP
 static int perfcheck(void)
 {
@@ -756,9 +756,9 @@ static bool dbg_hw_info(void)
     return false;
 }
 #endif /* !HAVE_LCD_BITMAP */
-#endif /* !SIMULATOR */
+#endif /* PLATFORM_NATIVE */
 
-#ifndef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
 static const char* dbg_partitions_getname(int selected_item, void *data,
                                           char *buffer, size_t buffer_len)
 {
@@ -786,7 +786,7 @@ bool dbg_partitions(void)
     info.get_name = dbg_partitions_getname;
     return simplelist_show_list(&info);
 }
-#endif
+#endif /* PLATFORM_NATIVE */
 
 #if defined(CPU_COLDFIRE) && defined(HAVE_SPDIF_OUT)
 static bool dbg_spdif(void)
@@ -928,7 +928,7 @@ static bool dbg_spdif(void)
         lcd_putsf(0, line++, "Clock accuracy: %d", x);
         line++;
 
-#ifndef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
         lcd_putsf(0, line++, "Measured freq: %ldHz",
                  spdif_measure_frequency());
 #endif
@@ -950,7 +950,7 @@ static bool dbg_spdif(void)
 }
 #endif /* CPU_COLDFIRE */
 
-#ifndef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
 #ifdef HAVE_LCD_BITMAP
  /* button definitions */
 #if (CONFIG_KEYPAD == IRIVER_H100_PAD) || \
@@ -1118,23 +1118,35 @@ bool dbg_ports(void)
     {
         line = 0;
 #if (LCD_HEIGHT >= 176) /* Only for displays with appropriate height. */
-        lcd_puts(0, line++, "GPIO ENABLE:");
-        lcd_putsf(0, line++, "A: %02x  E: %02x  I: %02x",
+        lcd_puts(0, line++, "GPIO ENABLE:          GPIO OUTPUT ENABLE:");
+        lcd_putsf(0, line++, "A: %02x  E: %02x  I: %02x   A: %02x  E: %02x  I: %02x",
                                (unsigned int)GPIOA_ENABLE,
                                (unsigned int)GPIOE_ENABLE,
-                               (unsigned int)GPIOI_ENABLE);
-        lcd_putsf(0, line++, "B: %02x  F: %02x  J: %02x",
+                               (unsigned int)GPIOI_ENABLE,
+                               (unsigned int)GPIOA_OUTPUT_EN,
+                               (unsigned int)GPIOE_OUTPUT_EN,
+                               (unsigned int)GPIOI_OUTPUT_EN);
+        lcd_putsf(0, line++, "B: %02x  F: %02x  J: %02x   B: %02x  F: %02x  J: %02x",
                                (unsigned int)GPIOB_ENABLE,
                                (unsigned int)GPIOF_ENABLE,
-                               (unsigned int)GPIOJ_ENABLE);
-        lcd_putsf(0, line++, "C: %02x  G: %02x  K: %02x",
+                               (unsigned int)GPIOJ_ENABLE,
+                               (unsigned int)GPIOB_OUTPUT_EN,
+                               (unsigned int)GPIOF_OUTPUT_EN,
+                               (unsigned int)GPIOJ_OUTPUT_EN);
+        lcd_putsf(0, line++, "C: %02x  G: %02x  K: %02x   C: %02x  G: %02x  K: %02x",
                                (unsigned int)GPIOC_ENABLE,
                                (unsigned int)GPIOG_ENABLE,
-                               (unsigned int)GPIOK_ENABLE);
-        lcd_putsf(0, line++, "D: %02x  H: %02x  L: %02x",
+                               (unsigned int)GPIOK_ENABLE,
+                               (unsigned int)GPIOC_OUTPUT_EN,
+                               (unsigned int)GPIOG_OUTPUT_EN,
+                               (unsigned int)GPIOK_OUTPUT_EN);
+        lcd_putsf(0, line++, "D: %02x  H: %02x  L: %02x   D: %02x  H: %02x  L: %02x",
                                (unsigned int)GPIOD_ENABLE,
                                (unsigned int)GPIOH_ENABLE,
-                               (unsigned int)GPIOL_ENABLE);
+                               (unsigned int)GPIOL_ENABLE,
+                               (unsigned int)GPIOD_OUTPUT_EN,
+                               (unsigned int)GPIOH_OUTPUT_EN,
+                               (unsigned int)GPIOL_OUTPUT_EN);
         line++;
 #endif
         lcd_puts(0, line++, "GPIO INPUT VAL:");
@@ -1250,7 +1262,6 @@ extern unsigned char serbuf[];
 #else /* !HAVE_LCD_BITMAP */
 bool dbg_ports(void)
 {
-    char buf[32];
     int button;
     int adc_battery_voltage;
     int currval = 0;
@@ -1259,40 +1270,14 @@ bool dbg_ports(void)
 
     while(1)
     {
-        switch(currval)
-        {
-        case 0:
-            snprintf(buf, 32, "PADR: %04x", (unsigned short)PADR);
-            break;
-        case 1:
-            snprintf(buf, 32, "PBDR: %04x", (unsigned short)PBDR);
-            break;
-        case 2:
-            snprintf(buf, 32, "AN0: %03x", adc_read(0));
-            break;
-        case 3:
-            snprintf(buf, 32, "AN1: %03x", adc_read(1));
-            break;
-        case 4:
-            snprintf(buf, 32, "AN2: %03x", adc_read(2));
-            break;
-        case 5:
-            snprintf(buf, 32, "AN3: %03x", adc_read(3));
-            break;
-        case 6:
-            snprintf(buf, 32, "AN4: %03x", adc_read(4));
-            break;
-        case 7:
-            snprintf(buf, 32, "AN5: %03x", adc_read(5));
-            break;
-        case 8:
-            snprintf(buf, 32, "AN6: %03x", adc_read(6));
-            break;
-        case 9:
-            snprintf(buf, 32, "AN7: %03x", adc_read(7));
-            break;
+        if (currval == 0) {
+            lcd_putsf(0, 0, "PADR: %04x", (unsigned short)PADR);
+        } else if (currval == 1) {
+            lcd_putsf(0, 0, "PBDR: %04x", (unsigned short)PBDR);
+        } else {
+            int idx = currval - 2; /* idx < 7 */
+            lcd_putsf(0, 0, "AN%d: %03x", idx, adc_read(idx));
         }
-        lcd_puts(0, 0, buf);
 
         battery_read_info(&adc_battery_voltage, NULL);
         lcd_putsf(0, 1, "Batt: %d.%03dV", adc_battery_voltage / 1000,
@@ -1322,9 +1307,9 @@ bool dbg_ports(void)
     return false;
 }
 #endif /* !HAVE_LCD_BITMAP */
-#endif /* !SIMULATOR */
+#endif /* PLATFORM_NATIVE */
 
-#if (CONFIG_RTC == RTC_PCF50605) && !defined(SIMULATOR)
+#if (CONFIG_RTC == RTC_PCF50605) && (CONFIG_PLATFORM & PLATFORM_NATIVE)
 static bool dbg_pcf(void)
 {
     int line;
@@ -1411,7 +1396,7 @@ static bool dbg_cpufreq(void)
 }
 #endif /* HAVE_ADJUSTABLE_CPU_FREQ */
 
-#if defined(HAVE_TSC2100) && !defined(SIMULATOR)
+#if defined(HAVE_TSC2100) && (CONFIG_PLATFORM & PLATFORM_NATIVE)
 #include "tsc2100.h"
 static char *itob(int n, int len)
 {
@@ -1481,7 +1466,7 @@ static bool tsc2100_debug(void)
     return simplelist_show_list(&info);
 }
 #endif
-#ifndef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
 #ifdef HAVE_LCD_BITMAP
 /*
  * view_battery() shows a automatically scaled graph of the battery voltage
@@ -1492,10 +1477,11 @@ static bool tsc2100_debug(void)
 #define BAT_LAST_VAL  MIN(LCD_WIDTH, POWER_HISTORY_LEN)
 #define BAT_YSPACE    (LCD_HEIGHT - 20)
 
+
 static bool view_battery(void)
 {
     int view = 0;
-    int i, x, y;
+    int i, x, y, y1, y2, grid, graph;
     unsigned short maxv, minv;
 
     lcd_setfont(FONT_SYSFIXED);
@@ -1514,23 +1500,64 @@ static bool view_battery(void)
                     if (power_history[i] < minv)
                         minv = power_history[i];
                 }
-
-                lcd_putsf(0, 0, "Battery %d.%03d", power_history[0] / 1000,
+                
+                /* adjust grid scale */ 
+                if ((maxv - minv) > 50)
+                    grid = 50;
+                else
+                    grid = 5;
+                
+                /* print header */                
+                lcd_putsf(0, 0, "battery %d.%03dV", power_history[0] / 1000,
                          power_history[0] % 1000);
-                lcd_putsf(0, 1, "scale %d.%03d-%d.%03dV",
-                         minv / 1000, minv % 1000, maxv / 1000, maxv % 1000);
+                lcd_putsf(0, 1, "%d.%03d-%d.%03dV (%2dmV)",
+                          minv / 1000, minv % 1000, maxv / 1000, maxv % 1000,
+                          grid);
+                
+                i = 1;
+                while ((y = (minv - (minv % grid)+i*grid)) < maxv)
+                {
+                    graph = ((y-minv)*BAT_YSPACE)/(maxv-minv);
+                    graph = LCD_HEIGHT-1 - graph;
+             
+                    /* draw dotted horizontal grid line */      
+                    for (x=0; x<LCD_WIDTH;x=x+2)
+                        lcd_drawpixel(x,graph);
 
-                x = 0;
-                for (i = BAT_LAST_VAL - 1; i >= 0; i--) {
-                    y = (power_history[i] - minv) * BAT_YSPACE / (maxv - minv);
-                    lcd_set_drawmode(DRMODE_SOLID|DRMODE_INVERSEVID);
-                    lcd_vline(x, LCD_HEIGHT-1, 20);
-                    lcd_set_drawmode(DRMODE_SOLID);
-                    lcd_vline(x, LCD_HEIGHT-1,
-                              MIN(MAX(LCD_HEIGHT-1 - y, 20), LCD_HEIGHT-1));
-                    x++;
+                    i++;
                 }
+                
+                x = 0;
+                /* draw plot of power history
+                 * skip empty entries
+                 */
+                for (i = BAT_LAST_VAL - 1; i > 0; i--) 
+                {
+                    if (power_history[i] && power_history[i-1])
+                    {
+                        y1 = (power_history[i] - minv) * BAT_YSPACE / 
+                            (maxv - minv);
+                        y1 = MIN(MAX(LCD_HEIGHT-1 - y1, 20), 
+                                 LCD_HEIGHT-1);
+                        y2 = (power_history[i-1] - minv) * BAT_YSPACE /
+                            (maxv - minv);
+                        y2 = MIN(MAX(LCD_HEIGHT-1 - y2, 20),
+                                 LCD_HEIGHT-1);
 
+                        lcd_set_drawmode(DRMODE_SOLID);
+
+                        /* make line thicker */
+                        lcd_drawline(((x*LCD_WIDTH)/(BAT_LAST_VAL)), 
+                                     y1, 
+                                     (((x+1)*LCD_WIDTH)/(BAT_LAST_VAL)), 
+                                     y2);
+                        lcd_drawline(((x*LCD_WIDTH)/(BAT_LAST_VAL))+1, 
+                                     y1+1, 
+                                     (((x+1)*LCD_WIDTH)/(BAT_LAST_VAL))+1, 
+                                     y2+1);
+                        x++;
+                    }
+                }
                 break;
 
             case 1: /* status: */
@@ -1556,9 +1583,6 @@ static bool view_battery(void)
                 lcd_puts(0, 7, power_message);
                 lcd_putsf(0, 8, "USB Inserted: %s",
                          usb_inserted() ? "yes" : "no");
-#elif defined IRIVER_H300_SERIES
-                lcd_putsf(0, 9, "USB Charging Enabled: %s",
-                         usb_charging_enabled() ? "yes" : "no");
 #elif defined IPOD_NANO || defined IPOD_VIDEO
                 int usb_pwr  = (GPIOL_INPUT_VAL & 0x10)?true:false;
                 int ext_pwr  = (GPIOL_INPUT_VAL & 0x08)?false:true;
@@ -1577,12 +1601,10 @@ static bool view_battery(void)
                 lcd_putsf(0, 7, "Headphone: %s",
                          headphone ? "connected" : "disconnected");
 #ifdef IPOD_VIDEO
-                x = (adc_read(ADC_4066_ISTAT) * 2400) /
-#if MEM == 64
-                (1024 * 2);
-#else
-                (1024 * 3);
-#endif
+                if(probed_ramsize == 64)
+                    x = (adc_read(ADC_4066_ISTAT) * 2400) / (1024 * 2);
+                else
+                    x = (adc_read(ADC_4066_ISTAT) * 2400) / (1024 * 3);
                 lcd_putsf(0, 8, "Ibat: %d mA", x);
                 lcd_putsf(0, 9, "Vbat * Ibat: %d mW", x * y / 1000);
 #endif
@@ -1609,8 +1631,6 @@ static bool view_battery(void)
                 lcd_putsf(0, line++, "%s%s",
                          (st & POWER_INPUT_MAIN_CHARGER) ? " Main" : "",
                          (st & POWER_INPUT_USB_CHARGER) ? " USB" : "");
-
-                lcd_putsf(0, line++, "IUSB Max: %d", usb_allowed_current());
 
                 y = ARRAYLEN(chrgstate_strings) - 1;
 
@@ -1663,20 +1683,19 @@ static bool view_battery(void)
                     
 #elif defined(SANSA_E200) || defined(SANSA_C200) || CONFIG_CPU == AS3525 || \
       CONFIG_CPU == AS3525v2
-                const int first = CHARGE_STATE_DISABLED;
                 static const char * const chrgstate_strings[] =
                 {
-                    [CHARGE_STATE_DISABLED-first] = "Disabled",
-                    [CHARGE_STATE_ERROR-first]    = "Error",
-                    [DISCHARGING-first]           = "Discharging",
-                    [CHARGING-first]              = "Charging",
+                    [CHARGE_STATE_DISABLED - CHARGE_STATE_DISABLED]= "Disabled",
+                    [CHARGE_STATE_ERROR - CHARGE_STATE_DISABLED] = "Error",
+                    [DISCHARGING - CHARGE_STATE_DISABLED]       = "Discharging",
+                    [CHARGING - CHARGE_STATE_DISABLED]          = "Charging",
                 };
                 const char *str = NULL;
 
                 lcd_putsf(0, 3, "Charger: %s",
                          charger_inserted() ? "present" : "absent");
 
-                y = charge_state - first;
+                y = charge_state - CHARGE_STATE_DISABLED;
                 if ((unsigned)y < ARRAYLEN(chrgstate_strings))
                     str = chrgstate_strings[y];
 
@@ -1779,7 +1798,7 @@ static bool view_battery(void)
 #endif /* HAVE_LCD_BITMAP */
 #endif
 
-#ifndef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
 #if (CONFIG_STORAGE & STORAGE_MMC) || (CONFIG_STORAGE & STORAGE_SD)
 
 #if (CONFIG_STORAGE & STORAGE_MMC)
@@ -2100,7 +2119,7 @@ static bool dbg_disk_info(void)
     info.scroll_all = true;
     return simplelist_show_list(&info);
 }
-#endif /* !SIMULATOR */
+#endif /* PLATFORM_NATIVE */
 
 #ifdef HAVE_DIRCACHE
 static int dircache_callback(int btn, struct gui_synclist *lists)
@@ -2317,6 +2336,14 @@ static bool dbg_save_roms(void)
 
 #ifndef SIMULATOR
 #if CONFIG_TUNER
+
+#ifdef CONFIG_TUNER_MULTI
+static int tuner_type = 0;
+#define IF_TUNER_TYPE(type) if(tuner_type==type)
+#else
+#define IF_TUNER_TYPE(type)
+#endif
+
 static int radio_callback(int btn, struct gui_synclist *lists)
 {
     (void)lists;
@@ -2361,32 +2388,39 @@ static int radio_callback(int btn, struct gui_synclist *lists)
              (unsigned)nfo.write_regs[4]);
 #endif /* TEA5767 */
 #if (CONFIG_TUNER & SI4700)
-    struct si4700_dbg_info nfo;
-    si4700_dbg_info(&nfo);
-    simplelist_addline(SIMPLELIST_ADD_LINE, "SI4700 regs:");
-    /* Registers */
-    simplelist_addline(SIMPLELIST_ADD_LINE,
-             "%04X %04X %04X %04X",
-             (unsigned)nfo.regs[0], (unsigned)nfo.regs[1],
-             (unsigned)nfo.regs[2], (unsigned)nfo.regs[3]);
-    simplelist_addline(SIMPLELIST_ADD_LINE,
-             "%04X %04X %04X %04X",
-             (unsigned)nfo.regs[4], (unsigned)nfo.regs[5],
-             (unsigned)nfo.regs[6], (unsigned)nfo.regs[7]);
-    simplelist_addline(SIMPLELIST_ADD_LINE,
-             "%04X %04X %04X %04X",
-             (unsigned)nfo.regs[8], (unsigned)nfo.regs[9],
-             (unsigned)nfo.regs[10], (unsigned)nfo.regs[11]);
-    simplelist_addline(SIMPLELIST_ADD_LINE,
-             "%04X %04X %04X %04X",
-             (unsigned)nfo.regs[12], (unsigned)nfo.regs[13],
-             (unsigned)nfo.regs[14], (unsigned)nfo.regs[15]);
+    IF_TUNER_TYPE(SI4700)
+    {
+        struct si4700_dbg_info nfo;
+        int i;
+        si4700_dbg_info(&nfo);
+        simplelist_addline(SIMPLELIST_ADD_LINE, "SI4700 regs:");
+        for (i = 0; i < 16; i += 4) {
+            simplelist_addline(SIMPLELIST_ADD_LINE,"%02X: %04X %04X %04X %04X",
+                i, nfo.regs[i], nfo.regs[i+1], nfo.regs[i+2], nfo.regs[i+3]);
+        }
+    }
 #endif /* SI4700 */
+#if (CONFIG_TUNER & RDA5802)
+    IF_TUNER_TYPE(RDA5802)
+    {
+        struct rda5802_dbg_info nfo;
+        int i;
+        rda5802_dbg_info(&nfo);
+        simplelist_addline(SIMPLELIST_ADD_LINE, "RDA5802 regs:");
+        for (i = 0; i < 16; i += 4) {
+            simplelist_addline(SIMPLELIST_ADD_LINE,"%02X: %04X %04X %04X %04X",
+                i, nfo.regs[i], nfo.regs[i+1], nfo.regs[i+2], nfo.regs[i+3]);
+        }
+    }
+#endif /* RDA55802 */
     return ACTION_REDRAW;
 }
 static bool dbg_fm_radio(void)
 {
     struct simplelist_info info;
+#ifdef CONFIG_TUNER_MULTI
+    tuner_type = tuner_detect_type();
+#endif    
     info.scroll_all = true;
     simplelist_info_init(&info, "FM Radio", 1, NULL);
     simplelist_set_line_count(0);
@@ -2521,7 +2555,8 @@ static bool cpu_boost_log(void)
 }
 #endif
 
-#if (defined(HAVE_WHEEL_ACCELERATION) && (CONFIG_KEYPAD==IPOD_4G_PAD) && !defined(SIMULATOR))
+#if (defined(HAVE_WHEEL_ACCELERATION) && (CONFIG_KEYPAD==IPOD_4G_PAD) \
+     && !defined(IPOD_MINI) && !defined(SIMULATOR))
 extern bool wheel_is_touched;
 extern int old_wheel_value;
 extern int new_wheel_value;
@@ -2667,10 +2702,10 @@ static const struct the_menu_item menuitems[] = {
     || CONFIG_CPU == DM320 || defined(CPU_S5L870X) || CONFIG_CPU == AS3525v2
         { "View I/O ports", dbg_ports },
 #endif
-#if (CONFIG_RTC == RTC_PCF50605) && !defined(SIMULATOR)
+#if (CONFIG_RTC == RTC_PCF50605) && (CONFIG_PLATFORM & PLATFORM_NATIVE)
         { "View PCF registers", dbg_pcf },
 #endif
-#if defined(HAVE_TSC2100) && !defined(SIMULATOR)
+#if defined(HAVE_TSC2100) && (CONFIG_PLATFORM & PLATFORM_NATIVE)
         { "TSC2100 debug", tsc2100_debug },
 #endif
 #ifdef HAVE_ADJUSTABLE_CPU_FREQ
@@ -2684,18 +2719,18 @@ static const struct the_menu_item menuitems[] = {
 #endif
         { "View OS stacks", dbg_os },
 #ifdef HAVE_LCD_BITMAP
-#ifndef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
         { "View battery", view_battery },
 #endif
         { "Screendump", dbg_screendump },
 #endif
-#ifndef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
         { "View HW info", dbg_hw_info },
 #endif
-#ifndef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
         { "View partitions", dbg_partitions },
 #endif
-#ifndef SIMULATOR
+#if (CONFIG_PLATFORM & PLATFORM_NATIVE)
         { "View disk info", dbg_disk_info },
 #if (CONFIG_STORAGE & STORAGE_ATA)
         { "Dump ATA identify info", dbg_identify_info},
@@ -2749,7 +2784,8 @@ static const struct the_menu_item menuitems[] = {
 #ifdef CPU_BOOST_LOGGING
         {"cpu_boost log",cpu_boost_log},
 #endif
-#if (defined(HAVE_WHEEL_ACCELERATION) && (CONFIG_KEYPAD==IPOD_4G_PAD) && !defined(SIMULATOR))
+#if (defined(HAVE_WHEEL_ACCELERATION) && (CONFIG_KEYPAD==IPOD_4G_PAD) \
+     && !defined(IPOD_MINI) && !defined(SIMULATOR))
         {"Debug scrollwheel", dbg_scrollwheel },
 #endif
     };

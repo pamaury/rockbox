@@ -16,25 +16,26 @@
  * KIND, either express or implied.
  *
  ****************************************************************************/
-#include "plugin.h"
-#include "lib/grey.h"
-#include "lib/helper.h"
 
 //#define TEST_GREYLIB  /* Uncomment for testing greylib instead of core gfx */
 
+#include "plugin.h"
+#ifdef TEST_GREYLIB /* otherwise, mylcd defaults to core gfx */
+#include "lib/grey.h"
+#endif
+#include "lib/helper.h"
+#include "lib/mylcd.h"
+
 #ifdef TEST_GREYLIB
-#define MYLCD(fn) grey_ ## fn
 GREY_INFO_STRUCT
 static unsigned char *gbuf;
 static size_t gbuf_size = 0;
-#else
-#define MYLCD(fn) rb->lcd_ ## fn
 #endif
 
 #define DURATION (HZ) /* longer duration gives more precise results */
 #define RND_SEED 0x43A678C3     /* arbirary */
 
-PLUGIN_HEADER
+
 
 static uint16_t rand_table[0x400];
 static int log_fd;
@@ -67,45 +68,45 @@ static void time_drawpixel(void)
     int count1, count2, count3, count4;
 
     /* Test 1: DRMODE_SOLID */
-    MYLCD(set_drawmode)(DRMODE_SOLID);
+    mylcd_set_drawmode(DRMODE_SOLID);
     count1 = 0;
     rb->sleep(0); /* sync to tick */
     time_start = *rb->current_tick;
     while((time_end = *rb->current_tick) - time_start < DURATION)
     {
         unsigned rnd = rand_table[count1++ & 0x3ff];
-        MYLCD(drawpixel)((rnd >> 8) & 0x3f, rnd & 0x3f);
+        mylcd_drawpixel((rnd >> 8) & 0x3f, rnd & 0x3f);
     }
 
     /* Test 2: DRMODE_FG */
-    MYLCD(set_drawmode)(DRMODE_FG);
+    mylcd_set_drawmode(DRMODE_FG);
     count2 = 0;
     rb->sleep(0); /* sync to tick */
     time_start = *rb->current_tick;
     while((time_end = *rb->current_tick) - time_start < DURATION)
     {
         unsigned rnd = rand_table[count2++ & 0x3ff];
-        MYLCD(drawpixel)((rnd >> 8) & 0x3f, rnd & 0x3f);
+        mylcd_drawpixel((rnd >> 8) & 0x3f, rnd & 0x3f);
     }
     /* Test 3: DRMODE_BG */
-    MYLCD(set_drawmode)(DRMODE_BG);
+    mylcd_set_drawmode(DRMODE_BG);
     count3 = 0;
     rb->sleep(0); /* sync to tick */
     time_start = *rb->current_tick;
     while((time_end = *rb->current_tick) - time_start < DURATION)
     {
         unsigned rnd = rand_table[count3++ & 0x3ff];
-        MYLCD(drawpixel)((rnd >> 8) & 0x3f, rnd & 0x3f);
+        mylcd_drawpixel((rnd >> 8) & 0x3f, rnd & 0x3f);
     }
     /* Test 4: DRMODE_COMPLEMENT */
-    MYLCD(set_drawmode)(DRMODE_COMPLEMENT);
+    mylcd_set_drawmode(DRMODE_COMPLEMENT);
     count4 = 0;
     rb->sleep(0); /* sync to tick */
     time_start = *rb->current_tick;
     while((time_end = *rb->current_tick) - time_start < DURATION)
     {
         unsigned rnd = rand_table[count4++ & 0x3ff];
-        MYLCD(drawpixel)((rnd >> 8) & 0x3f, rnd & 0x3f);
+        mylcd_drawpixel((rnd >> 8) & 0x3f, rnd & 0x3f);
     }
 
     rb->fdprintf(log_fd, "lcd_drawpixel (pixels/s): %d/%d/%d/%d\n",
@@ -119,7 +120,7 @@ static void time_drawline(void)
     int count1, count2, count3, count4;
 
     /* Test 1: DRMODE_SOLID */
-    MYLCD(set_drawmode)(DRMODE_SOLID);
+    mylcd_set_drawmode(DRMODE_SOLID);
     count1 = 0;
     rb->sleep(0); /* sync to tick */
     time_start = *rb->current_tick;
@@ -127,12 +128,12 @@ static void time_drawline(void)
     {
         unsigned rnd1 = rand_table[count1++ & 0x3ff];
         unsigned rnd2 = rand_table[count1++ & 0x3ff];
-        MYLCD(drawline)((rnd1 >> 8) & 0x3f, rnd1 & 0x3f,
-                        (rnd2 >> 8) & 0x3f, rnd2 & 0x3f);
+        mylcd_drawline((rnd1 >> 8) & 0x3f, rnd1 & 0x3f,
+                       (rnd2 >> 8) & 0x3f, rnd2 & 0x3f);
     }
 
     /* Test 2: DRMODE_FG */
-    MYLCD(set_drawmode)(DRMODE_FG);
+    mylcd_set_drawmode(DRMODE_FG);
     count2 = 0;
     rb->sleep(0); /* sync to tick */
     time_start = *rb->current_tick;
@@ -140,11 +141,11 @@ static void time_drawline(void)
     {
         unsigned rnd1 = rand_table[count2++ & 0x3ff];
         unsigned rnd2 = rand_table[count2++ & 0x3ff];
-        MYLCD(drawline)((rnd1 >> 8) & 0x3f, rnd1 & 0x3f,
-                        (rnd2 >> 8) & 0x3f, rnd2 & 0x3f);
+        mylcd_drawline((rnd1 >> 8) & 0x3f, rnd1 & 0x3f,
+                       (rnd2 >> 8) & 0x3f, rnd2 & 0x3f);
     }
     /* Test 3: DRMODE_BG */
-    MYLCD(set_drawmode)(DRMODE_BG);
+    mylcd_set_drawmode(DRMODE_BG);
     count3 = 0;
     rb->sleep(0); /* sync to tick */
     time_start = *rb->current_tick;
@@ -152,11 +153,11 @@ static void time_drawline(void)
     {
         unsigned rnd1 = rand_table[count3++ & 0x3ff];
         unsigned rnd2 = rand_table[count3++ & 0x3ff];
-        MYLCD(drawline)((rnd1 >> 8) & 0x3f, rnd1 & 0x3f,
-                        (rnd2 >> 8) & 0x3f, rnd2 & 0x3f);
+        mylcd_drawline((rnd1 >> 8) & 0x3f, rnd1 & 0x3f,
+                       (rnd2 >> 8) & 0x3f, rnd2 & 0x3f);
     }
     /* Test 4: DRMODE_COMPLEMENT */
-    MYLCD(set_drawmode)(DRMODE_COMPLEMENT);
+    mylcd_set_drawmode(DRMODE_COMPLEMENT);
     count4 = 0;
     rb->sleep(0); /* sync to tick */
     time_start = *rb->current_tick;
@@ -164,8 +165,8 @@ static void time_drawline(void)
     {
         unsigned rnd1 = rand_table[count4++ & 0x3ff];
         unsigned rnd2 = rand_table[count4++ & 0x3ff];
-        MYLCD(drawline)((rnd1 >> 8) & 0x3f, rnd1 & 0x3f,
-                        (rnd2 >> 8) & 0x3f, rnd2 & 0x3f);
+        mylcd_drawline((rnd1 >> 8) & 0x3f, rnd1 & 0x3f,
+                       (rnd2 >> 8) & 0x3f, rnd2 & 0x3f);
     }
 
     rb->fdprintf(log_fd, "lcd_drawline  (lines/s):  %d/%d/%d/%d\n",
@@ -179,7 +180,7 @@ static void time_hline(void)
     int count1, count2, count3, count4;
 
     /* Test 1: DRMODE_SOLID */
-    MYLCD(set_drawmode)(DRMODE_SOLID);
+    mylcd_set_drawmode(DRMODE_SOLID);
     count1 = 0;
     rb->sleep(0); /* sync to tick */
     time_start = *rb->current_tick;
@@ -187,11 +188,11 @@ static void time_hline(void)
     {
         unsigned rnd1 = rand_table[count1++ & 0x3ff];
         unsigned rnd2 = rand_table[count1++ & 0x3ff];
-        MYLCD(hline)((rnd1 >> 8) & 0x3f, rnd1 & 0x3f, rnd2 & 0x3f);
+        mylcd_hline((rnd1 >> 8) & 0x3f, rnd1 & 0x3f, rnd2 & 0x3f);
     }
 
     /* Test 2: DRMODE_FG */
-    MYLCD(set_drawmode)(DRMODE_FG);
+    mylcd_set_drawmode(DRMODE_FG);
     count2 = 0;
     rb->sleep(0); /* sync to tick */
     time_start = *rb->current_tick;
@@ -199,10 +200,10 @@ static void time_hline(void)
     {
         unsigned rnd1 = rand_table[count2++ & 0x3ff];
         unsigned rnd2 = rand_table[count2++ & 0x3ff];
-        MYLCD(hline)((rnd1 >> 8) & 0x3f, rnd1 & 0x3f, rnd2 & 0x3f);
+        mylcd_hline((rnd1 >> 8) & 0x3f, rnd1 & 0x3f, rnd2 & 0x3f);
     }
     /* Test 3: DRMODE_BG */
-    MYLCD(set_drawmode)(DRMODE_BG);
+    mylcd_set_drawmode(DRMODE_BG);
     count3 = 0;
     rb->sleep(0); /* sync to tick */
     time_start = *rb->current_tick;
@@ -210,10 +211,10 @@ static void time_hline(void)
     {
         unsigned rnd1 = rand_table[count3++ & 0x3ff];
         unsigned rnd2 = rand_table[count3++ & 0x3ff];
-        MYLCD(hline)((rnd1 >> 8) & 0x3f, rnd1 & 0x3f, rnd2 & 0x3f);
+        mylcd_hline((rnd1 >> 8) & 0x3f, rnd1 & 0x3f, rnd2 & 0x3f);
     }
     /* Test 4: DRMODE_COMPLEMENT */
-    MYLCD(set_drawmode)(DRMODE_COMPLEMENT);
+    mylcd_set_drawmode(DRMODE_COMPLEMENT);
     count4 = 0;
     rb->sleep(0); /* sync to tick */
     time_start = *rb->current_tick;
@@ -221,7 +222,7 @@ static void time_hline(void)
     {
         unsigned rnd1 = rand_table[count4++ & 0x3ff];
         unsigned rnd2 = rand_table[count4++ & 0x3ff];
-        MYLCD(hline)((rnd1 >> 8) & 0x3f, rnd1 & 0x3f, rnd2 & 0x3f);
+        mylcd_hline((rnd1 >> 8) & 0x3f, rnd1 & 0x3f, rnd2 & 0x3f);
     }
 
     rb->fdprintf(log_fd, "lcd_hline     (lines/s):  %d/%d/%d/%d\n",
@@ -235,7 +236,7 @@ static void time_vline(void)
     int count1, count2, count3, count4;
 
     /* Test 1: DRMODE_SOLID */
-    MYLCD(set_drawmode)(DRMODE_SOLID);
+    mylcd_set_drawmode(DRMODE_SOLID);
     count1 = 0;
     rb->sleep(0); /* sync to tick */
     time_start = *rb->current_tick;
@@ -243,11 +244,11 @@ static void time_vline(void)
     {
         unsigned rnd1 = rand_table[count1++ & 0x3ff];
         unsigned rnd2 = rand_table[count1++ & 0x3ff];
-        MYLCD(vline)((rnd1 >> 8) & 0x3f, rnd1 & 0x3f, rnd2 & 0x3f);
+        mylcd_vline((rnd1 >> 8) & 0x3f, rnd1 & 0x3f, rnd2 & 0x3f);
     }
 
     /* Test 2: DRMODE_FG */
-    MYLCD(set_drawmode)(DRMODE_FG);
+    mylcd_set_drawmode(DRMODE_FG);
     count2 = 0;
     rb->sleep(0); /* sync to tick */
     time_start = *rb->current_tick;
@@ -255,10 +256,10 @@ static void time_vline(void)
     {
         unsigned rnd1 = rand_table[count2++ & 0x3ff];
         unsigned rnd2 = rand_table[count2++ & 0x3ff];
-        MYLCD(vline)((rnd1 >> 8) & 0x3f, rnd1 & 0x3f, rnd2 & 0x3f);
+        mylcd_vline((rnd1 >> 8) & 0x3f, rnd1 & 0x3f, rnd2 & 0x3f);
     }
     /* Test 3: DRMODE_BG */
-    MYLCD(set_drawmode)(DRMODE_BG);
+    mylcd_set_drawmode(DRMODE_BG);
     count3 = 0;
     rb->sleep(0); /* sync to tick */
     time_start = *rb->current_tick;
@@ -266,10 +267,10 @@ static void time_vline(void)
     {
         unsigned rnd1 = rand_table[count3++ & 0x3ff];
         unsigned rnd2 = rand_table[count3++ & 0x3ff];
-        MYLCD(vline)((rnd1 >> 8) & 0x3f, rnd1 & 0x3f, rnd2 & 0x3f);
+        mylcd_vline((rnd1 >> 8) & 0x3f, rnd1 & 0x3f, rnd2 & 0x3f);
     }
     /* Test 4: DRMODE_COMPLEMENT */
-    MYLCD(set_drawmode)(DRMODE_COMPLEMENT);
+    mylcd_set_drawmode(DRMODE_COMPLEMENT);
     count4 = 0;
     rb->sleep(0); /* sync to tick */
     time_start = *rb->current_tick;
@@ -277,7 +278,7 @@ static void time_vline(void)
     {
         unsigned rnd1 = rand_table[count4++ & 0x3ff];
         unsigned rnd2 = rand_table[count4++ & 0x3ff];
-        MYLCD(vline)((rnd1 >> 8) & 0x3f, rnd1 & 0x3f, rnd2 & 0x3f);
+        mylcd_vline((rnd1 >> 8) & 0x3f, rnd1 & 0x3f, rnd2 & 0x3f);
     }
 
     rb->fdprintf(log_fd, "lcd_vline     (lines/s):  %d/%d/%d/%d\n",
@@ -291,7 +292,7 @@ static void time_fillrect(void)
     int count1, count2, count3, count4;
 
     /* Test 1: DRMODE_SOLID */
-    MYLCD(set_drawmode)(DRMODE_SOLID);
+    mylcd_set_drawmode(DRMODE_SOLID);
     count1 = 0;
     rb->sleep(0); /* sync to tick */
     time_start = *rb->current_tick;
@@ -299,12 +300,12 @@ static void time_fillrect(void)
     {
         unsigned rnd1 = rand_table[count1++ & 0x3ff];
         unsigned rnd2 = rand_table[count1++ & 0x3ff];
-        MYLCD(fillrect)((rnd1 >> 8) & 0x3f, rnd1 & 0x3f,
-                        (rnd2 >> 8) & 0x3f, rnd2 & 0x3f);
+        mylcd_fillrect((rnd1 >> 8) & 0x3f, rnd1 & 0x3f,
+                       (rnd2 >> 8) & 0x3f, rnd2 & 0x3f);
     }
 
     /* Test 2: DRMODE_FG */
-    MYLCD(set_drawmode)(DRMODE_FG);
+    mylcd_set_drawmode(DRMODE_FG);
     count2 = 0;
     rb->sleep(0); /* sync to tick */
     time_start = *rb->current_tick;
@@ -312,11 +313,11 @@ static void time_fillrect(void)
     {
         unsigned rnd1 = rand_table[count2++ & 0x3ff];
         unsigned rnd2 = rand_table[count2++ & 0x3ff];
-        MYLCD(fillrect)((rnd1 >> 8) & 0x3f, rnd1 & 0x3f,
-                        (rnd2 >> 8) & 0x3f, rnd2 & 0x3f);
+        mylcd_fillrect((rnd1 >> 8) & 0x3f, rnd1 & 0x3f,
+                       (rnd2 >> 8) & 0x3f, rnd2 & 0x3f);
     }
     /* Test 3: DRMODE_BG */
-    MYLCD(set_drawmode)(DRMODE_BG);
+    mylcd_set_drawmode(DRMODE_BG);
     count3 = 0;
     rb->sleep(0); /* sync to tick */
     time_start = *rb->current_tick;
@@ -324,11 +325,11 @@ static void time_fillrect(void)
     {
         unsigned rnd1 = rand_table[count3++ & 0x3ff];
         unsigned rnd2 = rand_table[count3++ & 0x3ff];
-        MYLCD(fillrect)((rnd1 >> 8) & 0x3f, rnd1 & 0x3f,
-                        (rnd2 >> 8) & 0x3f, rnd2 & 0x3f);
+        mylcd_fillrect((rnd1 >> 8) & 0x3f, rnd1 & 0x3f,
+                       (rnd2 >> 8) & 0x3f, rnd2 & 0x3f);
     }
     /* Test 4: DRMODE_COMPLEMENT */
-    MYLCD(set_drawmode)(DRMODE_COMPLEMENT);
+    mylcd_set_drawmode(DRMODE_COMPLEMENT);
     count4 = 0;
     rb->sleep(0); /* sync to tick */
     time_start = *rb->current_tick;
@@ -336,8 +337,8 @@ static void time_fillrect(void)
     {
         unsigned rnd1 = rand_table[count4++ & 0x3ff];
         unsigned rnd2 = rand_table[count4++ & 0x3ff];
-        MYLCD(fillrect)((rnd1 >> 8) & 0x3f, rnd1 & 0x3f,
-                        (rnd2 >> 8) & 0x3f, rnd2 & 0x3f);
+        mylcd_fillrect((rnd1 >> 8) & 0x3f, rnd1 & 0x3f,
+                       (rnd2 >> 8) & 0x3f, rnd2 & 0x3f);
     }
 
     rb->fdprintf(log_fd, "lcd_fillrect  (rects/s):  %d/%d/%d/%d\n",
@@ -353,45 +354,45 @@ static void time_text(void) /* tests mono_bitmap performance */
     rb->lcd_setfont(FONT_SYSFIXED);
 
     /* Test 1: DRMODE_SOLID */
-    MYLCD(set_drawmode)(DRMODE_SOLID);
+    mylcd_set_drawmode(DRMODE_SOLID);
     count1 = 0;
     rb->sleep(0); /* sync to tick */
     time_start = *rb->current_tick;
     while((time_end = *rb->current_tick) - time_start < DURATION)
     {
         unsigned rnd = rand_table[count1++ & 0x3ff];
-        MYLCD(putsxy)((rnd >> 8) & 0x3f, rnd & 0x3f, "Rockbox!");
+        mylcd_putsxy((rnd >> 8) & 0x3f, rnd & 0x3f, "Rockbox!");
     }
 
     /* Test 2: DRMODE_FG */
-    MYLCD(set_drawmode)(DRMODE_FG);
+    mylcd_set_drawmode(DRMODE_FG);
     count2 = 0;
     rb->sleep(0); /* sync to tick */
     time_start = *rb->current_tick;
     while((time_end = *rb->current_tick) - time_start < DURATION)
     {
         unsigned rnd = rand_table[count2++ & 0x3ff];
-        MYLCD(putsxy)((rnd >> 8) & 0x3f, rnd & 0x3f, "Rockbox!");
+        mylcd_putsxy((rnd >> 8) & 0x3f, rnd & 0x3f, "Rockbox!");
     }
     /* Test 3: DRMODE_BG */
-    MYLCD(set_drawmode)(DRMODE_BG);
+    mylcd_set_drawmode(DRMODE_BG);
     count3 = 0;
     rb->sleep(0); /* sync to tick */
     time_start = *rb->current_tick;
     while((time_end = *rb->current_tick) - time_start < DURATION)
     {
         unsigned rnd = rand_table[count3++ & 0x3ff];
-        MYLCD(putsxy)((rnd >> 8) & 0x3f, rnd & 0x3f, "Rockbox!");
+        mylcd_putsxy((rnd >> 8) & 0x3f, rnd & 0x3f, "Rockbox!");
     }
     /* Test 4: DRMODE_COMPLEMENT */
-    MYLCD(set_drawmode)(DRMODE_COMPLEMENT);
+    mylcd_set_drawmode(DRMODE_COMPLEMENT);
     count4 = 0;
     rb->sleep(0); /* sync to tick */
     time_start = *rb->current_tick;
     while((time_end = *rb->current_tick) - time_start < DURATION)
     {
         unsigned rnd = rand_table[count4++ & 0x3ff];
-        MYLCD(putsxy)((rnd >> 8) & 0x3f, rnd & 0x3f, "Rockbox!");
+        mylcd_putsxy((rnd >> 8) & 0x3f, rnd & 0x3f, "Rockbox!");
     }
 
     rb->fdprintf(log_fd, "lcd_putsxy   (strings/s): %d/%d/%d/%d\n",

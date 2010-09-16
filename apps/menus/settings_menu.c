@@ -156,7 +156,7 @@ static int usbcharging_callback(int action,const struct menu_item_ex *this_item)
 MENUITEM_SETTING(usb_charging, &global_settings.usb_charging, usbcharging_callback);
 #endif /* HAVE_USB_CHARGING_ENABLE */
 MAKE_MENU(battery_menu, ID2P(LANG_BATTERY_MENU), 0, Icon_NOICON,
-#if BATTERY_CAPACITY_INC > 0
+#if defined(BATTERY_CAPACITY_INC) && BATTERY_CAPACITY_INC > 0
             &battery_capacity,
 #endif
 #if BATTERY_TYPES_COUNT > 1
@@ -347,11 +347,12 @@ static int bmark_callback(int action,const struct menu_item_ex *this_item)
 }
 MENUITEM_SETTING(autocreatebookmark,
                  &global_settings.autocreatebookmark, bmark_callback);
+MENUITEM_SETTING(autoupdatebookmark, &global_settings.autoupdatebookmark, NULL);
 MENUITEM_SETTING(autoloadbookmark, &global_settings.autoloadbookmark, NULL);
 MENUITEM_SETTING(usemrb, &global_settings.usemrb, NULL);
 MAKE_MENU(bookmark_settings_menu, ID2P(LANG_BOOKMARK_SETTINGS), 0,
           Icon_Bookmark,
-          &autocreatebookmark, &autoloadbookmark, &usemrb);
+          &autocreatebookmark, &autoupdatebookmark, &autoloadbookmark, &usemrb);
 /*    BOOKMARK MENU                */
 /***********************************/
 
@@ -412,12 +413,11 @@ MAKE_MENU(hotkey_menu, ID2P(LANG_HOTKEY), 0, Icon_NOICON,
 
 /***********************************/
 /*    SETTINGS MENU                */
-static int language_browse(void)
-{
-    return (int)rockbox_browse(LANG_DIR, SHOW_LNG);
-}
-MENUITEM_FUNCTION(browse_langs, 0, ID2P(LANG_LANGUAGE), language_browse,
-                    NULL, NULL, Icon_Language);
+
+static struct browse_folder_info langs = { LANG_DIR, SHOW_LNG };
+
+MENUITEM_FUNCTION(browse_langs, MENU_FUNC_USEPARAM, ID2P(LANG_LANGUAGE),
+                  browse_folder, (void*)&langs, NULL, Icon_Language);
 
 MAKE_MENU(settings_menu_item, ID2P(LANG_GENERAL_SETTINGS), 0,
           Icon_General_settings_menu,

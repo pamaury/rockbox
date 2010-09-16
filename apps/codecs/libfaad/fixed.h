@@ -49,7 +49,6 @@ extern "C" {
 
 typedef int32_t real_t;
 
-#define UFIX_CONST(A,PRECISION) ((uint32_t)((A)*(PRECISION)+0.5))
 #define FIX_CONST(A,PRECISION) (((A) >= 0) ? ((real_t)((A)*(PRECISION)+0.5)) : ((real_t)((A)*(PRECISION)-0.5)))
 #define REAL_CONST(A) FIX_CONST((A),(REAL_PRECISION))
 #define COEF_CONST(A) FIX_CONST((A),(COEF_PRECISION))
@@ -58,7 +57,7 @@ typedef int32_t real_t;
 
 #define Q2_BITS 22
 #define Q2_PRECISION (1 << Q2_BITS)
-#define Q2_CONST(A) (((A) >= 0) ? ((real_t)((A)*(Q2_PRECISION)+0.5)) : ((real_t)((A)*(Q2_PRECISION)-0.5)))
+#define Q2_CONST(A) FIX_CONST((A),(Q2_PRECISION))
 
 #if defined(CPU_COLDFIRE)
 
@@ -127,10 +126,6 @@ static INLINE void ComplexMult(real_t *y1, real_t *y2,
 
   /* the following see little or no use, so just ignore them for now */
   #define MUL_Q2(A,B) (real_t)(((int64_t)(A)*(int64_t)(B)+(1 << (Q2_BITS-1))) >> Q2_BITS)
-  #define MUL_SHIFT6(A,B) (real_t)(((int64_t)(A)*(int64_t)(B)+(1 << (6-1))) >> 6)
-  #define MUL_SHIFT23(A,B) (real_t)(((int64_t)(A)*(int64_t)(B)+(1 << (23-1))) >> 23)
-  #define DESCALE(A,S) ((S)>0?(((A)>>((S)-1))+1)>>1:(A)<<-(S))
-  #define DESCALE_SHIFT(A,SH,SC) DESCALE((A),(SC)-(SH))
 
 #elif defined(__GNUC__) && defined (__arm__)
 
@@ -163,16 +158,6 @@ static INLINE real_t MUL_C(real_t A, real_t B)
 static INLINE real_t MUL_Q2(real_t A, real_t B)
 {
     return arm_mul(A, B, Q2_BITS);
-}
-
-static INLINE real_t MUL_SHIFT6(real_t A, real_t B)
-{
-    return arm_mul(A, B, 6);
-}
-
-static INLINE real_t MUL_SHIFT23(real_t A, real_t B)
-{
-    return arm_mul(A, B, 23);
 }
 
 static INLINE real_t _MulHigh(real_t x, real_t y)
@@ -208,18 +193,6 @@ static INLINE void ComplexMult(real_t *y1, real_t *y2,
     *y2 = yt2 << (FRAC_SIZE-FRAC_BITS);
 }
 
-static inline real_t DESCALE_SHIFT(unsigned val, int shift, int scale)
-{
-    unsigned out;
-    if ((out = val >> (scale - shift - 1)))
-    {
-        out++;
-        out >>= 1;
-    } else
-        out = val << (shift - scale);
-    return out;
-}
-
 #else
 
   /* multiply with real shift */
@@ -238,10 +211,6 @@ static inline real_t DESCALE_SHIFT(unsigned val, int shift, int scale)
   #define MUL_F(A,B) (real_t)(((int64_t)(A)*(int64_t)(B)+(1 << (FRAC_BITS-1))) >> FRAC_BITS)
 #endif
   #define MUL_Q2(A,B) (real_t)(((int64_t)(A)*(int64_t)(B)+(1 << (Q2_BITS-1))) >> Q2_BITS)
-  #define MUL_SHIFT6(A,B) (real_t)(((int64_t)(A)*(int64_t)(B)+(1 << (6-1))) >> 6)
-  #define MUL_SHIFT23(A,B) (real_t)(((int64_t)(A)*(int64_t)(B)+(1 << (23-1))) >> 23)
-  #define DESCALE(A,S) ((S)>0?(((A)>>((S)-1))+1)>>1:(A)<<-(S))
-  #define DESCALE_SHIFT(A,SH,SC) DESCALE((A),(SC)-(SH))
 
 /* Complex multiplication */
 static INLINE void ComplexMult(real_t *y1, real_t *y2,

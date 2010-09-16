@@ -68,7 +68,7 @@ void reset_screen(void)
 #endif
 }
 
-void printf(const char *format, ...)
+int printf(const char *format, ...)
 {
     int len;
     unsigned char *ptr;
@@ -91,6 +91,7 @@ void printf(const char *format, ...)
     if(remote_line >= LCD_REMOTE_HEIGHT/SYSFONT_HEIGHT)
         remote_line = 0;
 #endif
+    return len;
 }
 
 char *strerror(int error)
@@ -118,7 +119,7 @@ char *strerror(int error)
     }
 }
 
-void error(int errortype, int error)
+void error(int errortype, int error, bool shutdown)
 {
     switch(errortype)
     {
@@ -137,7 +138,8 @@ void error(int errortype, int error)
 
     lcd_update();
     sleep(5*HZ);
-    power_off();
+    if(shutdown)
+        power_off();
 }
 
 /* Load firmware image in a format created by tools/scramble */

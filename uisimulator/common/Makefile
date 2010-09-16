@@ -24,7 +24,7 @@ DEBUG = -g
 
 # Use this for simulator-only files
 INCLUDES = -I. -I$(OBJDIR) $(TARGET_INC) -I$(FIRMDIR)/export -I$(APPSDIR)	\
--I$(ROOTDIR)/uisimulator/$(SIMVER) -I$(BUILDDIR)
+-I$(ROOTDIR)/uisimulator/sdl -I$(BUILDDIR)
 
 # This sets up 'SRC' based on the files mentioned in SOURCES
 include $(TOOLSDIR)/makesrc.inc
@@ -32,7 +32,7 @@ include $(TOOLSDIR)/makesrc.inc
 OBJS := $(SRC:%.c=$(OBJDIR)/%.o)
 
 DEFINES := -DHAVE_CONFIG_H -DGETTIMEOFDAY_TWO_ARGS -DSIMULATOR \
-$(TARGET) -DAPPSVERSION=\"$(VERSION)\" -DMEM=${MEMORYSIZE} $(EXTRA_DEFINES) 
+$(TARGET) -DMEM=${MEMORYSIZE} $(EXTRA_DEFINES)
 
 SOURCES = $(SRC)
 
