@@ -488,9 +488,9 @@ void usb_test_init_connection(void)
     
     #ifdef USB_TEST_USE_REPEAT_MODE
     usb_drv_select_endpoint_mode(ep_iso_out, USB_DRV_ENDPOINT_MODE_REPEAT);
-    usb_drv_allocate_slots(ep_iso_out, NB_SLOTS, ep_iso_slots[0]);
+    usb_drv_allocate_slots(ep_iso_out, sizeof(ep_iso_slots[0]), ep_iso_slots[0]);
     usb_drv_select_endpoint_mode(ep_iso_in, USB_DRV_ENDPOINT_MODE_REPEAT);
-    usb_drv_allocate_slots(ep_iso_in, NB_SLOTS, ep_iso_slots[1]);
+    usb_drv_allocate_slots(ep_iso_in, sizeof(ep_iso_slots[1]), ep_iso_slots[1]);
     
     for(i = 0; i < NB_SLOTS; i++)
     {
@@ -500,9 +500,9 @@ void usb_test_init_connection(void)
     #else
     
     usb_drv_select_endpoint_mode(ep_iso_out, USB_DRV_ENDPOINT_MODE_QUEUE);
-    usb_drv_allocate_slots(ep_iso_out, NB_SLOTS, ep_iso_slots[0]);
+    usb_drv_allocate_slots(ep_iso_out, sizeof(ep_iso_slots[0]), ep_iso_slots[0]);
     usb_drv_select_endpoint_mode(ep_iso_in, USB_DRV_ENDPOINT_MODE_QUEUE);
-    usb_drv_allocate_slots(ep_iso_in, NB_SLOTS, ep_iso_slots[1]);
+    usb_drv_allocate_slots(ep_iso_in, sizeof(ep_iso_slots[1]), ep_iso_slots[1]);
     
     usb_buffer_bitmap = 0;
     #endif

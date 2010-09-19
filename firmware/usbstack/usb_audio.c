@@ -29,6 +29,7 @@
 #include "pcm.h"
 #include "file.h"
 #include "sound.h"
+#include "stdlib.h"
 
 #define LOGF_ENABLE
 #include "logf.h"
@@ -302,8 +303,8 @@ static int playback_audio_buffer_end;
 static bool playback_audio_underflow;
 #endif
 
-#define USB_AUDIO_NB_SLOTS          16
-#define USB_AUDIO_SLOT_SIZE         1024
+#define USB_AUDIO_NB_SLOTS          32
+#define USB_AUDIO_SLOT_SIZE         512
 static unsigned char *usb_audio_slot_buffers[USB_AUDIO_NB_SLOTS];
 static unsigned char usb_audio_ep_slots[2][USB_AUDIO_NB_SLOTS * USB_DRV_SLOT_SIZE] USB_DRV_SLOT_ATTR;
 
@@ -323,16 +324,15 @@ static unsigned long decode3(uint8_t arr[3])
 
 static void set_playback_sampling_frequency(unsigned long f)
 {
-    int i = 0;
+    int as_playback_freq_idx = 0;
 
-    while((i + 1) < HW_NUM_FREQ && hw_freq_sampr[i + 1] <= f)
-        i++;
-
-    if((i + 1) < HW_NUM_FREQ && (hw_freq_sampr[i + 1] - f) < (f - hw_freq_sampr[i]))
-        i++;
-    as_playback_freq_idx = i;
+    for(int i = 0; i < HW_NUM_FREQ; i++)
+    {
+        if(abs((long)hw_freq_sampr[i] - (long)f) < abs((long)hw_freq_sampr[as_playback_freq_idx] - (long)f))
+            as_playback_freq_idx = i;
+    }
     
-    logf("usbaudio: set playback sampling frequency to %lu Hz", hw_freq_sampr[as_playback_freq_idx]);
+    logf("usbaudio: set playback sampling frequency to %lu Hz for a requested %lu Hz", hw_freq_sampr[as_playback_freq_idx], f);
 }
 
 static unsigned long get_playback_sampling_frequency(void)
@@ -344,8 +344,12 @@ void usb_audio_init(void)
 {
     unsigned int i;
     /* initialized tSamFreq array */
+    logf("usbaudio: supported frequencies");
     for(i = 0; i < HW_NUM_FREQ; i++)
+    {
+        logf("usbaudio: %lu Hz", hw_freq_sampr[i]);
         encode3(as_playback_format_type_i.tSamFreq[i], hw_freq_sampr[i]);
+    }
 
     unsigned char *audio_buffer;
     size_t bufsize;
@@ -906,7 +910,7 @@ void usb_audio_transfer_complete(int ep, int dir, int status, int length, void *
     (void) dir;
     int actual_length;
 
-    logf("iso: l=%d s=%d", length, status);
+    //logf("iso: l=%d s=%d", length, status);
     /*
     logf("usbaudio: xfer %s", status < 0 ? "failure" : "completed");
     logf("usbaudio: %d bytes transfered", length);

@@ -899,7 +899,7 @@ int usb_drv_fill_repeat_slot(int ep, int slot, void *ptr, int length)
     
     if(qh_array[pipe].dtd.next_td_ptr != QH_NEXT_TERMINATE)
     {
-        panicf("usb: you can fill a slot while the endpoint is active");
+        panicf("usb: you can't fill a slot while the endpoint is active");
         return -1;
     }
     
@@ -1153,7 +1153,7 @@ static void transfer_completed(void)
     unsigned int mask = REG_ENDPTCOMPLETE;
     REG_ENDPTCOMPLETE = mask;
 
-    _logf("xfer");
+    logf("xfer");
 
     for (ep=0; ep<USB_NUM_ENDPOINTS; ep++) {
         int dir;
