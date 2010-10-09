@@ -958,6 +958,7 @@ const struct settings_list settings[] = {
                     UNIT_SEC, 3, 254, 1, NULL, NULL, storage_spindown),
 #endif /* HAVE_DISK_STORAGE */
     /* browser */
+    TEXT_SETTING(0, start_directory, "start directory", "/", NULL, NULL),
     CHOICE_SETTING(0, dirfilter, LANG_FILTER, SHOW_SUPPORTED, "show files",
                    "all,supported,music,playlists", NULL, 4, ID2P(LANG_ALL),
                    ID2P(LANG_FILTER_SUPPORTED), ID2P(LANG_FILTER_MUSIC),
@@ -1371,9 +1372,11 @@ const struct settings_list settings[] = {
     OFFON_SETTING(F_SOUNDSETTING, dithering_enabled, LANG_DITHERING, false,
                   "dithering enabled", dsp_dither_enable),
 
+#ifdef HAVE_PITCHSCREEN
     /* timestretch */
     OFFON_SETTING(F_SOUNDSETTING, timestretch_enabled, LANG_TIMESTRETCH, false,
                   "timestretch enabled", dsp_timestretch_enable),
+#endif
 
     /* compressor */
     INT_SETTING_NOWRAP(F_SOUNDSETTING, compressor_threshold,

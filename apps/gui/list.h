@@ -94,7 +94,6 @@ struct gui_synclist
     /* wether the text of the whole items of the list have to be
      * scrolled or only for the selected item */
     bool scroll_all;
-
     int nb_items;
     int selected_item;
     int start_item[NB_SCREENS]; /* the item that is displayed at the top of the screen */

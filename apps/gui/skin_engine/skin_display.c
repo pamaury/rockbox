@@ -135,8 +135,6 @@ void draw_progressbar(struct gui_wps *gwps, int line, struct progressbar *pb)
     unsigned long length, end;
     int flags = HORIZONTAL;
     
-    int drawn_length, drawn_end;
-    
     if (height < 0)
         height = font_get(vp->font)->height;
 
@@ -180,21 +178,10 @@ void draw_progressbar(struct gui_wps *gwps, int line, struct progressbar *pb)
         end = 0;
     }
     
-    if (pb->nofill)
-    {
-        drawn_length = 1;
-        drawn_end = 0;
-    }
-    else
-    {
-        drawn_length = length;
-        drawn_end = end;
-    }
-    
     if (!pb->horizontal)
     {
         /* we want to fill upwards which is technically inverted. */
-        flags = VERTICAL|INVERTFILL;
+        flags = INVERTFILL;
     }
     
     if (pb->invert_fill_direction)
@@ -202,14 +189,61 @@ void draw_progressbar(struct gui_wps *gwps, int line, struct progressbar *pb)
         flags ^= INVERTFILL;
     }
 
-    
+    if (pb->nofill)
+    {
+        flags |= INNER_NOFILL;
+    }
+
     if (pb->have_bitmap_pb)
         gui_bitmap_scrollbar_draw(display, &pb->bm,
-                                pb->x, y, pb->width, pb->bm.height,
-                                drawn_length, 0, drawn_end, flags);
+                                pb->x, y, pb->width, height,
+                                length, 0, end, flags);
     else
         gui_scrollbar_draw(display, pb->x, y, pb->width, height,
-                           drawn_length, 0, drawn_end, flags);
+                           length, 0, end, flags);
+
+    if (pb->slider)
+    {
+        int xoff = 0, yoff = 0;
+        int w = pb->width, h = height;
+        struct gui_img *img = pb->slider;
+
+        if (flags&HORIZONTAL)
+        {
+            w = img->bm.width;
+            xoff = pb->width * end / length;
+            if (flags&INVERTFILL)
+                xoff = pb->width - xoff;
+#if 0 /* maybe add this in later, make the slider bmp overlap abit */
+            xoff -= w / 2;
+#endif
+        }
+        else
+        {
+            h = img->bm.height;
+            yoff = height * end / length;
+            if (flags&INVERTFILL)
+                yoff = height - yoff;
+#if 0 /* maybe add this in later, make the slider bmp overlap abit */
+            yoff -= h / 2;
+#endif
+        }
+#if LCD_DEPTH > 1
+        if(img->bm.format == FORMAT_MONO) {
+#endif
+            display->mono_bitmap_part(img->bm.data,
+                                      0, 0, img->bm.width,
+                                      pb->x + xoff, y + yoff, w, h);
+#if LCD_DEPTH > 1
+        } else {
+            display->transparent_bitmap_part((fb_data *)img->bm.data,
+                                             0, 0,
+                                             STRIDE(display->screen_type,
+                                             img->bm.width, img->bm.height),
+                                             pb->x + xoff, y + yoff, w, h);
+        }
+#endif
+    }
 
     if (pb->type == SKIN_TOKEN_PROGRESSBAR)
     {
@@ -229,41 +263,6 @@ void draw_progressbar(struct gui_wps *gwps, int line, struct progressbar *pb)
         else if (in_radio_screen() || (get_radio_status() != FMRADIO_OFF))
         {
             presets_draw_markers(display, pb->x, y, pb->width, height);
-        }
-#endif
-    }
-    
-    if (pb->slider)
-    {
-        int x = pb->x, y = pb->y;
-        int width = pb->width;
-        int height = pb->height;
-        struct gui_img *img = pb->slider;
-            
-        if (flags&VERTICAL)
-        {
-            y += pb->height*end/length;
-            height = img->bm.height;
-        }
-        else
-        {
-            x += pb->width*end/length;
-            width = img->bm.width;
-        }
-#if LCD_DEPTH > 1
-        if(img->bm.format == FORMAT_MONO) {
-#endif
-            display->mono_bitmap_part(img->bm.data,
-                                      0, 0,
-                                      img->bm.width, x,
-                                      y, width, height);
-#if LCD_DEPTH > 1
-        } else {
-            display->transparent_bitmap_part((fb_data *)img->bm.data,
-                                             0, 0,
-                                             STRIDE(display->screen_type,
-                                             img->bm.width, img->bm.height),
-                                             x, y, width, height);
         }
 #endif
     }
@@ -783,6 +782,3 @@ int skin_wait_for_action(enum skinnable_screens skin, int context, int timeout)
     }
     return button;
 }
-
-
-

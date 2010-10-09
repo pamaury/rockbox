@@ -663,8 +663,8 @@ Lyre prototype 1 */
 
 /* Enable the directory cache and tagcache in RAM if we have
  * plenty of RAM. Both features can be enabled independently. */
-#if ((defined(MEMORYSIZE) && (MEMORYSIZE >= 8)) || MEM >= 8) && \
- !defined(BOOTLOADER) && !defined(__PCTOOL__) && !defined(APPLICATION)
+#if (MEMORYSIZE >= 8) && !defined(BOOTLOADER) && !defined(__PCTOOL__) \
+    && !defined(APPLICATION)
 #define HAVE_DIRCACHE
 #ifdef HAVE_TAGCACHE
 #define HAVE_TC_RAMCACHE
@@ -953,8 +953,12 @@ Lyre prototype 1 */
 #else /* BOOTLOADER */
 
 #if (CONFIG_PLATFORM & PLATFORM_NATIVE)
+#ifdef USB_HAS_BULK
 //#define USB_ENABLE_SERIAL
+#ifdef USE_ROCKBOX_USB
 #define USB_ENABLE_STORAGE
+#endif /* USE_ROCKBOX_USB */
+#endif /* USB_HAS_BULK */
 
 #ifdef USB_HAS_INTERRUPT
 #define USB_ENABLE_HID

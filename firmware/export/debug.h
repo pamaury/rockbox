@@ -33,13 +33,10 @@ extern void ldebugf(const char* file, int line, const char *fmt, ...)
 #ifdef __GNUC__
 
 /*  */
-#if defined(SIMULATOR) && !defined(__PCTOOL__)
+#if defined(SIMULATOR) && !defined(__PCTOOL__) \
+    || ((CONFIG_PLATFORM & PLATFORM_ANDROID) && defined(DEBUG))
 #define DEBUGF  debugf
 #define LDEBUGF(...) ldebugf(__FILE__, __LINE__, __VA_ARGS__)
-#elif (CONFIG_PLATFORM & PLATFORM_ANDROID)
-#include "system-target.h"
-#define DEBUGF LOG
-#define LDEBUGF(...)
 #else
 #if defined(DEBUG)
 

@@ -544,8 +544,8 @@ static const struct plugin_api rockbox_api = {
 #if !defined(SIMULATOR) && (CONFIG_CODEC != SWCODEC)
     mpeg_get_last_header,
 #endif
-#if (CONFIG_CODEC == MAS3587F) || (CONFIG_CODEC == MAS3539F) || \
-    (CONFIG_CODEC == SWCODEC)
+#if ((CONFIG_CODEC == MAS3587F) || (CONFIG_CODEC == MAS3539F) || \
+     (CONFIG_CODEC == SWCODEC)) && defined (HAVE_PITCHSCREEN)
     sound_set_pitch,
 #endif
 
@@ -703,7 +703,7 @@ static const struct plugin_api rockbox_api = {
     tagcache_retrieve,
     tagcache_search_finish,
     tagcache_get_numeric,
-#ifdef HAVE_TC_RAMCACHE
+#if defined(HAVE_TC_RAMCACHE) && defined(HAVE_DIRCACHE)
     tagcache_fill_tags,
 #endif
 #endif

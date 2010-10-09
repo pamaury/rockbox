@@ -364,7 +364,9 @@ struct user_settings
     int  keyclick;          /* keyclick volume */
     int  keyclick_repeats;  /* keyclick on repeats */
     bool dithering_enabled;
+#ifdef HAVE_PITCHSCREEN
     bool timestretch_enabled;
+#endif
 #endif /* CONFIG_CODEC == SWCODEC */
 
 #ifdef HAVE_RECORDING
@@ -808,6 +810,7 @@ struct user_settings
 #endif
     } hw_eq_bands[AUDIOHW_EQ_BAND_NUM];
 #endif /* AUDIOHW_HAVE_EQ */
+    char start_directory[2*MAX_FILENAME+1];
 };
 
 /** global variables **/

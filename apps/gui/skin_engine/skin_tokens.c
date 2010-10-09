@@ -57,6 +57,7 @@
 
 #include "wps_internals.h"
 #include "skin_engine.h"
+#include "statusbar-skinned.h"
 #include "root_menu.h"
 #ifdef HAVE_RECORDING
 #include "recording.h"
@@ -68,6 +69,8 @@
 #include "radio.h"
 #include "tuner.h"
 #endif
+
+#define NOINLINE __attribute__ ((noinline))
 
 extern struct wps_state wps_state;
 
@@ -119,7 +122,7 @@ char* get_dir(char* buf, int buf_size, const char* path, int level)
     return buf;
 }
 
-#if (CONFIG_CODEC != MAS3507D)
+#if (CONFIG_CODEC != MAS3507D) && defined (HAVE_PITCHSCREEN)
 /* A helper to determine the enum value for pitch/speed.
 
    When there are two choices (i.e. boolean), return 1 if the value is
@@ -534,7 +537,7 @@ static struct mp3entry* get_mp3entry_from_offset(int offset, char **filename)
         fname = playlist_peek(offset, filename_buf, sizeof(filename_buf));
         *filename = (char*)fname;
 #if CONFIG_CODEC == SWCODEC
-#ifdef HAVE_TC_RAMCACHE
+#if defined(HAVE_TC_RAMCACHE) && defined(HAVE_DIRCACHE)
         static struct mp3entry tempid3;
         if (tagcache_fill_tags(&tempid3, fname))
         {
@@ -549,6 +552,77 @@ static struct mp3entry* get_mp3entry_from_offset(int offset, char **filename)
 #endif  
     }
     return pid3;
+}
+
+/* Don't inline this; it was broken out of get_token_value to reduce stack
+ * usage.
+ */
+static const char* NOINLINE get_lif_token_value(struct gui_wps *gwps,
+                                                struct logical_if *lif,
+                                                int offset, char *buf,
+                                                int buf_size)
+{
+    int a = lif->num_options;
+    int b;
+    const char* out_text = get_token_value(gwps, lif->token, offset,
+                                           buf, buf_size, &a);            
+    if (a == -1 && lif->token->type != SKIN_TOKEN_VOLUME)
+        a = (out_text && *out_text) ? 1 : 0;
+    switch (lif->operand.type)
+    {
+        case STRING:
+            if (lif->op == IF_EQUALS)
+                return strcmp(out_text, lif->operand.data.text) == 0 ?
+                                                            "eq" : NULL;
+            else
+                return NULL;
+            break;
+        case INTEGER:
+        case DECIMAL:
+            b = lif->operand.data.number;
+            break;
+        case CODE:
+        {
+            char temp_buf[MAX_PATH];
+            const char *outb;
+            struct wps_token *token = lif->operand.data.code->data;
+            b = lif->num_options;
+            outb = get_token_value(gwps, token, offset, temp_buf,
+                                   sizeof(temp_buf), &b);            
+            if (b == -1 && lif->token->type != SKIN_TOKEN_VOLUME)
+            {
+                if (!out_text || !outb)
+                    return (lif->op == IF_EQUALS) ? NULL : "neq";
+                bool equal = strcmp(out_text, outb) == 0;
+                if (lif->op == IF_EQUALS)
+                    return equal ? "eq" : NULL;
+                else if (lif->op == IF_NOTEQUALS)
+                    return !equal ? "neq" : NULL;
+                else
+                    b = (outb && *outb) ? 1 : 0;
+            }
+        }
+        break;
+        case DEFAULT:
+            break;
+    }
+            
+    switch (lif->op)
+    {
+        case IF_EQUALS:
+            return a == b ? "eq" : NULL;
+        case IF_NOTEQUALS:
+            return a != b ? "neq" : NULL;
+        case IF_LESSTHAN:
+            return a < b ? "lt" : NULL;
+        case IF_LESSTHAN_EQ:
+            return a <= b ? "lte" : NULL;
+        case IF_GREATERTHAN:
+            return a > b ? "gt" : NULL;
+        case IF_GREATERTHAN_EQ:
+            return a >= b ? "gte" : NULL;
+    }
+    return NULL;
 }
 
 /* Return the tags value as text. buf should be used as temp storage if needed.
@@ -625,66 +699,7 @@ const char *get_token_value(struct gui_wps *gwps,
         case SKIN_TOKEN_LOGICAL_IF:
         {
             struct logical_if *lif = token->value.data;
-            int a = lif->num_options;
-            int b;
-            out_text = get_token_value(gwps, lif->token, offset, buf, buf_size, &a);            
-            if (a == -1 && lif->token->type != SKIN_TOKEN_VOLUME)
-                a = (out_text && *out_text) ? 1 : 0;
-            switch (lif->operand.type)
-            {
-                case STRING:
-                    if (lif->op == IF_EQUALS)
-                        return strcmp(out_text, lif->operand.data.text) == 0 ?
-                                                                    "eq" : NULL;
-                    else
-                        return NULL;
-                    break;
-                case INTEGER:
-                case DECIMAL:
-                    b = lif->operand.data.number;
-                    break;
-                case CODE:
-                {
-                    char temp_buf[MAX_PATH];
-                    const char *outb;
-                    struct wps_token *token = lif->operand.data.code->data;
-                    b = lif->num_options;
-                    outb = get_token_value(gwps, token, offset, temp_buf,
-                                           sizeof(temp_buf), &b);            
-                    if (b == -1 && lif->token->type != SKIN_TOKEN_VOLUME)
-                    {
-                        if (!out_text || !outb)
-                            return (lif->op == IF_EQUALS) ? NULL : "neq";
-                        bool equal = strcmp(out_text, outb) == 0;
-                        if (lif->op == IF_EQUALS)
-                            return equal ? "eq" : NULL;
-                        else if (lif->op == IF_NOTEQUALS)
-                            return !equal ? "neq" : NULL;
-                        else
-                            b = (outb && *outb) ? 1 : 0;
-                    }
-                }
-                break;
-                case DEFAULT:
-                    break;
-            }
-                    
-            switch (lif->op)
-            {
-                case IF_EQUALS:
-                    return a == b ? "eq" : NULL;
-                case IF_NOTEQUALS:
-                    return a != b ? "neq" : NULL;
-                case IF_LESSTHAN:
-                    return a < b ? "lt" : NULL;
-                case IF_LESSTHAN_EQ:
-                    return a <= b ? "lte" : NULL;
-                case IF_GREATERTHAN:
-                    return a > b ? "gt" : NULL;
-                case IF_GREATERTHAN_EQ:
-                    return a >= b ? "gte" : NULL;
-            }
-            return NULL;
+            return get_lif_token_value(gwps, lif, offset, buf, buf_size);
         }
         break;           
             
@@ -704,15 +719,15 @@ const char *get_token_value(struct gui_wps *gwps,
             if (intval)
                 *intval = playlist_amount();
             return buf;
-        
+#ifdef HAVE_LCD_BITMAP
         case SKIN_TOKEN_LIST_TITLE_TEXT:
-            return (char*)token->value.data;
+            return sb_get_title(gwps->display->screen_type);
         case SKIN_TOKEN_LIST_TITLE_ICON:
             if (intval)
-                *intval = token->value.i;
-            snprintf(buf, buf_size, "%d", token->value.i);
+                *intval = sb_get_icon(gwps->display->screen_type);
+            snprintf(buf, buf_size, "%d",sb_get_icon(gwps->display->screen_type));
             return buf;
-
+#endif
         case SKIN_TOKEN_PLAYLIST_NAME:
             return playlist_name(NULL, buf, buf_size);
 
@@ -1140,7 +1155,7 @@ const char *get_token_value(struct gui_wps *gwps,
         }
 #endif  /* (CONFIG_CODEC == SWCODEC) */
 
-#if (CONFIG_CODEC != MAS3507D)
+#if (CONFIG_CODEC != MAS3507D) && defined (HAVE_PITCHSCREEN)
         case SKIN_TOKEN_SOUND_PITCH:
         {
             int32_t pitch = sound_get_pitch();
@@ -1155,7 +1170,7 @@ const char *get_token_value(struct gui_wps *gwps,
         }
 #endif
 
-#if CONFIG_CODEC == SWCODEC
+#if (CONFIG_CODEC == SWCODEC) && defined (HAVE_PITCHSCREEN)
     case SKIN_TOKEN_SOUND_SPEED:
     {
         int32_t pitch = sound_get_pitch();

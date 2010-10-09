@@ -40,11 +40,25 @@
 #include "misc.h"
 #include "viewport.h"
 #include "statusbar-skinned.h"
+#include "debug.h"
 
 #define ICON_PADDING 1
 
 /* these are static to make scrolling work */
 static struct viewport list_text[NB_SCREENS], title_text[NB_SCREENS];
+
+#ifdef HAVE_TOUCHSCREEN
+/* difference in pixels between draws, above it means enough to start scrolling */
+#define SCROLL_BEGIN_THRESHOLD 3 
+
+static enum {
+    SCROLL_NONE,    /* no scrolling */
+    SCROLL_BAR,     /* scroll by using the scrollbar */
+    SCROLL_SWIPE,   /* scroll by wiping over the screen */
+} scroll_mode;
+
+static int y_offset;
+#endif
 
 int gui_list_get_item_offset(struct gui_synclist * gui_list, int item_width,
                              int text_pos, struct screen * display,
@@ -148,15 +162,35 @@ void list_draw(struct screen *display, struct gui_synclist *list)
         list_text_vp->height -= line_height;
     }
 
+
     start = list_start_item;
     end = start + viewport_get_nb_lines(list_text_vp);
+
+#ifdef HAVE_TOUCHSCREEN
+    if (list->selected_item == 0)
+        y_offset = 0; /* reset in case it's a new list */
+
+    int draw_offset = y_offset;
+    /* draw some extra items to not have empty lines at the top and bottom */
+    if (y_offset > 0)
+    {
+        /* make it negative for more consistent apparence when switching
+         * directions */
+        draw_offset -= line_height;
+        if (start > 0)
+            start--;
+    }
+    else if (y_offset < 0)
+        end++;
+#else
+    #define draw_offset 0
+#endif
 
     /* draw the scrollbar if its needed */
     if (global_settings.scrollbar &&
         viewport_get_nb_lines(list_text_vp) < list->nb_items)
     {
-        struct viewport vp;
-        vp = *list_text_vp;
+        struct viewport vp = *list_text_vp;
         vp.width = SCROLLBAR_WIDTH;
         vp.height = line_height * viewport_get_nb_lines(list_text_vp);
         vp.x = parent->x;
@@ -207,6 +241,7 @@ void list_draw(struct screen *display, struct gui_synclist *list)
         char entry_buffer[MAX_PATH];
         unsigned char *entry_name;
         int text_pos = 0;
+        int line = i - start;
         s = list->callback_get_item_name(i, list->data, entry_buffer,
                                          sizeof(entry_buffer));
         entry_name = P2STR(s);
@@ -230,8 +265,15 @@ void list_draw(struct screen *display, struct gui_synclist *list)
             }
         }
 #endif
-        if(i >= list->selected_item && i <  list->selected_item
-                + list->selected_size && list->show_selection_marker)
+        /* draw the selected line */
+        if(
+#ifdef HAVE_TOUCHSCREEN
+            /* don't draw it during scrolling */
+            scroll_mode == SCROLL_NONE &&
+#endif
+                i >= list->selected_item
+                && i <  list->selected_item + list->selected_size
+                && list->show_selection_marker)
         {/* The selected item must be displayed scrolling */
             if (global_settings.cursor_style == 1
 #ifdef HAVE_REMOTE_LCD
@@ -269,36 +311,36 @@ void list_draw(struct screen *display, struct gui_synclist *list)
             if (item_offset> item_width - (list_text_vp->width - text_pos))
             {
                 /* don't scroll */
-                display->puts_style_offset(0, i-start, entry_name,
-                        style, item_offset);
+                display->puts_style_xyoffset(0, line, entry_name,
+                        style, item_offset, draw_offset);
             }
             else
             {
-                display->puts_scroll_style_offset(0, i-start, entry_name,
-                        style, item_offset);
+                display->puts_scroll_style_xyoffset(0, line, entry_name,
+                        style, item_offset, draw_offset);
             }
         }
         else
         {
             if (list->scroll_all)
-                display->puts_scroll_style_offset(0, i-start, entry_name,
-                        style, item_offset);
+                display->puts_scroll_style_xyoffset(0, line, entry_name,
+                        style, item_offset, draw_offset);
             else
-                display->puts_style_offset(0, i-start, entry_name,
-                        style, item_offset);
+                display->puts_style_xyoffset(0, line, entry_name,
+                        style, item_offset, draw_offset);
         }
         /* do the icon */
         display->set_viewport(&list_icons);
         if (list->callback_get_item_icon && global_settings.show_icons)
         {
             screen_put_icon_with_offset(display, show_cursor?1:0,
-                                    (i-start),show_cursor?ICON_PADDING:0,0,
+                                    (line),show_cursor?ICON_PADDING:0,draw_offset,
                                     list->callback_get_item_icon(i, list->data));
         }
         if (show_cursor && i >= list->selected_item &&
                 i <  list->selected_item + list->selected_size)
         {
-            screen_put_icon(display, 0, i-start, Icon_Cursor);
+            screen_put_icon_with_offset(display, 0, line, 0, draw_offset, Icon_Cursor);
         }
     }
     display->set_viewport(parent);
@@ -308,7 +350,15 @@ void list_draw(struct screen *display, struct gui_synclist *list)
 
 #if defined(HAVE_TOUCHSCREEN)
 /* This needs to be fixed if we ever get more than 1 touchscreen on a target. */
-static bool scrolling=false;
+
+static bool released = false;
+
+/* Used for kinetic scrolling as we need to know the last position to
+ * recognize the scroll direction.
+ * This gets reset to 0 at the end of scrolling
+ */
+static int last_position=0;
+
 
 static int gui_synclist_touchscreen_scrollbar(struct gui_synclist * gui_list,
                                               int y)
@@ -318,8 +368,8 @@ static int gui_synclist_touchscreen_scrollbar(struct gui_synclist * gui_list,
 
     if (nb_lines <  gui_list->nb_items)
     {
-        scrolling = true;
-
+        /* scrollbar scrolling is still line based */
+        y_offset = 0;
         int scrollbar_size = nb_lines*
             font_get(gui_list->parent[screen]->font)->height;
         int actual_y = y - list_text[screen].y;
@@ -334,7 +384,6 @@ static int gui_synclist_touchscreen_scrollbar(struct gui_synclist * gui_list,
             start_item = gui_list->nb_items - nb_lines;
 
         gui_list->start_item[screen] = start_item;
-        gui_synclist_select_item(gui_list, new_selection);
 
         return ACTION_REDRAW;
     }
@@ -342,52 +391,137 @@ static int gui_synclist_touchscreen_scrollbar(struct gui_synclist * gui_list,
     return ACTION_NONE;
 }
 
+/*
+ * returns the number of pixel scrolled since the last call
+ **/
+static int gui_synclist_touchscreen_scrolling(struct gui_synclist * gui_list, int line_height, int position)
+{
+    /* fixme */
+    const enum screen_type screen = screens[SCREEN_MAIN].screen_type;
+    const int nb_lines = viewport_get_nb_lines(&list_text[screen]);
+    /* in pixels */
+    const int difference = position - last_position;
+
+    /* make selecting items easier */
+    if (abs(difference) < SCROLL_BEGIN_THRESHOLD && scroll_mode == SCROLL_NONE)
+        return 0;
+
+    /* does the list even scroll? if no, return but still show
+     * the caller that we would scroll */
+    if (nb_lines >= gui_list->nb_items)
+        return difference;
+
+    const int old_start = gui_list->start_item[screen];
+    int new_start_item = -1;
+    int line_diff = 0;
+
+    /* don't scroll at the edges of the list */
+    if ((old_start == 0 && difference > 0)
+     || (old_start == (gui_list->nb_items - nb_lines) && difference < 0))
+    {
+        y_offset = 0;
+        return difference;
+    }
+
+    /* add up y_offset over time and translate to lines
+     * if scrolled enough */
+    y_offset += difference;
+    if (abs(y_offset) > line_height)
+    {
+        line_diff = y_offset/line_height;
+        y_offset -= line_diff * line_height;
+    }
+
+    if(line_diff != 0)
+    {
+        new_start_item = old_start - line_diff;
+        /* check if new_start_item is bigger than list item count */
+        if(new_start_item > gui_list->nb_items - nb_lines)
+            new_start_item = gui_list->nb_items - nb_lines;
+        /* set new_start_item to 0 if it's negative */
+        if(new_start_item < 0)
+            new_start_item = 0;
+        gui_list->start_item[screen] = new_start_item;
+    }
+
+    return difference;
+}
+
 unsigned gui_synclist_do_touchscreen(struct gui_synclist * gui_list)
 {
     short x, y;
-    const int button = action_get_touchscreen_press(&x, &y);
-    int line;
-    const int screen = SCREEN_MAIN;
+    const enum screen_type screen = SCREEN_MAIN;
+    struct viewport *info_vp = sb_skin_get_info_vp(screen);
+    const int button = action_get_touchscreen_press_in_vp(&x, &y, info_vp);
     const int list_start_item = gui_list->start_item[screen];
+    const int line_height = font_get(gui_list->parent[screen]->font)->height;
     const struct viewport *list_text_vp = &list_text[screen];
-    int list_width = list_text_vp->width;
+    const bool old_released = released;
+    const bool show_title = list_display_title(gui_list, screen);
+    const bool show_cursor = !global_settings.cursor_style &&
+                        gui_list->show_selection_marker;
+    const bool on_title_clicked = show_title && y < line_height;
+    int icon_width = 0;
+    int line, list_width = list_text_vp->width;
 
-    if (global_settings.scrollbar == SCROLLBAR_RIGHT)
-        list_width += SCROLLBAR_WIDTH;
+    if (button == ACTION_NONE || button == ACTION_UNKNOWN)
+        return ACTION_NONE;
+
+    /* x and y are relative to info_vp */
+    if (global_settings.show_icons)
+        icon_width += get_icon_width(screen);
+    if (show_cursor)
+        icon_width += get_icon_width(screen);
+
+    released = (button&BUTTON_REL) != 0;
 
     if (button == BUTTON_NONE)
         return ACTION_NONE;
 
-    if (x > list_text_vp->x + list_width)
-        return ACTION_NONE;
-
-    /* make sure it is inside the UI viewport */
-    if (list_display_title(gui_list, screen) &&
-        viewport_point_within_vp(&title_text[screen], x, y) && 
-        button == BUTTON_REL)
-        return ACTION_STD_CANCEL;
-
-    if (x < list_text_vp->x)
+    if (on_title_clicked)
     {
-        /* Top left corner is GO_TO_ROOT */
-        if (y<list_text[SCREEN_MAIN].y)
+        if (x < icon_width)
         {
+            /* Top left corner is GO_TO_ROOT */
             if (button == BUTTON_REL)
                 return ACTION_STD_MENU;
             else if (button == (BUTTON_REPEAT|BUTTON_REL))
                 return ACTION_STD_CONTEXT;
-            else
-                return ACTION_NONE;
+            return ACTION_NONE;
         }
-        /* Scroll bar */
-        else if(global_settings.scrollbar == SCROLLBAR_LEFT)
-            return gui_synclist_touchscreen_scrollbar(gui_list, y);
+        else /* click on title text is cancel */
+            if (button == BUTTON_REL && scroll_mode == SCROLL_NONE)
+                return ACTION_STD_CANCEL;
     }
-    else
+    else /* list area clicked */
     {
-        if (x > list_text_vp->x + list_text_vp->width &&
-           global_settings.scrollbar == SCROLLBAR_RIGHT)
+        const int actual_y = y - (show_title ? line_height : 0);
+        bool on_scrollbar_clicked;
+        switch (global_settings.scrollbar)
+        {
+            case SCROLLBAR_LEFT:
+                on_scrollbar_clicked = x <= SCROLLBAR_WIDTH; break;
+            case SCROLLBAR_RIGHT:
+                on_scrollbar_clicked = x > (icon_width + list_width); break;
+            default:
+                on_scrollbar_clicked = false; break;
+        }
+        /* conditions for scrollbar scrolling:
+         *    * pen is on the scrollbar
+         *      AND scrollbar is on the right (left case is handled above)
+         * OR * pen is in the somewhere else but we did scrollbar scrolling before
+         *
+         * scrollbar scrolling must end if the pen is released
+         * scrollbar scrolling must not happen if we're currently scrolling
+         * via swiping the screen
+         **/
+
+        if (!released && scroll_mode < SCROLL_SWIPE &&
+            (on_scrollbar_clicked || scroll_mode == SCROLL_BAR))
+        {
+            scroll_mode = SCROLL_BAR;
             return gui_synclist_touchscreen_scrollbar(gui_list, y);
+        }
 
         /* |--------------------------------------------------------|
          * | Description of the touchscreen list interface:         |
@@ -401,74 +535,78 @@ unsigned gui_synclist_do_touchscreen(struct gui_synclist * gui_list)
          * | will bring up the context menu of it.                  |
          * |--------------------------------------------------------|
          */
-        if (y > list_text_vp->y || button & BUTTON_REPEAT)
+        if (actual_y > 0 || button & BUTTON_REPEAT)
         {
-            int line_height, actual_y;
-            
-            actual_y = y - list_text_vp->y;
-            line_height = font_get(gui_list->parent[screen]->font)->height;
-            line = actual_y / line_height;
+            /* selection needs to be corrected if an items are only
+             * partially visible */
+            line = (actual_y - y_offset) / line_height;
             
             /* Pressed below the list*/
             if (list_start_item + line >= gui_list->nb_items)
-                return ACTION_NONE;
-            
-            /* Pressed a border */
-            if(UNLIKELY(actual_y % line_height == 0))
-                return ACTION_NONE;
-            
-            if (line != (gui_list->selected_item - list_start_item)
-                && button ^ BUTTON_REL)
             {
-                if(button & BUTTON_REPEAT)
-                    scrolling = true;
-                
-                gui_synclist_select_item(gui_list, list_start_item + line);
-                
-                return ACTION_REDRAW;
+                /* don't collect last_position outside of the list area
+                 * it'd break selecting after such a situation */
+                last_position = 0;
+                return ACTION_NONE;
             }
-            
-            /* This has the same effect as the icons do when the scrollbar
-               is on the left (ie eliminate the chances an user enters/starts
-               an item when he wanted to use the scrollbar, due to touchscreen
-               dead zones)
-             */
-            if(global_settings.scrollbar == SCROLLBAR_RIGHT &&
-               x > list_text_vp->x + list_text_vp->width -
-                   get_icon_width(SCREEN_MAIN))
-                return ACTION_NONE;
-            
-            if (button == (BUTTON_REPEAT|BUTTON_REL))
+
+            if (released)
             {
-                if(!scrolling)
+                /* Pen was released anywhere on the screen */
+                last_position = 0;
+                if (scroll_mode == SCROLL_NONE)
                 {
-                    /* Pen was hold on the same line as the 
-                     * previously selected one
-                     * => simulate long button press
-                     */
-                    return ACTION_STD_CONTEXT;
+                    gui_synclist_select_item(gui_list, list_start_item + line);
+                    /* If BUTTON_REPEAT is set, then the pen was hold on
+                     * the same line for some time
+                     *  -> context menu
+                     * otherwise,
+                     *  -> select
+                     **/
+                    if (button & BUTTON_REPEAT)
+                        return ACTION_STD_CONTEXT;
+                    return ACTION_STD_OK;
                 }
                 else
                 {
-                    /* Pen was moved across several lines and then released on 
-                     * this one
-                     * => do nothing
-                     */
-                    scrolling = false;
+                    /* we were scrolling
+                     *  -> reset scrolling but do nothing else */
+                    scroll_mode = SCROLL_NONE;
                     return ACTION_NONE;
                 }
             }
-            else if(button == BUTTON_REL &&
-                    line == gui_list->selected_item - list_start_item)
-            {
-                /* Pen was released on either the same line as the previously
-                 *  selected one or an other one
-                 *  => simulate short press
-                 */
-                return ACTION_STD_OK;
-            }
             else
-                return ACTION_NONE;
+            {   /* pen is on the screen */
+                int result = 0;
+                bool redraw = false;
+
+                /* beginning of list interaction denoted by release in
+                 * the previous call */
+                if (old_released)
+                {
+                    scroll_mode = SCROLL_NONE;
+                    redraw = true;
+                }
+                
+                /* select current item */
+                gui_synclist_select_item(gui_list, list_start_item+line);
+                if (last_position == 0)
+                    last_position = actual_y;
+                else
+                    result = gui_synclist_touchscreen_scrolling(gui_list, line_height, actual_y);
+
+                /* Start scrolling once the pen is moved without
+                 * releasing it inbetween */
+                if (result)
+                {
+                    redraw = true;
+                    scroll_mode = SCROLL_SWIPE;
+                }
+
+                last_position = actual_y;
+
+                return redraw ? ACTION_REDRAW:ACTION_NONE;
+            }
         }
     }
     return ACTION_NONE;

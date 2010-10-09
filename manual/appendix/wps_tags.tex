@@ -3,6 +3,9 @@
 Themeing is discussed in detail in section \reference{ref:ConfiguringtheWPS},
 what follows is a list of the available tags.
 
+\note{The ``bar-type tags'' (such as \%pb, \%pv, \%bl etc.) can be further
+  themed -- see \reference{ref:bar_tags}.}
+
 \section{Status Bar}
 \begin{tagmap}
   \config{\%we} & Display Status Bar\\
@@ -157,12 +160,12 @@ or \config{\%D(2)}), produce the information for the next file to be played.
     \config{\%pS} & Track is starting. An optional number gives how many seconds
          the tag remains true for after the start of the track. The default is
          10 seconds if no number is specified.
-         \config{\%pS(7)<in the first 7 seconds of track|in
+         \config{\%?pS(7)<in the first 7 seconds of track|in
            the rest of the track>}\\
     \config{\%pE} & Track is ending. An optional number gives how many seconds
          before the end of the track the tag becomes true. The default is
          10 seconds if no number is specified.
-         \config{\%pE(7)<in the last 7 seconds of track|in
+         \config{\%?pE(7)<in the last 7 seconds of track|in
            the rest of the track>}\\
     \config{\%Sp} & Current playback pitch\\
   \end{tagmap}
@@ -493,7 +496,27 @@ Example: \config{\%ax\%V(\dots)}
     & If / Else: Evaluate for true or false case \\
 \config{\%?xx<alt1|alt2|\tabnlindent{}alt3|\dots|else>}
     & Enumerations: Evaluate for first / second / third / \dots / last condition \\
+\config{\%if(tag, operator, operand, [option count])}
+    & Allows very simple comparisons with other tags.\newline
+      \config{tag}: the tag to check against.\newline
+      \config{operator}: the comparison to perform - possible options are =, !=,
+        >, >=, <, <=\newline
+      \config{operand}: either a second tag, a number, or text.\newline
+      \config{[option count]}: optional parameter used to select which parameter
+        of a tag to use when the tag has multiple options, e.g. \%?pv<a|b|c|d>\\
 \end{tagmap}
+
+Examples of the \%if tag:\\
+
+\config{\%?if(\%pv, >=, 0)<Clipping possible|Volume OK>} will display ``Clipping
+  possible'' if the volume is higher than or equal to 0 dB, ``Volume OK'' if it
+  is lower.\\
+
+\config{\%?if(\%ia, =, \%Ia)<same artist>} -- this artist and the next artist
+  are the same.\\
+
+\note{When performing a comparison against a string tag such as \%ia, only = and
+  != work, and the comparison is not case sensitive.}
 
 \section{Subline Tags}
 
@@ -604,6 +627,38 @@ Example:
   use a 1 second timeout.  It can also be used as a conditional, and can be
   used with conditional viewports.
 }
+
+\section{\label{ref:bar_tags}Bar Tags}
+  Some tags can be used to display a bar which draws according to the value of
+  the tag. To use these tags like a bar you need to use the following parameters
+  (\%XX should be replaced with the actual tag).
+
+\begin{tagmap}
+  \config{\%XX(x, y, width, filename, [options])}
+    & Draw the specified tag as a bar\newline
+      \config{x}: x co-ordinate at which to start drawing the bar.\newline
+      \config{y}: y co-ordinate at which to start drawing the bar.\newline
+      \config{width}: width of the bar (- for the full viewport width).\newline
+      \config{height}: height of the bar (- to set to the font height for
+        horizontal bars and to the viewport height for vertical bars).\newline
+      \config{options}: any of the options set out below.\\
+\end{tagmap}
+
+\subsection{Options}
+\begin{description}
+  \item[horizontal] -- force the bar to be drawn horizontally.
+  \item[vertical] -- force the bar to be drawn vertically.
+  \item[invert] -- invert the draw direction (i.e. right to left, or top to
+    bottom).
+  \item[slider] -- draw an preloaded image over the top of the bar. This must be
+    followed by the label of the desired image.
+  \item[nofill] -- don't draw the fill bar, only the empty image (for the
+    desired effect use with the ``slider'' option).
+\end{description}
+
+Example: \config{\%pb(0,0,-,-,-,nofill, slider, slider\_image, invert)} -- draw
+a horizontal progressbar which doesn't fill and draws the image
+``slider\_image'' which moves right to left.
 
 \section{Other Tags}
 \begin{tagmap}
