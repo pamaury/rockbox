@@ -487,7 +487,7 @@ static void playback_audio_pcm_get_more(unsigned char **start, size_t *size)
         /* when audio underflow, the callback is not called anymore
          * so it needs to be restarted */
         playback_audio_underflow = true;
-        logf("UNDERFLOW UNDERFLOW");
+        //logf("UNDERFLOW UNDERFLOW");
         return;
     }
     
@@ -873,7 +873,7 @@ bool usb_audio_control_request(struct usb_ctrlrequest* req)
         case USB_RECIP_INTERFACE:
             return usb_audio_interface_request(req);
         default:
-            logf("usbaudio: unhandeld req 0x%x", req->bRequest);
+            logf("usbaudio: unhandled req type 0x%x", req->bRequestType);
             return false;
     }
 }
