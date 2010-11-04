@@ -192,6 +192,18 @@ void audiohw_set_lineout_vol(int vol_l, int vol_r)
     wmcodec_write(ROUT2VOL, ROUT2VOL_RO2VU | ROUT2VOL_RO2ZC | vol_r);
 }
 
+void audiohw_enable_lineout(bool enable)
+{
+    if (enable) {
+        /* Enable lineout */
+        wm8975_regs[PWRMGMT2] |=  (PWRMGMT2_LOUT2 | PWRMGMT2_ROUT2);
+    } else {
+        /* Disable lineout */
+        wm8975_regs[PWRMGMT2] &= ~(PWRMGMT2_LOUT2 | PWRMGMT2_ROUT2);
+    }
+    wm8975_write(PWRMGMT2, wm8975_regs[PWRMGMT2]);
+}
+
 void audiohw_set_bass(int value)
 {
     const int regvalues[] = {
@@ -307,6 +319,22 @@ void audiohw_set_recvol(int left, int right, int type)
 
 void audiohw_set_monitor(bool enable)
 {
-    (void)enable;
+    if (enable) {
+        // set volume to 0 dB
+        wm8975_regs[LOUTMIX1] &= ~LOUTMIX1_LI2LOVOL_MASK;
+        wm8975_regs[LOUTMIX1] |= LOUTMIX1_LI2LOVOL(2);
+        wm8975_regs[ROUTMIX2] &= ~ROUTMIX2_RI2ROVOL_MASK;
+        wm8975_regs[ROUTMIX2] |= ROUTMIX2_RI2ROVOL(2);
+        // set mux to line input
+        wm8975_write_and(LOUTMIX1, ~7);
+        wm8975_write_and(ROUTMIX1, ~7);
+        // enable bypass
+        wm8975_write_or(LOUTMIX1, LOUTMIX1_LI2LO);
+        wm8975_write_or(ROUTMIX2, ROUTMIX2_RI2RO);
+    } else {
+        // disable bypass
+        wm8975_write_and(LOUTMIX1, ~LOUTMIX1_LI2LO);
+        wm8975_write_and(ROUTMIX2, ~ROUTMIX2_RI2RO);
+    }
 }
 #endif /* HAVE_RECORDING */

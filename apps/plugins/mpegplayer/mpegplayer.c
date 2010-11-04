@@ -282,6 +282,15 @@ CONFIG_KEYPAD == SANSA_M200_PAD
 #define MPEG_RW         BUTTON_LEFT
 #define MPEG_FF         BUTTON_RIGHT
 
+#elif CONFIG_KEYPAD == PHILIPS_HDD6330_PAD
+#define MPEG_MENU       BUTTON_MENU
+#define MPEG_STOP       BUTTON_POWER
+#define MPEG_PAUSE      BUTTON_PLAY
+#define MPEG_VOLDOWN    BUTTON_VOL_DOWN
+#define MPEG_VOLUP      BUTTON_VOL_UP
+#define MPEG_RW         BUTTON_PREV
+#define MPEG_FF         BUTTON_NEXT
+
 #elif CONFIG_KEYPAD == PHILIPS_SA9200_PAD
 #define MPEG_MENU       BUTTON_MENU
 #define MPEG_STOP       BUTTON_POWER
@@ -319,13 +328,13 @@ CONFIG_KEYPAD == SANSA_M200_PAD
 #define MPEG_FF         BUTTON_NEXT
 
 #elif CONFIG_KEYPAD == MPIO_HD200_PAD
-#define MPEG_MENU       BUTTON_SELECT
+#define MPEG_MENU       BUTTON_FUNC
 #define MPEG_PAUSE      (BUTTON_PLAY | BUTTON_REL)
 #define MPEG_STOP       (BUTTON_PLAY | BUTTON_REPEAT)
 #define MPEG_VOLDOWN    BUTTON_VOL_DOWN
 #define MPEG_VOLUP      BUTTON_VOL_UP
-#define MPEG_RW         BUTTON_PREV
-#define MPEG_FF         BUTTON_NEXT
+#define MPEG_RW         BUTTON_REW
+#define MPEG_FF         BUTTON_FF
 
 #else
 #error No keymap defined!

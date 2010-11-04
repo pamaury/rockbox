@@ -28,6 +28,9 @@
 #undef button_init_device
 void button_init_device(void);
 int button_read_device(int *data);
+unsigned multimedia_to_button(int keyboard_key);
+unsigned dpad_to_button(int keyboard_key);
+void android_ignore_back_button(bool yes);
 
 /* Main unit's buttons */
 #define BUTTON_MENU        0x00000001

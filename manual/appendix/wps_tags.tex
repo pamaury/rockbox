@@ -3,6 +3,9 @@
 Themeing is discussed in detail in section \reference{ref:ConfiguringtheWPS},
 what follows is a list of the available tags.
 
+\note{The ``bar-type tags'' (such as \%pb, \%pv, \%bl etc.) can be further
+  themed -- see \reference{ref:bar_tags}.}
+
 \section{Status Bar}
 \begin{tagmap}
   \config{\%we} & Display Status Bar\\
@@ -11,6 +14,23 @@ what follows is a list of the available tags.
 \end{tagmap}
 These tags override the player setting for the display of the status bar.
 They must be noted on their own line (which will not be shown in the WPS).
+
+\section{Hardware Capabilities}
+\begin{tagmap}
+    \config{\%cc} & Check for presence of a real time clock, returns ``c''
+                   when used unconditionally\\
+    \config{\%tp} & Does this target have a radio?\\
+    \config{\%Tp} & Indicates that the target has a touchscreen\\
+\end{tagmap}
+With the above tags it is possible to find out about the presence of certain
+hardware and make the theme adapt to it. This can be very useful for designing
+a theme that works on multiple targets with differing hardware capabilities, e.g.
+targets that do and do not have a clock. When used conditionally, the ``true''
+branch is completely ignored if it does not apply.
+
+Example:
+\config{\%?cc<\%cH:\%cM|No clock detected>}
+
 
 \section{Information from the track tags}
   \begin{tagmap}
@@ -157,12 +177,12 @@ or \config{\%D(2)}), produce the information for the next file to be played.
     \config{\%pS} & Track is starting. An optional number gives how many seconds
          the tag remains true for after the start of the track. The default is
          10 seconds if no number is specified.
-         \config{\%pS(7)<in the first 7 seconds of track|in
+         \config{\%?pS(7)<in the first 7 seconds of track|in
            the rest of the track>}\\
     \config{\%pE} & Track is ending. An optional number gives how many seconds
          before the end of the track the tag becomes true. The default is
          10 seconds if no number is specified.
-         \config{\%pE(7)<in the last 7 seconds of track|in
+         \config{\%?pE(7)<in the last 7 seconds of track|in
            the rest of the track>}\\
     \config{\%Sp} & Current playback pitch\\
   \end{tagmap}
@@ -437,9 +457,6 @@ Examples:
 \opt{radio}{
 \section{FM Radio}
   \begin{tagmap}
-    \config{\%tp} & Does this target have a radio? If it doesn't, the ``true''
-      branch of this conditional is completly ignored so you don't need to
-      worry about tags which are not recognized on non radio targets.\\
     \config{\%tt} & Is the tuner tuned?\\
     \config{\%tm} & Scan or preset mode? Scan is ``true'', preset is ``false''.\\
     \config{\%ts} & Is the station in stereo?\\
@@ -493,7 +510,27 @@ Example: \config{\%ax\%V(\dots)}
     & If / Else: Evaluate for true or false case \\
 \config{\%?xx<alt1|alt2|\tabnlindent{}alt3|\dots|else>}
     & Enumerations: Evaluate for first / second / third / \dots / last condition \\
+\config{\%if(tag, operator, operand, [option count])}
+    & Allows very simple comparisons with other tags.\newline
+      \config{tag}: the tag to check against.\newline
+      \config{operator}: the comparison to perform - possible options are =, !=,
+        >, >=, <, <=\newline
+      \config{operand}: either a second tag, a number, or text.\newline
+      \config{[option count]}: optional parameter used to select which parameter
+        of a tag to use when the tag has multiple options, e.g. \%?pv<a|b|c|d>\\
 \end{tagmap}
+
+Examples of the \%if tag:\\
+
+\config{\%?if(\%pv, >=, 0)<Clipping possible|Volume OK>} will display ``Clipping
+  possible'' if the volume is higher than or equal to 0 dB, ``Volume OK'' if it
+  is lower.\\
+
+\config{\%?if(\%ia, =, \%Ia)<same artist>} -- this artist and the next artist
+  are the same.\\
+
+\note{When performing a comparison against a string tag such as \%ia, only = and
+  != work, and the comparison is not case sensitive.}
 
 \section{Subline Tags}
 
@@ -508,10 +545,9 @@ Allows grouping of several items (sublines) onto one line, with the
 display cycling round the defined sublines. See
 \reference{ref:AlternatingSublines} for details. 
 
-
+\opt{rtc}{
 \section{Time and Date}
     \begin{tagmap}
-    \opt{rtc}{
       \config{\%cd}          & Day of month from 01 to 31\\
       \config{\%ce}          & Zero padded day of month from 1 to 31\\
       \config{\%cf}          & A conditional for 12/24 hour format.\newline
@@ -531,21 +567,8 @@ display cycling round the defined sublines. See
       \config{\%cb}          & Month name\\
       \config{\%cu}          & Day of week from 1 to 7, 1 is Monday\\
       \config{\%cw}          & Day of week from 0 to 6, 0 is Sunday\\
-    }
-      \config{\%cc}          & Check for presence of the clock hardware\\
     \end{tagmap}
-The \%cc tag returns ``c'' if the necessary hardware is present and can also be
-used as a conditional. This can be very useful for designing a WPS that works on
-multiple targets, some with and some without a clock. By using this tag as a
-conditional it is possible to display current date and time on those targets that
-support this
-\opt{rtc}{ (like the \playertype)},
-or alternate information on those that do not
-\nopt{rtc}{ (like the \playertype)}%
-.
-
-Example:
-\config{\%?cc<\%cH:\%cM|No clock detected>}
+}
 
 \section{Text Translation}
   \begin{tagmap}
@@ -563,7 +586,7 @@ Example:
 
 
 \opt{touchscreen}{
-  \section{Touchscreen Areas (WPS only)}
+  \section{Touchscreen Areas}
     \begin{tagmap}
       \config{\%T(x,y,[width],\tabnlindent[height],action)}
       & Invoke the action specified when the user presses in the defined
@@ -592,7 +615,7 @@ Example:
     \item[volup] -- Increase the volume by one step.
   \end{description}
 
-  \section{Last Touchscreen Press (WPS only)}
+  \section{Last Touchscreen Press}
     \begin{tagmap}
       \config{\%Tl} & Indicates that the touchscreen is pressed.\\
     \end{tagmap}
@@ -605,6 +628,46 @@ Example:
   used with conditional viewports.
 }
 
+\section{\label{ref:bar_tags}Bar Tags}
+  Some tags can be used to display a bar which draws according to the value of
+  the tag. To use these tags like a bar you need to use the following parameters
+  (\%XX should be replaced with the actual tag).
+
+\begin{tagmap}
+  \config{\%XX(x, y, width, height, [options])}
+    & Draw the specified tag as a bar\newline
+      \config{x}: x co-ordinate at which to start drawing the bar.\newline
+      \config{y}: y co-ordinate at which to start drawing the bar.\newline
+      \config{width}: width of the bar (- for the full viewport width).\newline
+      \config{height}: height of the bar (- to set to the font height for
+        horizontal bars and to the viewport height for vertical bars).\newline
+      \config{options}: any of the options set out below.\\
+\end{tagmap}
+
+\subsection{Options}
+\begin{description}
+  \item[image] -- the next option is either the filename or image label to
+    use for the fill image.
+  \item[horizontal] -- force the bar to be drawn horizontally.
+  \item[vertical] -- force the bar to be drawn vertically.
+  \item[invert] -- invert the draw direction (i.e. right to left, or top to
+    bottom).
+  \item[slider] -- draw an preloaded image over the top of the bar so that
+    the centre of the image matches the current position. This must be
+    followed by the label of the desired image.
+  \item[nofill] -- don't draw the bar, only its frame (for use with the
+     ``slider'' option).
+  \item[nobar] -- don't draw the bar or its frame (for use with the
+    ``slider'' option).
+\end{description}
+
+Example: \config{\%pb(0,0,-,-,-,nofill, slider, slider\_image, invert)} -- draw
+a horizontal progressbar which doesn't fill and draws the image
+``slider\_image'' which moves right to left.
+
+\note{If the slider option is used, the bar will be shrunk so that the slider
+  fits inside the specified width and height.}
+
 \section{Other Tags}
 \begin{tagmap}
   \config{\%(}           & The character `('\\
@@ -615,7 +678,7 @@ Example:
   \config{\%|}           & The character `|'\\
   \config{\%>}           & The character `>'\\
   \config{\%;}           & The character `;'\\
-  \config{\#}            & The character `\#'\\
+  \config{\%\#}          & The character `\#'\\
   \config{\%s}           & Indicate that the line should scroll. Can occur 
                            anywhere in a line (given that the text is 
                            displayed; see conditionals above). You can specify 

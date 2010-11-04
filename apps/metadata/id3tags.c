@@ -424,11 +424,13 @@ static const struct tag_resolver taglist[] = {
     { "TAL",  3, offsetof(struct mp3entry, album), NULL, false },
     { "TRK",  3, offsetof(struct mp3entry, track_string), &parsetracknum, false },
     { "TPOS", 4, offsetof(struct mp3entry, disc_string), &parsediscnum, false },
+    { "TPA",  3, offsetof(struct mp3entry, disc_string), &parsediscnum, false },
     { "TRCK", 4, offsetof(struct mp3entry, track_string), &parsetracknum, false },
     { "TDRC", 4, offsetof(struct mp3entry, year_string), &parseyearnum, false },
     { "TYER", 4, offsetof(struct mp3entry, year_string), &parseyearnum, false },
     { "TYE",  3, offsetof(struct mp3entry, year_string), &parseyearnum, false },
     { "TCOM", 4, offsetof(struct mp3entry, composer), NULL, false },
+    { "TCM",  3, offsetof(struct mp3entry, composer), NULL, false },
     { "TPE2", 4, offsetof(struct mp3entry, albumartist), NULL, false },
     { "TP2",  3, offsetof(struct mp3entry, albumartist), NULL, false },
     { "TIT1", 4, offsetof(struct mp3entry, grouping), NULL, false },
@@ -655,7 +657,6 @@ void setid3v2title(int fd, struct mp3entry *entry)
     int buffersize = sizeof(entry->id3v2buf);
     unsigned char global_flags;
     int flags;
-    int skip;
     bool global_unsynch = false;
     bool unsynch = false;
     int i, j;
@@ -787,8 +788,6 @@ void setid3v2title(int fd, struct mp3entry *entry)
 
         if(flags)
         {
-            skip = 0;
-
             if (version >= ID3_VER_2_4) {
                 if(flags & 0x0040) { /* Grouping identity */
                     lseek(fd, 1, SEEK_CUR); /* Skip 1 byte */

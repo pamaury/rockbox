@@ -20,15 +20,17 @@
 #ifndef __IAP_H__
 #define __IAP_H__
 
+#include <stdbool.h>
+
 #define RX_BUFLEN 260
 #define TX_BUFLEN 128
 
-extern int iap_getc(unsigned char x);
+extern bool iap_getc(unsigned char x);
 extern void iap_setup(int ratenum);
 extern void iap_bitrate_set(int ratenum);
 extern void iap_periodic(void);
 extern void iap_handlepkt(void);
 extern void iap_send_pkt(const unsigned char * data, int len);
-extern unsigned char serbuf[RX_BUFLEN];
+const unsigned char *iap_get_serbuf(void);
 
 #endif

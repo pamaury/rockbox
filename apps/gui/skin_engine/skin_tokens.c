@@ -57,6 +57,7 @@
 
 #include "wps_internals.h"
 #include "skin_engine.h"
+#include "statusbar-skinned.h"
 #include "root_menu.h"
 #ifdef HAVE_RECORDING
 #include "recording.h"
@@ -68,6 +69,8 @@
 #include "radio.h"
 #include "tuner.h"
 #endif
+
+#define NOINLINE __attribute__ ((noinline))
 
 extern struct wps_state wps_state;
 
@@ -119,7 +122,7 @@ char* get_dir(char* buf, int buf_size, const char* path, int level)
     return buf;
 }
 
-#if (CONFIG_CODEC != MAS3507D)
+#if (CONFIG_CODEC != MAS3507D) && defined (HAVE_PITCHSCREEN)
 /* A helper to determine the enum value for pitch/speed.
 
    When there are two choices (i.e. boolean), return 1 if the value is
@@ -534,7 +537,7 @@ static struct mp3entry* get_mp3entry_from_offset(int offset, char **filename)
         fname = playlist_peek(offset, filename_buf, sizeof(filename_buf));
         *filename = (char*)fname;
 #if CONFIG_CODEC == SWCODEC
-#ifdef HAVE_TC_RAMCACHE
+#if defined(HAVE_TC_RAMCACHE) && defined(HAVE_DIRCACHE)
         static struct mp3entry tempid3;
         if (tagcache_fill_tags(&tempid3, fname))
         {
@@ -549,6 +552,219 @@ static struct mp3entry* get_mp3entry_from_offset(int offset, char **filename)
 #endif  
     }
     return pid3;
+}
+
+#ifdef HAVE_LCD_CHARCELLS
+static void format_player_progress(struct gui_wps *gwps)
+{
+    struct wps_state *state = skin_get_global_state();
+    struct screen *display = gwps->display;
+    unsigned char progress_pattern[7];
+    int pos = 0;
+    int i;
+
+    int elapsed, length;
+    if (LIKELY(state->id3))
+    {
+        elapsed = state->id3->elapsed;
+        length = state->id3->length;
+    }
+    else
+    {
+        elapsed = 0;
+        length = 0;
+    }
+
+    if (length)
+        pos = 36 * (elapsed + state->ff_rewind_count) / length;
+
+    for (i = 0; i < 7; i++, pos -= 5)
+    {
+        if (pos <= 0)
+            progress_pattern[i] = 0x1fu;
+        else if (pos >= 5)
+            progress_pattern[i] = 0x00u;
+        else
+            progress_pattern[i] = 0x1fu >> pos;
+    }
+
+    display->define_pattern(gwps->data->wps_progress_pat[0], progress_pattern);
+}
+
+static void format_player_fullbar(struct gui_wps *gwps, char* buf, int buf_size)
+{
+    static const unsigned char numbers[10][4] = {
+        {0x0e, 0x0a, 0x0a, 0x0e}, /* 0 */
+        {0x04, 0x0c, 0x04, 0x04}, /* 1 */
+        {0x0e, 0x02, 0x04, 0x0e}, /* 2 */
+        {0x0e, 0x02, 0x06, 0x0e}, /* 3 */
+        {0x08, 0x0c, 0x0e, 0x04}, /* 4 */
+        {0x0e, 0x0c, 0x02, 0x0c}, /* 5 */
+        {0x0e, 0x08, 0x0e, 0x0e}, /* 6 */
+        {0x0e, 0x02, 0x04, 0x08}, /* 7 */
+        {0x0e, 0x0e, 0x0a, 0x0e}, /* 8 */
+        {0x0e, 0x0e, 0x02, 0x0e}  /* 9 */
+    };
+
+    struct wps_state *state = skin_get_global_state();
+    struct screen *display = gwps->display;
+    struct wps_data *data = gwps->data;
+    unsigned char progress_pattern[7];
+    char timestr[10];
+    int time;
+    int time_idx = 0;
+    int pos = 0;
+    int pat_idx = 1;
+    int digit, i, j;
+    bool softchar;
+
+    int elapsed, length;
+    if (LIKELY(state->id3))
+    {
+        elapsed = state->id3->elapsed;
+        length = state->id3->length;
+    }
+    else
+    {
+        elapsed = 0;
+        length = 0;
+    }
+
+    if (buf_size < 34) /* worst case: 11x UTF-8 char + \0 */
+        return;
+
+    time = elapsed + state->ff_rewind_count;
+    if (length)
+        pos = 55 * time / length;
+
+    memset(timestr, 0, sizeof(timestr));
+    format_time(timestr, sizeof(timestr)-2, time);
+    timestr[strlen(timestr)] = ':';   /* always safe */
+
+    for (i = 0; i < 11; i++, pos -= 5)
+    {
+        softchar = false;
+        memset(progress_pattern, 0, sizeof(progress_pattern));
+
+        if ((digit = timestr[time_idx]))
+        {
+            softchar = true;
+            digit -= '0';
+
+            if (timestr[time_idx + 1] == ':')  /* ones, left aligned */
+            {
+                memcpy(progress_pattern, numbers[digit], 4);
+                time_idx += 2;
+            }
+            else  /* tens, shifted right */
+            {
+                for (j = 0; j < 4; j++)
+                    progress_pattern[j] = numbers[digit][j] >> 1;
+
+                if (time_idx > 0)  /* not the first group, add colon in front */
+                {
+                    progress_pattern[1] |= 0x10u;
+                    progress_pattern[3] |= 0x10u;
+                }
+                time_idx++;
+            }
+
+            if (pos >= 5)
+                progress_pattern[5] = progress_pattern[6] = 0x1fu;
+        }
+
+        if (pos > 0 && pos < 5)
+        {
+            softchar = true;
+            progress_pattern[5] = progress_pattern[6] = (~0x1fu >> pos) & 0x1fu;
+        }
+
+        if (softchar && pat_idx < 8)
+        {
+            display->define_pattern(data->wps_progress_pat[pat_idx],
+                                    progress_pattern);
+            buf = utf8encode(data->wps_progress_pat[pat_idx], buf);
+            pat_idx++;
+        }
+        else if (pos <= 0)
+            buf = utf8encode(' ', buf);
+        else
+            buf = utf8encode(0xe115, buf); /* 2/7 _ */
+    }
+    *buf = '\0';
+}
+
+#endif /* HAVE_LCD_CHARCELLS */
+
+/* Don't inline this; it was broken out of get_token_value to reduce stack
+ * usage.
+ */
+static const char* NOINLINE get_lif_token_value(struct gui_wps *gwps,
+                                                struct logical_if *lif,
+                                                int offset, char *buf,
+                                                int buf_size)
+{
+    int a = lif->num_options;
+    int b;
+    const char* out_text = get_token_value(gwps, lif->token, offset,
+                                           buf, buf_size, &a);            
+    if (a == -1 && lif->token->type != SKIN_TOKEN_VOLUME)
+        a = (out_text && *out_text) ? 1 : 0;
+    switch (lif->operand.type)
+    {
+        case STRING:
+            if (lif->op == IF_EQUALS)
+                return strcmp(out_text, lif->operand.data.text) == 0 ?
+                                                            "eq" : NULL;
+            else
+                return NULL;
+            break;
+        case INTEGER:
+        case DECIMAL:
+            b = lif->operand.data.number;
+            break;
+        case CODE:
+        {
+            char temp_buf[MAX_PATH];
+            const char *outb;
+            struct wps_token *token = lif->operand.data.code->data;
+            b = lif->num_options;
+            outb = get_token_value(gwps, token, offset, temp_buf,
+                                   sizeof(temp_buf), &b);            
+            if (b == -1 && lif->token->type != SKIN_TOKEN_VOLUME)
+            {
+                if (!out_text || !outb)
+                    return (lif->op == IF_EQUALS) ? NULL : "neq";
+                bool equal = strcmp(out_text, outb) == 0;
+                if (lif->op == IF_EQUALS)
+                    return equal ? "eq" : NULL;
+                else if (lif->op == IF_NOTEQUALS)
+                    return !equal ? "neq" : NULL;
+                else
+                    b = (outb && *outb) ? 1 : 0;
+            }
+        }
+        break;
+        case DEFAULT:
+            break;
+    }
+            
+    switch (lif->op)
+    {
+        case IF_EQUALS:
+            return a == b ? "eq" : NULL;
+        case IF_NOTEQUALS:
+            return a != b ? "neq" : NULL;
+        case IF_LESSTHAN:
+            return a < b ? "lt" : NULL;
+        case IF_LESSTHAN_EQ:
+            return a <= b ? "lte" : NULL;
+        case IF_GREATERTHAN:
+            return a > b ? "gt" : NULL;
+        case IF_GREATERTHAN_EQ:
+            return a >= b ? "gte" : NULL;
+    }
+    return NULL;
 }
 
 /* Return the tags value as text. buf should be used as temp storage if needed.
@@ -625,66 +841,7 @@ const char *get_token_value(struct gui_wps *gwps,
         case SKIN_TOKEN_LOGICAL_IF:
         {
             struct logical_if *lif = token->value.data;
-            int a = lif->num_options;
-            int b;
-            out_text = get_token_value(gwps, lif->token, offset, buf, buf_size, &a);            
-            if (a == -1 && lif->token->type != SKIN_TOKEN_VOLUME)
-                a = (out_text && *out_text) ? 1 : 0;
-            switch (lif->operand.type)
-            {
-                case STRING:
-                    if (lif->op == IF_EQUALS)
-                        return strcmp(out_text, lif->operand.data.text) == 0 ?
-                                                                    "eq" : NULL;
-                    else
-                        return NULL;
-                    break;
-                case INTEGER:
-                case DECIMAL:
-                    b = lif->operand.data.number;
-                    break;
-                case CODE:
-                {
-                    char temp_buf[MAX_PATH];
-                    const char *outb;
-                    struct wps_token *token = lif->operand.data.code->data;
-                    b = lif->num_options;
-                    outb = get_token_value(gwps, token, offset, temp_buf,
-                                           sizeof(temp_buf), &b);            
-                    if (b == -1 && lif->token->type != SKIN_TOKEN_VOLUME)
-                    {
-                        if (!out_text || !outb)
-                            return (lif->op == IF_EQUALS) ? NULL : "neq";
-                        bool equal = strcmp(out_text, outb) == 0;
-                        if (lif->op == IF_EQUALS)
-                            return equal ? "eq" : NULL;
-                        else if (lif->op == IF_NOTEQUALS)
-                            return !equal ? "neq" : NULL;
-                        else
-                            b = (outb && *outb) ? 1 : 0;
-                    }
-                }
-                break;
-                case DEFAULT:
-                    break;
-            }
-                    
-            switch (lif->op)
-            {
-                case IF_EQUALS:
-                    return a == b ? "eq" : NULL;
-                case IF_NOTEQUALS:
-                    return a != b ? "neq" : NULL;
-                case IF_LESSTHAN:
-                    return a < b ? "lt" : NULL;
-                case IF_LESSTHAN_EQ:
-                    return a <= b ? "lte" : NULL;
-                case IF_GREATERTHAN:
-                    return a > b ? "gt" : NULL;
-                case IF_GREATERTHAN_EQ:
-                    return a >= b ? "gte" : NULL;
-            }
-            return NULL;
+            return get_lif_token_value(gwps, lif, offset, buf, buf_size);
         }
         break;           
             
@@ -704,15 +861,15 @@ const char *get_token_value(struct gui_wps *gwps,
             if (intval)
                 *intval = playlist_amount();
             return buf;
-        
+#ifdef HAVE_LCD_BITMAP
         case SKIN_TOKEN_LIST_TITLE_TEXT:
-            return (char*)token->value.data;
+            return sb_get_title(gwps->display->screen_type);
         case SKIN_TOKEN_LIST_TITLE_ICON:
             if (intval)
-                *intval = token->value.i;
-            snprintf(buf, buf_size, "%d", token->value.i);
+                *intval = sb_get_icon(gwps->display->screen_type);
+            snprintf(buf, buf_size, "%d",sb_get_icon(gwps->display->screen_type));
             return buf;
-
+#endif
         case SKIN_TOKEN_PLAYLIST_NAME:
             return playlist_name(NULL, buf, buf_size);
 
@@ -1060,7 +1217,9 @@ const char *get_token_value(struct gui_wps *gwps,
 #ifdef HAVE_LCD_CHARCELLS
         case SKIN_TOKEN_PROGRESSBAR:
         {
-            char *end = utf8encode(data->wps_progress_pat[0], buf);
+            char *end;
+            format_player_progress(gwps);
+            end = utf8encode(data->wps_progress_pat[0], buf);
             *end = '\0';
             return buf;
         }
@@ -1071,6 +1230,8 @@ const char *get_token_value(struct gui_wps *gwps,
                 /* we need 11 characters (full line) for
                     progress-bar */
                 strlcpy(buf, "           ", buf_size);
+                format_player_fullbar(gwps,buf,buf_size);
+                DEBUGF("bar='%s'\n",buf);
             }
             else
             {
@@ -1140,7 +1301,7 @@ const char *get_token_value(struct gui_wps *gwps,
         }
 #endif  /* (CONFIG_CODEC == SWCODEC) */
 
-#if (CONFIG_CODEC != MAS3507D)
+#if (CONFIG_CODEC != MAS3507D) && defined (HAVE_PITCHSCREEN)
         case SKIN_TOKEN_SOUND_PITCH:
         {
             int32_t pitch = sound_get_pitch();
@@ -1155,7 +1316,7 @@ const char *get_token_value(struct gui_wps *gwps,
         }
 #endif
 
-#if CONFIG_CODEC == SWCODEC
+#if (CONFIG_CODEC == SWCODEC) && defined (HAVE_PITCHSCREEN)
     case SKIN_TOKEN_SOUND_SPEED:
     {
         int32_t pitch = sound_get_pitch();
@@ -1216,6 +1377,12 @@ const char *get_token_value(struct gui_wps *gwps,
 #endif
             }
             return NULL;
+        case SKIN_TOKEN_HAVE_TOUCH:
+#ifdef HAVE_TOUCHSCREEN
+            return "t";
+#else
+            return NULL;
+#endif
 
         case SKIN_TOKEN_SETTING:
         {

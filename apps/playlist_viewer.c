@@ -652,19 +652,21 @@ enum playlist_viewer_result playlist_viewer_ex(const char* filename)
         }
 
         /* Timeout so we can determine if play status has changed */
-        button = get_action(CONTEXT_TREE,HZ/2);
-        if( (gui_synclist_do_button(&playlist_lists, &button,LIST_WRAP_UNLESS_HELD)) )
+        bool res = list_do_action(CONTEXT_LIST, HZ/2,
+                            &playlist_lists, &button, LIST_WRAP_UNLESS_HELD);
+        /* during moving, another redraw is going to be needed,
+         * since viewer.selected_track is updated too late (after the first draw)
+         * drawing the moving item needs it */
+        viewer.selected_track=gui_synclist_get_sel_pos(&playlist_lists);
+        if (res)
         {
-            viewer.selected_track=gui_synclist_get_sel_pos(&playlist_lists);
-            if(playlist_buffer_needs_reload(&viewer.buffer,
-                viewer.selected_track))
+            bool reload = playlist_buffer_needs_reload(&viewer.buffer,
+                    viewer.selected_track);
+            if (reload)
                 playlist_buffer_load_entries_screen(&viewer.buffer,
-                    button==ACTION_STD_NEXT?
-                        FORWARD
-                        :
-                        BACKWARD
-                    );
-            gui_synclist_draw(&playlist_lists);
+                    button == ACTION_STD_NEXT ? FORWARD : BACKWARD);
+            if (reload || viewer.moving_track >= 0)
+                gui_synclist_draw(&playlist_lists);
         }
         switch (button)
         {
@@ -686,8 +688,9 @@ enum playlist_viewer_result playlist_viewer_ex(const char* filename)
             case ACTION_STD_OK:
             {
                 struct playlist_entry * current_track =
-                    playlist_buffer_get_track(&viewer.buffer,
-                    viewer.selected_track);
+                            playlist_buffer_get_track(&viewer.buffer,
+                                                      viewer.selected_track);
+
                 if (viewer.moving_track >= 0)
                 {
                     /* Move track */
@@ -837,8 +840,8 @@ bool search_playlist(void)
     gui_synclist_draw(&playlist_lists);
     while (!exit)
     {
-        button = get_action(CONTEXT_LIST, HZ/4);
-        if (gui_synclist_do_button(&playlist_lists, &button, LIST_WRAP_UNLESS_HELD))
+        if (list_do_action(CONTEXT_LIST, HZ/4,
+                           &playlist_lists, &button, LIST_WRAP_UNLESS_HELD))
             continue;
         switch (button)
         {
@@ -847,10 +850,11 @@ bool search_playlist(void)
                 break;
 
             case ACTION_STD_OK:
-                playlist_start(
-                    found_indicies[gui_synclist_get_sel_pos(&playlist_lists)]
-                    ,0);
+            {
+                int sel = gui_synclist_get_sel_pos(&playlist_lists);
+                playlist_start(found_indicies[sel] ,0);
                 exit = 1;
+            }
             break;
 
             default:

@@ -192,6 +192,8 @@ extern void lcd_clear_viewport(void);
 extern void lcd_clear_display(void);
 extern void lcd_putsxy(int x, int y, const unsigned char *string);
 extern void lcd_putsxyf(int x, int y, const unsigned char *fmt, ...);
+extern void lcd_putsxy_style_offset(int x, int y, const unsigned char *str,
+                                    int style, int offset);
 extern void lcd_puts(int x, int y, const unsigned char *string);
 extern void lcd_putsf(int x, int y, const unsigned char *fmt, ...);
 extern void lcd_puts_style(int x, int y, const unsigned char *string, int style);
@@ -480,9 +482,13 @@ extern void lcd_setfont(int font);
 extern int lcd_getfont(void);
 
 extern void lcd_puts_style_offset(int x, int y, const unsigned char *str,
-                                  int style, int offset);
+                                  int style, int x_offset);
+extern void lcd_puts_style_xyoffset(int x, int y, const unsigned char *str,
+                                  int style, int x_offset, int y_offset);
 extern void lcd_puts_scroll_style_offset(int x, int y, const unsigned char *string,
-                                  int style, int offset);
+                                  int style, int x_offset);
+extern void lcd_puts_scroll_style_xyoffset(int x, int y, const unsigned char *string,
+                                  int style, int x_offset, int y_offset);
 
 /* low level drawing function pointer arrays */
 #if LCD_DEPTH >= 8
@@ -501,6 +507,8 @@ extern void lcd_hline(int x1, int x2, int y);
 extern void lcd_vline(int x, int y1, int y2);
 extern void lcd_drawrect(int x, int y, int width, int height);
 extern void lcd_fillrect(int x, int y, int width, int height);
+extern void lcd_draw_border_viewport(void);
+extern void lcd_fill_viewport(void);
 extern void lcd_bitmap_part(const fb_data *src, int src_x, int src_y,
                             int stride, int x, int y, int width, int height);
 extern void lcd_bitmap(const fb_data *src, int x, int y, int width,

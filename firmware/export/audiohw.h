@@ -59,6 +59,9 @@
 #include "as3514.h"
 #elif defined(HAVE_MAS35XX)
 #include "mas35xx.h"
+#if defined(HAVE_DAC3550A)
+#include "dac3550a.h"
+#endif /* HAVE_DAC3550A */
 #elif defined(HAVE_TSC2100)
 #include "tsc2100.h"
 #elif defined(HAVE_JZ4740_CODEC)
@@ -529,13 +532,17 @@ void audiohw_disable_recording(void);
  */
 void audiohw_set_recvol(int left, int right, int type);
 
+#endif /* HAVE_RECORDING */
+
+#if defined(HAVE_RECORDING) || defined(HAVE_FMRADIO_IN)
 /**
  * Enable or disable recording monitor.
- * @param enable ture or false.
+ * @param enable true or false.
  */
 void audiohw_set_monitor(bool enable);
+#endif
 
-#endif /* HAVE_RECORDING */
+
 
 #if CONFIG_CODEC != SWCODEC
 

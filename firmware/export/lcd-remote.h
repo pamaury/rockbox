@@ -128,6 +128,8 @@ extern void lcd_remote_puts_offset(int x, int y, const unsigned char *str,
                                    int offset);
 extern void lcd_remote_puts_style_offset(int x, int y, const unsigned char *str,
                                          int style, int offset);
+extern void lcd_remote_puts_style_xyoffset(int x, int y, const unsigned char *str,
+                                         int style, int x_offset, int y_offset);
 extern void lcd_remote_putc(int x, int y, unsigned short ch);
 extern void lcd_remote_stop_scroll(void);
 extern void lcd_remote_scroll_speed(int speed);
@@ -140,6 +142,10 @@ extern void lcd_remote_puts_scroll_offset(int x, int y,
 extern void lcd_remote_puts_scroll_style_offset(int x, int y,
                                                 const unsigned char *string,
                                                 int style, int offset);
+extern void lcd_remote_puts_scroll_style_xyoffset(int x, int y,
+                                                  const unsigned char *string,
+                                                  int style, int x_offset,
+                                                  int y_offset);
 
 extern void lcd_remote_update(void);
 extern void lcd_remote_update_rect(int x, int y, int width, int height);
@@ -172,6 +178,8 @@ extern void lcd_remote_hline(int x1, int x2, int y);
 extern void lcd_remote_vline(int x, int y1, int y2);
 extern void lcd_remote_drawrect(int x, int y, int width, int height);
 extern void lcd_remote_fillrect(int x, int y, int width, int height);
+extern void lcd_remote_draw_border_viewport(void);
+extern void lcd_remote_fill_viewport(void);
 extern void lcd_remote_bitmap_part(const fb_remote_data *src, int src_x,
                                    int src_y, int stride, int x, int y,
                                    int width, int height);

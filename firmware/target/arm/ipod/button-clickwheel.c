@@ -39,6 +39,9 @@
 #include "serial.h"
 #include "power.h"
 #include "powermgmt.h"
+#if defined(IPOD_NANO2G)
+#include "pmu-target.h"
+#endif
 
 #define WHEEL_FAST_OFF_TIMEOUT   250000 /* timeout for acceleration = 250ms */
 #define WHEEL_REPEAT_TIMEOUT     250000 /* timeout for button repeat = 250ms */
@@ -47,9 +50,16 @@
 #ifdef CPU_PP
 #define CLICKWHEEL_DATA   (*(volatile unsigned long*)(0x7000c140))
 #elif CONFIG_CPU==S5L8701
-#define CLICKWHEEL00      (*(volatile unsigned long*)(0x3c200000))
-#define CLICKWHEEL10      (*(volatile unsigned long*)(0x3c200010))
-#define CLICKWHEELINT     (*(volatile unsigned long*)(0x3c200014))
+#define PCON15       (*((volatile uint32_t*)(0x3CF000F0)))
+#define PUNK15       (*((volatile uint32_t*)(0x3CF000FC)))
+#define WHEEL00      (*((volatile uint32_t*)(0x3C200000)))
+#define WHEEL04      (*((volatile uint32_t*)(0x3C200004)))
+#define WHEEL08      (*((volatile uint32_t*)(0x3C200008)))
+#define WHEEL0C      (*((volatile uint32_t*)(0x3C20000C)))
+#define WHEEL10      (*((volatile uint32_t*)(0x3C200010)))
+#define WHEELINT     (*((volatile uint32_t*)(0x3C200014)))
+#define WHEELRX      (*((volatile uint32_t*)(0x3C200018)))
+#define WHEELTX      (*((volatile uint32_t*)(0x3C20001C)))
 #define CLICKWHEEL_DATA   (*(volatile unsigned long*)(0x3c200018))
 #else
 #error CPU architecture not supported!
@@ -81,6 +91,10 @@ int int_btn = BUTTON_NONE;
 #ifdef HAVE_WHEEL_POSITION
     static int wheel_position = -1;
     static bool send_events = true;
+#endif
+
+#if CONFIG_CPU==S5L8701
+static struct wakeup button_init_wakeup;
 #endif
 
 #ifdef CPU_PP
@@ -251,6 +265,23 @@ static inline int ipod_4g_button_read(void)
             }
 
         }
+#if CONFIG_CPU==S5L8701
+        else if ((status & 0x8000FFFF) == 0x8000023A)
+        {
+            if (status & 0x00010000)
+                btn |= BUTTON_SELECT;
+            if (status & 0x00020000)
+                btn |= BUTTON_RIGHT;
+            if (status & 0x00040000)
+                btn |= BUTTON_LEFT;
+            if (status & 0x00080000)
+                btn |= BUTTON_PLAY;
+            if (status & 0x00100000)
+                btn |= BUTTON_MENU;
+            wakeup_signal(&button_init_wakeup);
+        }
+#endif
+
 #ifdef CPU_PP    
     }
 #endif
@@ -316,23 +347,37 @@ bool headphones_inserted(void)
 #else
 void INT_SPI(void)
 {
-    int clickwheel_events = CLICKWHEELINT;
+    int clickwheel_events = WHEELINT;
 
     /* Clear interrupts */
-    if (clickwheel_events & 4) CLICKWHEELINT = 4;
-    if (clickwheel_events & 2) CLICKWHEELINT = 2;
-    if (clickwheel_events & 1) CLICKWHEELINT = 1;
+    if (clickwheel_events & 4) WHEELINT = 4;
+    if (clickwheel_events & 2) WHEELINT = 2;
+    if (clickwheel_events & 1) WHEELINT = 1;
 
     int_btn = ipod_4g_button_read();
 }
 
+void s5l_clickwheel_init(void)
+{
+    PWRCONEXT &= ~1;
+    PCON15 = (PCON15 & ~0xFFFF0000) | 0x22220000;
+    PUNK15 = 0xF0;
+    WHEEL08 = 0x3A980;
+    WHEEL00 = 0x280000;
+    WHEEL10 = 3;
+    PCON10 = (PCON10 & ~0xFF0) | 0x10;
+    PDAT10 |= 2;
+    WHEELTX = 0x8000023A;
+    WHEEL04 |= 1;
+    PDAT10 &= ~2;
+}
+
 void button_init_device(void)
 {
-    CLICKWHEEL00 = 0x280000;
-    CLICKWHEEL10 = 3;
-    INTMOD = 0;
+    wakeup_init(&button_init_wakeup);
     INTMSK |= (1<<26);
-    PCON10 &= ~0xF00;
+    s5l_clickwheel_init();
+    wakeup_wait(&button_init_wakeup, HZ / 10);
 }
 
 bool button_hold(void)
@@ -360,7 +405,9 @@ int button_read_device(void)
 
     if (hold_button != hold_button_old)
     {
+#ifndef BOOTLOADER
         backlight_hold_changed(hold_button);
+#endif
         
         if (hold_button)
         {
@@ -368,8 +415,10 @@ int button_read_device(void)
             /* lock -> disable wheel sensor */
             DEV_EN &= ~DEV_OPTO;
 #elif CONFIG_CPU==S5L8701
-            CLICKWHEEL00 = 0;
-            CLICKWHEEL10 = 0;
+            pmu_ldo_power_off(1); /* disable clickwheel power supply */
+            WHEEL00 = 0;
+            WHEEL10 = 0;
+            PWRCONEXT |= 1;
 #endif
         }
         else
@@ -379,8 +428,8 @@ int button_read_device(void)
             DEV_EN |= DEV_OPTO;
             opto_i2c_init();
 #elif CONFIG_CPU==S5L8701
-            CLICKWHEEL00 = 0x280000;
-            CLICKWHEEL10 = 3;
+            pmu_ldo_power_on(1); /* enable clickwheel power supply */
+            s5l_clickwheel_init();
 #endif
         }
     }

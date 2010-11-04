@@ -164,10 +164,12 @@ QString System::osVersionString(void)
 {
     QString result;
 #if defined(Q_OS_WIN32)
+    SYSTEM_INFO sysinfo;
     OSVERSIONINFO osvi;
     ZeroMemory(&osvi, sizeof(OSVERSIONINFO));
     osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
     GetVersionEx(&osvi);
+    GetSystemInfo(&sysinfo);
 
     result = QString("Windows version %1.%2, ").arg(osvi.dwMajorVersion).arg(osvi.dwMinorVersion);
     if(osvi.szCSDVersion)
@@ -175,14 +177,22 @@ QString System::osVersionString(void)
             .arg(QString::fromWCharArray(osvi.szCSDVersion));
     else
         result += QString("build %1").arg(osvi.dwBuildNumber);
+    result += QString("<br/>CPU: %1, %2 processor(s)").arg(sysinfo.dwProcessorType)
+              .arg(sysinfo.dwNumberOfProcessors);
 #endif
 #if defined(Q_OS_LINUX) || defined(Q_OS_MACX)
     struct utsname u;
     int ret;
     ret = uname(&u);
 
-    result = QString("CPU: %1<br/>System: %2<br/>Release: %3<br/>Version: %4")
-        .arg(u.machine).arg(u.sysname).arg(u.release).arg(u.version);
+#if defined(Q_OS_MACX)
+    ItemCount cores = MPProcessors();
+#else
+    long cores = sysconf(_SC_NPROCESSORS_ONLN);
+#endif
+    result = QString("CPU: %1, %2 processor(s)").arg(u.machine).arg(cores);
+    result += QString("<br/>System: %2<br/>Release: %3<br/>Version: %4")
+        .arg(u.sysname).arg(u.release).arg(u.version);
 #if defined(Q_OS_MACX)
     SInt32 major;
     SInt32 minor;
@@ -499,33 +509,40 @@ QUrl System::systemProxy(void)
     CFDictionaryRef dictref;
     CFStringRef stringref;
     CFNumberRef numberref;
-    int enable;
-    int port;
+    int enable = 0;
+    int port = 0;
     unsigned int bufsize = 0;
     char *buf;
     QUrl proxy;
 
     dictref = SCDynamicStoreCopyProxies(NULL);
-    stringref = (CFStringRef)CFDictionaryGetValue(dictref, kSCPropNetProxiesHTTPProxy);
+    if(dictref == NULL)
+        return proxy;
     numberref = (CFNumberRef)CFDictionaryGetValue(dictref, kSCPropNetProxiesHTTPEnable);
-    CFNumberGetValue(numberref, kCFNumberIntType, &enable);
+    if(numberref != NULL)
+        CFNumberGetValue(numberref, kCFNumberIntType, &enable);
     if(enable == 1) {
-        // get number of characters. CFStringGetLength uses UTF-16 code pairs
-        bufsize = CFStringGetLength(stringref) * 2 + 1;
-        buf = (char*)malloc(sizeof(char) * bufsize);
-        if(buf == NULL) {
-            qDebug() << "[System] can't allocate memory for proxy string!";
-            CFRelease(dictref);
-            return QUrl("");
-        }
-        CFStringGetCString(stringref, buf, bufsize, kCFStringEncodingUTF16);
-        numberref = (CFNumberRef)CFDictionaryGetValue(dictref, kSCPropNetProxiesHTTPPort);
-        CFNumberGetValue(numberref, kCFNumberIntType, &port);
-        proxy.setScheme("http");
-        proxy.setHost(QString::fromUtf16((unsigned short*)buf));
-        proxy.setPort(port);
+        // get proxy string
+        stringref = (CFStringRef)CFDictionaryGetValue(dictref, kSCPropNetProxiesHTTPProxy);
+        if(stringref != NULL) {
+            // get number of characters. CFStringGetLength uses UTF-16 code pairs
+            bufsize = CFStringGetLength(stringref) * 2 + 1;
+            buf = (char*)malloc(sizeof(char) * bufsize);
+            if(buf == NULL) {
+                qDebug() << "[System] can't allocate memory for proxy string!";
+                CFRelease(dictref);
+                return QUrl("");
+            }
+            CFStringGetCString(stringref, buf, bufsize, kCFStringEncodingUTF16);
+            numberref = (CFNumberRef)CFDictionaryGetValue(dictref, kSCPropNetProxiesHTTPPort);
+            if(numberref != NULL)
+                CFNumberGetValue(numberref, kCFNumberIntType, &port);
+            proxy.setScheme("http");
+            proxy.setHost(QString::fromUtf16((unsigned short*)buf));
+            proxy.setPort(port);
 
-        free(buf);
+            free(buf);
+            }
     }
     CFRelease(dictref);
 

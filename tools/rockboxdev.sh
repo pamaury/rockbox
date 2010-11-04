@@ -195,7 +195,9 @@ build() {
     echo "ROCKBOXDEV: $toolname/make install"
     $make install
 
-    rm -rf $builddir
+    echo "ROCKBOXDEV: rm -rf build-$toolname $toolname-$version"
+    cd ..
+    rm -rf build-$toolname $toolname-$version
 }
 
 ##############################################################################
@@ -301,8 +303,16 @@ do
             ;;
 
         [Ee])
-            build "binutils" "arm-elf-eabi" "2.20.1" "binutils-2.20.1-ld-thumb-interwork-long-call.diff"
-            build "gcc" "arm-elf-eabi" "4.4.4" "rockbox-multilibs-noexceptions-arm-elf-eabi-gcc-4.4.2_1.diff" "" "needs_gmp"
+            binopts=""
+            gccopts=""
+            case $system in
+                Darwin)
+                    binopts="--disable-nls --disable-werror"
+                    gccopts="--disable-nls"
+                    ;;
+            esac
+            build "binutils" "arm-elf-eabi" "2.20.1" "binutils-2.20.1-ld-thumb-interwork-long-call.diff" "$binopts"
+            build "gcc" "arm-elf-eabi" "4.4.4" "rockbox-multilibs-noexceptions-arm-elf-eabi-gcc-4.4.2_1.diff" "$gccopts" "needs_gmp"
             ;;
 
         *)

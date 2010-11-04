@@ -11031,7 +11031,7 @@
 </phrase>
 <phrase>
   id: LANG_RIGHT
-  desc: Generic use of 'right
+  desc: Generic use of 'right'
   user: core
   <source>
     *: "Right"
@@ -12034,15 +12034,15 @@
   desc: browse for the base skin in theme settings
   user: core
   <source>
-    *:none
+    *: none
     lcd_bitmap: "Base Skin"
   </source>
   <dest>
-    *:none
+    *: none
     lcd_bitmap: "Základný Vzhľad"
   </dest>
   <voice>
-    *:none
+    *: none
     lcd_bitmap: "Základný vzhľad"
   </voice>
 </phrase>
@@ -12051,15 +12051,15 @@
   desc: browse for the base skin in theme settings
   user: core
   <source>
-    *:none
+    *: none
     lcd_bitmap: "Remote Base Skin"
   </source>
   <dest>
-    *:none
+    *: none
     lcd_bitmap: "Vzdialený Základný Vzhľad"
   </dest>
   <voice>
-    *:none
+    *: none
     lcd_bitmap: "Vzdialený základný vzhľad"
   </voice>
 </phrase>
@@ -12068,15 +12068,15 @@
   desc: in the main menu
   user: core
   <source>
-    *:none
+    *: none
     remote: "Remote Screen"
   </source>
   <dest>
-    *:none
+    *: none
     remote: "Vzdialená Obrazovka"
   </dest>
   <voice>
-    *:none
+    *: none
     remote: "Vzdialená obrazovka"
   </voice>
 </phrase>
@@ -12085,15 +12085,15 @@
   desc: in the main menu
   user: core
   <source>
-    *:none
+    *: none
     remote: "Main Screen"
   </source>
   <dest>
-    *:none
+    *: none
     remote: "Hlavná Obrazovka"
   </dest>
   <voice>
-    *:none
+    *: none
     remote: "Hlavná obrazovka"
   </voice>
 </phrase>
@@ -12255,7 +12255,7 @@
   desc: in the theme menu
   user: core
   <source>
-    *:none
+    *: none
     radio_remote: "Remote Radio Screen"
   </source>
   <dest>
@@ -12405,7 +12405,7 @@
   desc: in the theme menu
   user: core
   <source>
-    *:none
+    *: none
     radio: "Radio Screen"
   </source>
   <dest>
@@ -12478,7 +12478,7 @@
 </phrase>
 <phrase>
   id: LANG_KBD_OK
-  desc: in keyboad
+  desc: in keyboard
   user: core
   <source>
     *: none
@@ -12509,7 +12509,7 @@
 </phrase>
 <phrase>
   id: LANG_KBD_DELETE
-  desc: in keyboad
+  desc: in keyboard
   user: core
   <source>
     *: none
@@ -12526,7 +12526,7 @@
 </phrase>
 <phrase>
   id: LANG_KBD_CANCEL
-  desc: in keyboad
+  desc: in keyboard
   user: core
   <source>
     *: none
@@ -12539,5 +12539,33 @@
   <voice>
     *: none
     touchscreen: "Zrušiť"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_RESET_START_DIR
+  desc: reset the browser start directory
+  user: core
+  <source>
+    *: "Start File Browser at /"
+  </source>
+  <dest>
+    *: "Začať Prezeranie Súborov na /"
+  </dest>
+  <voice>
+    *: "Začať prezeranie súborov v koreňovom priečinku"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_SET_AS_START_DIR
+  desc: used in the onplay menu to set a starting browser dir
+  user: core
+  <source>
+    *: "Start File Browser Here"
+  </source>
+  <dest>
+    *: "Začať Prezeranie Súborov tu"
+  </dest>
+  <voice>
+    *: "Začať prezeranie súborov tu"
   </voice>
 </phrase>

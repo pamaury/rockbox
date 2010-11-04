@@ -83,10 +83,14 @@ static bool do_non_text_tags(struct gui_wps *gwps, struct skin_draw_info *info,
 {
 #ifndef HAVE_LCD_BITMAP
     (void)vp; /* silence warnings */
+    (void)info;
 #endif    
     struct wps_token *token = (struct wps_token *)element->data;
+
+#ifdef HAVE_LCD_BITMAP
     struct wps_data *data = gwps->data;
     bool do_refresh = (element->tag->flags & info->refresh_type) > 0;
+#endif
     switch (token->type)
     {   
 #if (LCD_DEPTH > 1) || (defined(HAVE_REMOTE_LCD) && (LCD_REMOTE_DEPTH > 1))
@@ -137,22 +141,14 @@ static bool do_non_text_tags(struct gui_wps *gwps, struct skin_draw_info *info,
 #endif
         case SKIN_TOKEN_VOLUMEBAR:
         case SKIN_TOKEN_BATTERY_PERCENTBAR:
+#ifdef HAVE_LCD_BITMAP
         case SKIN_TOKEN_PROGRESSBAR:
         {
-#ifdef HAVE_LCD_BITMAP
             struct progressbar *bar = (struct progressbar*)token->value.data;
             if (do_refresh)
                 draw_progressbar(gwps, info->line_number, bar);
-#else /* HAVE_LCD_CHARCELL */
-            if (do_refresh)
-            {
-                if (data->full_line_progressbar)
-                    draw_player_fullbar(gwps, info->buf, info->buf_size);
-                else
-                    draw_player_progress(gwps);
-            }
-#endif
         }
+#endif
         break;
 #ifdef HAVE_LCD_BITMAP
         case SKIN_TOKEN_IMAGE_DISPLAY_LISTICON:
@@ -382,11 +378,9 @@ static bool skin_render_line(struct skin_element* line, struct skin_draw_info *i
     struct skin_element *child = line->children[0];
     struct conditional *conditional;
     skin_render_func func = skin_render_line;
-    char tempbuf[128];
     int old_refresh_mode = info->refresh_type;
     while (child)
     {
-        tempbuf[0] = '\0';
         switch (child->type)
         {
             case CONDITIONAL:
@@ -447,6 +441,7 @@ static bool skin_render_line(struct skin_element* line, struct skin_draw_info *i
                 }
                 if (!do_non_text_tags(info->gwps, info, child, &info->skin_vp->vp))
                 {
+                    static char tempbuf[128];
                     const char *value = get_token_value(info->gwps, child->data,
                                                         info->offset, tempbuf,
                                                         sizeof(tempbuf), NULL);
@@ -483,9 +478,13 @@ static int get_subline_timeout(struct gui_wps *gwps, struct skin_element* line)
 {
     struct skin_element *element=line;
     struct wps_token *token;
-    int retval = -1;
+    int retval = DEFAULT_SUBLINE_TIME_MULTIPLIER*TIMEOUT_UNIT;
     if (element->type == LINE)
+    {
+        if (element->children_count == 0)
+            return retval; /* empty line, so force redraw */
         element = element->children[0];
+    }
     while (element)
     {
         if (element->type == TAG &&
@@ -518,27 +517,21 @@ bool skin_render_alternator(struct skin_element* element, struct skin_draw_info 
     unsigned old_refresh = info->refresh_type;
     if (info->refresh_type == SKIN_REFRESH_ALL)
     {
-        alternator->current_line = 0;
-        alternator->last_change_tick = current_tick;
+        alternator->current_line = element->children_count-1;
         changed_lines = true;
     }
-    else
+    else if (TIME_AFTER(current_tick, alternator->next_change_tick))
     {
-        struct skin_element *current_line = element->children[alternator->current_line];
-        struct line *line = (struct line *)current_line->data;
-        int next_change = alternator->last_change_tick + line->timeout;
-        if (TIME_AFTER(current_tick, next_change))
-        {
-            alternator->last_change_tick = current_tick;
-            changed_lines = true;
-        }
+        changed_lines = true;
     }
+
     if (changed_lines)
     {
         struct skin_element *current_line = element->children[alternator->current_line];
         int start = alternator->current_line;
         int try_line = start;
         bool suitable = false;
+        int rettimeout = DEFAULT_SUBLINE_TIME_MULTIPLIER*TIMEOUT_UNIT;
         
         /* find a subline which has at least one token in it,
          * and that line doesnt have a timeout set to 0 through conditionals */
@@ -549,8 +542,9 @@ bool skin_render_alternator(struct skin_element* element, struct skin_draw_info 
             if (element->children[try_line]->children_count != 0)
             {
                 current_line = element->children[try_line];
-                if ((current_line->children[0]->type != CONDITIONAL) || 
-                    get_subline_timeout(info->gwps, current_line->children[0]) > 0)
+                rettimeout = get_subline_timeout(info->gwps, 
+                                                 current_line->children[0]);
+                if (rettimeout > 0)
                 {
                     suitable = true;
                 }
@@ -559,7 +553,10 @@ bool skin_render_alternator(struct skin_element* element, struct skin_draw_info 
         while (try_line != start && !suitable);
         
         if (suitable)
+        {
             alternator->current_line = try_line;
+            alternator->next_change_tick = current_tick + rettimeout;
+        }
 
         info->refresh_type = SKIN_REFRESH_ALL;
         info->force_redraw = true;
@@ -620,7 +617,17 @@ static void skin_render_viewport(struct skin_element* viewport, struct gui_wps *
             func = skin_render_line;
         
         needs_update = func(line, &info);
-        
+#if (LCD_DEPTH > 1) || (defined(HAVE_REMOTE_LCD) && (LCD_REMOTE_DEPTH > 1))
+        if (skin_viewport->vp.fg_pattern != skin_viewport->start_fgcolour ||
+            skin_viewport->vp.bg_pattern != skin_viewport->start_bgcolour)
+        {
+            /* 2bit lcd drivers need lcd_set_viewport() to be called to change
+             * the colour, 16bit doesnt. But doing this makes static text
+             * get the new colour also */
+            needs_update = true;
+            display->set_viewport(&skin_viewport->vp);
+        }
+#endif
         /* only update if the line needs to be, and there is something to write */
         if (refresh_type && needs_update)
         {
@@ -703,8 +710,9 @@ void skin_render(struct gui_wps *gwps, unsigned refresh_mode)
             display->clear_viewport();
         }
         /* render */
-        skin_render_viewport(viewport->children[0], gwps,
-                             skin_viewport, vp_refresh_mode);
+        if (viewport->children_count)
+            skin_render_viewport(viewport->children[0], gwps,
+                                 skin_viewport, vp_refresh_mode);
         refresh_mode = old_refresh_mode;
     }
     
@@ -714,7 +722,7 @@ void skin_render(struct gui_wps *gwps, unsigned refresh_mode)
 }
 
 #ifdef HAVE_LCD_BITMAP
-static void skin_render_playlistviewer(struct playlistviewer* viewer,
+static __attribute__((noinline)) void skin_render_playlistviewer(struct playlistviewer* viewer,
                                        struct gui_wps *gwps,
                                        struct skin_viewport* skin_viewport,
                                        unsigned long refresh_type)

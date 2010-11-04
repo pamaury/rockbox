@@ -20,7 +20,10 @@ rolo.c
 #endif /* !defined(BOOTLOADER) || defined(CPU_SH) */
 thread.c
 timer.c
+debug.c
 #endif /* PLATFORM_NATIVE */
+panic.c
+
 #ifdef HAVE_SDL
 target/hosted/sdl/button-sdl.c
 target/hosted/sdl/kernel-sdl.c
@@ -43,8 +46,6 @@ target/hosted/sdl/key_to_touch-sdl.c
 target/hosted/sdl/app/button-application.c
 #endif
 #endif
-panic.c
-debug.c
 
 /* Standard library */
 #if (CONFIG_PLATFORM & PLATFORM_NATIVE) || defined(__MINGW32__) || defined(__CYGWIN__)
@@ -174,7 +175,7 @@ drivers/led.c
 drivers/button.c
 #if (CONFIG_PLATFORM & PLATFORM_NATIVE)
 #ifdef HAVE_DAC3550A
-drivers/dac.c
+drivers/audio/dac3550a.c
 #endif
 #ifdef HAVE_SERIAL
 drivers/serial.c
@@ -288,9 +289,6 @@ drivers/tuner/rda5802.c
 #endif /* BOOTLOADER */
 
 /* Sound */
-#if CONFIG_CODEC != SWCODEC
-mp3_playback.c
-#endif /* CONFIG_CODEC != SWCODEC */
 sound.c
 
 #if CONFIG_CODEC == SWCODEC
@@ -302,15 +300,6 @@ pcm.c
 enc_base.c
 #endif /* HAVE_RECORDING */
 #endif /* BOOTLOADER */
-
-#else  /* !SWCODEC */
-
-#ifndef BOOTLOADER
-#ifndef SIMULATOR
-drivers/mas.c
-#endif /* SIMULATOR */
-#endif /* BOOTLOADER */
-
 #endif /* SWCODEC */
 
 /* Audio codec */
@@ -579,6 +568,8 @@ target/sh/archos/player/lcd-player.c
 target/sh/archos/player/power-player.c
 target/sh/archos/player/powermgmt-player.c
 target/sh/archos/player/usb-player.c
+target/sh/archos/mascodec-archos.c
+target/sh/archos/audio-archos.c
 #endif /* SIMULATOR */
 #endif /* ARCHOS_PLAYER */
 
@@ -593,6 +584,8 @@ target/sh/archos/recorder/button-recorder.c
 target/sh/archos/recorder/power-recorder.c
 target/sh/archos/recorder/powermgmt-recorder.c
 target/sh/archos/recorder/usb-recorder.c
+target/sh/archos/mascodec-archos.c
+target/sh/archos/audio-archos.c
 #endif /* SIMULATOR */
 #endif /* ARCHOS_RECORDER */
 
@@ -607,6 +600,8 @@ target/sh/archos/fm_v2/button-fm_v2.c
 target/sh/archos/fm_v2/power-fm_v2.c
 target/sh/archos/fm_v2/powermgmt-fm_v2.c
 target/sh/archos/fm_v2/usb-fm_v2.c
+target/sh/archos/mascodec-archos.c
+target/sh/archos/audio-archos.c
 #endif /* SIMULATOR */
 #endif /* ARCHOS_FMRECORDER || ARCHOS_RECORDERV2 */
 
@@ -619,6 +614,8 @@ target/sh/archos/ondio/button-ondio.c
 target/sh/archos/ondio/power-ondio.c
 target/sh/archos/ondio/powermgmt-ondio.c
 target/sh/archos/ondio/usb-ondio.c
+target/sh/archos/mascodec-archos.c
+target/sh/archos/audio-archos.c
 #if (CONFIG_TUNER & TEA5767)
 target/sh/archos/ondio/fmradio_i2c-ondio.c
 #endif
@@ -713,9 +710,9 @@ target/arm/ata-pp5020.c
 target/arm/wmcodec-pp.c
 target/arm/i2s-pp.c
 target/arm/adc-pp5020.c
-target/arm/philips/backlight-hdd.c
 target/arm/philips/power-hdd.c
 target/arm/philips/fmradio_i2c-hdd.c
+target/arm/philips/hdd1630/backlight-hdd1630.c
 target/arm/philips/hdd1630/button-hdd1630.c
 target/arm/philips/hdd1630/lcd-hdd1630.c
 target/arm/philips/hdd1630/lcd-as-hdd1630.S
@@ -734,9 +731,9 @@ target/arm/ata-pp5020.c
 target/arm/wmcodec-pp.c
 target/arm/i2s-pp.c
 target/arm/adc-pp5020.c
-target/arm/philips/backlight-hdd.c
 target/arm/philips/power-hdd.c
 target/arm/philips/fmradio_i2c-hdd.c
+target/arm/philips/hdd6330/backlight-hdd6330.c
 target/arm/philips/hdd6330/button-hdd6330.c
 target/arm/philips/hdd6330/lcd-hdd6330.c
 target/arm/philips/hdd6330/powermgmt-hdd6330.c
@@ -1713,6 +1710,9 @@ target/hosted/android/fs-android.c
 target/hosted/android/lcd-android.c
 target/hosted/android/lc-android.c
 target/hosted/android/button-android.c
+#ifdef DEBUG
+target/hosted/android/debug-android.c
+#endif
 target/hosted/android/kernel-android.c
 target/hosted/android/pcm-android.c
 target/hosted/android/powermgmt-android.c

@@ -11027,7 +11027,6 @@
   </voice>
 </phrase>
 <phrase>
-<phrase>
   id: LANG_LEFT
   desc: Generic use of 'left'
   user: core
@@ -11043,7 +11042,7 @@
 </phrase>
 <phrase>
   id: LANG_RIGHT
-  desc: Generic use of 'right
+  desc: Generic use of 'right'
   user: core
   <source>
     *: "Right"
@@ -11639,15 +11638,15 @@
   desc: browse for the base skin in theme settings
   user: core
   <source>
-    *:none
+    *: none
     lcd_bitmap: "Base Skin"
   </source>
   <dest>
-    *:none
+    *: none
     lcd_bitmap: "Styl bazowy"
   </dest>
   <voice>
-    *:none
+    *: none
     lcd_bitmap: "Styl bazowy"
   </voice>
 </phrase>
@@ -11854,15 +11853,15 @@
   desc: browse for the base skin in theme settings
   user: core
   <source>
-    *:none
+    *: none
     lcd_bitmap: "Remote Base Skin"
   </source>
   <dest>
-    *:none
+    *: none
     lcd_bitmap: "Styl bazowy pilota"
   </dest>
   <voice>
-    *:none
+    *: none
     lcd_bitmap: "Styl bazowy pilota"
   </voice>
 </phrase>
@@ -11922,15 +11921,15 @@
   desc: in the main menu
   user: core
   <source>
-    *:none
+    *: none
     remote: "Remote Screen"
   </source>
   <dest>
-    *:none
+    *: none
     remote: "Ekran pilota"
   </dest>
   <voice>
-    *:none
+    *: none
     remote: "Ekran pilota"
   </voice>
 </phrase>
@@ -12287,15 +12286,15 @@
   desc: in the main menu
   user: core
   <source>
-    *:none
+    *: none
     remote: "Main Screen"
   </source>
   <dest>
-    *:none
+    *: none
     remote: "Ekran główny"
   </dest>
   <voice>
-    *:none
+    *: none
     remote: "Ekran główny"
   </voice>
 </phrase>
@@ -12417,15 +12416,15 @@
   desc: in the theme menu
   user: core
   <source>
-    *:none
+    *: none
     radio_remote: "Remote Radio Screen"
   </source>
   <dest>
-    *:none
+    *: none
     radio_remote: "Ekran radia na pilocie"
   </dest>
   <voice>
-    *:none
+    *: none
     radio_remote: "Ekran radia na pilocie"
   </voice>
 </phrase>
@@ -12434,15 +12433,150 @@
   desc: in the theme menu
   user: core
   <source>
-    *:none
+    *: none
     radio: "Radio Screen"
   </source>
   <dest>
-    *:none
+    *: none
     radio: "Ekran radia"
   </dest>
   <voice>
-    *:none
+    *: none
     radio: "Ekran radia"
   </voice>
 </phrase>
+<phrase>
+  id: LANG_KBD_OK
+  desc: in keyboard
+  user: core
+  <source>
+    *: none
+    touchscreen: "OK"
+  </source>
+  <dest>
+    *: none
+    touchscreen: "OK"
+  </dest>
+  <voice>
+    *: none
+    touchscreen: "OK"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_BOOKMARK_SETTINGS_AUTOUPDATE
+  desc: prompt for user to decide whether to update bookmarks
+  user: core
+  <source>
+    *: "Update on Stop"
+  </source>
+  <dest>
+    *: "Zaktualizuj po zatrzymaniu"
+  </dest>
+  <voice>
+    *: "Zaktualizuj po zatrzymaniu"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_KBD_DELETE
+  desc: in keyboard
+  user: core
+  <source>
+    *: none
+    touchscreen: "Del"
+  </source>
+  <dest>
+    *: none
+    touchscreen: "Usuń"
+  </dest>
+  <voice>
+    *: none
+    touchscreen: "Usuń"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_KBD_CANCEL
+  desc: in keyboard
+  user: core
+  <source>
+    *: none
+    touchscreen: "Cancel"
+  </source>
+  <dest>
+    *: none
+    touchscreen: "Anuluj"
+  </dest>
+  <voice>
+    *: none
+    touchscreen: "Anuluj"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_ID3_COMPOSER
+  desc: in tag viewer
+  user: core
+  <source>
+    *: "Composer"
+  </source>
+  <dest>
+    *: "Kompozytor"
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_ONPLAY_PICTUREFLOW
+  desc: Onplay pictureflow
+  user: core
+  <source>
+    *: "PictureFlow"
+  </source>
+  <dest>
+    *: "Pokaz slajdów"
+  </dest>
+  <voice>
+    *: "włącz pokaz slajdów"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_FORCE
+  desc: alternative to yes/no for tristate settings
+  user: core
+  <source>
+    *: "Force"
+  </source>
+  <dest>
+    *: "Moc"
+  </dest>
+  <voice>
+    *: "Moc"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_RESET_START_DIR
+  desc: reset the browser start directory
+  user: core
+  <source>
+    *: "Start File Browser at /"
+  </source>
+  <dest>
+    *: "Rozpocznij Przeglądanie Plików w /"
+  </dest>
+  <voice>
+    *: "Rozpocznij Przeglądanie Plików w katalogu głównym"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_SET_AS_START_DIR
+  desc: used in the onplay menu to set a starting browser dir
+  user: core
+  <source>
+    *: "Start File Browser Here"
+  </source>
+  <dest>
+    *: "Rozpocznij Przeglądanie Plików Tutaj"
+  </dest>
+  <voice>
+    *: "Rozpocznij Przeglądanie Plików Tutaj"
+  </voice>
+  </phrase>

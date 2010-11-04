@@ -40,11 +40,26 @@
 #include "misc.h"
 #include "viewport.h"
 #include "statusbar-skinned.h"
+#include "debug.h"
 
 #define ICON_PADDING 1
 
 /* these are static to make scrolling work */
 static struct viewport list_text[NB_SCREENS], title_text[NB_SCREENS];
+
+#ifdef HAVE_TOUCHSCREEN
+/* difference in pixels between draws, above it means enough to start scrolling */
+#define SCROLL_BEGIN_THRESHOLD 3 
+
+static enum {
+    SCROLL_NONE,            /* no scrolling */
+    SCROLL_BAR,             /* scroll by using the scrollbar */
+    SCROLL_SWIPE,           /* scroll by wiping over the screen */
+    SCROLL_KINETIC,         /* state after releasing swipe */
+} scroll_mode;
+
+static int y_offset;
+#endif
 
 int gui_list_get_item_offset(struct gui_synclist * gui_list, int item_width,
                              int text_pos, struct screen * display,
@@ -148,17 +163,37 @@ void list_draw(struct screen *display, struct gui_synclist *list)
         list_text_vp->height -= line_height;
     }
 
+    const int nb_lines = viewport_get_nb_lines(list_text_vp);
+
     start = list_start_item;
-    end = start + viewport_get_nb_lines(list_text_vp);
+    end = start + nb_lines;
+
+#ifdef HAVE_TOUCHSCREEN
+    if (list->selected_item == 0 || (list->nb_items < nb_lines))
+        y_offset = 0; /* reset in case it's a new list */
+
+    int draw_offset = y_offset;
+    /* draw some extra items to not have empty lines at the top and bottom */
+    if (y_offset > 0)
+    {
+        /* make it negative for more consistent apparence when switching
+         * directions */
+        draw_offset -= line_height;
+        if (start > 0)
+            start--;
+    }
+    else if (y_offset < 0)
+        end++;
+#else
+    #define draw_offset 0
+#endif
 
     /* draw the scrollbar if its needed */
-    if (global_settings.scrollbar &&
-        viewport_get_nb_lines(list_text_vp) < list->nb_items)
+    if (global_settings.scrollbar && nb_lines < list->nb_items)
     {
-        struct viewport vp;
-        vp = *list_text_vp;
+        struct viewport vp = *list_text_vp;
         vp.width = SCROLLBAR_WIDTH;
-        vp.height = line_height * viewport_get_nb_lines(list_text_vp);
+        vp.height = line_height * nb_lines;
         vp.x = parent->x;
         list_text_vp->width -= SCROLLBAR_WIDTH;
         if (scrollbar_in_left)
@@ -168,7 +203,7 @@ void list_draw(struct screen *display, struct gui_synclist *list)
         display->set_viewport(&vp);
         gui_scrollbar_draw(display,
                 (scrollbar_in_left? 0: 1), 0, SCROLLBAR_WIDTH-1, vp.height,
-                list->nb_items, list_start_item, list_start_item + end-start,
+                list->nb_items, list_start_item, list_start_item + nb_lines,
                 VERTICAL);
     }
     else if (show_title)
@@ -207,6 +242,7 @@ void list_draw(struct screen *display, struct gui_synclist *list)
         char entry_buffer[MAX_PATH];
         unsigned char *entry_name;
         int text_pos = 0;
+        int line = i - start;
         s = list->callback_get_item_name(i, list->data, entry_buffer,
                                          sizeof(entry_buffer));
         entry_name = P2STR(s);
@@ -230,8 +266,15 @@ void list_draw(struct screen *display, struct gui_synclist *list)
             }
         }
 #endif
-        if(i >= list->selected_item && i <  list->selected_item
-                + list->selected_size && list->show_selection_marker)
+        /* draw the selected line */
+        if(
+#ifdef HAVE_TOUCHSCREEN
+            /* don't draw it during scrolling */
+            scroll_mode == SCROLL_NONE &&
+#endif
+                i >= list->selected_item
+                && i <  list->selected_item + list->selected_size
+                && list->show_selection_marker)
         {/* The selected item must be displayed scrolling */
             if (global_settings.cursor_style == 1
 #ifdef HAVE_REMOTE_LCD
@@ -269,36 +312,36 @@ void list_draw(struct screen *display, struct gui_synclist *list)
             if (item_offset> item_width - (list_text_vp->width - text_pos))
             {
                 /* don't scroll */
-                display->puts_style_offset(0, i-start, entry_name,
-                        style, item_offset);
+                display->puts_style_xyoffset(0, line, entry_name,
+                        style, item_offset, draw_offset);
             }
             else
             {
-                display->puts_scroll_style_offset(0, i-start, entry_name,
-                        style, item_offset);
+                display->puts_scroll_style_xyoffset(0, line, entry_name,
+                        style, item_offset, draw_offset);
             }
         }
         else
         {
             if (list->scroll_all)
-                display->puts_scroll_style_offset(0, i-start, entry_name,
-                        style, item_offset);
+                display->puts_scroll_style_xyoffset(0, line, entry_name,
+                        style, item_offset, draw_offset);
             else
-                display->puts_style_offset(0, i-start, entry_name,
-                        style, item_offset);
+                display->puts_style_xyoffset(0, line, entry_name,
+                        style, item_offset, draw_offset);
         }
         /* do the icon */
         display->set_viewport(&list_icons);
-        if (list->callback_get_item_icon && global_settings.show_icons)
+        if (list->callback_get_item_icon != NULL)
         {
             screen_put_icon_with_offset(display, show_cursor?1:0,
-                                    (i-start),show_cursor?ICON_PADDING:0,0,
+                                    (line),show_cursor?ICON_PADDING:0,draw_offset,
                                     list->callback_get_item_icon(i, list->data));
         }
         if (show_cursor && i >= list->selected_item &&
                 i <  list->selected_item + list->selected_size)
         {
-            screen_put_icon(display, 0, i-start, Icon_Cursor);
+            screen_put_icon_with_offset(display, 0, line, 0, draw_offset, Icon_Cursor);
         }
     }
     display->set_viewport(parent);
@@ -308,9 +351,16 @@ void list_draw(struct screen *display, struct gui_synclist *list)
 
 #if defined(HAVE_TOUCHSCREEN)
 /* This needs to be fixed if we ever get more than 1 touchscreen on a target. */
-static bool scrolling=false;
 
-static int gui_synclist_touchscreen_scrollbar(struct gui_synclist * gui_list,
+static bool released = false;
+
+/* Used for kinetic scrolling as we need to know the last position to
+ * recognize the scroll direction.
+ * This gets reset to 0 at the end of scrolling
+ */
+static int last_position=0;
+
+static int scrollbar_scroll(struct gui_synclist * gui_list,
                                               int y)
 {
     const int screen = screens[SCREEN_MAIN].screen_type;
@@ -318,8 +368,8 @@ static int gui_synclist_touchscreen_scrollbar(struct gui_synclist * gui_list,
 
     if (nb_lines <  gui_list->nb_items)
     {
-        scrolling = true;
-
+        /* scrollbar scrolling is still line based */
+        y_offset = 0;
         int scrollbar_size = nb_lines*
             font_get(gui_list->parent[screen]->font)->height;
         int actual_y = y - list_text[screen].y;
@@ -334,7 +384,6 @@ static int gui_synclist_touchscreen_scrollbar(struct gui_synclist * gui_list,
             start_item = gui_list->nb_items - nb_lines;
 
         gui_list->start_item[screen] = start_item;
-        gui_synclist_select_item(gui_list, new_selection);
 
         return ACTION_REDRAW;
     }
@@ -342,52 +391,319 @@ static int gui_synclist_touchscreen_scrollbar(struct gui_synclist * gui_list,
     return ACTION_NONE;
 }
 
-unsigned gui_synclist_do_touchscreen(struct gui_synclist * gui_list)
+/* kinetic scrolling, based on
+ *
+ * v = a*t + v0 and ds = v*dt
+ *
+ * In each (fixed interval) timeout, the list is advanced by ds, then
+ * the v is reduced by a.
+ * This way we get a linear and smooth deceleration of the scrolling
+ *
+ * As v is the difference of distance per time unit, v is passed (as
+ * pixels moved since the last call) to the scrolling function which takes
+ * care of the pixel accurate drawing
+ *
+ * v0 is dertermined by averaging the last 4 movements of the list
+ * (the pixel and time difference is used to compute each v)
+ *
+ * influenced by http://stechz.com/tag/kinetic/
+ * We take the easy and smooth first approach (until section "Drawbacks"),
+ * since its drawbacks don't apply for us since our timers seem to be
+ * relatively accurate
+ */
+
+
+#define SIGN(a) ((a) < 0 ? -1 : 1)
+/* these could possibly be configurable */
+/* the lower the smoother */
+#define RELOAD_INTERVAL (HZ/25)
+/* the higher the earler the list stops */
+#define DECELERATION (1000*RELOAD_INTERVAL/HZ)
+
+/* this array holds data to compute the initial velocity v0 */
+static struct kinetic_info {
+    int difference;
+    long ticks;
+} kinetic_data[4];
+static size_t cur_idx;
+
+static struct cb_data {
+    struct gui_synclist *list;  /* current list */
+    int velocity;               /* in pixel/s */
+} cb_data;
+
+/* data member points to the above struct */
+static struct timeout kinetic_tmo;
+
+static bool is_kinetic_over(void)
 {
-    short x, y;
-    const int button = action_get_touchscreen_press(&x, &y);
-    int line;
-    const int screen = SCREEN_MAIN;
-    const int list_start_item = gui_list->start_item[screen];
-    const struct viewport *list_text_vp = &list_text[screen];
-    int list_width = list_text_vp->width;
+    return !cb_data.velocity && (scroll_mode == SCROLL_KINETIC);
+}
 
-    if (global_settings.scrollbar == SCROLLBAR_RIGHT)
-        list_width += SCROLLBAR_WIDTH;
+/*
+ * collect data about how fast the list is moved in order to compute
+ * the initial velocity from it later */
+static void kinetic_stats_collect(const int difference)
+{
+    static long last_tick;
+    /* collect velocity statistics */
+    kinetic_data[cur_idx].difference = difference;
+    kinetic_data[cur_idx].ticks = current_tick - last_tick;
 
-    if (button == BUTTON_NONE)
-        return ACTION_NONE;
+    last_tick = current_tick;
+    cur_idx += 1;
+    if (cur_idx >= ARRAYLEN(kinetic_data))
+        cur_idx = 0; /* rewind the index */
+}
 
-    if (x > list_text_vp->x + list_width)
-        return ACTION_NONE;
+/*
+ * resets the statistic */
+static void kinetic_stats_reset(void)
+{
+    memset(kinetic_data, 0, sizeof(kinetic_data));
+    cur_idx = 0;
+}
 
-    /* make sure it is inside the UI viewport */
-    if (list_display_title(gui_list, screen) &&
-        viewport_point_within_vp(&title_text[screen], x, y) && 
-        button == BUTTON_REL)
-        return ACTION_STD_CANCEL;
+/* cancels all currently active kinetic scrolling */
+static void kinetic_force_stop(void)
+{
+    timeout_cancel(&kinetic_tmo);
+    kinetic_stats_reset();
+}
 
-    if (x < list_text_vp->x)
+/* helper for gui/list.c to cancel scrolling if a normal button event comes
+ * through dpad or keyboard or whatever */
+void _gui_synclist_stop_kinetic_scrolling(void)
+{
+    y_offset = 0;
+    if (scroll_mode == SCROLL_KINETIC)
+        kinetic_force_stop();
+    scroll_mode = SCROLL_NONE;
+}
+/*
+ * returns false if scrolling should be stopped entirely
+ *
+ * otherwise it returns true even if it didn't actually scroll,
+ * but scrolling mode shouldn't be changed
+ **/
+static bool swipe_scroll(struct gui_synclist * gui_list, int line_height, int difference)
+{
+    /* fixme */
+    const enum screen_type screen = screens[SCREEN_MAIN].screen_type;
+    const int nb_lines = viewport_get_nb_lines(&list_text[screen]);
+
+    /* make selecting items easier */
+    if (abs(difference) < SCROLL_BEGIN_THRESHOLD && scroll_mode == SCROLL_NONE)
+        return false;
+
+    /* does the list even scroll? if no, return but still show
+     * the caller that we would scroll */
+    if (nb_lines >= gui_list->nb_items)
+        return true;
+
+    const int old_start = gui_list->start_item[screen];
+    int new_start_item = -1;
+    int line_diff = 0;
+
+    /* don't scroll at the edges of the list */
+    if ((old_start == 0 && difference > 0)
+     || (old_start == (gui_list->nb_items - nb_lines) && difference < 0))
     {
-        /* Top left corner is GO_TO_ROOT */
-        if (y<list_text[SCREEN_MAIN].y)
-        {
-            if (button == BUTTON_REL)
-                return ACTION_STD_MENU;
-            else if (button == (BUTTON_REPEAT|BUTTON_REL))
-                return ACTION_STD_CONTEXT;
-            else
-                return ACTION_NONE;
-        }
-        /* Scroll bar */
-        else if(global_settings.scrollbar == SCROLLBAR_LEFT)
-            return gui_synclist_touchscreen_scrollbar(gui_list, y);
+        y_offset = 0;
+        gui_list->start_item[screen] = old_start;
+        return scroll_mode != SCROLL_KINETIC; /* stop kinetic at the edges */
+    }
+
+    /* add up y_offset over time and translate to lines
+     * if scrolled enough */
+    y_offset += difference;
+    if (abs(y_offset) > line_height)
+    {
+        line_diff = y_offset/line_height;
+        y_offset -= line_diff * line_height;
+    }
+
+    if(line_diff != 0)
+    {
+        int selection_offset = gui_list->selected_item - old_start;
+        new_start_item = old_start - line_diff;
+        /* check if new_start_item is bigger than list item count */
+        if(new_start_item > gui_list->nb_items - nb_lines)
+            new_start_item = gui_list->nb_items - nb_lines;
+        /* set new_start_item to 0 if it's negative */
+        if(new_start_item < 0)
+            new_start_item = 0;
+
+        gui_list->start_item[screen] = new_start_item;
+        /* keep selected item in sync */
+        gui_list->selected_item = new_start_item + selection_offset;
+    }
+
+    return true;
+}
+
+static int kinetic_callback(struct timeout *tmo)
+{
+    /* cancel if screen was pressed */
+    if (scroll_mode != SCROLL_KINETIC)
+        return 0;
+
+    struct cb_data *data = (struct cb_data*)tmo->data;
+    int line_height = font_get(data->list->parent[0]->font)->height;
+    /* ds = v*dt */
+    int pixel_diff = data->velocity * RELOAD_INTERVAL / HZ;
+    /* remember signedness to detect stopping */
+    int old_sign = SIGN(data->velocity);
+    /* advance the list */
+    if (!swipe_scroll(data->list, line_height, pixel_diff))
+    {
+        /* nothing to scroll? */
+        data->velocity = 0;
     }
     else
     {
-        if (x > list_text_vp->x + list_text_vp->width &&
-           global_settings.scrollbar == SCROLLBAR_RIGHT)
-            return gui_synclist_touchscreen_scrollbar(gui_list, y);
+        /* decelerate by a fixed amount
+         * decrementing v0 over time by the deceleration is
+         * equivalent to computing v = a*t + v0 */
+        data->velocity -= SIGN(data->velocity)*DECELERATION;
+        if (SIGN(data->velocity) != old_sign)
+            data->velocity = 0;
+    }
+
+    queue_post(&button_queue, BUTTON_TOUCHSCREEN, 0);
+    /* stop if the velocity hit or crossed zero */
+    if (!data->velocity)
+    {
+        kinetic_stats_reset();
+        return 0;
+    }
+    /* let get_action() timeout, which loads to a
+     * gui_synclist_draw() call from the main thread */
+    return RELOAD_INTERVAL; /* cancel or reload */
+}
+
+/*
+ * computes the initial velocity v0 and sets up the timer */
+static bool kinetic_setup_scroll(struct gui_synclist *list)
+{
+    /* compute initial velocity */
+    int i, _i, v0, len = ARRAYLEN(kinetic_data);
+    for(i = 0, _i = 0, v0 = 0; i < len; i++)
+    {   /* in pixel/s */
+        if (kinetic_data[i].ticks > 0)
+        {
+            v0 += kinetic_data[i].difference*HZ/kinetic_data[i].ticks;
+            _i++;
+        }
+    }
+    if (_i > 0)
+        v0 /= _i;
+    else
+        v0 = 0;
+
+    if (v0 != 0)
+    {
+        cb_data.list = list;
+        cb_data.velocity = v0;
+        timeout_register(&kinetic_tmo, kinetic_callback, RELOAD_INTERVAL, (intptr_t)&cb_data);
+        return true;
+    }
+    return false;
+}
+
+unsigned gui_synclist_do_touchscreen(struct gui_synclist * gui_list)
+{
+    short x, y;
+    const enum screen_type screen = SCREEN_MAIN;
+    struct viewport *info_vp = sb_skin_get_info_vp(screen);
+    const int button = action_get_touchscreen_press_in_vp(&x, &y, info_vp);
+    const int list_start_item = gui_list->start_item[screen];
+    const int line_height = font_get(gui_list->parent[screen]->font)->height;
+    const struct viewport *list_text_vp = &list_text[screen];
+    const bool old_released = released;
+    const bool show_title = list_display_title(gui_list, screen);
+    const bool show_cursor = !global_settings.cursor_style &&
+                        gui_list->show_selection_marker;
+    const bool on_title_clicked = show_title && y < line_height && (button&BUTTON_REL);
+    const bool cancelled_kinetic = (scroll_mode == SCROLL_KINETIC
+                        && button != ACTION_NONE && button != ACTION_UNKNOWN
+                        && !is_kinetic_over());
+    int icon_width = 0;
+    int line, list_width = list_text_vp->width;
+
+    released = (button&BUTTON_REL) != 0;
+
+    if (button == ACTION_NONE || button == ACTION_UNKNOWN)
+    {
+        /* this happens when we hit edges of the list while kinetic scrolling,
+         * but not when manually cancelling */
+        if (scroll_mode == SCROLL_KINETIC)
+            return ACTION_REDRAW;
+        return ACTION_NONE;
+    }
+
+    /* x and y are relative to info_vp */
+    if (gui_list->callback_get_item_icon != NULL)
+        icon_width += get_icon_width(screen);
+    if (show_cursor)
+        icon_width += get_icon_width(screen);
+
+    if (on_title_clicked)
+    {
+        if (scroll_mode == SCROLL_NONE || is_kinetic_over())
+        {
+            if (x < icon_width)
+            {
+                /* Top left corner is GO_TO_ROOT */
+                if (button == BUTTON_REL)
+                    return ACTION_STD_MENU;
+                else if (button == (BUTTON_REPEAT|BUTTON_REL))
+                    return ACTION_STD_CONTEXT;
+                return ACTION_NONE;
+            }
+            else /* click on title text is cancel */
+                if (button == BUTTON_REL)
+                    return ACTION_STD_CANCEL;
+        }
+        /* do this after the above so the scrolling stops without
+         * going back in the list with the same touch */
+        if (scroll_mode == SCROLL_KINETIC)
+        {
+            kinetic_force_stop();
+            scroll_mode = SCROLL_NONE;
+        }
+    }
+    else /* list area clicked (or not released) */
+    {
+        const int actual_y = y - (show_title ? line_height : 0);
+        bool on_scrollbar_clicked;
+        switch (global_settings.scrollbar)
+        {
+            case SCROLLBAR_LEFT:
+                on_scrollbar_clicked = x <= SCROLLBAR_WIDTH; break;
+            case SCROLLBAR_RIGHT:
+                on_scrollbar_clicked = x > (icon_width + list_width); break;
+            default:
+                on_scrollbar_clicked = false; break;
+        }
+        /* conditions for scrollbar scrolling:
+         *    * pen is on the scrollbar
+         *      AND scrollbar is on the right (left case is handled above)
+         * OR * pen is in the somewhere else but we did scrollbar scrolling before
+         *
+         * scrollbar scrolling must end if the pen is released
+         * scrollbar scrolling must not happen if we're currently scrolling
+         * via swiping the screen
+         **/
+
+        if (!released && scroll_mode != SCROLL_SWIPE &&
+            (on_scrollbar_clicked || scroll_mode == SCROLL_BAR))
+        {
+            if (scroll_mode == SCROLL_KINETIC)
+                kinetic_force_stop();
+            scroll_mode = SCROLL_BAR;
+            return scrollbar_scroll(gui_list, y);
+        }
 
         /* |--------------------------------------------------------|
          * | Description of the touchscreen list interface:         |
@@ -401,76 +717,97 @@ unsigned gui_synclist_do_touchscreen(struct gui_synclist * gui_list)
          * | will bring up the context menu of it.                  |
          * |--------------------------------------------------------|
          */
-        if (y > list_text_vp->y || button & BUTTON_REPEAT)
+        if (actual_y > 0 || button & BUTTON_REPEAT)
         {
-            int line_height, actual_y;
-            
-            actual_y = y - list_text_vp->y;
-            line_height = font_get(gui_list->parent[screen]->font)->height;
-            line = actual_y / line_height;
-            
+            /* selection needs to be corrected if an items are only
+             * partially visible */
+            line = (actual_y - y_offset) / line_height;
+
+            if (cancelled_kinetic)
+            {
+                kinetic_force_stop();
+                scroll_mode = SCROLL_SWIPE;
+            }
+
             /* Pressed below the list*/
             if (list_start_item + line >= gui_list->nb_items)
-                return ACTION_NONE;
-            
-            /* Pressed a border */
-            if(UNLIKELY(actual_y % line_height == 0))
-                return ACTION_NONE;
-            
-            if (line != (gui_list->selected_item - list_start_item)
-                && button ^ BUTTON_REL)
             {
-                if(button & BUTTON_REPEAT)
-                    scrolling = true;
-                
-                gui_synclist_select_item(gui_list, list_start_item + line);
-                
-                return ACTION_REDRAW;
+                /* don't collect last_position outside of the list area
+                 * it'd break selecting after such a situation */
+                last_position = 0;
+                return ACTION_NONE;
             }
-            
-            /* This has the same effect as the icons do when the scrollbar
-               is on the left (ie eliminate the chances an user enters/starts
-               an item when he wanted to use the scrollbar, due to touchscreen
-               dead zones)
-             */
-            if(global_settings.scrollbar == SCROLLBAR_RIGHT &&
-               x > list_text_vp->x + list_text_vp->width -
-                   get_icon_width(SCREEN_MAIN))
-                return ACTION_NONE;
-            
-            if (button == (BUTTON_REPEAT|BUTTON_REL))
+
+            if (released && !cancelled_kinetic)
             {
-                if(!scrolling)
+                /* Pen was released anywhere on the screen */
+                last_position = 0;
+                if (scroll_mode == SCROLL_NONE)
                 {
-                    /* Pen was hold on the same line as the 
-                     * previously selected one
-                     * => simulate long button press
-                     */
-                    return ACTION_STD_CONTEXT;
+                    gui_synclist_select_item(gui_list, list_start_item + line);
+                    /* If BUTTON_REPEAT is set, then the pen was hold on
+                     * the same line for some time
+                     *  -> context menu
+                     * otherwise,
+                     *  -> select
+                     **/
+                    if (button & BUTTON_REPEAT)
+                        return ACTION_STD_CONTEXT;
+                    return ACTION_STD_OK;
                 }
                 else
                 {
-                    /* Pen was moved across several lines and then released on 
-                     * this one
-                     * => do nothing
-                     */
-                    scrolling = false;
+                    /* we were scrolling
+                     *  -> reset scrolling but do nothing else */
+                    if (scroll_mode == SCROLL_SWIPE)
+                    {
+                        if (kinetic_setup_scroll(gui_list))
+                            scroll_mode = SCROLL_KINETIC;
+                    }
+                    if (scroll_mode != SCROLL_KINETIC)
+                        scroll_mode = SCROLL_NONE;
                     return ACTION_NONE;
                 }
             }
-            else if(button == BUTTON_REL &&
-                    line == gui_list->selected_item - list_start_item)
-            {
-                /* Pen was released on either the same line as the previously
-                 *  selected one or an other one
-                 *  => simulate short press
-                 */
-                return ACTION_STD_OK;
-            }
             else
-                return ACTION_NONE;
+            {   /* pen is on the screen */
+                bool redraw = false, result = false;
+                /* beginning of list interaction denoted by release in
+                 * the previous call */
+                if (old_released || is_kinetic_over())
+                {
+                    scroll_mode = SCROLL_NONE;
+                    redraw = true;
+                }
+                
+                /* select current item; gui_synclist_select_item()
+                 * is not called because it has side effects that
+                 * disturb kinetic scrolling */
+                gui_list->selected_item = list_start_item+line;
+                gui_synclist_speak_item(gui_list);
+                if (last_position == 0)
+                    last_position = actual_y;
+                else
+                {
+                    /* record speed data in case we do kinetic scrolling */
+                    int diff = actual_y - last_position;
+                    kinetic_stats_collect(diff);
+                    result = swipe_scroll(gui_list, line_height, diff);
+                }
+
+                /* Start scrolling once the pen is moved without
+                 * releasing it inbetween */
+                if (result)
+                {
+                    redraw = true;
+                    scroll_mode = SCROLL_SWIPE;
+                }
+                last_position = actual_y;
+
+                return redraw ? ACTION_REDRAW:ACTION_NONE;
+            }
         }
     }
-    return ACTION_NONE;
+    return ACTION_REDRAW;
 }
 #endif

@@ -49,7 +49,6 @@
 #endif
 #ifdef HAVE_RECORDING
 #include "peakmeter.h"
-#include "mas.h"
 #endif
 #include "splash.h"
 #if CONFIG_CODEC == SWCODEC
@@ -344,6 +343,7 @@ MENUITEM_SETTING(rec_prerecord_time, &global_settings.rec_prerecord_time, NULL);
 static int clear_rec_directory(void)
 {
     strcpy(global_settings.rec_directory, REC_BASE_DIR);
+    settings_save();
     splash(HZ, ID2P(LANG_RESET_DONE_CLEAR));
     return false;
 }

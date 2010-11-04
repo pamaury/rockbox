@@ -11109,7 +11109,7 @@
 </phrase>
 <phrase>
   id: LANG_RIGHT
-  desc: Generic use of 'right
+  desc: Generic use of 'right'
   user: core
   <source>
     *: "Right"
@@ -12112,15 +12112,15 @@
   desc: browse for the base skin in theme settings
   user: core
   <source>
-    *:none
+    *: none
     lcd_bitmap: "Base Skin"
   </source>
   <dest>
-    *:none
+    *: none
     lcd_bitmap: "Base Skin"
   </dest>
   <voice>
-    *:none
+    *: none
     lcd_bitmap: "Base Skin"
   </voice>
 </phrase>
@@ -12129,15 +12129,15 @@
   desc: browse for the base skin in theme settings
   user: core
   <source>
-    *:none
+    *: none
     lcd_bitmap: "Remote Base Skin"
   </source>
   <dest>
-    *:none
+    *: none
     lcd_bitmap: "Remote Base Skin"
   </dest>
   <voice>
-    *:none
+    *: none
     lcd_bitmap: "Remote Base Skin"
   </voice>
 </phrase>
@@ -12146,15 +12146,15 @@
   desc: in the main menu
   user: core
   <source>
-    *:none
+    *: none
     remote: "Main Screen"
   </source>
   <dest>
-    *:none
+    *: none
     remote: "Main Screen"
   </dest>
   <voice>
-    *:none
+    *: none
     remote: "Main Screen"
   </voice>
 </phrase>
@@ -12163,15 +12163,15 @@
   desc: in the main menu
   user: core
   <source>
-    *:none
+    *: none
     remote: "Remote Screen"
   </source>
   <dest>
-    *:none
+    *: none
     remote: "Remote Screen"
   </dest>
   <voice>
-    *:none
+    *: none
     remote: "Remote Screen"
   </voice>
 </phrase>
@@ -12282,15 +12282,15 @@
   desc: in the theme menu
   user: core
   <source>
-    *:none
+    *: none
     radio_remote: "Remote Radio Screen"
   </source>
   <dest>
-    *:none
+    *: none
     radio_remote: "Remote Radio Screen"
   </dest>
   <voice>
-    *:none
+    *: none
     radio_remote: "Remote Radio Screen"
   </voice>
 </phrase>
@@ -12500,15 +12500,15 @@
   desc: in the theme menu
   user: core
   <source>
-    *:none
+    *: none
     radio: "Radio Screen"
   </source>
   <dest>
-    *:none
+    *: none
     radio: "Radio Screen"
   </dest>
   <voice>
-    *:none
+    *: none
     radio: "Radio Screen"
   </voice>
 </phrase>
@@ -12556,7 +12556,7 @@
 </phrase>
 <phrase>
   id: LANG_KBD_OK
-  desc: in keyboad
+  desc: in keyboard
   user: core
   <source>
     *: none
@@ -12573,7 +12573,7 @@
 </phrase>
 <phrase>
   id: LANG_KBD_DELETE
-  desc: in keyboad
+  desc: in keyboard
   user: core
   <source>
     *: none
@@ -12590,7 +12590,7 @@
 </phrase>
 <phrase>
   id: LANG_KBD_CANCEL
-  desc: in keyboad
+  desc: in keyboard
   user: core
   <source>
     *: none
@@ -12617,5 +12617,33 @@
   </dest>
   <voice>
     *: "Update on Stop"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_SET_AS_START_DIR
+  desc: used in the onplay menu to set a starting browser dir
+  user: core
+  <source>
+    *: "Start File Browser Here"
+  </source>
+  <dest>
+    *: "Start File Browser Here"
+  </dest>
+  <voice>
+    *: "Start File Browser Here"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_RESET_START_DIR
+  desc: reset the browser start directory
+  user: core
+  <source>
+    *: "Start File Browser at /"
+  </source>
+  <dest>
+    *: "Start File Browser at /"
+  </dest>
+  <voice>
+    *: "Start File Browser at root"
   </voice>
 </phrase>

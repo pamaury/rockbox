@@ -61,7 +61,6 @@
 #include "rtc.h"
 #include "storage.h"
 #include "fat.h"
-#include "mas.h"
 #include "eeprom_24cxx.h"
 #if (CONFIG_STORAGE & STORAGE_MMC) || (CONFIG_STORAGE & STORAGE_SD)
 #include "sdmmc.h"
@@ -120,6 +119,10 @@
 
 #ifdef HAVE_USBSTACK     
 #include "usb_core.h"    
+#endif
+
+#if defined(IPOD_ACCESSORY_PROTOCOL)
+#include "iap.h"
 #endif
 
 /*---------------------------------------------------*/
@@ -990,9 +993,11 @@ static bool dbg_spdif(void)
 
 /* This is temporary until the SA9200 touchpad works */
 #elif (CONFIG_KEYPAD == PHILIPS_SA9200_PAD) || \
-      (CONFIG_KEYPAD == PHILIPS_HDD1630_PAD) || \
-      (CONFIG_KEYPAD == PHILIPS_HDD6330_PAD)
+      (CONFIG_KEYPAD == PHILIPS_HDD1630_PAD)
 #   define DEBUG_CANCEL  BUTTON_POWER
+
+#elif (CONFIG_KEYPAD == PHILIPS_HDD6330_PAD)
+#   define DEBUG_CANCEL  BUTTON_PREV
 
 #elif (CONFIG_KEYPAD == SAMSUNG_YH_PAD)
 #   define DEBUG_CANCEL  BUTTON_PLAY
@@ -1182,7 +1187,7 @@ bool dbg_ports(void)
 #endif
 
 #if defined(IPOD_ACCESSORY_PROTOCOL)
-extern unsigned char serbuf[];
+        const unsigned char *serbuf = iap_get_serbuf();
         lcd_putsf(0, line++, "IAP PACKET: %02x %02x %02x %02x %02x %02x %02x %02x", 
          serbuf[0], serbuf[1], serbuf[2], serbuf[3], serbuf[4], serbuf[5],
          serbuf[6], serbuf[7]);

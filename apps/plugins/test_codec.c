@@ -601,10 +601,8 @@ static void init_ci(void)
     ci.profile_func_exit = rb->profile_func_exit;
 #endif
 
-#if NUM_CORES > 1
     ci.cpucache_invalidate = rb->cpucache_invalidate;
     ci.cpucache_flush = rb->cpucache_flush;
-#endif
 
 #if NUM_CORES > 1
     ci.create_thread = rb->create_thread;
@@ -615,7 +613,7 @@ static void init_ci(void)
     ci.semaphore_release = rb->semaphore_release;
 #endif
 
-#ifdef CPU_ARM
+#if defined(CPU_ARM) && (CONFIG_PLATFORM & PLATFORM_NATIVE)
     ci.__div0 = rb->__div0;
 #endif
 }
@@ -805,6 +803,9 @@ enum plugin_status plugin_start(const void* parameter)
     dspbuffer = wavbuffer + buffer_size / 2;
 
     codec_mallocbuf = rb->plugin_get_audio_buffer(&audiosize);
+    /* Align codec_mallocbuf to pointer size, tlsf wants that */
+    codec_mallocbuf = (void*)(((intptr_t)codec_mallocbuf +
+                       sizeof(intptr_t)-1) & ~(sizeof(intptr_t)-1));
     audiobuf = SKIPBYTES(codec_mallocbuf, CODEC_SIZE);
     audiosize -= CODEC_SIZE;
 

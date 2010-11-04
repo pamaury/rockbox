@@ -52,25 +52,19 @@
 /* We dont actually do anything with these pointers,
    but they need to be grouped like this to save code
    so storing them as void* is ok. (stops compile warning) */
-static const void * inbuilt_icons[NB_SCREENS] = {
-        (void*)default_icons
+static const struct bitmap inbuilt_iconset[NB_SCREENS] =
+{
+    {
+        .width = BMPWIDTH_default_icons,
+        .height = BMPHEIGHT_default_icons,
+        .data = (unsigned char*)default_icons,
+    },
 #if defined(HAVE_REMOTE_LCD) && (NB_SCREENS > 1)
-      , (void*)remote_default_icons
-#endif
-};
-
-static const int default_width[NB_SCREENS] = {
-      BMPWIDTH_default_icons
-#if defined(HAVE_REMOTE_LCD) && (NB_SCREENS > 1)
-    , BMPWIDTH_remote_default_icons
-#endif
-};
-
-/* height of whole file */
-static const int default_height[NB_SCREENS] = {
-      BMPHEIGHT_default_icons
-#if defined(HAVE_REMOTE_LCD) && (NB_SCREENS > 1)
-    , BMPHEIGHT_remote_default_icons
+    {
+        .width = BMPWIDTH_remote_default_icons,
+        .height = BMPHEIGHT_remote_default_icons,
+        .data = (unsigned char*)remote_default_icons,
+    },
 #endif
 };
 
@@ -86,14 +80,12 @@ static struct bitmap viewer_iconset[NB_SCREENS];
 
 
 #define ICON_HEIGHT(screen) (!custom_icons_loaded[screen]?       \
-                             default_height[screen] :   \
-                             user_iconset[screen].height) \
+                             inbuilt_iconset : user_iconset)[screen].height \
                             / Icon_Last_Themeable
-                            
+
 #define ICON_WIDTH(screen)  (!custom_icons_loaded[screen]?       \
-                             default_width[screen] :   \
-                             user_iconset[screen].width)
-                            
+                             inbuilt_iconset : user_iconset)[screen].width
+
 /* x,y in letters, not pixles */
 void screen_put_icon(struct screen * display, 
                        int x, int y, enum themable_icons icon)
@@ -105,15 +97,17 @@ void screen_put_icon_with_offset(struct screen * display,
                        int x, int y, int off_x, int off_y,
                        enum themable_icons icon)
 {
+    const int screen = display->screen_type;
+    const int icon_width = ICON_WIDTH(screen);
+    const int icon_height = ICON_HEIGHT(screen);
     int xpos, ypos;
     int width, height;
-    int screen = display->screen_type;
     display->getstringsize((unsigned char *)"M", &width, &height);
-    xpos = x*ICON_WIDTH(screen) + off_x;
+    xpos = x*icon_width + off_x;
     ypos = y*height + off_y;
 
-    if ( height > ICON_HEIGHT(screen) )/* center the cursor */
-        ypos += (height - ICON_HEIGHT(screen)) / 2;
+    if ( height > icon_height )/* center the cursor */
+        ypos += (height - icon_height) / 2;
     screen_put_iconxy(display, xpos, ypos, icon);
 }
 
@@ -143,26 +137,23 @@ void screen_put_iconxy(struct screen * display,
         icon -= Icon_Last_Themeable;
         if (!viewer_icons_loaded[screen] || 
            (global_status.viewer_icon_count * height > iconset->height) ||
-           (icon * height > iconset->height))
+           (icon * height + height > iconset->height))
         {
             screen_put_iconxy(display, xpos, ypos, Icon_Questionmark);
             return;
         }
-        data = iconset->data;
-        stride = STRIDE(display->screen_type, iconset->width, iconset->height);
     }
     else if (custom_icons_loaded[screen])
     {
         iconset = &user_iconset[screen];
-        data = iconset->data;
-        stride = STRIDE(display->screen_type, iconset->width, iconset->height);
     }
     else
     {
-        data    = inbuilt_icons[screen];
-        stride  = STRIDE(   display->screen_type, BMPWIDTH_default_icons,
-                            BMPHEIGHT_default_icons);
+        iconset = &inbuilt_iconset[screen];
     }
+    data = iconset->data;
+    stride = STRIDE(display->screen_type, iconset->width, iconset->height);
+
     /* add some left padding to the icons if they are on the edge */
     if (xpos == 0)
         xpos++;
@@ -187,8 +178,8 @@ void screen_put_cursorxy(struct screen * display, int x, int y, bool on)
 #else
     screen_put_icon(display, x, y, on?CURSOR_CHAR:-1);
 #endif
-
 }
+
 enum Iconset {
     Iconset_Mainscreen,
     Iconset_Mainscreen_viewers,
@@ -198,8 +189,7 @@ enum Iconset {
 #endif
 };
 
-static void load_icons(const char* filename, enum Iconset iconset, 
-    bool allow_disable)
+static void load_icons(const char* filename, enum Iconset iconset)
 {
     int size_read;
     bool *loaded_ok = NULL;
@@ -235,7 +225,7 @@ static void load_icons(const char* filename, enum Iconset iconset,
     }
     
     *loaded_ok = false;
-    if (!allow_disable || (filename[0] && filename[0] != '-'))
+    if (filename[0] && filename[0] != '-')
     {
         char path[MAX_PATH];
         
@@ -251,32 +241,34 @@ static void load_icons(const char* filename, enum Iconset iconset,
 
 void icons_init(void)
 {
-    load_icons(global_settings.icon_file, Iconset_Mainscreen, true);
+    load_icons(global_settings.icon_file, Iconset_Mainscreen);
     
-    if (*global_settings.viewers_icon_file)
+    if (global_settings.viewers_icon_file[0] &&
+        global_settings.viewers_icon_file[0] != '-')
     {
-        load_icons(global_settings.viewers_icon_file, 
-                   Iconset_Mainscreen_viewers, true);
+        load_icons(global_settings.viewers_icon_file,
+                   Iconset_Mainscreen_viewers);
         read_viewer_theme_file();
     }
     else
     {
-        load_icons(DEFAULT_VIEWER_BMP, Iconset_Mainscreen_viewers, false);
+        load_icons(DEFAULT_VIEWER_BMP, Iconset_Mainscreen_viewers);
     }
 
 #if defined(HAVE_REMOTE_LCD) && (NB_SCREENS > 1)
     load_icons(global_settings.remote_icon_file, 
-               Iconset_Remotescreen, true);
+               Iconset_Remotescreen);
     
-    if (*global_settings.remote_viewers_icon_file)
+    if (global_settings.remote_viewers_icon_file[0] &&
+        global_settings.remote_viewers_icon_file[0] != '-')
     {
         load_icons(global_settings.remote_viewers_icon_file,
-                   Iconset_Remotescreen_viewers, true);
+                   Iconset_Remotescreen_viewers);
     }
     else
     {
         load_icons(DEFAULT_REMOTE_VIEWER_BMP,
-                   Iconset_Remotescreen_viewers, false);
+                   Iconset_Remotescreen_viewers);
     }
 #endif
 }

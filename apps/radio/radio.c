@@ -23,7 +23,6 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdlib.h>
-#include "mas.h"
 #include "settings.h"
 #include "button.h"
 #include "status.h"
@@ -134,6 +133,14 @@
 #define FM_EXIT
 #define FM_PLAY
 #define FM_MODE
+
+#elif (CONFIG_KEYPAD == MPIO_HD200_PAD)
+#define FM_MENU
+#define FM_STOP
+#define FM_EXIT
+#define FM_PLAY
+#define FM_MODE
+#define FM_STOP
 
 #endif
 
@@ -387,10 +394,9 @@ void talk_freq(int freq, bool enqueue)
 }
 
 
-int radio_screen(void)
+void radio_screen(void)
 {
     bool done = false;
-    int ret_val = GO_TO_ROOT;
     int button;
     int i;
     bool stereo = false, last_stereo = false;
@@ -403,7 +409,6 @@ int radio_screen(void)
     unsigned long rec_lastclick = 0;
 #endif
 #if CONFIG_CODEC != SWCODEC
-    bool have_recorded = false;
     int timeout = current_tick + HZ/10;
     unsigned int last_seconds = 0;
 #if !defined(SIMULATOR)
@@ -433,9 +438,7 @@ int radio_screen(void)
 #ifndef SIMULATOR
 
 #if CONFIG_CODEC != SWCODEC
-    if(rec_create_directory() > 0)
-        have_recorded = true;
-
+    rec_create_directory();
     audio_init_recording(talk_get_bufsize());
 
     sound_settings_apply();
@@ -467,12 +470,13 @@ int radio_screen(void)
     if (radio_status == FMRADIO_OFF)
         radio_start();
 #endif
-    fms_fix_displays(FMS_ENTER);
-    FOR_NB_SCREENS(i)
-        skin_update(FM_SCREEN, i, SKIN_REFRESH_ALL);
 
     if(radio_preset_count() < 1 && yesno_pop(ID2P(LANG_FM_FIRST_AUTOSCAN)))
         presets_scan(NULL);
+
+    fms_fix_displays(FMS_ENTER);
+    FOR_NB_SCREENS(i)
+        skin_update(FM_SCREEN, i, SKIN_REFRESH_ALL);
 
     preset_set_current(preset_find(curr_freq));
     if(radio_current_preset() != -1)
@@ -558,7 +562,6 @@ int radio_screen(void)
                 }
                 else
                 {
-                    have_recorded = true;
                     rec_command(RECORDING_CMD_START);
                     update_type = SKIN_REFRESH_ALL;
                 }
@@ -574,7 +577,6 @@ int radio_screen(void)
 #endif
                 keep_playing = true;
                 done = true;
-                ret_val = GO_TO_ROOT;
                 if(presets_have_changed())
                 {
                     if(yesno_pop(ID2P(LANG_FM_SAVE_CHANGES)))
@@ -741,7 +743,6 @@ int radio_screen(void)
 #endif
                     keep_playing = false;
                     done = true;
-                    ret_val = GO_TO_ROOT;
                     if(presets_have_changed())
                     {
                         if(yesno_pop(ID2P(LANG_FM_SAVE_CHANGES)))
@@ -884,11 +885,6 @@ int radio_screen(void)
 #endif
     fms_fix_displays(FMS_EXIT);
     in_screen = false;
-#if CONFIG_CODEC != SWCODEC
-    return have_recorded;
-#else
-    return false;
-#endif
 } /* radio_screen */
 
 void toggle_mono_mode(bool mono)

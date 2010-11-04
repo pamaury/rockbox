@@ -77,7 +77,7 @@ void* plugin_get_buffer(size_t *buffer_size);
 #include "recording.h"
 #endif
 #else
-#include "mas.h"
+#include "mas35xx.h"
 #endif /* CONFIG_CODEC == SWCODEC */
 #include "settings.h"
 #include "timer.h"
@@ -147,12 +147,12 @@ void* plugin_get_buffer(size_t *buffer_size);
 #define PLUGIN_MAGIC 0x526F634B /* RocK */
 
 /* increase this every time the api struct changes */
-#define PLUGIN_API_VERSION 193
+#define PLUGIN_API_VERSION 194
 
 /* update this to latest version if a change to the api struct breaks
    backwards compatibility (and please take the opportunity to sort in any
    new function which are "waiting" at the end of the function table) */
-#define PLUGIN_MIN_API_VERSION 192
+#define PLUGIN_MIN_API_VERSION 194
 
 /* plugin return codes */
 /* internal returns start at 0x100 to make exit(1..255) work */
@@ -454,6 +454,7 @@ struct plugin_api {
     int (*mkdir)(const char *name);
     int (*rmdir)(const char *name);
     bool (*dir_exists)(const char *path);
+    struct dirinfo (*dir_get_info)(DIR* parent, struct dirent *entry);
 
     /* kernel/ system */
 #if defined(CPU_ARM) && CONFIG_PLATFORM & PLATFORM_NATIVE
@@ -498,12 +499,16 @@ struct plugin_api {
     void (*trigger_cpu_boost)(void);
     void (*cancel_cpu_boost)(void);
 #endif
-#ifdef HAVE_CPUCACHE_FLUSH
+
     void (*cpucache_flush)(void);
-#endif
-#ifdef HAVE_CPUCACHE_INVALIDATE
     void (*cpucache_invalidate)(void);
-#endif
+
+    /* load code api for overlay */
+    void* (*lc_open)(const char *filename, unsigned char *buf, size_t buf_size);
+    void* (*lc_open_from_mem)(void* addr, size_t blob_size);
+    void* (*lc_get_header)(void *handle);
+    void  (*lc_close)(void *handle);
+
     bool (*timer_register)(int reg_prio, void (*unregister_callback)(void),
                            long cycles, void (*timer_callback)(void)
                            IF_COP(, int core));
@@ -678,8 +683,8 @@ struct plugin_api {
 #if !defined(SIMULATOR) && (CONFIG_CODEC != SWCODEC)
     unsigned long (*mpeg_get_last_header)(void);
 #endif
-#if (CONFIG_CODEC == MAS3587F) || (CONFIG_CODEC == MAS3539F) || \
-    (CONFIG_CODEC == SWCODEC)
+#if ((CONFIG_CODEC == MAS3587F) || (CONFIG_CODEC == MAS3539F) || \
+     (CONFIG_CODEC == SWCODEC)) && defined (HAVE_PITCHSCREEN)
     void (*sound_set_pitch)(int32_t pitch);
 #endif
 
@@ -826,7 +831,7 @@ struct plugin_api {
 #endif
     int (*show_logo)(void);
     struct tree_context* (*tree_get_context)(void);
-    void (*set_current_file)(char* path);
+    void (*set_current_file)(const char* path);
     void (*set_dirfilter)(int l_dirfilter);
 
 #ifdef HAVE_WHEEL_POSITION
@@ -874,7 +879,7 @@ struct plugin_api {
                            int tag, char *buf, long size);
     void (*tagcache_search_finish)(struct tagcache_search *tcs);
     long (*tagcache_get_numeric)(const struct tagcache_search *tcs, int tag);
-#ifdef HAVE_TC_RAMCACHE
+#if defined(HAVE_TC_RAMCACHE) && defined(HAVE_DIRCACHE)
     bool (*tagcache_fill_tags)(struct mp3entry *id3, const char *filename);
 #endif
 #endif
@@ -894,13 +899,6 @@ struct plugin_api {
 
     /* new stuff at the end, sort into place next time
        the API gets incompatible */
-    struct dirinfo (*dir_get_info)(DIR* parent, struct dirent *entry);
-
-    /* load code api for overlay */
-    void* (*lc_open)(const char *filename, unsigned char *buf, size_t buf_size);
-    void* (*lc_open_from_mem)(void* addr, size_t blob_size);
-    void* (*lc_get_header)(void *handle);
-    void  (*lc_close)(void *handle);
 };
 
 /* plugin header */

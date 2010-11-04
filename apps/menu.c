@@ -283,22 +283,11 @@ static int talk_menu_item(int selected_item, void *data)
 void do_setting_from_menu(const struct menu_item_ex *temp,
                           struct viewport parent[NB_SCREENS])
 {
-    int setting_id, oldval;
+    int setting_id;
     const struct settings_list *setting =
             find_setting(temp->variable, &setting_id);
     char *title;
     char padded_title[MAX_PATH];
-    int var_type = setting->flags&F_T_MASK;
-    if (var_type == F_T_INT || var_type == F_T_UINT)
-    {
-        oldval = *(int*)setting->setting;
-    }
-    else if (var_type == F_T_BOOL)
-    {
-        oldval = *(bool*)setting->setting;
-    }
-    else
-        oldval = 0;
     if ((temp->flags&MENU_TYPE_MASK) == MT_SETTING_W_TEXT)
         title = temp->callback_and_desc->desc;
     else
@@ -595,6 +584,11 @@ int do_menu(const struct menu_item_ex *start_menu, int *start_selected,
                                     temp->function->param);
                     else
                         return_value = temp->function->function();
+                    if (!(menu->flags&MENU_EXITAFTERTHISMENU) ||
+                            (temp->flags&MENU_EXITAFTERTHISMENU))
+                    {
+                        init_menu_lists(menu, &lists, selected, true, vps);
+                    }
                     if (temp->flags&MENU_FUNC_CHECK_RETVAL)
                     {
                         if (return_value != 0)
@@ -656,10 +650,20 @@ int do_menu(const struct menu_item_ex *start_menu, int *start_selected,
             }
 #endif
         }
-        else if(default_event_handler(action) == SYS_USB_CONNECTED)
+        else
         {
-            ret = MENU_ATTACHED_USB;
-            done = true;
+            switch(default_event_handler(action))
+            {
+                case SYS_USB_CONNECTED:
+                    ret = MENU_ATTACHED_USB;
+                    done = true;
+                    break;
+                case SYS_CALL_HUNG_UP:
+                case BUTTON_MULTIMEDIA_PLAYPAUSE:
+                /* remove splash from playlist_resume() */
+                    redraw_lists = true;
+                    break;
+            }
         }
 
         if (redraw_lists && !done)

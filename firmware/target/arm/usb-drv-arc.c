@@ -382,7 +382,7 @@ static void usb_drv_stop(void)
     REG_USBCMD &= ~USBCMD_RUN;
 }
 
-void usb_drv_reset(void)
+static void usb_drv_reset(void)
 {
     int oldlevel = disable_irq_save();
     REG_USBCMD &= ~USBCMD_RUN;

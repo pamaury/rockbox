@@ -32,10 +32,10 @@ RCC_DIR = $$MYBUILDDIR/rcc
 
 
 # check version of Qt installation
-VER = $$find(QT_VERSION, ^4\.[5-9]+.*)
+VER = $$find(QT_VERSION, ^4\\.[5-9]+.*)
 isEmpty(VER) {
+    message("Qt >= 4.5 required!")
     !isEmpty(QT_VERSION) error("Qt found:" $$[QT_VERSION])
-    error("Qt >= 4.3 required!")
 }
 message("Qt version used:" $$VER)
 
@@ -131,6 +131,9 @@ DEFINES += RBUTIL _LARGEFILE64_SOURCE
 # platform specific
 win32 {
     LIBS += -lsetupapi -lnetapi32
+}
+win32:static {
+    QMAKE_LFLAGS += -static-libgcc -static-libstdc++
 }
 unix:!static:!libusb1:!macx {
     LIBS += -lusb

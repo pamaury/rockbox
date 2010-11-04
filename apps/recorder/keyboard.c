@@ -64,6 +64,7 @@
     || (CONFIG_KEYPAD == MROBE100_PAD) \
     || (CONFIG_KEYPAD == SANSA_E200_PAD) \
     || (CONFIG_KEYPAD == PHILIPS_HDD1630_PAD) \
+    || (CONFIG_KEYPAD == PHILIPS_HDD6330_PAD) \
     || (CONFIG_KEYPAD == PHILIPS_SA9200_PAD) \
     || (CONFIG_KEYPAD == PBELL_VIBE500_PAD)
 /* certain key combos toggle input mode between keyboard input and Morse input */
@@ -453,7 +454,6 @@ int kbd_input(char* text, int buflen)
         const int button_screen = 0;
 #endif
         struct keyboard_parameters *pm;
-        struct screen *sc;
 
         state.len_utf8 = utf8length(state.text);
 
@@ -492,10 +492,12 @@ int kbd_input(char* text, int buflen)
         button_screen = (get_action_statuscode(NULL) & ACTION_REMOTE) ? 1 : 0;
 #endif
         pm = &param[button_screen];
-        sc = &screens[button_screen];
 #ifdef HAVE_TOUCHSCREEN
         if (button == ACTION_TOUCHSCREEN)
+        {
+            struct screen *sc = &screens[button_screen];
             button = keyboard_touchscreen(pm, sc, &state);
+        }
 #endif
 
         /* Remap some buttons to allow to move

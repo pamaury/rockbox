@@ -86,15 +86,13 @@ static const unsigned short freq_table[3][3] =
     {11025, 12000,  8000}, /* MPEG version 2.5 */
 };
 
-unsigned long bytes2int(unsigned long b0,
-                     unsigned long b1,
-             unsigned long b2,
-             unsigned long b3)
+unsigned long bytes2int(unsigned long b0, unsigned long b1,
+                        unsigned long b2, unsigned long b3)
 {
-   return (((long)(b0 & 0xFF) << (3*8)) |
-           ((long)(b1 & 0xFF) << (2*8)) |
-           ((long)(b2 & 0xFF) << (1*8)) |
-           ((long)(b3 & 0xFF) << (0*8)));
+   return (b0 & 0xFF) << (3*8) |
+          (b1 & 0xFF) << (2*8) |
+          (b2 & 0xFF) << (1*8) |
+          (b3 & 0xFF) << (0*8);
 }
 
 /* check if 'head' is a valid mp3 frame header */
@@ -353,7 +351,6 @@ int get_mp3file_info(int fd, struct mp3info *info)
     unsigned long header;
     long bytecount;
     int num_offsets;
-    int frames_per_entry;
     int i;
     long offset;
     int j;
@@ -527,13 +524,13 @@ int get_mp3file_info(int fd, struct mp3info *info)
 
         /* We don't parse the TOC, since we don't yet know how to (FIXME) */
         num_offsets = bytes2int(0, 0, vbrheader[18], vbrheader[19]);
-        frames_per_entry = bytes2int(0, 0, vbrheader[24], vbrheader[25]);
         DEBUGF("Frame size (%dkpbs): %d bytes (0x%x)\n",
                info->bitrate, info->frame_size, info->frame_size);
         DEBUGF("Frame count: %lx\n", info->frame_count);
         DEBUGF("Byte count: %lx\n", info->byte_count);
         DEBUGF("Offsets: %d\n", num_offsets);
-        DEBUGF("Frames/entry: %d\n", frames_per_entry);
+        DEBUGF("Frames/entry: %ld\n",
+                bytes2int(0, 0, vbrheader[24], vbrheader[25]));
 
         offset = 0;
 

@@ -162,14 +162,18 @@ struct screen screens[NB_SCREENS] =
         .update_viewport_rect=&lcd_update_viewport_rect,
         .fillrect=&lcd_fillrect,
         .drawrect=&lcd_drawrect,
+        .draw_border_viewport=&lcd_draw_border_viewport,
+        .fill_viewport=&lcd_fill_viewport,
         .drawpixel=&lcd_drawpixel,
         .drawline=&lcd_drawline,
         .vline=&lcd_vline,
         .hline=&lcd_hline,
         .scroll_step=&lcd_scroll_step,
         .puts_style_offset=&lcd_puts_style_offset,
+        .puts_style_xyoffset=&lcd_puts_style_xyoffset,
         .puts_scroll_style=&lcd_puts_scroll_style,
         .puts_scroll_style_offset=&lcd_puts_scroll_style_offset,
+        .puts_scroll_style_xyoffset=&lcd_puts_scroll_style_xyoffset,
 #endif /* HAVE_LCD_BITMAP */
 
 #ifdef HAVE_LCD_CHARCELLS
@@ -251,14 +255,18 @@ struct screen screens[NB_SCREENS] =
         .update_viewport_rect=&lcd_remote_update_viewport_rect,
         .fillrect=&lcd_remote_fillrect,
         .drawrect=&lcd_remote_drawrect,
+        .draw_border_viewport=&lcd_remote_draw_border_viewport,
+        .fill_viewport=&lcd_remote_fill_viewport,
         .drawpixel=&lcd_remote_drawpixel,
         .drawline=&lcd_remote_drawline,
         .vline=&lcd_remote_vline,
         .hline=&lcd_remote_hline,
         .scroll_step=&lcd_remote_scroll_step,
         .puts_style_offset=&lcd_remote_puts_style_offset,
+        .puts_style_xyoffset=&lcd_remote_puts_style_xyoffset,
         .puts_scroll_style=&lcd_remote_puts_scroll_style,
         .puts_scroll_style_offset=&lcd_remote_puts_scroll_style_offset,
+        .puts_scroll_style_xyoffset=&lcd_remote_puts_scroll_style_xyoffset,
 #endif /* 1 */
 
 #if 0 /* no charcell remote LCDs so far */

@@ -385,11 +385,29 @@
 #   define SOL_REM2CUR      (BUTTON_LEFT | BUTTON_VIEW)
 #   define SOL_CUR2STACK    (BUTTON_SELECT | BUTTON_REPEAT)
 #   define SOL_REM2STACK    (BUTTON_RIGHT | BUTTON_VIEW)
-#   define HK_MOVE         "SELECT"
-#   define HK_DRAW         "MENU"
-#   define HK_REM2CUR      "VIEW+LEFT"
-#   define HK_CUR2STACK    "SELECT.."
-#   define HK_REM2STACK    "VIEW+RIGHT"
+#   define HK_MOVE          "SELECT"
+#   define HK_DRAW          "MENU"
+#   define HK_REM2CUR       "VIEW+LEFT"
+#   define HK_CUR2STACK     "SELECT.."
+#   define HK_REM2STACK     "VIEW+RIGHT"
+
+#elif CONFIG_KEYPAD == PHILIPS_HDD6330_PAD
+#   define SOL_QUIT          BUTTON_POWER
+#   define SOL_UP            BUTTON_UP
+#   define SOL_DOWN          BUTTON_DOWN
+#   define SOL_LEFT          BUTTON_PREV
+#   define SOL_RIGHT         BUTTON_NEXT
+#   define SOL_MOVE_PRE      BUTTON_PLAY
+#   define SOL_MOVE          (BUTTON_PLAY | BUTTON_REL)
+#   define SOL_DRAW          BUTTON_MENU
+#   define SOL_REM2CUR       BUTTON_LEFT
+#   define SOL_CUR2STACK     (BUTTON_PLAY | BUTTON_REPEAT)
+#   define SOL_REM2STACK     BUTTON_RIGHT
+#   define HK_MOVE           "PLAY"
+#   define HK_DRAW           "MENU"
+#   define HK_REM2CUR        "LEFT"
+#   define HK_CUR2STACK      "PLAY.."
+#   define HK_REM2STACK      "RIGHT"
 
 #elif CONFIG_KEYPAD == PHILIPS_SA9200_PAD
 #   define SOL_QUIT          BUTTON_POWER
@@ -455,17 +473,17 @@ CONFIG_KEYPAD == MROBE500_PAD
 
 #elif CONFIG_KEYPAD == MPIO_HD200_PAD
 #   define SOL_QUIT         (BUTTON_REC | BUTTON_PLAY)
-#   define SOL_UP           BUTTON_PREV
-#   define SOL_DOWN         BUTTON_NEXT
+#   define SOL_UP           BUTTON_REW
+#   define SOL_DOWN         BUTTON_FF
 #   define SOL_LEFT         BUTTON_VOL_DOWN
 #   define SOL_RIGHT        BUTTON_VOL_UP
-#   define SOL_MOVE_PRE      BUTTON_SELECT
-#   define SOL_MOVE         (BUTTON_SELECT | BUTTON_REL)
+#   define SOL_MOVE_PRE     BUTTON_FUNC
+#   define SOL_MOVE         (BUTTON_FUNC | BUTTON_REL)
 #   define SOL_DRAW         BUTTON_REC
 #   define SOL_REM2CUR      (BUTTON_REC | BUTTON_REPEAT)
 #   define SOL_CUR2STACK    BUTTON_PLAY
 #   define SOL_REM2STACK    (BUTTON_PLAY | BUTTON_REPEAT)
-#   define HK_MOVE         "SELECT"
+#   define HK_MOVE         "FUNC"
 #   define HK_DRAW         "REC"
 #   define HK_REM2CUR      "REC.."
 #   define HK_CUR2STACK    "PLAY"

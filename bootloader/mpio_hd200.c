@@ -5,7 +5,7 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id:$
+ * $Id$
  *
  * Copyright (C) 2010 Marcin Bukat
  *
@@ -233,7 +233,7 @@ static void bootmenu(void)
 
     printf("=========================");
     printf("");
-    printf(" [FF] [PREV] to move ");
+    printf(" [FF] [REW] to move ");
     printf(" [PLAY] to confirm ");
 
     /* content of menu and keys handling */
@@ -262,16 +262,16 @@ static void bootmenu(void)
 
         switch (button)
         {
-            case BUTTON_PREV:
-            case BUTTON_RC_PREV:
+            case BUTTON_REW:
+            case BUTTON_RC_REW:
                 if (option > rockbox)
                     option--;
                 else
                     option = shutdown;
                 break;
 
-            case BUTTON_NEXT:
-            case BUTTON_RC_NEXT:
+            case BUTTON_FF:
+            case BUTTON_RC_FF:
                 if (option < shutdown)
                     option++;
                 else
@@ -319,15 +319,18 @@ void main(void)
     /* this is default mode after power_init() */
     bool high_current_charging = true;
 
+    /* setup GPIOs related to power functions */
     power_init();
 
     system_init();
     kernel_init();
 
+    /* run at 45MHz */
     set_cpu_frequency(CPUFREQ_NORMAL);
-    coldfire_set_pllcr_audio_bits(DEFAULT_PLLCR_AUDIO_BITS);
 
+    /* IRQs are needed by button driver */
     enable_irq();
+
     lcd_init();
 
     /* only lowlevel functions no queue init */
@@ -337,8 +340,8 @@ void main(void)
     /* setup font system*/
     font_init();
     lcd_setfont(FONT_SYSFIXED);
-    
-    /* buttons reading */
+
+     /* buttons reading init*/
     adc_init();
     button_init();
 

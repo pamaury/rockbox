@@ -9,7 +9,7 @@
 % The extension is selected in the preamble, so no further \ifpdfoutput
 % is necessary.
 \includegraphics[height=8cm,width=10cm,keepaspectratio=true]{rockbox_interface/images/\specimg-front}
-\opt{iaudiom3}{% replace with HAVEREMOTEKEYMAP when the h100 file exists or change specimg
+\opt{iaudiom3,h100}{% replace with HAVEREMOTEKEYMAP when all images exist or change specimg
   \end{center}
   % spacing between the two pictures, could possibly be improved
   \begin{center}
@@ -344,7 +344,7 @@ detail in the following paragraph.
   other buttons have any effect.  Just to the left of the \ButtonHold{} switch is a
   small hole which contains the internal microphone.}
   %
-  \opt{c200}{
+  \opt{c200,c200v2}{
   Hold the \dap{} with the buttons on the right and the screen on the left. On
   the right side of the unit, there is a series of four connected buttons that
   form a square. The four sides of the square are the \ButtonUp{},
@@ -775,7 +775,7 @@ properly.}
   \opt{usb_power}{
     \section{USB Charging}
 
-    The \dap{} can be charged over USB without connecting to your
+    When running the \dap{} can be charged over USB without connecting to your
     computer by holding \ActionStdUsbCharge{} while plugging in. This
     allows you to continue using the \dap{} normally.
   }
@@ -784,7 +784,7 @@ properly.}
 \opt{ondio}{
   \section{USB Power}
 
-    The \dap{} can be powered over USB without connecting to your
+    When running the \dap{} can be powered over USB without connecting to your
     computer by holding \ActionStdUsbCharge{} while plugging in. This
     allows you to continue using the \dap{} normally.
 }

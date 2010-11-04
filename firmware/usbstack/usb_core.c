@@ -658,8 +658,7 @@ static void control_request_handler_drivers(struct usb_ctrlrequest* req)
 
 static void request_handler_device_get_descriptor(struct usb_ctrlrequest* req)
 {
-    int size = 0;
-    bool handled = true;
+    int size;
     const void* ptr = NULL;
     int length = req->wLength;
     int index = req->wValue & 0xff;
@@ -744,7 +743,7 @@ static void request_handler_device_get_descriptor(struct usb_ctrlrequest* req)
             break;
 
         default:
-            handled = true;
+            logf("ctrl desc.");
             control_request_handler_drivers(req);
             break;
     }
@@ -824,7 +823,7 @@ static void request_handler_device(struct usb_ctrlrequest* req)
             usb_drv_recv_blocking(EP_CONTROL, NULL, 0); /* ack */
             break;
         default:
-            logf("bad req 0x%x:0x%x:0x%x:0x%x:0x%x", req->bRequestType,req->bRequest, req->wValue, req->wIndex, req->wLength);
+            logf("bad req:desc %d:%d", req->bRequest, req->wValue);
             usb_drv_stall(EP_CONTROL, true, true);
             break;
     }
@@ -870,8 +869,9 @@ static void request_handler_interface(struct usb_ctrlrequest* req)
             break;
         case USB_TYPE_VENDOR:
         default:
-            logf("bad req 0x%x:0x%x:0x%x:0x%x:0x%x", req->bRequestType,req->bRequest, req->wValue, req->wIndex, req->wLength);
+            logf("bad req:desc %d", req->bRequest);
             usb_drv_stall(EP_CONTROL, true, true);
+            break;
     }
 }
 
@@ -939,7 +939,7 @@ static void request_handler_endpoint(struct usb_ctrlrequest* req)
             break;
         case USB_TYPE_VENDOR:
         default:
-            logf("bad req 0x%x:0x%x:0x%x:0x%x:0x%x", req->bRequestType,req->bRequest, req->wValue, req->wIndex, req->wLength);
+            logf("bad req:desc %d", req->bRequest);
             usb_drv_stall(EP_CONTROL, true, true);
             break;
     }
@@ -977,7 +977,7 @@ static void usb_core_control_request_handler(struct usb_ctrlrequest* req)
             request_handler_endpoint(req);
             break;
         case USB_RECIP_OTHER:
-            logf("bad req 0x%x:0x%x:0x%x:0x%x:0x%x", req->bRequestType,req->bRequest, req->wValue, req->wIndex, req->wLength);
+            logf("unsupported recipient");
             usb_drv_stall(EP_CONTROL, true, true);
             break;
     }

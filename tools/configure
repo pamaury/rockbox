@@ -53,7 +53,12 @@ prefixtools () {
 
 app_get_platform() {
     echo "Select your platform: (S)DL, (A)ndroid (default: Android)"
-    choice=`input`
+    if [ -z "$ARG_PLATFORM" ]; then
+        choice=`input`
+    else
+        choice="$ARG_PLATFORM"
+    fi
+
     case $choice in
         s|S*)     app_platform="sdl" ;;
         *|a|A*)   app_platform="android" ;;
@@ -61,12 +66,22 @@ app_get_platform() {
 
     echo "Selected $app_platform platform"
     echo "Enter the LCD width (default: 320)"
-    app_lcd_width=`input`
+    if [ -z "$ARG_LCDWIDTH" ]; then
+        app_lcd_width=`input`
+    else
+        app_lcd_width="$ARG_LCDWIDTH"
+    fi
     if [ -z "$app_lcd_width" ]; then app_lcd_width="320"; fi
     echo "Enter the LCD height (default: 480)"
-    app_lcd_height=`input`
+    if [ -z "$ARG_LCDHEIGHT" ]; then
+        app_lcd_height=`input`
+    else
+        app_lcd_height="$ARG_LCDHEIGHT"
+    fi
     if [ -z "$app_lcd_height" ]; then app_lcd_height="480"; fi
     echo "Selected $app_lcd_width x $app_lcd_height resolution"
+    ARG_LCDWIDTH=$app_lcd_width
+    ARG_LCDHEIGHT=$app_lcd_height
 
     app_lcd_width="#define LCD_WIDTH $app_lcd_width"
     app_lcd_height="#define LCD_HEIGHT $app_lcd_height"
@@ -945,6 +960,9 @@ for arg in "$@"; do
 		--no-ccache)  ARG_CCACHE=0;;
 		--encopts=*)  ARG_ENCOPTS=`echo "$arg" | cut -d = -f 2`;;
 		--language=*) ARG_LANG=`echo "$arg" | cut -d = -f 2`;;
+		--lcdwidth=*) ARG_LCDWIDTH=`echo "$arg" | cut -d = -f 2`;;
+		--lcdheight=*) ARG_LCDHEIGHT=`echo "$arg" | cut -d = -f 2`;;
+		--platform=*) ARG_PLATFORM=`echo "$arg" | cut -d = -f 2`;;
 		--ram=*)      ARG_RAM=`echo "$arg" | cut -d = -f 2`;;
 		--rbdir=*)    ARG_RBDIR=`echo "$arg" | cut -d = -f 2`;;
 		--target=*)   ARG_TARGET=`echo "$arg" | cut -d = -f 2`;;
@@ -956,7 +974,7 @@ for arg in "$@"; do
 		--no-eabi)    ARG_ARM_EABI=0;;
 		--thumb)      ARG_ARM_THUMB=1;;
 		--no-thumb)   ARG_ARM_THUMB=0;;
-        --prefix=*)   PREFIX=`echo "$arg" | cut -d = -f 2`;;
+                --prefix=*)   PREFIX=`echo "$arg" | cut -d = -f 2`;;
 		--help)       help;;
 		*)            err=1; echo "[ERROR] Option '$arg' unsupported";;
 	esac
@@ -2346,7 +2364,7 @@ fi
     bmp2rb_native="$rootdir/tools/bmp2rb -f 4"
     output="rockbox.mi4"
     appextra="recorder:gui:radio"
-    plugins=""
+    plugins="yes"
     swcodec="yes"
     boottool="$rootdir/tools/scramble -mi4v3 -model=6330 -type=RBBL"
     bootoutput="FWImage.ebn"
@@ -2675,7 +2693,7 @@ fi
     t_model="vibe500"
     ;;
 
-   170|hd200)
+   170|mpiohd200)
     target_id=69
     modelname="mpiohd200"
     target="-DMPIO_HD200"
@@ -3210,6 +3228,14 @@ elif [ "$ARG_CCACHE" = "0" ]; then
 fi
 if [ "$ARG_ARM_EABI" = "1" ]; then
   cmdline="$cmdline--eabi "
+fi
+if [ "$app_platform" = "sdl" ]; then
+  cmdline="$cmdline--platform=S "
+elif [ "$app_platform" = "android" ]; then
+  cmdline="$cmdline--platform=A "
+fi
+if [ "$modelname" = "application" ]; then
+  cmdline="$cmdline--lcdwidth=$ARG_LCDWIDTH --lcdheight=$ARG_LCDHEIGHT "
 fi
 
 cmdline="$cmdline--target=\$(MODELNAME) --ram=\$(MEMORYSIZE) --rbdir=\$(RBDIR) --type=$btype$advopts --prefix=\$(PREFIX)"

@@ -2439,6 +2439,12 @@ void get_mp3_filename(const char *wav_name)
 #define MP3ENC_DONE BUTTON_POWER
 #define MP3ENC_SELECT BUTTON_SELECT
 
+#elif CONFIG_KEYPAD == PHILIPS_HDD6330_PAD
+#define MP3ENC_PREV BUTTON_UP
+#define MP3ENC_NEXT BUTTON_DOWN
+#define MP3ENC_DONE BUTTON_POWER
+#define MP3ENC_SELECT BUTTON_PLAY
+
 #elif CONFIG_KEYPAD == PHILIPS_SA9200_PAD
 #define MP3ENC_PREV BUTTON_UP
 #define MP3ENC_NEXT BUTTON_DOWN
@@ -2463,10 +2469,10 @@ CONFIG_KEYPAD == MROBE500_PAD
 #define MP3ENC_SELECT BUTTON_OK
 
 #elif CONFIG_KEYPAD == MPIO_HD200_PAD
-#define MP3ENC_PREV BUTTON_PREV
-#define MP3ENC_NEXT BUTTON_NEXT
+#define MP3ENC_PREV BUTTON_REW
+#define MP3ENC_NEXT BUTTON_FF
 #define MP3ENC_DONE BUTTON_PLAY
-#define MP3ENC_SELECT BUTTON_SELECT
+#define MP3ENC_SELECT BUTTON_FUNC
 
 #else
 #error No keymap defined!
@@ -2491,6 +2497,7 @@ enum plugin_status plugin_start(const void* parameter)
 {
     int   rat, srat, nrat; /* for rate selection */
     int   cont = 1, butt;
+    int   ret;
     long  tim  = 0;
     static const char* bstrg[] = {
         "64", "80", "96", "112", "128", "160", "192", "224", "256", "320"
@@ -2544,7 +2551,8 @@ enum plugin_status plugin_start(const void* parameter)
 
     if(cont)
     {
-        if(wave_open() == 0)
+        ret = wave_open();
+        if(ret == 0)
         {
             init_mp3_encoder_engine(true, brate[srat], cfg.samplerate);
             get_mp3_filename(wav_filename);
@@ -2557,11 +2565,12 @@ enum plugin_status plugin_start(const void* parameter)
 
             rb->close(wavfile);
             rb->close(mp3file);
+            rb->reload_directory();
         }
         else
         {
             rb->close(wavfile);
-            rb->lcd_putsxyf(0, 20, "WaveOpen failed %d", wave_open());
+            rb->lcd_putsxyf(0, 20, "WaveOpen failed %d", ret);
             rb->lcd_update();
             rb->sleep(5*HZ);
         }

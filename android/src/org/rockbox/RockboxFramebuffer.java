@@ -23,6 +23,8 @@ package org.rockbox;
 
 import java.nio.ByteBuffer;
 
+import org.rockbox.Helper.MediaButtonReceiver;
+
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -35,36 +37,39 @@ public class RockboxFramebuffer extends View
 {
     private Bitmap btm;
     private ByteBuffer native_buf;
+    private MediaButtonReceiver media_monitor;
 
-    public RockboxFramebuffer(Context c)
+    public RockboxFramebuffer(Context c, int lcd_width, 
+                              int lcd_height, ByteBuffer native_fb)
     {
         super(c);
-        btm = null;
-
         /* Needed so we can catch KeyEvents */
         setFocusable(true);
+        setFocusableInTouchMode(true);
+        setClickable(true);
+        btm = Bitmap.createBitmap(lcd_width, lcd_height, Bitmap.Config.RGB_565);
+        native_buf = native_fb;
         requestFocus();
+        media_monitor = new MediaButtonReceiver(c);
+        media_monitor.register();
+        /* the service needs to know the about us */
+        ((RockboxService)c).set_fb(this);
     }
 
     public void onDraw(Canvas c) 
     {
-        if (btm != null)
-            c.drawBitmap(btm, 0.0f, 0.0f, null);
+        c.drawBitmap(btm, 0.0f, 0.0f, null);
     }
     
-    public void java_lcd_init(int lcd_width, int lcd_height, ByteBuffer native_fb)
-    {
-        btm = Bitmap.createBitmap(lcd_width, lcd_height, Bitmap.Config.RGB_565);
-        native_buf = native_fb;
-    }
-    
-    public void java_lcd_update()
+    @SuppressWarnings("unused")
+    private void java_lcd_update()
     {
         btm.copyPixelsFromBuffer(native_buf);
         postInvalidate();
     }
     
-    public void java_lcd_update_rect(int x, int y, int w, int h)
+    @SuppressWarnings("unused")
+    private void java_lcd_update_rect(int x, int y, int w, int h)
     {
         /* can't copy a partial buffer */
         btm.copyPixelsFromBuffer(native_buf);
@@ -113,12 +118,23 @@ public class RockboxFramebuffer extends View
         set_lcd_active(0);
     }
     public void resume()
-    {    /* make updates again, the underlying function will 
-         * send an event */
+    {    
+        /* Needed so we can catch KeyEvents */
+        setFocusable(true);
+        setFocusableInTouchMode(true);
+        setClickable(true);
+        requestFocus();
         set_lcd_active(1);
+    }
+
+    public void destroy()
+    {
+        suspend();
+        media_monitor.unregister();
     }
 
     public native void set_lcd_active(int active);
     public native void touchHandler(boolean down, int x, int y);
     public native boolean buttonHandler(int keycode, boolean state);
+    
 }

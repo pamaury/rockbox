@@ -344,6 +344,7 @@ static const struct plugin_api rockbox_api = {
     mkdir,
     rmdir,
     dir_exists,
+    dir_get_info,
 
     /* kernel/ system */
 #if defined(CPU_ARM) && CONFIG_PLATFORM & PLATFORM_NATIVE
@@ -384,12 +385,15 @@ static const struct plugin_api rockbox_api = {
     trigger_cpu_boost,
     cancel_cpu_boost,
 #endif
-#ifdef HAVE_CPUCACHE_FLUSH
+
     cpucache_flush,
-#endif
-#ifdef HAVE_CPUCACHE_INVALIDATE
     cpucache_invalidate,
-#endif
+
+    lc_open,
+    lc_open_from_mem,
+    lc_get_header,
+    lc_close,
+
     timer_register,
     timer_unregister,
     timer_set_period,
@@ -544,8 +548,8 @@ static const struct plugin_api rockbox_api = {
 #if !defined(SIMULATOR) && (CONFIG_CODEC != SWCODEC)
     mpeg_get_last_header,
 #endif
-#if (CONFIG_CODEC == MAS3587F) || (CONFIG_CODEC == MAS3539F) || \
-    (CONFIG_CODEC == SWCODEC)
+#if ((CONFIG_CODEC == MAS3587F) || (CONFIG_CODEC == MAS3539F) || \
+     (CONFIG_CODEC == SWCODEC)) && defined (HAVE_PITCHSCREEN)
     sound_set_pitch,
 #endif
 
@@ -703,7 +707,7 @@ static const struct plugin_api rockbox_api = {
     tagcache_retrieve,
     tagcache_search_finish,
     tagcache_get_numeric,
-#ifdef HAVE_TC_RAMCACHE
+#if defined(HAVE_TC_RAMCACHE) && defined(HAVE_DIRCACHE)
     tagcache_fill_tags,
 #endif
 #endif
@@ -722,12 +726,6 @@ static const struct plugin_api rockbox_api = {
 
     /* new stuff at the end, sort into place next time
        the API gets incompatible */
-    dir_get_info,
-
-    lc_open,
-    lc_open_from_mem,
-    lc_get_header,
-    lc_close,
 };
 
 int plugin_load(const char* plugin, const void* parameter)
@@ -827,8 +825,6 @@ int plugin_load(const char* plugin, const void* parameter)
 #ifdef HAVE_TOUCHSCREEN
     touchscreen_set_mode(global_settings.touch_mode);
 #endif
-
-    button_clear_queue();
 
 #ifdef HAVE_LCD_BITMAP
     lcd_setfont(FONT_UI);

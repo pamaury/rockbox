@@ -51,13 +51,13 @@ extern struct codec_api* ci;
 #define LOGF(...)
 #endif
 
-#if   (CONFIG_CPU == MCF5250) || defined(CPU_S5L870X)
+#if   (CONFIG_CPU == MCF5250)
 /* Enough IRAM but performance suffers with ICODE_ATTR. */
 #define IBSS_ATTR_FAAD_LARGE_IRAM   IBSS_ATTR
 #define ICODE_ATTR_FAAD_LARGE_IRAM
 #define ICONST_ATTR_FAAD_LARGE_IRAM ICONST_ATTR
 
-#elif (CONFIG_CPU == PP5022) || (CONFIG_CPU == PP5024)
+#elif (CONFIG_CPU == PP5022) || (CONFIG_CPU == PP5024) || defined(CPU_S5L870X)
 /* Enough IRAM to move additional data and code to it. */
 #define IBSS_ATTR_FAAD_LARGE_IRAM   IBSS_ATTR
 #define ICODE_ATTR_FAAD_LARGE_IRAM  ICODE_ATTR
@@ -285,9 +285,10 @@ char *strchr(), *strrchr();
 
   #include <math.h>
 
-  #define MUL_R(A,B) ((A)*(B))
-  #define MUL_C(A,B) ((A)*(B))
-  #define MUL_F(A,B) ((A)*(B))
+  #define MUL_R(A,B)  ((A)*(B))
+  #define MUL_C(A,B)  ((A)*(B))
+  #define MUL_F(A,B)  ((A)*(B))
+  #define MUL_Q2(A,B) ((A)*(B))
 
   /* Complex multiplication */
   static INLINE void ComplexMult(real_t *y1, real_t *y2,
@@ -306,9 +307,10 @@ char *strchr(), *strrchr();
 
   typedef float real_t;
 
-  #define MUL_R(A,B) ((A)*(B))
-  #define MUL_C(A,B) ((A)*(B))
-  #define MUL_F(A,B) ((A)*(B))
+  #define MUL_R(A,B)  ((A)*(B))
+  #define MUL_C(A,B)  ((A)*(B))
+  #define MUL_F(A,B)  ((A)*(B))
+  #define MUL_Q2(A,B) ((A)*(B))
 
   #define REAL_CONST(A) ((real_t)(A))
   #define COEF_CONST(A) ((real_t)(A))

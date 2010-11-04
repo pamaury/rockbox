@@ -346,6 +346,22 @@ enum {
 #define BJACK_RIGHT         BUTTON_RIGHT
 #define BJACK_LEFT          BUTTON_LEFT
 
+#elif CONFIG_KEYPAD == PHILIPS_HDD6330_PAD
+#define BJACK_SELECT_NAME   "PLAY"
+#define BJACK_STAY_NAME     "VOL-"
+#define BJACK_QUIT_NAME     "POWER"
+#define BJACK_DOUBLE_NAME   "MENU"
+#define BJACK_SELECT        BUTTON_PLAY
+#define BJACK_QUIT          BUTTON_POWER
+#define BJACK_MAX           BUTTON_VOL_UP
+#define BJACK_MIN           BUTTON_VOL_DOWN
+#define BJACK_STAY          BUTTON_VOL_DOWN
+#define BJACK_DOUBLEDOWN    BUTTON_MENU
+#define BJACK_UP            BUTTON_UP
+#define BJACK_DOWN          BUTTON_DOWN
+#define BJACK_RIGHT         BUTTON_RIGHT
+#define BJACK_LEFT          BUTTON_LEFT
+
 #elif CONFIG_KEYPAD == PHILIPS_SA9200_PAD
 #define BJACK_SELECT_NAME   "MENU"
 #define BJACK_STAY_NAME     "VOL-"
@@ -405,17 +421,17 @@ enum {
 #define BJACK_LEFT          BUTTON_PREV
 
 #elif CONFIG_KEYPAD == MPIO_HD200_PAD
-#define BJACK_SELECT_NAME    "SELECT"
-#define BJACK_STAY_NAME     "RIGHT"
+#define BJACK_SELECT_NAME   "FUNC"
+#define BJACK_STAY_NAME     "VOL +"
 #define BJACK_RESUME_NAME   "PLAY"
 #define BJACK_QUIT_NAME     "REC+PLAY"
-#define BJACK_DOUBLE_NAME   "LEFT"
-#define BJACK_SELECT        BUTTON_SELECT
+#define BJACK_DOUBLE_NAME   "VOL -"
+#define BJACK_SELECT        BUTTON_FUNC
 #define BJACK_QUIT          (BUTTON_REC|BUTTON_PLAY)
 #define BJACK_STAY          BUTTON_VOL_UP
 #define BJACK_DOUBLEDOWN    BUTTON_VOL_DOWN
-#define BJACK_UP            BUTTON_PREV
-#define BJACK_DOWN          BUTTON_NEXT
+#define BJACK_UP            BUTTON_REW
+#define BJACK_DOWN          BUTTON_FF
 #define BJACK_RIGHT         BUTTON_VOL_UP
 #define BJACK_LEFT          BUTTON_VOL_DOWN
 

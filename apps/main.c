@@ -399,7 +399,7 @@ static void init(void)
 #endif /* CONFIG_CODEC != SWCODEC */
 
     scrobbler_init();
-#if CONFIG_CODEC == SWCODEC
+#if CONFIG_CODEC == SWCODEC && defined (HAVE_PITCHSCREEN)
     tdspeed_init();
 #endif /* CONFIG_CODEC == SWCODEC */
 
@@ -573,7 +573,7 @@ static void init(void)
                 (mmc_remove_request() == SYS_HOTSWAP_EXTRACTED))
 #endif
             {
-                gui_usb_screen_run();
+                gui_usb_screen_run(true);
                 mounted = true; /* mounting done @ end of USB mode */
             }
 #ifdef HAVE_USB_POWER
@@ -600,7 +600,7 @@ static void init(void)
             lcd_update();
 
             while(button_get(true) != SYS_USB_CONNECTED) {};
-            gui_usb_screen_run();
+            gui_usb_screen_run(true);
             system_reboot();
         }
     }
@@ -663,7 +663,7 @@ static void init(void)
     tree_mem_init();
     filetype_init();
     scrobbler_init();
-#if CONFIG_CODEC == SWCODEC
+#if CONFIG_CODEC == SWCODEC && defined (HAVE_PITCHSCREEN)
     tdspeed_init();
 #endif /* CONFIG_CODEC == SWCODEC */
     theme_init_buffer();

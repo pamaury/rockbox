@@ -115,6 +115,10 @@ static int browser(void* param)
             {
                 strcpy(folder, current_track_path);
             }
+            else if (!strcmp(last_folder, "/"))
+            {
+                strcpy(folder, global_settings.start_directory);
+            }
             else
             {
 #ifdef HAVE_HOTSWAP
@@ -142,9 +146,9 @@ static int browser(void* param)
                         break;
                     }
                 }
-            if (!in_hotswap)
+                if (!in_hotswap)
 #endif
-                strcpy(folder, last_folder);
+                    strcpy(folder, last_folder);
             }
         break;
 #ifdef HAVE_TAGCACHE
@@ -252,7 +256,9 @@ static int browser(void* param)
     switch ((intptr_t)param)
     {
         case GO_TO_FILEBROWSER:
-            if (!get_current_file(last_folder, MAX_PATH))
+            if (!get_current_file(last_folder, MAX_PATH) ||
+                (!strchr(&last_folder[1], '/') &&
+                 global_settings.start_directory[1] != '\0'))
             {
                 last_folder[0] = '/';
                 last_folder[1] = '\0';
@@ -633,7 +639,15 @@ void root_menu(void)
             case GO_TO_ROOT:
                 if (last_screen != GO_TO_ROOT)
                     selected = get_selection(last_screen);
+#if (CONFIG_PLATFORM&PLATFORM_ANDROID)
+                /* When we are in the main menu we want the hardware BACK
+                 * button to be handled by Android instead of rockbox */
+                android_ignore_back_button(true);
+#endif
                 next_screen = do_menu(&root_menu_, &selected, NULL, false);
+#if (CONFIG_PLATFORM&PLATFORM_ANDROID)
+                android_ignore_back_button(false);
+#endif
                 if (next_screen != GO_TO_PREVIOUS)
                     last_screen = GO_TO_ROOT;
                 break;
