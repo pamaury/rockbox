@@ -50,6 +50,10 @@ extern int si4700_st(void);
 
 #define I2C_ADR 0x20
 
+/* define RSSI range */
+#define RSSI_MIN 0
+#define RSSI_MAX 70
+
 /** Registers and bits - "x" denotes Si4702/03 only (so they say) **/
 #define DEVICEID    0x0
 #define CHIPID      0x1
@@ -197,7 +201,7 @@ extern int si4700_st(void);
 #define STATUSRSSI_BLERA    (0x3 <<  9) /* x */
 #define STATUSRSSI_ST       (0x1 <<  8)
 #define STATUSRSSI_RSSI     (0xff << 0)
-    #define STATUSRSSI_RSSIr(x) ((x) & 0xff)
+#define STATUSRSSI_RSSIr(x) ((x) & 0xff)
 
 /* READCHAN (0xB) */
 #define READCHAN_BLERB      (0x3 << 14) /* x */
@@ -209,7 +213,6 @@ extern int si4700_st(void);
 /* 4702/03: RDS Block A-D data */
 
 static bool tuner_present = false;
-static int curr_frequency = 87500000; /* Current station frequency (HZ) */
 static uint16_t cache[16];
 
 /* reads <len> registers from radio at offset 0x0A into cache */
@@ -376,8 +379,6 @@ static void si4700_set_frequency(int freq)
     int chan = (freq - bands[band]) / spacings[space];
     int readchan;
 
-    curr_frequency = freq;
-
     do
     {
         /* tuning should be done within 60 ms according to the datasheet */
@@ -412,15 +413,9 @@ static void si4700_set_region(int region)
 
     uint16_t bandspacing = SYSCONFIG2_BANDw(band) |
                            SYSCONFIG2_SPACEw(spacing);
-    uint16_t oldbs = cache[SYSCONFIG2] & (SYSCONFIG2_BAND | SYSCONFIG2_SPACE);
-
     si4700_write_masked(SYSCONFIG1, deemphasis, SYSCONFIG1_DE);
     si4700_write_masked(SYSCONFIG2, bandspacing,
                         SYSCONFIG2_BAND | SYSCONFIG2_SPACE);
-
-    /* Retune if this region change would change the channel number. */
-    if (oldbs != bandspacing)
-        si4700_set_frequency(curr_frequency);
 }
 
 /* tuner abstraction layer: set something to the tuner */
@@ -480,6 +475,18 @@ int si4700_get(int setting)
 
         case RADIO_STEREO:
             val = si4700_st();
+            break;
+    
+        case RADIO_RSSI:
+            val = STATUSRSSI_RSSIr(si4700_read_reg(STATUSRSSI));
+            break;
+
+        case RADIO_RSSI_MIN:
+            val = RSSI_MIN;
+            break;
+
+        case RADIO_RSSI_MAX:
+            val = RSSI_MAX;
             break;
     }
 

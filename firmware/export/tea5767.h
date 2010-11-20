@@ -25,6 +25,7 @@
 
 #define HAVE_RADIO_REGION
 #define HAVE_RADIO_MUTE_TIMEOUT
+#define HAVE_RADIO_RSSI
 
 struct tea5767_dbg_info
 {
@@ -32,6 +33,7 @@ struct tea5767_dbg_info
     unsigned char write_regs[5];
 };
 
+void tea5767_init(void);
 int tea5767_set(int setting, int value);
 int tea5767_get(int setting);
 void tea5767_dbg_info(struct tea5767_dbg_info *info);

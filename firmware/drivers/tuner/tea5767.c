@@ -34,6 +34,11 @@
 #define I2C_ADR 0xC0
 #endif
 
+/* define RSSI range */
+#define RSSI_MIN 10
+#define RSSI_MAX 55
+
+static bool tuner_present = true;
 static unsigned char write_bytes[5] = { 0x00, 0x00, 0x00, 0x00, 0x00 };
 
 static void tea5767_set_clear(int byte, unsigned char bits, int set)
@@ -116,7 +121,7 @@ int tea5767_get(int setting)
     switch(setting)
     {
         case RADIO_PRESENT:
-            val = 1; /* true */
+            val = tuner_present;
             break;
 
         case RADIO_TUNED:
@@ -131,9 +136,41 @@ int tea5767_get(int setting)
         case RADIO_STEREO:
             val = read_bytes[2] >> 7;
             break;
+        
+        case RADIO_RSSI:
+            val = 10 + 3*(read_bytes[3] >> 4);
+            break;
+
+        case RADIO_RSSI_MIN:
+            val = RSSI_MIN;
+            break;
+
+        case RADIO_RSSI_MAX:
+            val = RSSI_MAX;
+            break;
     }
 
     return val;
+}
+
+void tea5767_init(void)
+{
+/* save binsize by only detecting presence for targets where it may be absent */
+#if defined(PHILIPS_HDD1630) || defined(PHILIPS_HDD6330)
+    unsigned char buf[5];
+    unsigned char chipid;
+
+    /* init chipid register with 0xFF in case fmradio_i2c_read fails silently */
+    buf[3] = 0xFF;
+    if (fmradio_i2c_read(I2C_ADR, buf, sizeof(buf)) < 0) {
+        /* no i2c device detected */
+        tuner_present = false;
+    } else {
+        /* check chip id */
+        chipid = buf[3] & 0x0F;
+        tuner_present = (chipid == 0);
+    }
+#endif
 }
 
 void tea5767_dbg_info(struct tea5767_dbg_info *info)

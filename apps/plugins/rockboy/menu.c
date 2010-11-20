@@ -4,12 +4,16 @@
 /* Note: this file only exposes one function: do_user_menu().        */
 /*********************************************************************/
 
+#include "lib/helper.h"
 #include "button.h"
 #include "rockmacros.h"
 #include "mem.h"
 #include "save.h"
 #include "rtc-gb.h"
 #include "pcm.h"
+
+#define SLOT_COUNT  50
+#define DESC_SIZE   20
 
 /* load/save state function declarations */
 static void do_opt_menu(void);
@@ -22,6 +26,7 @@ static void munge_name(char *buf, size_t bufsiz);
 static int getbutton(char *text)
 {
     int fw, fh;
+    int button;
     rb->lcd_clear_display();
     rb->font_getstringsize(text, &fw, &fh,0);
     rb->lcd_putsxy(LCD_WIDTH/2-fw/2, LCD_HEIGHT/2-fh/2, text);
@@ -31,11 +36,10 @@ static int getbutton(char *text)
     while (rb->button_get(false) != BUTTON_NONE)
         rb->yield();
 
-    int button;
     while(true)
     {
         button = rb->button_get(true);
-        button=button&0x00000FFF;
+        button = button&(BUTTON_MAIN|BUTTON_REMOTE);
 
         return button;
     }
@@ -43,18 +47,18 @@ static int getbutton(char *text)
 
 static void setupkeys(void)
 {
-    options.UP=getbutton    ("Press Up");
-    options.DOWN=getbutton  ("Press Down");
-    options.LEFT=getbutton  ("Press Left");
-    options.RIGHT=getbutton ("Press Right");
+    options.UP      = getbutton("Press Up");
+    options.DOWN    = getbutton("Press Down");
+    options.LEFT    = getbutton("Press Left");
+    options.RIGHT   = getbutton("Press Right");
 
-    options.A=getbutton     ("Press A");
-    options.B=getbutton     ("Press B");
+    options.A       = getbutton("Press A");
+    options.B       = getbutton("Press B");
 
-    options.START=getbutton ("Press Start");
-    options.SELECT=getbutton("Press Select");
+    options.START   = getbutton("Press Start");
+    options.SELECT  = getbutton("Press Select");
 
-    options.MENU=getbutton  ("Press Menu");
+    options.MENU    = getbutton("Press Menu");
 }
 
 /*
@@ -76,6 +80,8 @@ int do_user_menu(void) {
 #if defined(HAVE_LCD_MODES) && (HAVE_LCD_MODES & LCD_MODE_PAL256)
     rb->lcd_set_mode(LCD_MODE_RGB565);
 #endif
+
+    backlight_use_settings();
 
     /* Clean out the button Queue */
     while (rb->button_get(false) != BUTTON_NONE) 
@@ -125,6 +131,9 @@ int do_user_menu(void) {
     rb->lcd_set_mode(LCD_MODE_PAL256);
 #endif
 
+    /* ignore backlight time out */
+    backlight_force_on();
+
     return ret;
 }
 
@@ -166,12 +175,12 @@ static void build_slot_path(char *buf, size_t bufsiz, int slot_id) {
  *
  * Returns true on success and false on failure.
  *
- * @desc is a brief user-provided description (<20 bytes) of the state.
+ * @desc is a brief user-provided description of the state.
  * If no description is provided, set @desc to NULL.
  *
  */
 static bool do_file(char *path, char *desc, bool is_load) {
-    char desc_buf[20];
+    char desc_buf[DESC_SIZE];
     int fd, file_mode;
     
     /* set file mode */
@@ -185,7 +194,7 @@ static bool do_file(char *path, char *desc, bool is_load) {
     if (is_load)
     {
         /* load description */
-        read(fd, desc_buf, 20);
+        read(fd, desc_buf, sizeof(desc_buf));
     
         /* load state */
         loadstate(fd);
@@ -196,12 +205,12 @@ static bool do_file(char *path, char *desc, bool is_load) {
     else
     {
         /* build description buffer */
-        memset(desc_buf, 0, 20);
+        memset(desc_buf, 0, sizeof(desc_buf));
         if (desc)
-            strlcpy(desc_buf, desc, 20);
+            strlcpy(desc_buf, desc, sizeof(desc_buf));
 
         /* save state */
-        write(fd, desc_buf, 20);
+        write(fd, desc_buf, sizeof(desc_buf));
         savestate(fd);
     }
     
@@ -212,58 +221,62 @@ static bool do_file(char *path, char *desc, bool is_load) {
     return true;
 }
 
+/* 
+ * get information on the given slot
+ */
+static void slot_info(char *info_buf, size_t info_bufsiz, int slot_id,
+                        bool number) {
+    char buf[256];
+    int fd;
+
+    /* get slot file path */
+    build_slot_path(buf, sizeof(buf), slot_id);
+
+    /* attempt to open slot */
+    if ((fd = open(buf, O_RDONLY)) >= 0)
+    {
+        /* this slot has a some data in it, read it */
+        if (read(fd, buf, DESC_SIZE) == DESC_SIZE)
+        {
+            buf[DESC_SIZE] = '\0';
+            strlcpy(info_buf, buf, info_bufsiz);
+        }
+        else if(number)
+            strlcpy(info_buf, "ERROR", info_bufsiz);
+
+        close(fd);
+    }
+    else if(number)
+    {
+        /* if we couldn't open the file, then the slot is empty */
+        strlcpy(info_buf, "<Empty>", info_bufsiz);
+    }
+}
+
 /*
  * do_slot - load or save game data in the given slot
  *
  * Returns true on success and false on failure.
  */
 static bool do_slot(int slot_id, bool is_load) {
-    char path_buf[256], desc_buf[20];
+    char path_buf[256], desc_buf[DESC_SIZE];
   
     /* build slot filename, clear desc buf */
-    build_slot_path(path_buf, 256, slot_id);
-    memset(desc_buf, 0, 20);
+    build_slot_path(path_buf, sizeof(path_buf), slot_id);
+    memset(desc_buf, 0, sizeof(desc_buf));
 
     /* if we're saving to a slot, then get a brief description */
     if (!is_load)
-        if ( (rb->kbd_input(desc_buf, 20) < 0) || !strlen(desc_buf) )
-        {
-            strlcpy(desc_buf, "Untitled", 20);
-        }
+    {
+        slot_info(desc_buf, sizeof(desc_buf), slot_id, false);
+        if ( rb->kbd_input(desc_buf, sizeof(desc_buf)) < 0 )
+            return false;
+        if ( !strlen(desc_buf) )
+            strlcpy(desc_buf, "Untitled", sizeof(desc_buf));
+    }
 
     /* load/save file */
     return do_file(path_buf, desc_buf, is_load);
-}
-
-/* 
- * get information on the given slot
- */
-static void slot_info(char *info_buf, size_t info_bufsiz, int slot_id) {
-    char buf[256];
-    int fd;
-
-    /* get slot file path */
-    build_slot_path(buf, 256, slot_id);
-
-    /* attempt to open slot */
-    if ((fd = open(buf, O_RDONLY)) >= 0)
-    {
-        /* this slot has a some data in it, read it */
-        if (read(fd, buf, 20) > 0)
-        {
-            buf[20] = '\0';
-            snprintf(info_buf, info_bufsiz, "%d. %s", slot_id + 1, buf);
-        }
-        else
-            snprintf(info_buf, info_bufsiz, "%d. ERROR", slot_id + 1);
-
-        close(fd);
-    }
-    else
-    {
-        /* if we couldn't open the file, then the slot is empty */
-        snprintf(info_buf, info_bufsiz, "%d. %s", slot_id + 1, "<Empty>");
-    }
 }
 
 /* 
@@ -272,10 +285,10 @@ static void slot_info(char *info_buf, size_t info_bufsiz, int slot_id) {
 static const char* slot_get_name(int selected_item, void * data,
                                  char * buffer, size_t buffer_len)
 {
-    const char (*items)[20] = data;
-    (void) buffer;
-    (void) buffer_len;
-    return items[selected_item];
+    const char (*items)[DESC_SIZE] = data;
+    snprintf(buffer, buffer_len, "%d. %s",
+                selected_item + 1, items[selected_item]);
+    return buffer;
 }
 
 /*
@@ -294,17 +307,16 @@ static int list_action_callback(int action, struct gui_synclist *lists)
  */
 static void do_slot_menu(bool is_load) {
     bool done=false;
-    char items[5][20];
+    char items[SLOT_COUNT][DESC_SIZE];
     int result;
     int i;
-    int num_items = sizeof(items) / sizeof(*items);
     struct simplelist_info info;
 
     /* create menu items */
-    for (i = 0; i < num_items; i++)
-        slot_info(items[i], 20, i);
+    for (i = 0; i < SLOT_COUNT; i++)
+        slot_info(items[i], sizeof(*items), i, true);
 
-    rb->simplelist_info_init(&info, NULL, num_items, (void *)items);
+    rb->simplelist_info_init(&info, NULL, SLOT_COUNT, (void *)items);
     info.get_name = slot_get_name;
     info.action_callback = list_action_callback;
 
@@ -314,7 +326,7 @@ static void do_slot_menu(bool is_load) {
             break;
 
         result = info.selection;
-        if (result<num_items && result >= 0 )
+        if (result<SLOT_COUNT && result >= 0 )
             done = do_slot(result, is_load);
         else
             done = true;
@@ -379,13 +391,16 @@ static void do_opt_menu(void)
 #endif
 
     MENUITEM_STRINGLIST(menu, "Options", NULL,
-                        "Max Frameskip", "Sound", "Stats", "Set Keys (Buggy)",
+                        "Max Frameskip", "Sound", "Volume", "Stats", "Set Keys (Buggy)",
 #ifdef HAVE_LCD_COLOR
                         "Screen Size", "Screen Rotate", "Set Palette",
 #endif
                         );
 
     options.dirty=1; /* Assume that the settings have been changed */
+
+    struct viewport *parentvp = NULL;
+    const struct settings_list* vol = rb->find_setting(&rb->global_settings->volume, NULL);
 
     while(!done)
     {
@@ -402,24 +417,27 @@ static void do_opt_menu(void)
                 rb->set_option("Sound", &options.sound, INT, onoff, 2, NULL );
                 if(options.sound) sound_dirty();
                 break;
-            case 2: /* Stats */
+            case 2: /* Volume */
+                rb->option_screen((struct settings_list*)vol, parentvp, false, "Volume");
+                break;
+            case 3: /* Stats */
                 rb->set_option("Stats", &options.showstats, INT, onoff, 2, NULL );
                 break;
-            case 3: /* Keys */
+            case 4: /* Keys */
                 setupkeys();
                 break;
 #ifdef HAVE_LCD_COLOR
-            case 4: /* Screen Size */
+            case 5: /* Screen Size */
                 rb->set_option("Screen Size", &options.scaling, INT, scaling,
                     sizeof(scaling)/sizeof(*scaling), NULL );
                 setvidmode();
                 break;
-            case 5: /* Screen rotate */
+            case 6: /* Screen rotate */
                 rb->set_option("Screen Rotate", &options.rotate, INT, rotate,
                     sizeof(rotate)/sizeof(*rotate), NULL );
                 setvidmode();
                 break;
-            case 6: /* Palette */
+            case 7: /* Palette */
                 rb->set_option("Set Palette", &options.pal, INT, palette, 17, NULL );
                 set_pal();
                 break;

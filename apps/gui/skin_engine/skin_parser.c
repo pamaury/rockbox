@@ -742,6 +742,8 @@ static int parse_progressbar_tag(struct skin_element* element,
         token->type = SKIN_TOKEN_VOLUMEBAR;
     else if (token->type == SKIN_TOKEN_BATTERY_PERCENT)
         token->type = SKIN_TOKEN_BATTERY_PERCENTBAR;
+    else if (token->type == SKIN_TOKEN_TUNER_RSSI)
+        token->type = SKIN_TOKEN_TUNER_RSSI_BAR;
     pb->type = token->type;
         
     return 0;
@@ -1115,12 +1117,19 @@ static bool load_skin_bmp(struct wps_data *wps_data, struct bitmap *bitmap, char
 
     fd = open(img_path, O_RDONLY);
     if (fd < 0)
+    {
+        DEBUGF("Couldn't open %s\n", img_path);
         return false;
+    }
     size_t buf_size = read_bmp_fd(fd, bitmap, 0, 
                                     format|FORMAT_RETURN_SIZE, NULL);  
     char* imgbuf = (char*)skin_buffer_alloc(buf_size);
     if (!imgbuf)
     {
+#ifndef APPLICATION
+        DEBUGF("Not enough skin buffer: need %zd more.\n", 
+                buf_size - skin_buffer_freespace());
+#endif
         close(fd);
         return NULL;
     }
@@ -1401,6 +1410,9 @@ static int skin_element_callback(struct skin_element* element, void* data)
                 case SKIN_TOKEN_VOLUME:
                 case SKIN_TOKEN_BATTERY_PERCENT:
                 case SKIN_TOKEN_PLAYER_PROGRESSBAR:
+#ifdef HAVE_RADIO_RSSI
+                case SKIN_TOKEN_TUNER_RSSI:
+#endif
                     function = parse_progressbar_tag;
                     break;
                 case SKIN_TOKEN_SUBLINE_TIMEOUT:
@@ -1613,13 +1625,13 @@ bool skin_data_load(enum screen_type screen, struct wps_data *wps_data,
     wps_data->backdrop_id = -1;
 #endif
     /* parse the skin source */
-#if ((CONFIG_PLATFORM&PLATFORM_HOSTED) == 0)
+#ifndef APPLICATION
     skin_buffer_save_position();
 #endif
     wps_data->tree = skin_parse(wps_buffer, skin_element_callback, wps_data);
     if (!wps_data->tree) {
         skin_data_reset(wps_data);
-#if ((CONFIG_PLATFORM&PLATFORM_HOSTED) == 0)
+#ifndef APPLICATION
         skin_buffer_restore_position();
 #endif
         return false;
@@ -1643,7 +1655,7 @@ bool skin_data_load(enum screen_type screen, struct wps_data *wps_data,
         !skin_load_fonts(wps_data)) 
     {
         skin_data_reset(wps_data);
-#if ((CONFIG_PLATFORM&PLATFORM_HOSTED) == 0)
+#ifndef APPLICATION
         skin_buffer_restore_position();
 #endif
         return false;

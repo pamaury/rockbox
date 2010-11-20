@@ -22,51 +22,48 @@
 package org.rockbox;
 
 import android.app.Activity;
-import android.content.Intent;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 
 public class RockboxYesno
 {
-	private boolean result;
-	private boolean have_result;
-	
-    public RockboxYesno()
+    @SuppressWarnings("unused")
+    private void yesno_display(final String text, final String yes, final String no)
     {
-    	have_result = false;
-    }    
+        final Activity c = RockboxService.get_instance().get_activity();
 
-    public void yesno_display(String text) 
-    {
-        RockboxActivity a = (RockboxActivity) RockboxService.get_instance().get_activity();
-        Intent kbd = new Intent(a, YesnoActivity.class);
-        kbd.putExtra("value", text);
-        a.waitForActivity(kbd, new HostCallback()
-        {
-            public void onComplete(int resultCode, Intent data) 
+        c.runOnUiThread(new Runnable() {
+            public void run()
             {
-                if (resultCode == Activity.RESULT_OK)
+                new AlertDialog.Builder(c)
+                .setTitle(R.string.KbdInputTitle)
+                .setIcon(R.drawable.icon)
+                .setCancelable(false)
+                .setMessage(text)
+                .setPositiveButton(yes, new DialogInterface.OnClickListener()
                 {
-                    result = true;
-                    have_result = true;
-                }
-                else {
-                    result = false;
-                    have_result = true;
-                }
+                    public void onClick(DialogInterface dialog, int whichButton)
+                    {
+                        put_result(true);
+                    }
+                })
+                .setNegativeButton(no, new DialogInterface.OnClickListener()
+                {
+                    public void onClick(DialogInterface dialog, int whichButton)
+                    {
+                        put_result(false);
+                    }
+                })
+                .show();
             }
         });
     }
 
-    public boolean result_ready()
-    {
-        return have_result;
-    }
-    public boolean get_result()
-    {
-        return result;
-    }
-    
-    public boolean is_usable()
+    @SuppressWarnings("unused")
+    private boolean is_usable()
     {
         return RockboxService.get_instance().get_activity() != null;
     }
+    
+    private native void put_result(boolean result);
 }

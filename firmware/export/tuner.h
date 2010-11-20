@@ -46,6 +46,9 @@ enum
     RADIO_STEREO,
     /* RADIO_EVENT is an event that requests a screen update */
     RADIO_EVENT,
+    RADIO_RSSI,
+    RADIO_RSSI_MIN,
+    RADIO_RSSI_MAX,
 
     /* Put new general-purpose readback values above this line */
     __RADIO_GET_STANDARD_LAST
@@ -91,15 +94,7 @@ extern const struct fm_region_data fm_region_data[TUNER_NUM_REGIONS];
 
 #if CONFIG_TUNER
 
-#if (CONFIG_PLATFORM & PLATFORM_HOSTED)
-int tuner_set(int setting, int value);
-int tuner_get(int setting);
-#ifdef HAVE_RDS_CAP
-char* tuner_get_rds_info(int setting);
-#endif
-#else
-
-#ifdef CONFIG_TUNER_MULTI
+#if !defined(SIMULATOR) && defined(CONFIG_TUNER_MULTI)
 extern int tuner_detect_type(void);
 extern int (*tuner_set)(int setting, int value);
 extern int (*tuner_get)(int setting);
@@ -143,7 +138,14 @@ extern int (*tuner_get)(int setting);
 #include "ipod_remote_tuner.h"
 #endif
 
-#endif /* PLATFORM_HOSTED */
+#if defined(SIMULATOR)
+#undef tuner_set
+int tuner_set(int setting, int value);
+#undef tuner_get
+int tuner_get(int setting);
+#endif
+
+
 
 /* Additional messages that get enumerated after tuner driver headers */
 

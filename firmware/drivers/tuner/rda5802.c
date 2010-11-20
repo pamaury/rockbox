@@ -34,6 +34,10 @@
 
 #define I2C_ADR 0x20
 
+/* define RSSI range */
+#define RSSI_MIN 0
+#define RSSI_MAX 70
+
 /** Registers and bits **/
 #define POWERCFG    0x2
 #define CHANNEL     0x3
@@ -96,7 +100,6 @@ static const uint16_t initvals[16] = {
 };
 
 static bool tuner_present = false;
-static int curr_frequency = 87500000; /* Current station frequency (HZ) */
 static uint16_t cache[16];
 
 /* reads <len> registers from radio at offset 0x0A into cache */
@@ -204,8 +207,6 @@ static void rda5802_set_frequency(int freq)
     int start = CHANNEL_BANDr(cache[CHANNEL]) & 1 ? 76000000 : 87000000;
     int chan = (freq - start) / 50000;
 
-    curr_frequency = freq;
-
     for (i = 0; i < 5; i++) {
         /* tune and wait a bit */
         rda5802_write_masked(CHANNEL, CHANNEL_CHANw(chan) | CHANNEL_TUNE,
@@ -246,21 +247,20 @@ static void rda5802_set_region(int region)
 
     uint16_t bandspacing = CHANNEL_BANDw(band) |
                            CHANNEL_SPACEw(CHANNEL_SPACE_50KHZ);
-    uint16_t oldbs = cache[CHANNEL] & (CHANNEL_BAND | CHANNEL_SPACE);
-
     rda5802_write_masked(SYSCONFIG1, deemphasis, SYSCONFIG1_DE);
     rda5802_write_masked(CHANNEL, bandspacing, CHANNEL_BAND | CHANNEL_SPACE);
     rda5802_write_cache();
-
-    /* Retune if this region change would change the channel number. */
-    if (oldbs != bandspacing) {
-        rda5802_set_frequency(curr_frequency);
-    }
 }
 
 static bool rda5802_st(void)
 {
     return (rda5802_read_reg(READCHAN) & READCHAN_ST);
+}
+
+static int rda5802_rssi(void)
+{
+    uint16_t status = rda5802_read_reg(STATUSRSSI);
+    return STATUSRSSI_RSSIr(status);
 }
 
 /* tuner abstraction layer: set something to the tuner */
@@ -322,6 +322,18 @@ int rda5802_get(int setting)
 
     case RADIO_STEREO:
         val = rda5802_st();
+        break;
+
+    case RADIO_RSSI:
+        val = rda5802_rssi();
+        break;
+
+    case RADIO_RSSI_MIN:
+        val = RSSI_MIN;
+        break;
+
+    case RADIO_RSSI_MAX:
+        val = RSSI_MAX;
         break;
     }
 

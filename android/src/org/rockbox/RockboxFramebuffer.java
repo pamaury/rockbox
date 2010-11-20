@@ -28,16 +28,20 @@ import org.rockbox.Helper.MediaButtonReceiver;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
 
 public class RockboxFramebuffer extends View
 {
     private Bitmap btm;
     private ByteBuffer native_buf;
     private MediaButtonReceiver media_monitor;
+    private final DisplayMetrics metrics;
+    private final ViewConfiguration view_config;
 
     public RockboxFramebuffer(Context c, int lcd_width, 
                               int lcd_height, ByteBuffer native_fb)
@@ -49,18 +53,20 @@ public class RockboxFramebuffer extends View
         setClickable(true);
         btm = Bitmap.createBitmap(lcd_width, lcd_height, Bitmap.Config.RGB_565);
         native_buf = native_fb;
-        requestFocus();
         media_monitor = new MediaButtonReceiver(c);
         media_monitor.register();
         /* the service needs to know the about us */
         ((RockboxService)c).set_fb(this);
+        
+        metrics = c.getResources().getDisplayMetrics();
+        view_config = ViewConfiguration.get(c);
     }
 
     public void onDraw(Canvas c) 
     {
         c.drawBitmap(btm, 0.0f, 0.0f, null);
     }
-    
+
     @SuppressWarnings("unused")
     private void java_lcd_update()
     {
@@ -112,29 +118,41 @@ public class RockboxFramebuffer extends View
         return buttonHandler(keyCode, false);
     }
 
-    /* the two below should only be called from the activity thread */
-    public void suspend()
-    {    /* suspend, Rockbox will not make any lcd updates */
-        set_lcd_active(0);
-    }
-    public void resume()
-    {    
-        /* Needed so we can catch KeyEvents */
-        setFocusable(true);
-        setFocusableInTouchMode(true);
-        setClickable(true);
-        requestFocus();
-        set_lcd_active(1);
-    }
-
     public void destroy()
     {
-        suspend();
+        set_lcd_active(0);
         media_monitor.unregister();
     }
 
-    public native void set_lcd_active(int active);
-    public native void touchHandler(boolean down, int x, int y);
-    public native boolean buttonHandler(int keycode, boolean state);
+    @Override
+    protected void onWindowVisibilityChanged(int visibility)
+    {
+        super.onWindowVisibilityChanged(visibility);
+
+        switch (visibility) {
+            case VISIBLE:
+                set_lcd_active(1);
+                break;
+            case GONE:
+            case INVISIBLE:
+                set_lcd_active(0);
+                break;
+        }
+    }
+ 
+    @SuppressWarnings("unused")
+    private int getDpi()
+    {
+        return metrics.densityDpi;
+    }
     
+    @SuppressWarnings("unused")
+    private int getScrollThreshold()
+    {
+        return view_config.getScaledTouchSlop();
+    }
+
+    private native void set_lcd_active(int active);
+    private native void touchHandler(boolean down, int x, int y);
+    private native boolean buttonHandler(int keycode, boolean state);
 }

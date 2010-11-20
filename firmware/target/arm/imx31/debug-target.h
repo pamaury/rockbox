@@ -23,6 +23,6 @@
 
 #define DEBUG_CANCEL  BUTTON_BACK
 bool __dbg_hw_info(void);
-bool __dbg_ports(void);
+bool dbg_ports(void);
 
 #endif /* DEBUG_TARGET_H */

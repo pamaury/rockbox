@@ -55,9 +55,11 @@ DIRS		+= $(subst ___,gen,$(_DIRS))
 DIRS		+= $(subst ___,data,$(_DIRS))
 DIRS		+= $(BUILDDIR)/libs/armeabi
 
+RES		:= $(wildcard $(ANDROID_DIR)/res/*/*)
+
 CLEANOBJS += bin gen libs data
 
-$(R_JAVA) $(AP_): $(MANIFEST)
+$(R_JAVA) $(AP_): $(MANIFEST) $(DIRS) $(RES)
 	$(call PRINTS,AAPT $(subst $(BUILDDIR)/,,$@))$(AAPT) package -f -m \
 		-J $(BUILDDIR)/gen -M $(MANIFEST) -S $(ANDROID_DIR)/res \
 		-I $(ANDROID_PLATFORM)/android.jar -F $(AP_)
@@ -87,7 +89,7 @@ $(BINLIB_DIR)/libmisc.so: $(BUILDDIR)/rockbox.zip
 
 libs: $(LIBS)
 
-$(TEMP_APK): $(DIRS) $(LIBS) $(DEX)
+$(TEMP_APK): $(AP_) $(DIRS) $(LIBS) $(DEX)
 	$(call PRINTS,APK $(subst $(BUILDDIR)/,,$@))$(APKBUILDER) $@ \
 	-u -z $(AP_) -f $(DEX) -nf $(BUILDDIR)/libs
 

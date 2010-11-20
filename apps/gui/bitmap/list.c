@@ -486,15 +486,25 @@ void _gui_synclist_stop_kinetic_scrolling(void)
  * otherwise it returns true even if it didn't actually scroll,
  * but scrolling mode shouldn't be changed
  **/
+
+ 
+static int scroll_begin_threshold;
+static int threshold_accumulation;
 static bool swipe_scroll(struct gui_synclist * gui_list, int line_height, int difference)
 {
     /* fixme */
     const enum screen_type screen = screens[SCREEN_MAIN].screen_type;
     const int nb_lines = viewport_get_nb_lines(&list_text[screen]);
 
+    if (UNLIKELY(scroll_begin_threshold == 0))
+        scroll_begin_threshold = touchscreen_get_scroll_threshold();
+
     /* make selecting items easier */
-    if (abs(difference) < SCROLL_BEGIN_THRESHOLD && scroll_mode == SCROLL_NONE)
+    threshold_accumulation += abs(difference);
+    if (threshold_accumulation < scroll_begin_threshold && scroll_mode == SCROLL_NONE)
         return false;
+
+    threshold_accumulation = 0;
 
     /* does the list even scroll? if no, return but still show
      * the caller that we would scroll */
@@ -630,8 +640,11 @@ unsigned gui_synclist_do_touchscreen(struct gui_synclist * gui_list)
                         && !is_kinetic_over());
     int icon_width = 0;
     int line, list_width = list_text_vp->width;
+    static bool wait_for_release = false;
 
     released = (button&BUTTON_REL) != 0;
+    if (released)
+        wait_for_release = false;
 
     if (button == ACTION_NONE || button == ACTION_UNKNOWN)
     {
@@ -738,21 +751,23 @@ unsigned gui_synclist_do_touchscreen(struct gui_synclist * gui_list)
                 return ACTION_NONE;
             }
 
+            if (button & BUTTON_REPEAT && scroll_mode == SCROLL_NONE
+                && !wait_for_release)
+            {
+                /* held a single line for a while, bring up the context menu */
+                gui_synclist_select_item(gui_list, list_start_item + line);
+                /* don't sent context repeatedly */
+                wait_for_release = true;
+                return ACTION_STD_CONTEXT;
+            }
             if (released && !cancelled_kinetic)
             {
                 /* Pen was released anywhere on the screen */
                 last_position = 0;
                 if (scroll_mode == SCROLL_NONE)
                 {
+                    /* select current line */
                     gui_synclist_select_item(gui_list, list_start_item + line);
-                    /* If BUTTON_REPEAT is set, then the pen was hold on
-                     * the same line for some time
-                     *  -> context menu
-                     * otherwise,
-                     *  -> select
-                     **/
-                    if (button & BUTTON_REPEAT)
-                        return ACTION_STD_CONTEXT;
                     return ACTION_STD_OK;
                 }
                 else
