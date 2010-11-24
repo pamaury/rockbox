@@ -29,7 +29,7 @@
 #include "usb_test.h"
 #include "usb_test_def.h"
 #include "usb_class_driver.h"
-//#define LOGF_ENABLE
+#define LOGF_ENABLE
 #include "logf.h"
 #include "stdlib.h"
 #include "audio.h"
@@ -545,11 +545,12 @@ void usb_test_disconnect(void)
 void usb_test_transfer_complete(int ep, int dir, int status, int length, void *buffer)
 {
     (void)dir;
-    
+
+    /*
     logf("usbtest: xfer complete");
     logf("usbtest: ep=%d dir=%d status=%d length=%d buf=0x%x (main=0x%x)", ep, dir, status, length, 
         (unsigned int)buffer, (unsigned int)usb_buffer);
-
+    */
     if(status == 0 && ep == ep_iso_out)
     {
         #ifndef USB_TEST_USE_REPEAT_MODE
@@ -570,7 +571,7 @@ void usb_test_transfer_complete(int ep, int dir, int status, int length, void *b
             #endif
         }
         
-        //process_out_data(length, buffer);
+        process_out_data(length, buffer);
         #ifdef USB_TEST_WRITE_TO_FILE
         /*
         memcpy(write_buffer + write_buffer_size, buffer, length);
