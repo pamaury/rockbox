@@ -27,7 +27,6 @@
 #include "pcm_sampr.h"
 #include "audio.h"
 #include "pcm.h"
-#include "file.h"
 #include "sound.h"
 #include "stdlib.h"
 
@@ -36,7 +35,6 @@
 
 #define USB_AUDIO_USE_INTERMEDIATE_BUFFER
 //#define USE_AUDIO_INTF_HAVE_NAMES
-//#define USB_AUDIO_DUMP_TO_FILE
 
 /* Strings */
 enum
@@ -309,20 +307,6 @@ static bool playback_audio_underflow;
 static unsigned char *usb_audio_slot_buffers[USB_AUDIO_NB_SLOTS];
 static unsigned char usb_audio_ep_slots[2][USB_AUDIO_NB_SLOTS * USB_DRV_SLOT_SIZE] USB_DRV_SLOT_ATTR;
 
-#ifdef USB_AUDIO_DUMP_TO_FILE
-
-#define USB_AUDIO_THREAD_START_PLAYBACK     1
-#define USB_AUDIO_THREAD_STOP_PLAYBACK      2
-#define USB_AUDIO_THREAD_KEEP_ALIVE         3
-
-static struct event_queue usbaudio_queue;
-static long usbaudio_stack[(DEFAULT_STACK_SIZE + 0x400)/sizeof(long)];
-static const char usbaudio_thread_name[] = "usbaudio";
-static bool usbaudio_thread_created = false;
-
-#define USB_AUDIO_DUMP_FILE "/usb_audio.wav"
-#endif /* USB_AUDIO_DUMP_TO_FILE */
-
 static void encode3(uint8_t arr[3], unsigned long freq)
 {
     /* ugly */
@@ -356,152 +340,6 @@ static unsigned long get_playback_sampling_frequency(void)
     return hw_freq_sampr[as_playback_freq_idx];
 }
 
-#ifdef USB_AUDIO_DUMP_TO_FILE
-
-struct riff_header
-{
-    uint8_t  riff_id[4];      /* 00h - "RIFF"                            */
-    uint32_t riff_size;       /* 04h - sz following headers + data_size  */
-    /* format header */
-    uint8_t  format[4];       /* 08h - "WAVE"                            */
-    uint8_t  format_id[4];    /* 0Ch - "fmt "                            */
-    uint32_t format_size;     /* 10h - 16 for PCM (sz format data)       */
-    /* format data */
-    uint16_t audio_format;    /* 14h - 1=PCM                             */
-    uint16_t num_channels;    /* 16h - 1=M, 2=S, etc.                    */
-    uint32_t sample_rate;     /* 18h - HZ                                */
-    uint32_t byte_rate;       /* 1Ch - num_channels*sample_rate*bits_per_sample/8 */
-    uint16_t block_align;     /* 20h - num_channels*bits_per_samples/8   */
-    uint16_t bits_per_sample; /* 22h - 8=8 bits, 16=16 bits, etc.        */
-    /* Not for audio_format=1 (PCM) */
-/*  unsigned short extra_param_size;   24h - size of extra data          */ 
-/*  unsigned char  *extra_params; */
-    /* data header */
-    uint8_t  data_id[4];      /* 24h - "data" */
-    uint32_t data_size;       /* 28h - num_samples*num_channels*bits_per_sample/8 */
-/*  unsigned char  *data;              2ch - actual sound data */
-} __attribute__((packed));
-
-#define RIFF_FMT_HEADER_SIZE       12 /* format -> format_size */
-#define RIFF_FMT_DATA_SIZE         16 /* audio_format -> bits_per_sample */
-#define RIFF_DATA_HEADER_SIZE       8 /* data_id -> data_size */
-
-static struct riff_header riff_header =
-{
-    /* "RIFF" header */
-    { 'R', 'I', 'F', 'F' },         /* riff_id          */
-    0,                              /* riff_size   (*)  */
-    /* format header */ 
-    { 'W', 'A', 'V', 'E' },         /* format           */
-    { 'f', 'm', 't', ' ' },         /* format_id        */
-    H_TO_LE32(16),                  /* format_size      */
-    /* format data */
-    H_TO_LE16(1),                   /* audio_format     */
-    2,                              /* num_channels */
-    0,                              /* sample_rate  (*) */
-    0,                              /* byte_rate    (*) */
-    4,                              /* block_align */
-    H_TO_LE16(16),                  /* bits_per_sample  */
-    /* data header */
-    { 'd', 'a', 't', 'a' },         /* data_id          */
-    0                               /* data_size    (*) */
-    /* (*) updated on file open/close */
-};
-
-static void write_wav_header(int fd)
-{
-    logf("usbaudio: write wav header to dump file");
-    riff_header.sample_rate = hw_freq_sampr[as_playback_freq_idx];
-    riff_header.byte_rate = riff_header.sample_rate * 2 * 16 / 8;
-
-    write(fd, &riff_header, sizeof(riff_header));
-}
-
-static void finish_wav_header(int fd)
-{
-    logf("usbaudio: finish wav header of dump file");
-    uint32_t size = lseek(fd, 0, SEEK_END);
-    lseek(fd, offsetof(struct riff_header, riff_size), SEEK_SET);
-    size -= 8;
-    write(fd, &size, sizeof size);
-    lseek(fd, offsetof(struct riff_header, data_size), SEEK_SET);
-    size -= RIFF_FMT_HEADER_SIZE + RIFF_FMT_DATA_SIZE + RIFF_DATA_HEADER_SIZE;
-    write(fd, &size, sizeof size);
-}
-
-static void usbaudio_thread(void)
-{
-    struct queue_event ev;
-    static int playback_audio_buffer_dump_start = 0;
-    static int file_fd = -1;
-    static int write_stats = 0;
-
-    logf("usbaudio: dumping thread started");
-
-    while (1)
-    {
-        queue_wait(&usbaudio_queue, &ev);
-
-        switch(ev.id)
-        {
-            case USB_AUDIO_THREAD_START_PLAYBACK:
-                logf("usbaudio: start playback, dump to %s", USB_AUDIO_DUMP_FILE);
-                playback_audio_buffer_dump_start = 0;
-                if(file_fd != -1)
-                    close(file_fd);
-                file_fd = open(USB_AUDIO_DUMP_FILE, O_CREAT | O_RDWR);
-                if(file_fd == -1)
-                {
-                    logf("usbaudio: unable to open dumping file");
-                    break;
-                }
-                if(lseek(file_fd, 0, SEEK_END) == 0)
-                    write_wav_header(file_fd);
-                write_stats = 0;
-                break;
-            case USB_AUDIO_THREAD_STOP_PLAYBACK:
-                if(file_fd != -1)
-                {
-                    logf("usbaudio: stop playback");
-                    logf("usbaudio: %d bytes written", write_stats);
-                    finish_wav_header(file_fd);
-                    close(file_fd);
-                    file_fd = -1;
-                }
-                break;
-            case USB_AUDIO_THREAD_KEEP_ALIVE:
-                if(file_fd == -1)
-                    break;
-                if(playback_audio_buffer_dump_start <= playback_audio_buffer_end)
-                {
-                    lseek(file_fd, 0, SEEK_END);
-                    write(file_fd, playback_audio_buffer + playback_audio_buffer_dump_start,
-                        playback_audio_buffer_end - playback_audio_buffer_dump_start);
-                    write_stats += playback_audio_buffer_end - playback_audio_buffer_dump_start;
-                    playback_audio_buffer_dump_start = playback_audio_buffer_end;
-                }
-                else
-                {
-                    lseek(file_fd, 0, SEEK_END);
-                    write(file_fd, playback_audio_buffer + playback_audio_buffer_dump_start,
-                        PLAYBACK_AUDIO_BUFFER_SIZE - playback_audio_buffer_dump_start);
-                    write_stats += PLAYBACK_AUDIO_BUFFER_SIZE - playback_audio_buffer_dump_start;
-                    playback_audio_buffer_dump_start = 0;
-                }
-                break;
-            #if (CONFIG_PLATFORM & PLATFORM_NATIVE)
-            case SYS_USB_CONNECTED:
-                usb_acknowledge(SYS_USB_CONNECTED_ACK);
-                break;
-            #endif
-            default:
-                break;
-        }
-    }
-}
-
-#endif /* USB_AUDIO_DUMP_TO_FILE */
-
 void usb_audio_init(void)
 {
     unsigned int i;
@@ -534,24 +372,6 @@ void usb_audio_init(void)
         usb_audio_slot_buffers[i] = audio_buffer;
         audio_buffer += USB_AUDIO_SLOT_SIZE;
     }
-
-    #ifdef USB_AUDIO_DUMP_TO_FILE
-    if(!usbaudio_thread_created)
-    {
-        int thread_id;
-        
-        usbaudio_thread_created = true;
-        queue_init(&usbaudio_queue, true);
-        
-        thread_id = create_thread(usbaudio_thread, usbaudio_stack,
-                    sizeof(usbaudio_stack), 0, usbaudio_thread_name
-                    IF_PRIO(, PRIORITY_BACKGROUND)
-                    IF_COP(, CPU));
-        #ifdef HAVE_IO_PRIORITY
-        thread_set_io_priority(thread_id, IO_PRIORITY_BACKGROUND);
-        #endif
-    }
-    #endif
 }
 
 int usb_audio_request_endpoints(struct usb_class_driver *drv)
@@ -702,24 +522,12 @@ static void usb_audio_start_playback(void)
     pcm_play_data(&playback_audio_pcm_get_more, NULL, 0);
     if(!pcm_is_playing())
         pcm_play_stop();
-
-    #ifdef USB_AUDIO_DUMP_TO_FILE
-    queue_post(&usbaudio_queue, USB_AUDIO_THREAD_START_PLAYBACK, 0);
-    #endif
-
-    iso_recv_stats = 0;
 }
 
 static void usb_audio_stop_playback(void)
 {
     if(pcm_is_playing())
         pcm_play_stop();
-
-    #ifdef USB_AUDIO_DUMP_TO_FILE
-    queue_post(&usbaudio_queue, USB_AUDIO_THREAD_STOP_PLAYBACK, 0);
-    #endif
-
-    logf("usbaudio: %d received", iso_recv_stats);
 }
 
 int usb_audio_set_interface(int intf, int alt)
@@ -1141,10 +949,6 @@ void usb_audio_transfer_complete(int ep, int dir, int status, int length, void *
                     playback_audio_underflow = false;
                 }
             }
-            #endif
-
-            #ifdef USB_AUDIO_DUMP_TO_FILE
-            queue_post(&usbaudio_queue, USB_AUDIO_THREAD_KEEP_ALIVE, 0);
             #endif
         }
     }
