@@ -21,9 +21,6 @@
 
 #if defined(CPU_COLDFIRE)
 
-/* attribute for 16-byte alignment */
-#define LINE_ATTR   __attribute__ ((aligned (16)))
-
 #ifndef _V_WIDE_MATH
 #define _V_WIDE_MATH
 
@@ -120,7 +117,7 @@ void XNPROD31(int32_t  a, int32_t  b,
                 "asr.l #1, %[x];" \
                 "movclr.l %%acc1, %[y];" \
                 "asr.l #1, %[y];" \
-                : [x] "=&d" (_x), [y] "=&d" (_y) \
+                : [x] "=d" (_x), [y] "=d" (_y) \
                 : [a] "r" (_a), [b] "r" (_b), \
                   [t] "r" (_t), [v] "r" (_v) \
                 : "cc");
@@ -132,7 +129,7 @@ void XNPROD31(int32_t  a, int32_t  b,
                 "msac.l %[a], %[v], %%acc1;" \
                 "movclr.l %%acc0, %[x];" \
                 "movclr.l %%acc1, %[y];" \
-                : [x] "=&d" (_x), [y] "=&d" (_y) \
+                : [x] "=r" (_x), [y] "=r" (_y) \
                 : [a] "r" (_a), [b] "r" (_b), \
                   [t] "r" (_t), [v] "r" (_v) \
                 : "cc");
@@ -144,7 +141,7 @@ void XNPROD31(int32_t  a, int32_t  b,
                 "mac.l %[a], %[v], %%acc1;" \
                 "movclr.l %%acc0, %[x];" \
                 "movclr.l %%acc1, %[y];" \
-                : [x] "=&d" (_x), [y] "=&d" (_y) \
+                : [x] "=r" (_x), [y] "=r" (_y) \
                 : [a] "r" (_a), [b] "r" (_b), \
                   [t] "r" (_t), [v] "r" (_v) \
                 : "cc");
@@ -338,7 +335,4 @@ static inline int32_t CLIP_TO_15(register int32_t x) {
 
 #endif
 */
-#else
-#define LINE_ATTR
 #endif
-

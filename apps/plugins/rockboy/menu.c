@@ -11,6 +11,7 @@
 #include "save.h"
 #include "rtc-gb.h"
 #include "pcm.h"
+#include "emu.h"
 
 #define SLOT_COUNT  50
 #define DESC_SIZE   20
@@ -89,7 +90,7 @@ int do_user_menu(void) {
 
     MENUITEM_STRINGLIST(menu, "Rockboy Menu", NULL,
                         "Load Game", "Save Game",
-                        "Options", "Quit");
+                        "Options", "Reset", "Quit");
 
     rockboy_pcm_init();
 
@@ -108,7 +109,11 @@ int do_user_menu(void) {
             case 2: /* Options */
                 do_opt_menu();
                 break;
-            case 3: /* Quit */
+            case 3: /* Reset */
+                emu_reset();
+                done=true;
+                break;
+            case 4: /* Quit */
                 ret = USER_MENU_QUIT;
                 done=true;
                 break;
@@ -344,6 +349,12 @@ static void do_opt_menu(void)
         { "On" , -1 },
     };
 
+    static const struct opt_items stats[3] = {
+        { "Off", -1 },
+        { "Short" , -1 },
+        { "Full" , -1 },
+    };
+
     static const struct opt_items frameskip[]= {
         { "0 Max", -1 },
         { "1 Max", -1 },
@@ -352,6 +363,20 @@ static void do_opt_menu(void)
         { "4 Max", -1 },
         { "5 Max", -1 },
         { "6 Max", -1 },
+        { "7 Max", -1 },
+        { "8 Max", -1 },
+        { "9 Max", -1 },
+        { "10 Max", -1 },
+        { "11 Max", -1 },
+        { "12 Max", -1 },
+        { "13 Max", -1 },
+        { "14 Max", -1 },
+        { "15 Max", -1 },
+        { "16 Max", -1 },
+        { "17 Max", -1 },
+        { "18 Max", -1 },
+        { "19 Max", -1 },
+        { "20 Max", -1 },
     };
     
 #ifdef HAVE_LCD_COLOR
@@ -421,7 +446,7 @@ static void do_opt_menu(void)
                 rb->option_screen((struct settings_list*)vol, parentvp, false, "Volume");
                 break;
             case 3: /* Stats */
-                rb->set_option("Stats", &options.showstats, INT, onoff, 2, NULL );
+                rb->set_option("Stats", &options.showstats, INT, stats, 3, NULL );
                 break;
             case 4: /* Keys */
                 setupkeys();
