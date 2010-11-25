@@ -52,7 +52,8 @@
      (defined(HAVE_USBSTACK) && (defined(IPOD_NANO2G))) || \
      defined(CPU_TCC77X) || defined(CPU_TCC780X) || \
      (CONFIG_USBOTG == USBOTG_JZ4740) || \
-     (defined(USE_ROCKBOX_USB) && CONFIG_USBOTG == USBOTG_AS3525)
+     (defined(USE_ROCKBOX_USB) && CONFIG_USBOTG == USBOTG_AS3525) || \
+     (defined(USE_ROCKBOX_USB) && CONFIG_USBOTG == USBOTG_AS3525v2)
 #define USB_FULL_INIT
 #endif
 
@@ -68,10 +69,9 @@ static int usb_state;
 static int usb_mmc_countdown = 0;
 #endif
 
-/* FIXME: The extra 0x800 is consumed by fat_mount() when the fsinfo
-   needs updating */
+/* Make sure there's enough stack space for screendump */
 #ifdef USB_FULL_INIT
-static long usb_stack[(DEFAULT_STACK_SIZE + 0x800)/sizeof(long)];
+static long usb_stack[(DEFAULT_STACK_SIZE + SECTOR_SIZE + DUMP_BMP_LINESIZE)/sizeof(long)];
 static const char usb_thread_name[] = "usb";
 static unsigned int usb_thread_entry = 0;
 #ifndef USB_STATUS_BY_EVENT

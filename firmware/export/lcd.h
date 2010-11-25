@@ -507,6 +507,8 @@ extern void lcd_hline(int x1, int x2, int y);
 extern void lcd_vline(int x, int y1, int y2);
 extern void lcd_drawrect(int x, int y, int width, int height);
 extern void lcd_fillrect(int x, int y, int width, int height);
+extern void lcd_draw_border_viewport(void);
+extern void lcd_fill_viewport(void);
 extern void lcd_bitmap_part(const fb_data *src, int src_x, int src_y,
                             int stride, int x, int y, int width, int height);
 extern void lcd_bitmap(const fb_data *src, int x, int y, int width,
@@ -546,5 +548,15 @@ extern void lcd_bitmap_transparent(const fb_data *src, int x, int y,
 #endif /* LCD_DEPTH */
 
 #endif /* HAVE_LCD_BITMAP */
+
+
+#ifdef HAVE_TOUCHSCREEN
+/* only needed for touchscreen for now, feel free to implement it for others
+ * once needed
+ */
+
+/* returns the pixel density of the display */
+extern int lcd_get_dpi(void);
+#endif
 
 #endif /* __LCD_H__ */

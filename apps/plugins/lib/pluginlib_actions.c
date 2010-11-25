@@ -163,7 +163,8 @@ const struct button_mapping pla_main_ctx[] =
     { PLA_DOWN_REPEAT,      BUTTON_VOL_DOWN|BUTTON_REPEAT,      BUTTON_NONE },
     { PLA_LEFT_REPEAT,      BUTTON_LEFT|BUTTON_REPEAT,          BUTTON_NONE },
     { PLA_RIGHT_REPEAT,     BUTTON_RIGHT|BUTTON_REPEAT,         BUTTON_NONE },
-#elif (CONFIG_KEYPAD == PHILIPS_SA9200_PAD)
+#elif (CONFIG_KEYPAD == PHILIPS_HDD6330_PAD) \
+    || (CONFIG_KEYPAD == PHILIPS_SA9200_PAD)
     { PLA_UP,               BUTTON_UP,                          BUTTON_NONE },
     { PLA_DOWN,             BUTTON_DOWN,                        BUTTON_NONE },
     { PLA_LEFT,             BUTTON_PREV,                        BUTTON_NONE },
@@ -191,12 +192,12 @@ const struct button_mapping pla_main_ctx[] =
     { PLA_LEFT_REPEAT,       BUTTON_PREV|BUTTON_REPEAT,         BUTTON_NONE},
     { PLA_RIGHT_REPEAT,      BUTTON_NEXT|BUTTON_REPEAT,         BUTTON_NONE},
 #elif (CONFIG_KEYPAD == MPIO_HD200_PAD)
-    { PLA_UP,                BUTTON_PREV,                       BUTTON_NONE},
-    { PLA_DOWN,              BUTTON_NEXT,                       BUTTON_NONE},
+    { PLA_UP,                BUTTON_REW,                        BUTTON_NONE},
+    { PLA_DOWN,              BUTTON_FF,                         BUTTON_NONE},
     { PLA_LEFT,              BUTTON_VOL_DOWN,                   BUTTON_NONE},
     { PLA_RIGHT,             BUTTON_VOL_UP,                     BUTTON_NONE},
-    { PLA_UP_REPEAT,         BUTTON_PREV|BUTTON_REPEAT,         BUTTON_NONE},
-    { PLA_DOWN_REPEAT,       BUTTON_NEXT|BUTTON_REPEAT,         BUTTON_NONE},
+    { PLA_UP_REPEAT,         BUTTON_REW|BUTTON_REPEAT,          BUTTON_NONE},
+    { PLA_DOWN_REPEAT,       BUTTON_FF|BUTTON_REPEAT,           BUTTON_NONE},
     { PLA_LEFT_REPEAT,       BUTTON_VOL_DOWN|BUTTON_REPEAT,     BUTTON_NONE},
     { PLA_RIGHT_REPEAT,      BUTTON_VOL_UP|BUTTON_REPEAT,       BUTTON_NONE},
 #else
@@ -250,7 +251,6 @@ const struct button_mapping pla_main_ctx[] =
     || CONFIG_KEYPAD == SANSA_CLIP_PAD \
     || CONFIG_KEYPAD == SANSA_M200_PAD \
     || CONFIG_KEYPAD == MROBE100_PAD \
-    || CONFIG_KEYPAD == PHILIPS_SA9200_PAD \
     || CONFIG_KEYPAD == PHILIPS_HDD1630_PAD)
     {PLA_CANCEL,            BUTTON_POWER|BUTTON_REL,            BUTTON_POWER},
     {PLA_EXIT,              BUTTON_POWER|BUTTON_REPEAT,         BUTTON_NONE},
@@ -323,9 +323,10 @@ const struct button_mapping pla_main_ctx[] =
     {PLA_SELECT,            BUTTON_RC_MODE,                     BUTTON_NONE},
     {PLA_SELECT_REL,        BUTTON_RC_MODE|BUTTON_REL,          BUTTON_RC_MODE},
     {PLA_SELECT_REPEAT,     BUTTON_RC_MODE|BUTTON_REPEAT,       BUTTON_NONE},
-#elif CONFIG_KEYPAD == PHILIPS_SA9200_PAD
+#elif (CONFIG_KEYPAD == PHILIPS_HDD6330_PAD) \
+    || (CONFIG_KEYPAD == PHILIPS_SA9200_PAD)
     {PLA_EXIT,              BUTTON_POWER,                       BUTTON_NONE},
-    {PLA_CANCE              BUTTON_MENU,                        BUTTON_NONE},
+    {PLA_CANCEL,            BUTTON_MENU,                        BUTTON_NONE},
     {PLA_SELECT,            BUTTON_PLAY,                        BUTTON_NONE},
     {PLA_SELECT_REL,        BUTTON_PLAY|BUTTON_REL,             BUTTON_PLAY},
     {PLA_SELECT_REPEAT,     BUTTON_PLAY|BUTTON_REPEAT,          BUTTON_NONE},
@@ -362,9 +363,9 @@ const struct button_mapping pla_main_ctx[] =
 #elif (CONFIG_KEYPAD == MPIO_HD200_PAD)                                      
     {PLA_CANCEL,            BUTTON_REC,                         BUTTON_NONE},
     {PLA_EXIT,              (BUTTON_REC|BUTTON_PLAY),           BUTTON_NONE},
-    {PLA_SELECT,            BUTTON_SELECT,                      BUTTON_NONE},
-    {PLA_SELECT_REL,        BUTTON_SELECT|BUTTON_REL,           BUTTON_SELECT},
-    {PLA_SELECT_REPEAT,     BUTTON_SELECT|BUTTON_REPEAT,        BUTTON_NONE},
+    {PLA_SELECT,            BUTTON_FUNC,                        BUTTON_NONE},
+    {PLA_SELECT_REL,        BUTTON_FUNC|BUTTON_REL,             BUTTON_FUNC},
+    {PLA_SELECT_REPEAT,     BUTTON_FUNC|BUTTON_REPEAT,          BUTTON_NONE},
 #else
 #   ifndef HAVE_TOUCHSCREEN
 #       error pluginlib_actions: No actions defined

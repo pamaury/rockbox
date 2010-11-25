@@ -131,7 +131,7 @@ void draw_progressbar(struct gui_wps *gwps, int line, struct progressbar *pb)
     struct viewport *vp = pb->vp;
     struct wps_state *state = skin_get_global_state();
     struct mp3entry *id3 = state->id3;
-    int y = pb->y, height = pb->height;
+    int x = pb->x, y = pb->y, width = pb->width, height = pb->height;
     unsigned long length, end;
     int flags = HORIZONTAL;
     
@@ -162,9 +162,22 @@ void draw_progressbar(struct gui_wps *gwps, int line, struct progressbar *pb)
 #if CONFIG_TUNER
     else if (in_radio_screen() || (get_radio_status() != FMRADIO_OFF))
     {
-        int min = fm_region_data[global_settings.fm_region].freq_min;
-        end = radio_current_frequency() - min;
-        length = fm_region_data[global_settings.fm_region].freq_max - min;
+#ifdef HAVE_RADIO_RSSI
+        if (pb->type == SKIN_TOKEN_TUNER_RSSI_BAR)
+        {
+            int val = tuner_get(RADIO_RSSI);
+            int min = tuner_get(RADIO_RSSI_MIN);
+            int max = tuner_get(RADIO_RSSI_MAX);
+            end = val - min;
+            length = max - min;
+        }
+        else
+#endif
+        {
+            int min = fm_region_data[global_settings.fm_region].freq_min;
+            end = radio_current_frequency() - min;
+            length = fm_region_data[global_settings.fm_region].freq_max - min;
+        }
     }
 #endif
     else if (id3 && id3->length)
@@ -194,29 +207,48 @@ void draw_progressbar(struct gui_wps *gwps, int line, struct progressbar *pb)
         flags |= INNER_NOFILL;
     }
 
-    if (pb->have_bitmap_pb)
-        gui_bitmap_scrollbar_draw(display, &pb->bm,
-                                pb->x, y, pb->width, height,
-                                length, 0, end, flags);
-    else
-        gui_scrollbar_draw(display, pb->x, y, pb->width, height,
-                           length, 0, end, flags);
+    if (pb->slider)
+    {
+        struct gui_img *img = pb->slider;
+        /* clear the slider */
+        screen_clear_area(display, x, y, width, height);
+
+        /* shrink the bar so the slider is inside bounds */
+        if (flags&HORIZONTAL)
+        {
+            width -= img->bm.width;
+            x += img->bm.width / 2;
+        }
+        else
+        {
+            height -= img->bm.height;
+            y += img->bm.height / 2;
+        }
+    }
+    if (!pb->nobar)
+    {
+        if (pb->image)
+            gui_bitmap_scrollbar_draw(display, &pb->image->bm,
+                                    x, y, width, height,
+                                    length, 0, end, flags);
+        else
+            gui_scrollbar_draw(display, x, y, width, height,
+                               length, 0, end, flags);
+    }
 
     if (pb->slider)
     {
         int xoff = 0, yoff = 0;
-        int w = pb->width, h = height;
+        int w = width, h = height;
         struct gui_img *img = pb->slider;
 
         if (flags&HORIZONTAL)
         {
             w = img->bm.width;
-            xoff = pb->width * end / length;
+            xoff = width * end / length;
             if (flags&INVERTFILL)
-                xoff = pb->width - xoff;
-#if 0 /* maybe add this in later, make the slider bmp overlap abit */
+                xoff = width - xoff;
             xoff -= w / 2;
-#endif
         }
         else
         {
@@ -224,23 +256,21 @@ void draw_progressbar(struct gui_wps *gwps, int line, struct progressbar *pb)
             yoff = height * end / length;
             if (flags&INVERTFILL)
                 yoff = height - yoff;
-#if 0 /* maybe add this in later, make the slider bmp overlap abit */
             yoff -= h / 2;
-#endif
         }
 #if LCD_DEPTH > 1
         if(img->bm.format == FORMAT_MONO) {
 #endif
             display->mono_bitmap_part(img->bm.data,
                                       0, 0, img->bm.width,
-                                      pb->x + xoff, y + yoff, w, h);
+                                      x + xoff, y + yoff, w, h);
 #if LCD_DEPTH > 1
         } else {
             display->transparent_bitmap_part((fb_data *)img->bm.data,
                                              0, 0,
                                              STRIDE(display->screen_type,
                                              img->bm.width, img->bm.height),
-                                             pb->x + xoff, y + yoff, w, h);
+                                             x + xoff, y + yoff, w, h);
         }
 #endif
     }
@@ -251,18 +281,17 @@ void draw_progressbar(struct gui_wps *gwps, int line, struct progressbar *pb)
         {
 #ifdef AB_REPEAT_ENABLE
             if (ab_repeat_mode_enabled())
-                ab_draw_markers(display, id3->length,
-                                pb->x, y, pb->width, height);
+                ab_draw_markers(display, id3->length, x, y, width, height);
 #endif
 
             if (id3->cuesheet)
                 cue_draw_markers(display, id3->cuesheet, id3->length,
-                                 pb->x, y+1, pb->width, height-2);
+                                 x, y+1, width, height-2);
         }
 #if 0 /* disable for now CONFIG_TUNER */
         else if (in_radio_screen() || (get_radio_status() != FMRADIO_OFF))
         {
-            presets_draw_markers(display, pb->x, y, pb->width, height);
+            presets_draw_markers(display, x, y, width, height);
         }
 #endif
     }
@@ -349,149 +378,7 @@ void wps_display_images(struct gui_wps *gwps, struct viewport* vp)
     display->set_drawmode(DRMODE_SOLID);
 }
 
-#else /* HAVE_LCD_CHARCELL */
-
-bool draw_player_progress(struct gui_wps *gwps)
-{
-    struct wps_state *state = skin_get_global_state();
-    struct screen *display = gwps->display;
-    unsigned char progress_pattern[7];
-    int pos = 0;
-    int i;
-
-    int elapsed, length;
-    if (LIKELY(state->id3))
-    {
-        elapsed = state->id3->elapsed;
-        length = state->id3->length;
-    }
-    else
-    {
-        elapsed = 0;
-        length = 0;
-    }
-
-    if (length)
-        pos = 36 * (elapsed + state->ff_rewind_count) / length;
-
-    for (i = 0; i < 7; i++, pos -= 5)
-    {
-        if (pos <= 0)
-            progress_pattern[i] = 0x1fu;
-        else if (pos >= 5)
-            progress_pattern[i] = 0x00u;
-        else
-            progress_pattern[i] = 0x1fu >> pos;
-    }
-
-    display->define_pattern(gwps->data->wps_progress_pat[0], progress_pattern);
-    return true;
-}
-
-void draw_player_fullbar(struct gui_wps *gwps, char* buf, int buf_size)
-{
-    static const unsigned char numbers[10][4] = {
-        {0x0e, 0x0a, 0x0a, 0x0e}, /* 0 */
-        {0x04, 0x0c, 0x04, 0x04}, /* 1 */
-        {0x0e, 0x02, 0x04, 0x0e}, /* 2 */
-        {0x0e, 0x02, 0x06, 0x0e}, /* 3 */
-        {0x08, 0x0c, 0x0e, 0x04}, /* 4 */
-        {0x0e, 0x0c, 0x02, 0x0c}, /* 5 */
-        {0x0e, 0x08, 0x0e, 0x0e}, /* 6 */
-        {0x0e, 0x02, 0x04, 0x08}, /* 7 */
-        {0x0e, 0x0e, 0x0a, 0x0e}, /* 8 */
-        {0x0e, 0x0e, 0x02, 0x0e}, /* 9 */
-    };
-
-    struct wps_state *state = skin_get_global_state();
-    struct screen *display = gwps->display;
-    struct wps_data *data = gwps->data;
-    unsigned char progress_pattern[7];
-    char timestr[10];
-    int time;
-    int time_idx = 0;
-    int pos = 0;
-    int pat_idx = 1;
-    int digit, i, j;
-    bool softchar;
-
-    int elapsed, length;
-    if (LIKELY(state->id3))
-    {
-        elapsed = state->id3->elapsed;
-        length = state->id3->length;
-    }
-    else
-    {
-        elapsed = 0;
-        length = 0;
-    }
-
-    if (buf_size < 34) /* worst case: 11x UTF-8 char + \0 */
-        return;
-
-    time = elapsed + state->ff_rewind_count;
-    if (length)
-        pos = 55 * time / length;
-
-    memset(timestr, 0, sizeof(timestr));
-    format_time(timestr, sizeof(timestr)-2, time);
-    timestr[strlen(timestr)] = ':';   /* always safe */
-
-    for (i = 0; i < 11; i++, pos -= 5)
-    {
-        softchar = false;
-        memset(progress_pattern, 0, sizeof(progress_pattern));
-
-        if ((digit = timestr[time_idx]))
-        {
-            softchar = true;
-            digit -= '0';
-
-            if (timestr[time_idx + 1] == ':')  /* ones, left aligned */
-            {
-                memcpy(progress_pattern, numbers[digit], 4);
-                time_idx += 2;
-            }
-            else  /* tens, shifted right */
-            {
-                for (j = 0; j < 4; j++)
-                    progress_pattern[j] = numbers[digit][j] >> 1;
-
-                if (time_idx > 0)  /* not the first group, add colon in front */
-                {
-                    progress_pattern[1] |= 0x10u;
-                    progress_pattern[3] |= 0x10u;
-                }
-                time_idx++;
-            }
-
-            if (pos >= 5)
-                progress_pattern[5] = progress_pattern[6] = 0x1fu;
-        }
-
-        if (pos > 0 && pos < 5)
-        {
-            softchar = true;
-            progress_pattern[5] = progress_pattern[6] = (~0x1fu >> pos) & 0x1fu;
-        }
-
-        if (softchar && pat_idx < 8)
-        {
-            display->define_pattern(data->wps_progress_pat[pat_idx],
-                                    progress_pattern);
-            buf = utf8encode(data->wps_progress_pat[pat_idx], buf);
-            pat_idx++;
-        }
-        else if (pos <= 0)
-            buf = utf8encode(' ', buf);
-        else
-            buf = utf8encode(0xe115, buf); /* 2/7 _ */
-    }
-    *buf = '\0';
-}
-
-#endif /* HAVE_LCD_CHARCELL */
+#endif /* HAVE_LCD_BITMAP */
 
 /* Evaluate the conditional that is at *token_index and return whether a skip
    has ocurred. *token_index is updated with the new position.

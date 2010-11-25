@@ -721,7 +721,8 @@ Lyre prototype 1 */
 
 #if defined(HAVE_USBSTACK) || (CONFIG_CPU == JZ4732) \
     || (CONFIG_CPU == AS3525) || (CONFIG_CPU == AS3525v2) \
-    || defined(CPU_S5L870X) || (CONFIG_CPU == S3C2440)
+    || defined(CPU_S5L870X) || (CONFIG_CPU == S3C2440) \
+    || defined(APPLICATION)
 #define HAVE_WAKEUP_OBJECTS
 #endif
 
@@ -900,6 +901,12 @@ Lyre prototype 1 */
 #define INCLUDE_TIMEOUT_API
 #endif
 #endif /* HAVE_HEADPHONE_DETECTION */
+
+#ifdef HAVE_TOUCHSCREEN
+/* Timeout objects required for kinetic list scrolling */
+#undef  INCLUDE_TIMEOUT_API
+#define INCLUDE_TIMEOUT_API
+#endif /* HAVE_TOUCHSCREEN */
 
 #if defined(HAVE_USB_CHARGING_ENABLE) && defined(HAVE_USBSTACK)
 /* USB charging support in the USB stack requires timeout objects */

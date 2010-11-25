@@ -89,7 +89,11 @@ gui/statusbar.c
 #ifdef HAVE_LCD_BITMAP
 gui/statusbar-skinned.c
 #endif
+#if (CONFIG_PLATFORM&PLATFORM_ANDROID)
+hosted/yesno.c
+#else
 gui/yesno.c
+#endif
 gui/viewport.c
 
 gui/skin_engine/skin_backdrops.c
@@ -116,7 +120,11 @@ player/keyboard.c
 #ifdef HAVE_LCD_BITMAP
 recorder/bmp.c
 recorder/icons.c
+#if (CONFIG_PLATFORM&PLATFORM_ANDROID)
+hosted/keyboard.c
+#else
 recorder/keyboard.c
+#endif
 recorder/peakmeter.c
 #if defined(HAVE_ALBUMART) || defined(HAVE_JPEG)
 recorder/resize.c

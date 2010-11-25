@@ -183,8 +183,9 @@ static int get_action_worker(int context, int timeout,
     else
         button = button_get_w_tmo(timeout);
 
-    /* Data from sys events can be pulled with button_get_data */
-    if (button == BUTTON_NONE || button & SYS_EVENT)
+    /* Data from sys events can be pulled with button_get_data
+     * multimedia button presses don't go through the action system */
+    if (button == BUTTON_NONE || button & (SYS_EVENT|BUTTON_MULTIMEDIA))
         return button;
     /* Don't send any buttons through untill we see the release event */
     if (wait_for_release)
@@ -204,7 +205,12 @@ static int get_action_worker(int context, int timeout,
             pcmbuf_beep(4000, KEYCLICK_DURATION, 2500*global_settings.keyclick);
 #endif
 
-    if ((context != last_context) && ((last_button & BUTTON_REL) == 0))
+    if ((context != last_context) && ((last_button & BUTTON_REL) == 0)
+#ifdef HAVE_SCROLLWHEEL
+        /* Scrollwheel doesn't generate release events  */
+        && !(last_button & (BUTTON_SCROLL_BACK | BUTTON_SCROLL_FWD))
+#endif
+        )
     {
         if (button & BUTTON_REL)
         {

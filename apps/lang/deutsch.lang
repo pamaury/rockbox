@@ -11394,7 +11394,7 @@
 </phrase>
 <phrase>
   id: LANG_RIGHT
-  desc: Generic use of 'right
+  desc: Generic use of 'right'
   user: core
   <source>
     *: "Right"
@@ -12055,15 +12055,15 @@
   desc: browse for the base skin in theme settings
   user: core
   <source>
-    *:none
+    *: none
     lcd_bitmap: "Base Skin"
   </source>
   <dest>
-    *:none
+    *: none
     lcd_bitmap: "Basisskin (SBS)"
   </dest>
   <voice>
-    *:none
+    *: none
     lcd_bitmap: "Basisskin"
   </voice>
 </phrase>
@@ -12072,15 +12072,15 @@
   desc: browse for the base skin in theme settings
   user: core
   <source>
-    *:none
+    *: none
     lcd_bitmap: "Remote Base Skin"
   </source>
   <dest>
-    *:none
+    *: none
     lcd_bitmap: "Fernbedienungs-SBS"
   </dest>
   <voice>
-    *:none
+    *: none
     lcd_bitmap: "Fernbedienungs-SBS"
   </voice>
 </phrase>
@@ -12157,15 +12157,15 @@
   desc: in the theme menu
   user: core
   <source>
-    *:none
+    *: none
     radio_remote: "Remote Radio Screen"
   </source>
   <dest>
-    *:none
+    *: none
     radio_remote: "Fernbedienungsradioanzeige"
   </dest>
   <voice>
-    *:none
+    *: none
     radio_remote: "Fernbedienungsradioanzeige"
   </voice>
 </phrase>
@@ -12406,15 +12406,15 @@
   desc: in the theme menu
   user: core
   <source>
-    *:none
+    *: none
     radio: "Radio Screen"
   </source>
   <dest>
-    *:none
+    *: none
     radio: "Radioanzeige"
   </dest>
   <voice>
-    *:none
+    *: none
     radio: "Radioanzeige"
   </voice>
 </phrase>
@@ -12471,7 +12471,7 @@
 </phrase>
 <phrase>
   id: LANG_KBD_OK
-  desc: in keyboad
+  desc: in keyboard
   user: core
   <source>
     *: none
@@ -12488,7 +12488,7 @@
 </phrase>
 <phrase>
   id: LANG_KBD_DELETE
-  desc: in keyboad
+  desc: in keyboard
   user: core
   <source>
     *: none
@@ -12505,7 +12505,7 @@
 </phrase>
 <phrase>
   id: LANG_KBD_CANCEL
-  desc: in keyboad
+  desc: in keyboard
   user: core
   <source>
     *: none
@@ -12546,5 +12546,47 @@
   </dest>
   <voice>
     *: "Erzwingen"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_BOOKMARK_SETTINGS_AUTOUPDATE
+  desc: prompt for user to decide whether to update bookmarks
+  user: core
+  <source>
+    *: "Update on Stop"
+  </source>
+  <dest>
+    *: "Beim Stoppen aktualisieren"
+  </dest>
+  <voice>
+    *: "Beim Stoppen aktualisieren"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_RESET_START_DIR
+  desc: reset the browser start directory
+  user: core
+  <source>
+    *: "Start File Browser at /"
+  </source>
+  <dest>
+    *: "Dateibrowser in / starten"
+  </dest>
+  <voice>
+    *: "Dateibrowser im Hauptverzeichnis starten"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_SET_AS_START_DIR
+  desc: used in the onplay menu to set a starting browser dir
+  user: core
+  <source>
+    *: "Start File Browser Here"
+  </source>
+  <dest>
+    *: "Dateibrowser hier starten"
+  </dest>
+  <voice>
+    *: "Dateibrowser hier starten"
   </voice>
 </phrase>

@@ -584,6 +584,11 @@ int do_menu(const struct menu_item_ex *start_menu, int *start_selected,
                                     temp->function->param);
                     else
                         return_value = temp->function->function();
+                    if (!(menu->flags&MENU_EXITAFTERTHISMENU) ||
+                            (temp->flags&MENU_EXITAFTERTHISMENU))
+                    {
+                        init_menu_lists(menu, &lists, selected, true, vps);
+                    }
                     if (temp->flags&MENU_FUNC_CHECK_RETVAL)
                     {
                         if (return_value != 0)
@@ -645,10 +650,20 @@ int do_menu(const struct menu_item_ex *start_menu, int *start_selected,
             }
 #endif
         }
-        else if(default_event_handler(action) == SYS_USB_CONNECTED)
+        else
         {
-            ret = MENU_ATTACHED_USB;
-            done = true;
+            switch(default_event_handler(action))
+            {
+                case SYS_USB_CONNECTED:
+                    ret = MENU_ATTACHED_USB;
+                    done = true;
+                    break;
+                case SYS_CALL_HUNG_UP:
+                case BUTTON_MULTIMEDIA_PLAYPAUSE:
+                /* remove splash from playlist_resume() */
+                    redraw_lists = true;
+                    break;
+            }
         }
 
         if (redraw_lists && !done)

@@ -102,6 +102,7 @@ static const unsigned char ramsize_table[5] =
 static const char *romfile;
 static char sramfile[500];
 static char rtcfile[500];
+static char snfile[500];
 static char saveprefix[500];
 
 static int forcebatt, nobatt;
@@ -221,7 +222,6 @@ static int rom_load(void)
 static int sram_load(void)
 {
     int fd;
-    char meow[500];
 
     if (!mbc.batt || !*sramfile) return -1;
 
@@ -229,11 +229,7 @@ static int sram_load(void)
     ram.loaded = 1;
 
     fd = open(sramfile, O_RDONLY);
-        snprintf(meow,499,"Opening %s %d",sramfile,fd);
-    rb->splash(HZ*2, meow);        
     if (fd<0) return -1;
-        snprintf(meow,499,"Loading savedata from %s",sramfile);
-        rb->splash(HZ*2, meow);    
     read(fd,ram.sbank, 8192*mbc.ramsize);
     close(fd);
     
@@ -244,15 +240,12 @@ static int sram_load(void)
 static int sram_save(void)
 {
     int fd;
-    char meow[500];
 
     /* If we crash before we ever loaded sram, DO NOT SAVE! */
     if (!mbc.batt || !ram.loaded || !mbc.ramsize)
         return -1;
     fd = open(sramfile, O_WRONLY|O_CREAT|O_TRUNC, 0666);
     if (fd<0) return -1;
-    snprintf(meow,499,"Saving savedata to %s",sramfile);
-    rb->splash(HZ*2, meow);
     write(fd,ram.sbank, 8192*mbc.ramsize);
     close(fd);
     
@@ -277,6 +270,24 @@ static void rtc_load(void)
     close(fd);
 }
 
+void sn_save(void)
+{
+    int fd;    
+    if ((fd = open(snfile, O_WRONLY | O_CREAT, 0666)) < 0)
+        return;
+    savestate(fd);
+    close(fd);
+}
+
+void sn_load(void)
+{
+    int fd;    
+    if ((fd = open(snfile, O_RDONLY, 0666)) < 0)
+        return;
+    loadstate(fd);
+    close(fd);
+}
+
 void cleanup(void)
 {
     sram_save();
@@ -289,7 +300,6 @@ void loader_init(const char *s)
     romfile = s;
     if(rom_load())
         return;
-    rb->splash(HZ/2, rom.name);
     
     snprintf(saveprefix, 499, "%s/%s", savedir, rom.name);
 
@@ -298,6 +308,8 @@ void loader_init(const char *s)
 
     strcpy(rtcfile, saveprefix);
     strcat(rtcfile, ".rtc");
+    strcpy(snfile, saveprefix);
+    strcat(snfile, ".sn");
     
     sram_load();
     rtc_load();

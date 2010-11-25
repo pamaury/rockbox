@@ -18,10 +18,14 @@
 #define INPUT_SRC_CAPS (SRC_CAP_LINEIN)
 
 /* define the bitmask of hardware sample rates */
-#define HW_SAMPR_CAPS   (SAMPR_CAP_88 | SAMPR_CAP_44 | SAMPR_CAP_22 | SAMPR_CAP_11)
+#define HW_SAMPR_CAPS   (SAMPR_CAP_88 | SAMPR_CAP_44 | SAMPR_CAP_22 | SAMPR_CAP_11 \
+                       | SAMPR_CAP_96 | SAMPR_CAP_48 | SAMPR_CAP_24 | SAMPR_CAP_12 \
+                       | SAMPR_CAP_64 | SAMPR_CAP_32 | SAMPR_CAP_16 | SAMPR_CAP_8)
 
 /* define the bitmask of recording sample rates */
-#define REC_SAMPR_CAPS  (SAMPR_CAP_88 | SAMPR_CAP_44 | SAMPR_CAP_22 | SAMPR_CAP_11)
+#define REC_SAMPR_CAPS  (SAMPR_CAP_88 | SAMPR_CAP_44 | SAMPR_CAP_22 | SAMPR_CAP_11 \
+                       | SAMPR_CAP_96 | SAMPR_CAP_48 | SAMPR_CAP_24 | SAMPR_CAP_12 \
+                       | SAMPR_CAP_64 | SAMPR_CAP_32 | SAMPR_CAP_16 | SAMPR_CAP_8)
 
 /* define this if you have a bitmap LCD display */
 #define HAVE_LCD_BITMAP
@@ -40,9 +44,6 @@
 
 /* define this to enable JPEG decoding */
 #define HAVE_JPEG
-
-/* define this if the LCD can shut down */
-#define HAVE_LCD_SHUTDOWN
 
 /* define this if you can invert the colours on your LCD */
 //#define HAVE_LCD_INVERT
@@ -88,12 +89,18 @@
 #define LCD_DEPTH  16   /* pseudo 262.144 colors */
 #define LCD_PIXELFORMAT RGB565 /* rgb565 */
 
+/* Define this if the LCD can shut down */
+#define HAVE_LCD_SHUTDOWN
+
 /* Define this if your LCD can be enabled/disabled */
-//#define HAVE_LCD_ENABLE
+#define HAVE_LCD_ENABLE
 
 /* Define this if your LCD can be put to sleep. HAVE_LCD_ENABLE
    should be defined as well. */
-//#define HAVE_LCD_SLEEP
+#ifndef BOOTLOADER
+#define HAVE_LCD_SLEEP
+#define HAVE_LCD_SLEEP_SETTING
+#endif
 
 #define CONFIG_KEYPAD IPOD_4G_PAD
 

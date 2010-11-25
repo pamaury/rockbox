@@ -244,7 +244,7 @@ static int audio_head = 0; /* which of the two buffers to use? */
 static volatile int audio_tail = 0; /* which of the two buffers to record? */
 /* It's stereo, so make the buffer twice as big */
 #ifndef SIMULATOR
-static int16_t audio_data[2][BUFFER_SIZE] __attribute__((aligned(CACHEALIGN_SIZE)));
+static int16_t audio_data[2][BUFFER_SIZE] MEM_ALIGN_ATTR;
 static fixed yin_buffer[YIN_BUFFER_SIZE] IBSS_ATTR;
 #ifdef PLUGIN_USE_IRAM
 static int16_t iram_audio_data[BUFFER_SIZE] IBSS_ATTR;
@@ -1098,8 +1098,7 @@ static void init_everything(void)
     rb->talk_disable(false);
 }
 
-
-enum plugin_status plugin_start(const void* parameter) NO_PROF_ATTR
+enum plugin_status plugin_start(const void* parameter)
 {
     (void)parameter;
 

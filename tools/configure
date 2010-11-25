@@ -24,8 +24,6 @@ rbdir="/.rockbox"
 need_full_path=
 bindir=
 libdir=
-bindir_full=
-libdir_full=
 
 app_platform=
 app_lcd_width=
@@ -56,7 +54,7 @@ app_get_platform() {
     if [ -z "$ARG_PLATFORM" ]; then
         choice=`input`
     else
-        choice="$APP_PLATFORM"
+        choice="$ARG_PLATFORM"
     fi
 
     case $choice in
@@ -69,7 +67,7 @@ app_get_platform() {
     if [ -z "$ARG_LCDWIDTH" ]; then
         app_lcd_width=`input`
     else
-        app_lcd_width=`$ARG_LCDWIDTH`
+        app_lcd_width="$ARG_LCDWIDTH"
     fi
     if [ -z "$app_lcd_width" ]; then app_lcd_width="320"; fi
     echo "Enter the LCD height (default: 480)"
@@ -80,28 +78,34 @@ app_get_platform() {
     fi
     if [ -z "$app_lcd_height" ]; then app_lcd_height="480"; fi
     echo "Selected $app_lcd_width x $app_lcd_height resolution"
+    ARG_LCDWIDTH=$app_lcd_width
+    ARG_LCDHEIGHT=$app_lcd_height
 
     app_lcd_width="#define LCD_WIDTH $app_lcd_width"
     app_lcd_height="#define LCD_HEIGHT $app_lcd_height"
     # setup files and paths depending on the platform
     if [ "$app_platform" = "sdl" ]; then
-        if [ -z "$PREFIX" ]; then
+        if [ -z "$ARG_PREFIX" ]; then
             rbdir="/usr/local/share/rockbox"
             bindir="/usr/local/bin"
-            bindir_full=$bindir
             libdir="/usr/local/lib"
-            libdir_full=$libdir
         else
-            rbdir=`realpath $PREFIX/share/rockbox`
-            bindir="$PREFIX/bin"
-            libdir="$PREFIX/lib"
-            if [ -d bindir ]; then
-                bindir_full=`realpath $bindir`
+            if [ -d "$ARG_PREFIX" ]; then
+                if [ -z `echo $ARG_PREFIX | grep "^/"` ]; then
+                    ARG_PREFIX=`realpath $ARG_PREFIX`
+                    if [ "0" != "$?" ]; then
+                        echo "ERROR: Could not get prefix path (is realpath installed?)."
+                        exit
+                    fi
+                fi
+                rbdir="$ARG_PREFIX/share/rockbox"
+                bindir="$ARG_PREFIX/bin"
+                libdir="$ARG_PREFIX/lib"
+            else
+                echo "ERROR: PREFIX does not exist"
+                exit
             fi
-            if [ -d libdir ]; then
-                libdir_full=`realpath $libdir`
-            fi
-        fi        
+        fi
         output="rockbox"
         bootoutput="rockbox"
     elif [ "$app_platform" = "android" ]; then
@@ -120,9 +124,7 @@ app_get_platform() {
         fi
         rbdir="/data/data/org.rockbox/app_rockbox/rockbox"
         bindir="/data/data/org.rockbox/lib"
-        bindir_full=$bindir
         libdir="/data/data/org.rockbox/app_rockbox"
-        libdir_full=$libdir
         output="librockbox.so"
         bootoutput="librockbox.so"
     fi
@@ -951,6 +953,7 @@ ARG_TYPE=
 ARG_VOICE=
 ARG_ARM_EABI=
 ARG_ARM_THUMB=
+ARG_PREFIX="$PREFIX"
 err=
 for arg in "$@"; do
 	case "$arg" in
@@ -972,7 +975,7 @@ for arg in "$@"; do
 		--no-eabi)    ARG_ARM_EABI=0;;
 		--thumb)      ARG_ARM_THUMB=1;;
 		--no-thumb)   ARG_ARM_THUMB=0;;
-                --prefix=*)   PREFIX=`echo "$arg" | cut -d = -f 2`;;
+        --prefix=*)   ARG_PREFIX=`echo "$arg" | cut -d = -f 2`;;
 		--help)       help;;
 		*)            err=1; echo "[ERROR] Option '$arg' unsupported";;
 	esac
@@ -2362,7 +2365,7 @@ fi
     bmp2rb_native="$rootdir/tools/bmp2rb -f 4"
     output="rockbox.mi4"
     appextra="recorder:gui:radio"
-    plugins=""
+    plugins="yes"
     swcodec="yes"
     boottool="$rootdir/tools/scramble -mi4v3 -model=6330 -type=RBBL"
     bootoutput="FWImage.ebn"
@@ -3117,9 +3120,7 @@ else
 fi
 
 if [ "$ARG_RBDIR" ]; then
-  if [ "$need_full_path" = "yes" ]; then
-    rbdir=`realpath $ARG_RBDIR`
-  else # prepend '/' if needed
+  if [ "$need_full_path" != "yes" ]; then
     if [ -z `echo $ARG_RBDIR | grep '^/'` ]; then
         rbdir="/"$ARG_RBDIR
     else
@@ -3136,8 +3137,8 @@ sed > autoconf.h \
  -e "s<@config_rtc@<$config_rtc<g" \
  -e "s<@have_rtc_alarm@<$have_rtc_alarm<g" \
  -e "s<@RBDIR@<${rbdir}<g" \
- -e "s<@binpath@<${bindir_full}<g" \
- -e "s<@libpath@<${libdir_full}<g" \
+ -e "s<@binpath@<${bindir}<g" \
+ -e "s<@libpath@<${libdir}<g" \
  -e "s<@have_backlight@<$have_backlight<g" \
  -e "s<@have_fmradio_in@<$have_fmradio_in<g" \
  -e "s<@have_ata_poweroff@<$have_ata_poweroff<g" \
@@ -3227,8 +3228,20 @@ fi
 if [ "$ARG_ARM_EABI" = "1" ]; then
   cmdline="$cmdline--eabi "
 fi
+if [ "$app_platform" = "sdl" ]; then
+  cmdline="$cmdline--platform=S "
+elif [ "$app_platform" = "android" ]; then
+  cmdline="$cmdline--platform=A "
+fi
+if [ "$modelname" = "application" ]; then
+  cmdline="$cmdline--lcdwidth=$ARG_LCDWIDTH --lcdheight=$ARG_LCDHEIGHT "
+fi
+if [ -n "$ARG_PREFIX" ]; then
+  cmdline="$cmdline--prefix=\$(PREFIX) "
+fi
 
-cmdline="$cmdline--target=\$(MODELNAME) --ram=\$(MEMORYSIZE) --rbdir=\$(RBDIR) --type=$btype$advopts --prefix=\$(PREFIX)"
+cmdline="$cmdline--target=\$(MODELNAME) --ram=\$(MEMORYSIZE) --rbdir=\$(RBDIR) --type=$btype$advopts"
+
 ### end of cmdline
 
 sed > Makefile \
@@ -3296,7 +3309,7 @@ sed > Makefile \
  -e "s<@RBDIR@<${rbdir}<g" \
  -e "s<@binpath@<${bindir}<g" \
  -e "s<@libpath@<${libdir}<g" \
- -e "s<@PREFIX@<$PREFIX<g" \
+ -e "s<@PREFIX@<$ARG_PREFIX<g" \
  -e "s<@CMDLINE@<$cmdline<g" \
  -e "s<@SDLCONFIG@<$sdl<g" \
 <<EOF

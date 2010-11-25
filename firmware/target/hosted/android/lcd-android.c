@@ -29,54 +29,70 @@ extern JNIEnv *env_ptr;
 extern jclass  RockboxService_class;
 extern jobject RockboxService_instance;
 
-static jobject Framebuffer_instance;
+static jclass RockboxFramebuffer_class;
+static jobject RockboxFramebuffer_instance;
 static jmethodID java_lcd_update;
 static jmethodID java_lcd_update_rect;
 
 static bool display_on;
+static int dpi;
+static int scroll_threshold;
 
 void lcd_init_device(void)
 {
-    /* get the RockboxFramebuffer instance allocated by the activity */
-    jfieldID id = (*env_ptr)->GetStaticFieldID(env_ptr,
-                                         RockboxService_class,
-                                         "fb",
-                                         "Lorg/rockbox/RockboxFramebuffer;");
-
-    Framebuffer_instance = (*env_ptr)->GetStaticObjectField(env_ptr,
-                                                      RockboxService_class,
-                                                      id);
-
-    jclass Framebuffer_class = (*env_ptr)->GetObjectClass(env_ptr,
-                                                          Framebuffer_instance);
-
-    /* get the java init function and call it. it'll set up a bitmap
-     * based on LCD_WIDTH, LCD_HEIGHT and the ByteBuffer which directly maps
-     * our framebuffer */
-
-    jmethodID java_init_lcd = (*env_ptr)->GetMethodID(env_ptr,
-                                                   Framebuffer_class,
-                                                   "java_lcd_init",
-                                                   "(IILjava/nio/ByteBuffer;)V");
-    java_lcd_update      = (*env_ptr)->GetMethodID(env_ptr,
-                                                   Framebuffer_class,
-                                                   "java_lcd_update",
-                                                   "()V");
-    java_lcd_update_rect = (*env_ptr)->GetMethodID(env_ptr,
-                                                   Framebuffer_class,
-                                                   "java_lcd_update_rect",
-                                                   "(IIII)V");
+    JNIEnv e = *env_ptr;
+    RockboxFramebuffer_class = e->FindClass(env_ptr,
+                                            "org/rockbox/RockboxFramebuffer");
+    /* instantiate a RockboxFramebuffer instance
+     * 
+     * Pass lcd width and height and our framebuffer so the java layer
+     * can create a Bitmap which directly maps to it
+     **/
 
     /* map the framebuffer to a ByteBuffer, this way lcd updates will
      * be directly feched from the framebuffer */
-    jobject buf = (*env_ptr)->NewDirectByteBuffer(env_ptr,
+    jobject buf          = e->NewDirectByteBuffer(env_ptr,
                                                   lcd_framebuffer,
-                                                  sizeof(lcd_framebuffer));
-    
-    (*env_ptr)->CallVoidMethod(env_ptr,
-                               Framebuffer_instance,
-                               java_init_lcd,
-                               LCD_WIDTH, LCD_HEIGHT, buf);
+                                                  (jlong)sizeof(lcd_framebuffer));
+
+    jmethodID constructor = e->GetMethodID(env_ptr,
+                                         RockboxFramebuffer_class,
+                                         "<init>",
+                                         "(Landroid/content/Context;" /* Service */
+                                         "II"             /* lcd width/height */
+                                         "Ljava/nio/ByteBuffer;)V"); /* ByteBuffer */
+
+    RockboxFramebuffer_instance = e->NewObject(env_ptr,
+                                               RockboxFramebuffer_class,
+                                               constructor,
+                                               RockboxService_instance,
+                                               (jint)LCD_WIDTH,
+                                               (jint)LCD_HEIGHT,
+                                               buf);
+
+    /* cache update functions */
+    java_lcd_update      = (*env_ptr)->GetMethodID(env_ptr,
+                                                   RockboxFramebuffer_class,
+                                                   "java_lcd_update",
+                                                   "()V");
+    java_lcd_update_rect = (*env_ptr)->GetMethodID(env_ptr,
+                                                   RockboxFramebuffer_class,
+                                                   "java_lcd_update_rect",
+                                                   "(IIII)V");
+
+    jmethodID get_dpi    = e->GetMethodID(env_ptr,
+                                          RockboxFramebuffer_class,
+                                          "getDpi", "()I");
+
+    jmethodID get_scroll_threshold
+                         = e->GetMethodID(env_ptr,
+                                          RockboxFramebuffer_class,
+                                          "getScrollThreshold", "()I");
+
+    dpi              = e->CallIntMethod(env_ptr, RockboxFramebuffer_instance,
+                                        get_dpi);
+    scroll_threshold = e->CallIntMethod(env_ptr, RockboxFramebuffer_instance,
+                                        get_scroll_threshold);
     display_on = true;
 }
 
@@ -84,14 +100,14 @@ void lcd_update(void)
 {
     /* tell the system we're ready for drawing */
     if (display_on)
-        (*env_ptr)->CallVoidMethod(env_ptr, Framebuffer_instance, java_lcd_update);
+        (*env_ptr)->CallVoidMethod(env_ptr, RockboxFramebuffer_instance, java_lcd_update);
 }
 
 void lcd_update_rect(int x, int y, int height, int width)
 {
     if (display_on)
     {
-        (*env_ptr)->CallVoidMethod(env_ptr, Framebuffer_instance, java_lcd_update_rect,
+        (*env_ptr)->CallVoidMethod(env_ptr, RockboxFramebuffer_instance, java_lcd_update_rect,
                                    x, y, height, width);
     }
 }
@@ -99,6 +115,16 @@ void lcd_update_rect(int x, int y, int height, int width)
 bool lcd_active(void)
 {
     return display_on;
+}
+
+int lcd_get_dpi(void)
+{
+    return dpi;
+}
+
+int touchscreen_get_scroll_threshold(void)
+{
+    return scroll_threshold;
 }
 
 /*

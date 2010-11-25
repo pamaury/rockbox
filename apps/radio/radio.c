@@ -23,7 +23,6 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdlib.h>
-#include "mas.h"
 #include "settings.h"
 #include "button.h"
 #include "status.h"
@@ -134,6 +133,14 @@
 #define FM_EXIT
 #define FM_PLAY
 #define FM_MODE
+
+#elif (CONFIG_KEYPAD == MPIO_HD200_PAD)
+#define FM_MENU
+#define FM_STOP
+#define FM_EXIT
+#define FM_PLAY
+#define FM_MODE
+#define FM_STOP
 
 #endif
 
@@ -463,12 +470,13 @@ void radio_screen(void)
     if (radio_status == FMRADIO_OFF)
         radio_start();
 #endif
-    fms_fix_displays(FMS_ENTER);
-    FOR_NB_SCREENS(i)
-        skin_update(FM_SCREEN, i, SKIN_REFRESH_ALL);
 
     if(radio_preset_count() < 1 && yesno_pop(ID2P(LANG_FM_FIRST_AUTOSCAN)))
         presets_scan(NULL);
+
+    fms_fix_displays(FMS_ENTER);
+    FOR_NB_SCREENS(i)
+        skin_update(FM_SCREEN, i, SKIN_REFRESH_ALL);
 
     preset_set_current(preset_find(curr_freq));
     if(radio_current_preset() != -1)

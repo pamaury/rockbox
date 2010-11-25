@@ -29,9 +29,8 @@ extern "C"
 
 #define MAX_TAG_PARAMS 12
 
-
-    /* Flag to tell the renderer not to insert a line break */
-#define NOBREAK 0x1
+#define NOBREAK 0x1 /* Flag to tell the renderer not to insert a line break */
+#define FEATURE_TAG 0x2 /* Parse time conditional for feature checks (e.g HAVE_RTC) */
 
 /* constants used in line_type and as refresh_mode for wps_refresh */
 #define SKIN_REFRESH_SHIFT           16
@@ -214,6 +213,8 @@ enum skin_token_type {
     SKIN_TOKEN_BUTTON_VOLUME,
     SKIN_TOKEN_LASTTOUCH,
     SKIN_TOKEN_TOUCHREGION,
+    SKIN_TOKEN_HAVE_TOUCH,
+    
     /* Virtual LED */
     SKIN_TOKEN_VLED_HDD,
     /* Volume level */
@@ -248,6 +249,10 @@ enum skin_token_type {
     SKIN_TOKEN_TUNER_MINFREQ, /* changes based on "region" */
     SKIN_TOKEN_TUNER_MAXFREQ, /* changes based on "region" */
     SKIN_TOKEN_TUNER_CURFREQ,
+    SKIN_TOKEN_TUNER_RSSI,
+    SKIN_TOKEN_TUNER_RSSI_MIN,
+    SKIN_TOKEN_TUNER_RSSI_MAX,
+    SKIN_TOKEN_TUNER_RSSI_BAR,
     SKIN_TOKEN_PRESET_ID, /* "id" of this preset.. really the array element number */
     SKIN_TOKEN_PRESET_NAME,
     SKIN_TOKEN_PRESET_FREQ,

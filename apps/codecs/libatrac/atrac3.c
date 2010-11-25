@@ -54,11 +54,17 @@
 #define FFMIN(a,b) ((a) > (b) ? (b) : (a))
 #define FFSWAP(type,a,b) do{type SWAP_tmp= b; b= a; a= SWAP_tmp;}while(0)
 
+#if defined(CPU_ARM) && (ARM_ARCH >= 5)  
+    #define QMFWIN_TYPE int16_t /* ARMv5e+ uses 32x16 multiplication */
+#else
+    #define QMFWIN_TYPE int32_t
+#endif
+
 static VLC          spectral_coeff_tab[7];
-static int32_t      qmf_window[48] IBSS_ATTR;
-static int32_t      atrac3_spectrum [2][1024] IBSS_ATTR __attribute__((aligned(16)));
-static int32_t      atrac3_IMDCT_buf[2][ 512] IBSS_ATTR __attribute__((aligned(16)));
-static int32_t      atrac3_prevFrame[2][1024] IBSS_ATTR;
+static QMFWIN_TYPE  qmf_window[48]            IBSS_ATTR MEM_ALIGN_ATTR; 
+static int32_t      atrac3_spectrum [2][1024] IBSS_ATTR MEM_ALIGN_ATTR;
+static int32_t      atrac3_IMDCT_buf[2][ 512] IBSS_ATTR MEM_ALIGN_ATTR;
+static int32_t      atrac3_prevFrame[2][1024] IBSS_ATTR MEM_ALIGN_ATTR;
 static channel_unit channel_units[2] IBSS_ATTR_LARGE_IRAM;
 
 
@@ -118,12 +124,30 @@ static channel_unit channel_units[2] IBSS_ATTR_LARGE_IRAM;
  *      }
  */
  
-#if defined(CPU_ARM)
+#if defined(CPU_ARM) && (ARM_ARCH >= 5)
+    extern void
+    atrac3_iqmf_dewindowing_armv5e(int32_t *out,
+                            int32_t *in,
+                            int16_t *win,
+                            unsigned int nIn);
+    static inline void
+    atrac3_iqmf_dewindowing(int32_t *out,
+                            int32_t *in,
+                            int16_t *win,
+                            unsigned int nIn)
+    {
+         atrac3_iqmf_dewindowing_armv5e(out, in, win, nIn);
+
+    }
+                            
+                            
+#elif defined(CPU_ARM) 
     extern void
     atrac3_iqmf_dewindowing(int32_t *out,
                             int32_t *in,
                             int32_t *win,
-                            unsigned int nIn);
+                            unsigned int nIn);    
+                            
 #elif defined (CPU_COLDFIRE)
     #define MULTIPLY_ADD_BLOCK \
         "movem.l (%[win]), %%d0-%%d7             \n\t" \
@@ -206,7 +230,9 @@ static channel_unit channel_units[2] IBSS_ATTR_LARGE_IRAM;
 
             out[0] = s2;
             out[1] = s1;
+            
         }
+        
     }
 #endif
 
@@ -244,6 +270,7 @@ atrac3_imdct_windowing(int32_t *buffer,
  
 static void iqmf (int32_t *inlo, int32_t *inhi, unsigned int nIn, int32_t *pOut, int32_t *delayBuf, int32_t *temp)
 {
+
     /* Restore the delay buffer */
     memcpy(temp, delayBuf, 46*sizeof(int32_t));
 
@@ -274,6 +301,7 @@ static void IMLT(int32_t *pInput, int32_t *pOutput)
 
     /* Windowing. */
     atrac3_imdct_windowing(pOutput, window_lookup);
+   
 }
 
 
@@ -320,9 +348,13 @@ static void init_atrac3_transforms(void)
     /* Generate the QMF window. */
     for (i=0 ; i<24; i++) {
         s = qmf_48tap_half_fix[i] << 1;
-        qmf_window[i] = s;
-        qmf_window[47 - i] = s;
+        #if defined(CPU_ARM) && (ARM_ARCH >= 5)
+        qmf_window[i] = qmf_window[47-i] = (int16_t)((s+(1<<15))>>16);
+        #else
+        qmf_window[i] = qmf_window[47-i] = s;
+        #endif
     }
+    
 }
 
 
@@ -636,7 +668,7 @@ static void applyFixGain (int32_t *pIn, int32_t *pPrev, int32_t *pOut,
     if (ONE_16 == gain) {
         /* gain1 = 1.0 -> no multiplication needed, just adding */
         /* Remark: This path is called >90%. */
-        do {
+        while (i<256) {
             pOut[i] = pIn[i] + pPrev[i]; i++;
             pOut[i] = pIn[i] + pPrev[i]; i++;
             pOut[i] = pIn[i] + pPrev[i]; i++;
@@ -645,11 +677,11 @@ static void applyFixGain (int32_t *pIn, int32_t *pPrev, int32_t *pOut,
             pOut[i] = pIn[i] + pPrev[i]; i++;
             pOut[i] = pIn[i] + pPrev[i]; i++;
             pOut[i] = pIn[i] + pPrev[i]; i++;
-        } while (i<256);
+        };
     } else {
         /* gain1 != 1.0 -> we need to do a multiplication */
         /* Remark: This path is called seldom. */
-        do {
+        while (i<256) {
             pOut[i] = fixmul16(pIn[i], gain) + pPrev[i]; i++;
             pOut[i] = fixmul16(pIn[i], gain) + pPrev[i]; i++;
             pOut[i] = fixmul16(pIn[i], gain) + pPrev[i]; i++;
@@ -658,7 +690,7 @@ static void applyFixGain (int32_t *pIn, int32_t *pPrev, int32_t *pOut,
             pOut[i] = fixmul16(pIn[i], gain) + pPrev[i]; i++;
             pOut[i] = fixmul16(pIn[i], gain) + pPrev[i]; i++;
             pOut[i] = fixmul16(pIn[i], gain) + pPrev[i]; i++;
-        } while (i<256);
+        };
     }
 }
 

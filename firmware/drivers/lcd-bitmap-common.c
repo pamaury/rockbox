@@ -81,6 +81,22 @@ static void lcd_gradient_rect(int x1, int x2, int y, unsigned h,
 }
 #endif
 
+/*
+ * draws the borders of the current viewport
+ **/
+void LCDFN(draw_border_viewport)(void)
+{
+    LCDFN(drawrect)(0, 0, current_vp->width, current_vp->height);
+}
+
+/*
+ * fills the rectangle formed by current_vp
+ **/
+void LCDFN(fill_viewport)(void)
+{
+    LCDFN(fillrect)(0, 0, current_vp->width, current_vp->height);
+}
+
 /* put a string at a given pixel position, skipping first ofs pixel columns */
 static void LCDFN(putsxyofs)(int x, int y, int ofs, const unsigned char *str)
 {

@@ -163,6 +163,18 @@
 #define  GBN_BUTTON_CONTEXT            BUTTON_SELECT | BUTTON_REPEAT
 #define  GBN_BUTTON_NEXT_VAR           BUTTON_VIEW
 
+#elif (CONFIG_KEYPAD == PHILIPS_HDD6330_PAD)
+#define GBN_BUTTON_UP                  BUTTON_UP
+#define GBN_BUTTON_DOWN                BUTTON_DOWN
+#define GBN_BUTTON_LEFT                BUTTON_LEFT
+#define GBN_BUTTON_RIGHT               BUTTON_RIGHT
+#define GBN_BUTTON_RETREAT             BUTTON_VOL_DOWN
+#define GBN_BUTTON_ADVANCE             BUTTON_VOL_UP
+#define GBN_BUTTON_MENU                BUTTON_MENU
+#define GBN_BUTTON_PLAY                BUTTON_PLAY | BUTTON_REL
+#define GBN_BUTTON_CONTEXT             BUTTON_PLAY | BUTTON_REPEAT
+#define GBN_BUTTON_NEXT_VAR            BUTTON_NEXT
+
 #elif (CONFIG_KEYPAD == PHILIPS_SA9200_PAD)
 #define  GBN_BUTTON_UP                 BUTTON_UP
 #define  GBN_BUTTON_DOWN               BUTTON_DOWN
@@ -310,14 +322,14 @@
 #define  GBN_BUTTON_NEXT_VAR           BUTTON_CANCEL
 
 #elif (CONFIG_KEYPAD == MPIO_HD200_PAD)
-#define  GBN_BUTTON_UP                 BUTTON_PREV
-#define  GBN_BUTTON_DOWN               BUTTON_NEXT
+#define  GBN_BUTTON_UP                 BUTTON_REW
+#define  GBN_BUTTON_DOWN               BUTTON_FF
 #define  GBN_BUTTON_LEFT               BUTTON_VOL_DOWN
 #define  GBN_BUTTON_RIGHT              BUTTON_VOL_UP
 #define  GBN_BUTTON_RETREAT            BUTTON_REC
 #define  GBN_BUTTON_ADVANCE            BUTTON_PLAY
-#define  GBN_BUTTON_PLAY               BUTTON_SELECT | BUTTON_REL
-#define  GBN_BUTTON_MENU               BUTTON_SELECT | BUTTON_REPEAT
+#define  GBN_BUTTON_PLAY               BUTTON_FUNC | BUTTON_REL
+#define  GBN_BUTTON_MENU               BUTTON_FUNC | BUTTON_REPEAT
 
 #else
 #error Unsupported keypad

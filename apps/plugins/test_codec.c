@@ -40,6 +40,16 @@
 #define TESTCODEC_EXITBUTTON BUTTON_SELECT
 #endif
 
+#ifdef HAVE_ADJUSTABLE_CPU_FREQ
+static unsigned int boost =1;
+
+static const struct opt_items boost_settings[2] = {
+    { "No",    -1 },
+    { "Yes",   -1 },
+};
+
+#endif
+
 /* Log functions copied from test_disk.c */
 static int line = 0;
 static int max_line = 0;
@@ -601,10 +611,8 @@ static void init_ci(void)
     ci.profile_func_exit = rb->profile_func_exit;
 #endif
 
-#if NUM_CORES > 1
     ci.cpucache_invalidate = rb->cpucache_invalidate;
     ci.cpucache_flush = rb->cpucache_flush;
-#endif
 
 #if NUM_CORES > 1
     ci.create_thread = rb->create_thread;
@@ -615,7 +623,7 @@ static void init_ci(void)
     ci.semaphore_release = rb->semaphore_release;
 #endif
 
-#ifdef CPU_ARM
+#if defined(CPU_ARM) && (CONFIG_PLATFORM & PLATFORM_NATIVE)
     ci.__div0 = rb->__div0;
 #endif
 }
@@ -761,7 +769,14 @@ static enum plugin_status test_track(const char* filename)
         /* show effective clockrate in MHz needed for realtime decoding */
         if (speed > 0)
         {
-            speed = CPUFREQ_MAX / speed;
+            int freq = CPUFREQ_MAX;
+            
+#ifdef HAVE_ADJUSTABLE_CPU_FREQ
+            if(!boost)
+                freq = CPUFREQ_NORMAL;
+#endif
+            
+            speed = freq / speed;
             rb->snprintf(str,sizeof(str),"%d.%02dMHz needed for realtime",
             (int)speed/100,(int)speed%100);
             log_text(str,true);
@@ -805,12 +820,12 @@ enum plugin_status plugin_start(const void* parameter)
     dspbuffer = wavbuffer + buffer_size / 2;
 
     codec_mallocbuf = rb->plugin_get_audio_buffer(&audiosize);
+    /* Align codec_mallocbuf to pointer size, tlsf wants that */
+    codec_mallocbuf = (void*)(((intptr_t)codec_mallocbuf +
+                       sizeof(intptr_t)-1) & ~(sizeof(intptr_t)-1));
     audiobuf = SKIPBYTES(codec_mallocbuf, CODEC_SIZE);
     audiosize -= CODEC_SIZE;
 
-#ifdef HAVE_ADJUSTABLE_CPU_FREQ
-    rb->cpu_boost(true);
-#endif
     rb->lcd_clear_display();
     rb->lcd_update();
 
@@ -818,6 +833,9 @@ enum plugin_status plugin_start(const void* parameter)
     {
         SPEED_TEST = 0,
         SPEED_TEST_DIR,
+#ifdef HAVE_ADJUSTABLE_CPU_FREQ
+        BOOST,
+#endif
         WRITE_WAV,
         SPEED_TEST_WITH_DSP,
         SPEED_TEST_DIR_WITH_DSP,
@@ -831,6 +849,9 @@ enum plugin_status plugin_start(const void* parameter)
         menu, "test_codec", NULL,
         "Speed test",
         "Speed test folder",
+#ifdef HAVE_ADJUSTABLE_CPU_FREQ
+        "Boosting",
+#endif
         "Write WAV",
         "Speed test with DSP",
         "Speed test folder with DSP",
@@ -839,11 +860,27 @@ enum plugin_status plugin_start(const void* parameter)
         "Checksum folder",
         "Quit",
     );
+    
 
 show_menu:
     rb->lcd_clear_display();
 
+#ifdef HAVE_ADJUSTABLE_CPU_FREQ
+menu:
+#endif 
+
     result = rb->do_menu(&menu, &selection, NULL, false);
+#ifdef HAVE_ADJUSTABLE_CPU_FREQ
+
+    if (result == BOOST)
+    {
+        rb->set_option("Boosting", &boost, INT,
+                        boost_settings, 2, NULL);
+        goto menu;
+    }
+    if(boost)
+        rb->cpu_boost(true);
+#endif
 
     if (result == QUIT)
     {
@@ -854,7 +891,11 @@ show_menu:
     scandir = 0;
 
     if ((checksum = (result == CHECKSUM || result == CHECKSUM_DIR)))
+#ifdef HAVE_ADJUSTABLE_CPU_FREQ
+        result -= 7;
+#else
         result -= 6;
+#endif
 
     if ((use_dsp = ((result >= SPEED_TEST_WITH_DSP)
                    && (result <= WRITE_WAV_WITH_DSP)))) {
@@ -926,15 +967,17 @@ show_menu:
         }
         while (rb->button_get(true) != TESTCODEC_EXITBUTTON);
     }
+
+    #ifdef HAVE_ADJUSTABLE_CPU_FREQ
+        if(boost)
+          rb->cpu_boost(false);
+    #endif
+
     rb->button_clear_queue();
     goto show_menu;
 
 exit:
     log_close();
-
-#ifdef HAVE_ADJUSTABLE_CPU_FREQ
-    rb->cpu_boost(false);
-#endif
 
     return res;
 }

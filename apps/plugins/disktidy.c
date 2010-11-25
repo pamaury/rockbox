@@ -36,6 +36,8 @@ enum tidy_return
 #define MAX_TYPES 64
 struct tidy_type {
     char filestring[64];
+    int  pre;
+    int  post;
     bool directory;
     bool remove;
 } tidy_types[MAX_TYPES];
@@ -46,6 +48,7 @@ bool tidy_loaded_and_changed = false;
 #define CUSTOM_FILES  PLUGIN_APPS_DIR "/disktidy_custom.config"
 void add_item(const char* name, int index)
 {
+    char *a;
     rb->strcpy(tidy_types[index].filestring, name);
     if (name[rb->strlen(name)-1] == '/')
     {
@@ -54,6 +57,17 @@ void add_item(const char* name, int index)
     }
     else
         tidy_types[index].directory = false;
+    a = rb->strchr(name, '*');
+    if (a)
+    {
+        tidy_types[index].pre = a - name;
+        tidy_types[index].post = rb->strlen(a+1);
+    }
+    else
+    {
+        tidy_types[index].pre = -1;
+        tidy_types[index].post = -1;
+    }
 }
 static int find_file_string(const char *file, char *last_group)
 {
@@ -89,9 +103,7 @@ static int find_file_string(const char *file, char *last_group)
         /* shift items up one */
         for (i=tidy_type_count;i>idx_last_group;i--)
         {
-            rb->strcpy(tidy_types[i].filestring, tidy_types[i-1].filestring);
-            tidy_types[i].directory = tidy_types[i-1].directory;
-            tidy_types[i].remove = tidy_types[i-1].remove;
+            rb->memcpy(&tidy_types[i], &tidy_types[i-1], sizeof(struct tidy_type));
         }
         tidy_type_count++;
         add_item(file, idx_last_group+1);
@@ -132,22 +144,33 @@ bool tidy_load_file(const char* file)
     return true;
 }
 
+static bool match(struct tidy_type *tidy_type, char *string, int len)
+{
+    char *pattern = tidy_type->filestring;
+    if (tidy_type->pre < 0)
+    {
+        /* no '*', just compare. */
+        return (rb->strcmp(pattern, string) == 0);
+    }
+    /* pattern is too long for the string. avoid 'ab*bc' matching 'abc'. */
+    if (len < tidy_type->pre + tidy_type->post)
+        return false;
+    /* pattern has '*', compare former part of '*' to the begining of
+       the string and compare next part of '*' to the end of string. */
+    return (rb->strncmp(pattern, string, tidy_type->pre) == 0 &&
+            rb->strcmp(pattern + tidy_type->pre + 1,
+                        string + len - tidy_type->post) == 0);
+}
+
 bool tidy_remove_item(char *item, int attr)
 {
     int i;
-    char *file;
-    bool ret = false, rem = false;
+    int len;
+    bool ret = false;
+    len = rb->strlen(item);
     for (i=0; ret == false && i < tidy_type_count; i++)
     {
-        file = tidy_types[i].filestring;
-        if (file[rb->strlen(file)-1] == '*')
-        {
-            if (!rb->strncmp(file, item, rb->strlen(file)-1))
-                rem = true;
-        }
-        else if (!rb->strcmp(file, item))
-            rem = true;
-        if (rem)
+        if (match(&tidy_types[i], item, len))
         {
             if (!tidy_types[i].remove)
                 return false;
@@ -244,7 +267,6 @@ enum tidy_return tidy_removedir(char *path, int *path_length)
                 /* silent error */
                 continue;
 
-            
             struct dirinfo info = rb->dir_get_info(dir, entry);
             if (info.attribute & ATTR_DIRECTORY)
             {
@@ -252,7 +274,7 @@ enum tidy_return tidy_removedir(char *path, int *path_length)
                 if ((rb->strcmp(entry->d_name, ".") != 0) && \
                     (rb->strcmp(entry->d_name, "..") != 0))
                 {
-                    tidy_removedir(path, path_length);
+                    status = tidy_removedir(path, path_length);
                 }
             }
             else
@@ -261,7 +283,7 @@ enum tidy_return tidy_removedir(char *path, int *path_length)
                 removed++;
                 rb->remove(path);
             }
-            
+
             /* restore path */
             tidy_path_remove_entry(path, old_path_length, path_length);
         }
@@ -284,7 +306,6 @@ enum tidy_return tidy_clean(char *path, int *path_length)
     struct dirent *entry;
     enum tidy_return status = TIDY_RETURN_OK;
     int button;
-    int del; /* has the item been deleted */
     DIR *dir;
     int old_path_length = *path_length;
 
@@ -321,8 +342,6 @@ enum tidy_return tidy_clean(char *path, int *path_length)
                 if ((rb->strcmp(entry->d_name, ".") != 0) && \
                     (rb->strcmp(entry->d_name, "..") != 0))
                 {
-                    del = 0;
-
                     /* get absolute path */
                     /* returns an error if path is too long */
                     if(!tidy_path_append_entry(path, entry, path_length))
@@ -332,11 +351,9 @@ enum tidy_return tidy_clean(char *path, int *path_length)
                     if (tidy_remove_item(entry->d_name, info.attribute))
                     {
                         /* delete dir */
-                        tidy_removedir(path, path_length);
-                        del = 1;
+                        status = tidy_removedir(path, path_length);
                     }
-
-                    if (del == 0)
+                    else
                     {
                         /* dir not deleted so clean it */
                         status = tidy_clean(path, path_length);
@@ -349,7 +366,6 @@ enum tidy_return tidy_clean(char *path, int *path_length)
             else
             {
                 /* file */
-                del = 0;
                 if (tidy_remove_item(entry->d_name, info.attribute))
                 {
                     /* get absolute path */
@@ -361,8 +377,7 @@ enum tidy_return tidy_clean(char *path, int *path_length)
                     removed++; /* increment removed files counter */
                     /* delete file */
                     rb->remove(path);
-                    del = 1;
-                    
+
                     /* restore path */
                     tidy_path_remove_entry(path, old_path_length, path_length);
                 }
@@ -496,7 +511,6 @@ enum tidy_return tidy_lcd_menu(void)
 
             case 1:
             {
-                bool show_icons = rb->global_settings->show_icons;
                 struct simplelist_info list;
                 rb->simplelist_info_init(&list, "Files to Clean",
                                          tidy_type_count, NULL);
@@ -504,7 +518,6 @@ enum tidy_return tidy_lcd_menu(void)
                 list.get_name = get_name;
                 list.action_callback = list_action_callback;
                 rb->simplelist_show_list(&list);
-                rb->global_settings->show_icons = show_icons;
             }
             break;
 

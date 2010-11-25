@@ -62,11 +62,13 @@
 /* define this if the target has volume keys which can be used in the lists */
 #define HAVE_VOLUME_IN_LIST
 
-/* LCD dimensions */
+/* LCD type */
 #define CONFIG_LCD LCD_ONDAVX767
 
-#define LCD_WIDTH  320
-#define LCD_HEIGHT 240
+/* LCD dimensions */
+#define LCD_WIDTH  480
+#define LCD_HEIGHT 272
+#define LCD_DPI    128
 
 #define LCD_DEPTH  16   /* 16bit colours */
 #define LCD_PIXELFORMAT RGB565 /* rgb565 */

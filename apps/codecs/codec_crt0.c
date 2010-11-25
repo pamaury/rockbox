@@ -53,12 +53,16 @@ enum codec_status codec_start(void)
     }
 #endif /* PLUGIN_USE_IRAM */
     ci->memset(plugin_bss_start, 0, plugin_end_addr - plugin_bss_start);
+    /* Some parts of bss may be used via a no-cache alias (at least
+     * portalplayer has this). If we don't clear the cache, those aliases
+     * may read garbage */
+    ci->cpucache_invalidate();
 #endif
 
     return codec_main();
 }
 
-#ifdef CPU_ARM
+#if defined(CPU_ARM) && (CONFIG_PLATFORM & PLATFORM_NATIVE)
 void __attribute__((naked)) __div0(void)
 {
     asm volatile("bx %0" : : "r"(ci->__div0));

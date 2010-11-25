@@ -9,7 +9,7 @@
 % The extension is selected in the preamble, so no further \ifpdfoutput
 % is necessary.
 \includegraphics[height=8cm,width=10cm,keepaspectratio=true]{rockbox_interface/images/\specimg-front}
-\opt{iaudiom3}{% replace with HAVEREMOTEKEYMAP when the h100 file exists or change specimg
+\opt{iaudiom3,h100}{% replace with HAVEREMOTEKEYMAP when all images exist or change specimg
   \end{center}
   % spacing between the two pictures, could possibly be improved
   \begin{center}
@@ -87,6 +87,27 @@ detail in the following paragraph.
   following:  power jack and two USB ports.  The USB port on the right is used 
   to connect your \dap{} to your computer.  The USB port on the left is not 
   used in Rockbox. 
+  }
+  %
+  \opt{mpiohd200}{
+  Hold or lay the \dap{} so that the side with the LCD is facing towards you.
+  On the right hand side there is a rocker at the top which serves as
+  \ButtonRew{} and \ButtonFF{} when pressed in the appropriate direction.
+  Pressing the rocker down functions as \ButtonFunc{}. Below the rocker there are
+  two buttons \ButtonRec{} and \ButtonPlay{}. At the bottom of the right panel
+  there is the \ButtonHold{} switch which you can slide up and down.
+
+  On the top pannel of the \dap{} there is another rocker which serves as the 
+  \ButtonVolUp{} and \ButtonVolDown{} when pressed on the right and left side 
+  respectively.
+
+  On the left hand side of the \dap{} there is headphone mini jack plug at the top
+  and a small hole at the bottom, the reset switch. In the event that your \dap{}
+  hard locks, you can reset it by inserting a paper clip into the hole where the 
+  reset switch is.
+
+  On the bottom pannel of the \dap{}, from left to right, you can find the
+  following: power jack, line-in jack and USB port (under rubber cover).
   }
   %
   \opt{ipod4g,ipodcolor,ipodvideo,ipodmini}{ 
@@ -344,7 +365,7 @@ detail in the following paragraph.
   other buttons have any effect.  Just to the left of the \ButtonHold{} switch is a
   small hole which contains the internal microphone.}
   %
-  \opt{c200}{
+  \opt{c200,c200v2}{
   Hold the \dap{} with the buttons on the right and the screen on the left. On
   the right side of the unit, there is a series of four connected buttons that
   form a square. The four sides of the square are the \ButtonUp{},
@@ -497,6 +518,7 @@ detail in the following paragraph.
 To turn on and off your Rockbox enabled \dap{} use the following keys:
     \begin{btnmap}
       \opt{IRIVER_H100_PAD,IRIVER_H300_PAD}{\ButtonOn}%
+      \opt{MPIO_HD200_PAD}{Long \ButtonPlay}%
       \opt{IPOD_4G_PAD}{\ButtonMenu{} / \ButtonSelect}%
       \opt{IPOD_3G_PAD}{\ButtonMenu{} / \ButtonPlay}%
       \opt{ONDIO_PAD}{\ButtonOff}\opt{RECORDER_PAD,PLAYER_PAD}%
@@ -514,6 +536,7 @@ To turn on and off your Rockbox enabled \dap{} use the following keys:
           \\
 
       \opt{IRIVER_H100_PAD,IRIVER_H300_PAD}{Long \ButtonOff}%
+      \opt{MPIO_HD200_PAD}{Long \ButtonPlay}%
       \opt{IPOD_4G_PAD,IPOD_3G_PAD}{Long \ButtonPlay}%
       \opt{ONDIO_PAD,recorderv2fm}{Long \ButtonOff}%
       \opt{recorder}{Double tap \ButtonOff\ when playback is stopped}%
@@ -550,7 +573,7 @@ To turn on and off your Rockbox enabled \dap{} use the following keys:
   {\ButtonPower} until the \dap{} shuts off or reboots.
 }%
 \opt{IRIVER_H100_PAD,IRIVER_H300_PAD,IAUDIO_M3_PAD,IRIVER_H10_PAD,MROBE100_PAD
-,PBELL_VIBE500_PAD}{%
+,PBELL_VIBE500_PAD,MPIO_HD200_PAD}{%
   In the unlikely event of a software failure, a hardware reset can be
   performed by inserting a paperclip gently into the Reset hole.
 }%
@@ -598,6 +621,15 @@ To turn on and off your Rockbox enabled \dap{} use the following keys:
     and then press the \ButtonOn{} button.
     }
 
+  \opt{mpiohd200}
+    {
+    Rockbox has a dual-boot feature. To boot into the original firmware,
+    when the \dap{} is turned off, press and hold the \ButtonRec{} button,
+    and then press the \ButtonPlay{} button. This will bring you to the
+    short menu where you can choose among: Boot Rockbox, Boot MPIO firmware
+    and Shutdown. Select the option you need with \ButtonRew{} and \ButtonFF{}
+    and confirm with long \ButtonPlay{}.
+    }
   \opt{h10,h10_5gb}
     {
     Rockbox has a dual-boot feature. It loads the original firmware from

@@ -572,8 +572,6 @@ static int parse_timeout_tag(struct skin_element *element,
     else
         val = element->params[0].data.number;
     token->value.i = val * TIMEOUT_UNIT;
-    if (token->type == SKIN_TOKEN_SUBLINE_TIMEOUT)
-        curr_line->timeout = token->value.i;
     return 0;
 }
 
@@ -583,10 +581,10 @@ static int parse_progressbar_tag(struct skin_element* element,
 {
 #ifdef HAVE_LCD_BITMAP
     struct progressbar *pb;
-    struct skin_token_list *item;
     struct viewport *vp = &curr_vp->vp;
     struct skin_tag_parameter *param = element->params;
     int curr_param = 0;
+    char *image_filename = NULL;
     
     if (element->params_count == 0 && 
         element->tag->type != SKIN_TOKEN_PROGRESSBAR)
@@ -598,10 +596,10 @@ static int parse_progressbar_tag(struct skin_element* element,
     if (!pb)
         return WPS_ERROR_INVALID_PARAM;
     pb->vp = vp;
-    pb->have_bitmap_pb = false;
-    pb->bm.data = NULL; /* no bitmap specified */
     pb->follow_lang_direction = follow_lang_direction > 0;
     pb->nofill = false;
+    pb->nobar = false;
+    pb->image = NULL;
     pb->slider = NULL;
     pb->invert_fill_direction = false;
     pb->horizontal = true;
@@ -616,12 +614,7 @@ static int parse_progressbar_tag(struct skin_element* element,
         return 0;
     }
     
-    item = new_skin_token_list_item(token, pb);
-    if (!item)
-        return -1;
-    add_to_ll_chain(&wps_data->progressbars, item);
-    
-    /* (x,y,width,height,filename) */
+    /* (x, y, width, height, ...) */
     if (!isdefault(param))
         pb->x = param->data.number;
     else
@@ -661,11 +654,15 @@ static int parse_progressbar_tag(struct skin_element* element,
 #endif
         }
     }
-    param++;
-    if (!isdefault(param))
-        pb->bm.data = param->data.text;
-        
-    curr_param = 5;
+    /* optional params, first is the image filename if it isnt recognised as a keyword */
+    
+    curr_param = 4;
+    if (isdefault(&element->params[curr_param]))
+    {
+        param++;
+        curr_param++;
+    }
+
     pb->horizontal = pb->width > pb->height;
     while (curr_param < element->params_count)
     {
@@ -674,6 +671,8 @@ static int parse_progressbar_tag(struct skin_element* element,
             pb->invert_fill_direction = true;
         else if (!strcmp(param->data.text, "nofill"))
             pb->nofill = true;
+        else if (!strcmp(param->data.text, "nobar"))
+            pb->nobar = true;
         else if (!strcmp(param->data.text, "slider"))
         {
             if (curr_param+1 < element->params_count)
@@ -681,9 +680,21 @@ static int parse_progressbar_tag(struct skin_element* element,
                 curr_param++;
                 param++;
                 pb->slider = find_image(param->data.text, wps_data);
-                if (!pb->slider)
-                    return -1;
             }
+            else /* option needs the next param */
+                return -1;
+        }
+        else if (!strcmp(param->data.text, "image"))
+        {
+            if (curr_param+1 < element->params_count)
+            {
+                curr_param++;
+                param++;
+                image_filename = param->data.text;
+                
+            }
+            else /* option needs the next param */
+                return -1;
         }
         else if (!strcmp(param->data.text, "vertical"))
         {
@@ -693,8 +704,37 @@ static int parse_progressbar_tag(struct skin_element* element,
         }
         else if (!strcmp(param->data.text, "horizontal"))
             pb->horizontal = true;
+        else if (curr_param == 4)
+            image_filename = param->data.text;
             
         curr_param++;
+    }
+
+    if (image_filename)
+    {
+        pb->image = find_image(image_filename, wps_data);
+        if (!pb->image) /* load later */
+        {           
+            struct gui_img* img = (struct gui_img*)skin_buffer_alloc(sizeof(struct gui_img));
+            if (!img)
+                return WPS_ERROR_INVALID_PARAM;
+            /* save a pointer to the filename */
+            img->bm.data = (char*)image_filename;
+            img->label = image_filename;
+            img->x = 0;
+            img->y = 0;
+            img->num_subimages = 1;
+            img->always_display = false;
+            img->display = -1;
+            img->using_preloaded_icons = false;
+            img->vp = &curr_vp->vp;
+            struct skin_token_list *item = 
+                    (struct skin_token_list *)new_skin_token_list_item(NULL, img);
+            if (!item)
+                return WPS_ERROR_INVALID_PARAM;
+            add_to_ll_chain(&wps_data->images, item);
+            pb->image = img;
+        }
     }
         
         
@@ -702,6 +742,8 @@ static int parse_progressbar_tag(struct skin_element* element,
         token->type = SKIN_TOKEN_VOLUMEBAR;
     else if (token->type == SKIN_TOKEN_BATTERY_PERCENT)
         token->type = SKIN_TOKEN_BATTERY_PERCENTBAR;
+    else if (token->type == SKIN_TOKEN_TUNER_RSSI)
+        token->type = SKIN_TOKEN_TUNER_RSSI_BAR;
     pb->type = token->type;
         
     return 0;
@@ -829,6 +871,9 @@ static const struct touchaction touchactions[] = {
     {"hotkey", ACTION_STD_HOTKEY},      {"select", ACTION_STD_OK },
     {"menu", ACTION_STD_MENU },         {"cancel", ACTION_STD_CANCEL },
     {"contextmenu", ACTION_STD_CONTEXT},{"quickscreen", ACTION_STD_QUICKSCREEN },
+    
+    /* list/tree actions */
+    { "resumeplayback", ACTION_TREE_WPS}, /* returns to previous music, WPS/FM */
     /* not really WPS specific, but no equivilant ACTION_STD_* */
     {"voldown", ACTION_WPS_VOLDOWN},    {"volup", ACTION_WPS_VOLUP},
     
@@ -988,6 +1033,12 @@ static bool check_feature_tag(const int type)
                 return true;
 #endif
             return false;
+        case SKIN_TOKEN_HAVE_TOUCH:
+#ifdef HAVE_TOUCHSCREEN
+            return true;
+#else
+            return false;
+#endif
 
 #if CONFIG_TUNER
         case SKIN_TOKEN_HAVE_RDS:
@@ -1012,7 +1063,6 @@ static void skin_data_reset(struct wps_data *wps_data)
     wps_data->tree = NULL;
 #ifdef HAVE_LCD_BITMAP
     wps_data->images = NULL;
-    wps_data->progressbars = NULL;
 #endif
 #if LCD_DEPTH > 1 || defined(HAVE_REMOTE_LCD) && LCD_REMOTE_DEPTH > 1
     if (wps_data->backdrop_id >= 0)
@@ -1067,12 +1117,19 @@ static bool load_skin_bmp(struct wps_data *wps_data, struct bitmap *bitmap, char
 
     fd = open(img_path, O_RDONLY);
     if (fd < 0)
+    {
+        DEBUGF("Couldn't open %s\n", img_path);
         return false;
+    }
     size_t buf_size = read_bmp_fd(fd, bitmap, 0, 
                                     format|FORMAT_RETURN_SIZE, NULL);  
     char* imgbuf = (char*)skin_buffer_alloc(buf_size);
     if (!imgbuf)
     {
+#ifndef APPLICATION
+        DEBUGF("Not enough skin buffer: need %zd more.\n", 
+                buf_size - skin_buffer_freespace());
+#endif
         close(fd);
         return NULL;
     }
@@ -1097,19 +1154,7 @@ static bool load_skin_bitmaps(struct wps_data *wps_data, char *bmpdir)
 {
     struct skin_token_list *list;
     bool retval = true; /* return false if a single image failed to load */
-    /* do the progressbars */
-    list = wps_data->progressbars;
-    while (list)
-    {
-        struct progressbar *pb = (struct progressbar*)list->token->value.data;
-        if (pb->bm.data)
-        {
-            pb->have_bitmap_pb = load_skin_bmp(wps_data, &pb->bm, bmpdir);
-            if (!pb->have_bitmap_pb) /* no success */
-                retval = false;
-        }
-        list = list->next;
-    }
+    
     /* regular images */
     list = wps_data->images;
     while (list)
@@ -1312,10 +1357,14 @@ static int convert_viewport(struct wps_data *data, struct skin_element* element)
     {
         skin_vp->vp.font = param->data.number;
     }
-#endif    
+#endif
+    if ((unsigned) skin_vp->vp.x >= (unsigned) display->lcdwidth ||
+        skin_vp->vp.width + skin_vp->vp.x > display->lcdwidth ||
+        (unsigned) skin_vp->vp.y >= (unsigned) display->lcdheight ||
+        skin_vp->vp.height + skin_vp->vp.y > display->lcdheight)
+        return CALLBACK_ERROR;
 
     return CALLBACK_OK;
-    
 }
 
 static int skin_element_callback(struct skin_element* element, void* data)
@@ -1361,6 +1410,9 @@ static int skin_element_callback(struct skin_element* element, void* data)
                 case SKIN_TOKEN_VOLUME:
                 case SKIN_TOKEN_BATTERY_PERCENT:
                 case SKIN_TOKEN_PLAYER_PROGRESSBAR:
+#ifdef HAVE_RADIO_RSSI
+                case SKIN_TOKEN_TUNER_RSSI:
+#endif
                     function = parse_progressbar_tag;
                     break;
                 case SKIN_TOKEN_SUBLINE_TIMEOUT:
@@ -1454,7 +1506,6 @@ static int skin_element_callback(struct skin_element* element, void* data)
             struct line *line = 
                 (struct line *)skin_buffer_alloc(sizeof(struct line));
             line->update_mode = SKIN_REFRESH_STATIC;
-            line->timeout = DEFAULT_SUBLINE_TIME_MULTIPLIER * TIMEOUT_UNIT;
             curr_line = line;
             element->data = line;
         }
@@ -1465,7 +1516,7 @@ static int skin_element_callback(struct skin_element* element, void* data)
                 (struct line_alternator *)skin_buffer_alloc(sizeof(struct line_alternator));
             alternator->current_line = 0;
 #ifndef __PCTOOL__
-            alternator->last_change_tick = current_tick;
+            alternator->next_change_tick = current_tick;
 #endif
             element->data = alternator;
         }
@@ -1574,11 +1625,15 @@ bool skin_data_load(enum screen_type screen, struct wps_data *wps_data,
     wps_data->backdrop_id = -1;
 #endif
     /* parse the skin source */
+#ifndef APPLICATION
     skin_buffer_save_position();
+#endif
     wps_data->tree = skin_parse(wps_buffer, skin_element_callback, wps_data);
     if (!wps_data->tree) {
         skin_data_reset(wps_data);
+#ifndef APPLICATION
         skin_buffer_restore_position();
+#endif
         return false;
     }
 
@@ -1600,7 +1655,9 @@ bool skin_data_load(enum screen_type screen, struct wps_data *wps_data,
         !skin_load_fonts(wps_data)) 
     {
         skin_data_reset(wps_data);
+#ifndef APPLICATION
         skin_buffer_restore_position();
+#endif
         return false;
     }
 #endif

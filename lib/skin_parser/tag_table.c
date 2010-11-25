@@ -22,7 +22,7 @@
 #include "tag_table.h"
 
 #include <string.h>
-#define BAR_PARAMS "*|iiiisN"
+#define BAR_PARAMS "*iiii|sN"
 /* The tag definition table */
 static const struct tag_info legal_tags[] = 
 {
@@ -44,7 +44,7 @@ static const struct tag_info legal_tags[] =
     { SKIN_TOKEN_USB_POWERED,           "bu", "", SKIN_REFRESH_DYNAMIC },
     
     
-    { SKIN_TOKEN_RTC_PRESENT,           "cc", "", SKIN_REFRESH_STATIC },
+    { SKIN_TOKEN_RTC_PRESENT,           "cc", "", FEATURE_TAG },
     { SKIN_TOKEN_RTC_DAY_OF_MONTH,      "cd", "", SKIN_RTC_REFRESH },
     { SKIN_TOKEN_RTC_DAY_OF_MONTH_BLANK_PADDED, "ce", "", SKIN_RTC_REFRESH },
     { SKIN_TOKEN_RTC_12HOUR_CFG,        "cf", "", SKIN_RTC_REFRESH },
@@ -146,13 +146,16 @@ static const struct tag_info legal_tags[] =
     { SKIN_TOKEN_REPLAYGAIN,            "rg", "", SKIN_REFRESH_STATIC },
     { SKIN_TOKEN_CROSSFADE,             "xf", "", SKIN_REFRESH_DYNAMIC },
     
-    { SKIN_TOKEN_HAVE_TUNER,            "tp", "", SKIN_REFRESH_STATIC },
+    { SKIN_TOKEN_HAVE_TUNER,            "tp", "", FEATURE_TAG },
     { SKIN_TOKEN_TUNER_TUNED,           "tt", "", SKIN_REFRESH_DYNAMIC },
     { SKIN_TOKEN_TUNER_SCANMODE,        "tm", "", SKIN_REFRESH_DYNAMIC },
     { SKIN_TOKEN_TUNER_STEREO,          "ts", "", SKIN_REFRESH_DYNAMIC },
     { SKIN_TOKEN_TUNER_MINFREQ,         "ta", "", SKIN_REFRESH_STATIC },
     { SKIN_TOKEN_TUNER_MAXFREQ,         "tb", "", SKIN_REFRESH_STATIC },
     { SKIN_TOKEN_TUNER_CURFREQ,         "tf", "", SKIN_REFRESH_DYNAMIC },
+    { SKIN_TOKEN_TUNER_RSSI,            "tr", BAR_PARAMS, SKIN_REFRESH_DYNAMIC },
+    { SKIN_TOKEN_TUNER_RSSI_MIN,        "tl", "", SKIN_REFRESH_STATIC },
+    { SKIN_TOKEN_TUNER_RSSI_MAX,        "th", "", SKIN_REFRESH_STATIC },
     { SKIN_TOKEN_PRESET_ID,             "Ti", "", SKIN_REFRESH_STATIC },
     { SKIN_TOKEN_PRESET_NAME,           "Tn", "", SKIN_REFRESH_STATIC },
     { SKIN_TOKEN_PRESET_FREQ,           "Tf", "", SKIN_REFRESH_STATIC },
@@ -199,9 +202,10 @@ static const struct tag_info legal_tags[] =
     
     { SKIN_TOKEN_LASTTOUCH,             "Tl" , "|D", SKIN_REFRESH_DYNAMIC },
     { SKIN_TOKEN_CURRENT_SCREEN,        "cs", "", SKIN_REFRESH_DYNAMIC },
-    { SKIN_TOKEN_TOUCHREGION,           "T"  , "IIiiS|S", 0|NOBREAK },
+    { SKIN_TOKEN_TOUCHREGION,           "T"  , "IIIIS|S", 0|NOBREAK },
+    { SKIN_TOKEN_HAVE_TOUCH,            "Tp", "", FEATURE_TAG },
     
-    { SKIN_TOKEN_HAVE_RECORDING,        "Rp"   , "", SKIN_REFRESH_STATIC },
+    { SKIN_TOKEN_HAVE_RECORDING,        "Rp"   , "", FEATURE_TAG },
     { SKIN_TOKEN_IS_RECORDING,          "Rr"   , "", SKIN_REFRESH_DYNAMIC },
     { SKIN_TOKEN_REC_FREQ,              "Rf"   , "", SKIN_REFRESH_DYNAMIC },
     { SKIN_TOKEN_REC_ENCODER,           "Re"   , "", SKIN_REFRESH_DYNAMIC },

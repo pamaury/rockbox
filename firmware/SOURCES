@@ -175,7 +175,7 @@ drivers/led.c
 drivers/button.c
 #if (CONFIG_PLATFORM & PLATFORM_NATIVE)
 #ifdef HAVE_DAC3550A
-drivers/dac.c
+drivers/audio/dac3550a.c
 #endif
 #ifdef HAVE_SERIAL
 drivers/serial.c
@@ -289,9 +289,6 @@ drivers/tuner/rda5802.c
 #endif /* BOOTLOADER */
 
 /* Sound */
-#if CONFIG_CODEC != SWCODEC
-mp3_playback.c
-#endif /* CONFIG_CODEC != SWCODEC */
 sound.c
 
 #if CONFIG_CODEC == SWCODEC
@@ -303,15 +300,6 @@ pcm.c
 enc_base.c
 #endif /* HAVE_RECORDING */
 #endif /* BOOTLOADER */
-
-#else  /* !SWCODEC */
-
-#ifndef BOOTLOADER
-#ifndef SIMULATOR
-drivers/mas.c
-#endif /* SIMULATOR */
-#endif /* BOOTLOADER */
-
 #endif /* SWCODEC */
 
 /* Audio codec */
@@ -410,6 +398,7 @@ target/sh/memset-sh.S
 target/sh/strlen-sh.S
 target/sh/system-sh.c
 target/sh/archos/descramble.S
+target/sh/debug-sh.c
 #endif /* SIMULATOR */
 
 #elif defined(CPU_COLDFIRE)
@@ -433,6 +422,7 @@ target/coldfire/system-coldfire.c
 target/coldfire/timer-coldfire.c
 #ifndef BOOTLOADER
 target/coldfire/pcm-coldfire.c
+target/coldfire/debug-coldfire.c
 #endif /* BOOTLOADER */
 #if CONFIG_I2C == I2C_COLDFIRE
 target/coldfire/i2c-coldfire.c
@@ -515,6 +505,7 @@ target/arm/system-pp502x.c
 target/arm/crt0-pp-bl.S
 #else
 target/arm/pcm-pp.c
+target/arm/debug-pp.c
 #if !defined(SANSA_E200) && !defined(SANSA_C200)
 target/arm/audio-pp.c
 #endif /* SANSA_E200 */
@@ -574,6 +565,8 @@ target/sh/archos/player/lcd-player.c
 target/sh/archos/player/power-player.c
 target/sh/archos/player/powermgmt-player.c
 target/sh/archos/player/usb-player.c
+target/sh/archos/mascodec-archos.c
+target/sh/archos/audio-archos.c
 #endif /* SIMULATOR */
 #endif /* ARCHOS_PLAYER */
 
@@ -588,6 +581,8 @@ target/sh/archos/recorder/button-recorder.c
 target/sh/archos/recorder/power-recorder.c
 target/sh/archos/recorder/powermgmt-recorder.c
 target/sh/archos/recorder/usb-recorder.c
+target/sh/archos/mascodec-archos.c
+target/sh/archos/audio-archos.c
 #endif /* SIMULATOR */
 #endif /* ARCHOS_RECORDER */
 
@@ -602,6 +597,8 @@ target/sh/archos/fm_v2/button-fm_v2.c
 target/sh/archos/fm_v2/power-fm_v2.c
 target/sh/archos/fm_v2/powermgmt-fm_v2.c
 target/sh/archos/fm_v2/usb-fm_v2.c
+target/sh/archos/mascodec-archos.c
+target/sh/archos/audio-archos.c
 #endif /* SIMULATOR */
 #endif /* ARCHOS_FMRECORDER || ARCHOS_RECORDERV2 */
 
@@ -614,6 +611,8 @@ target/sh/archos/ondio/button-ondio.c
 target/sh/archos/ondio/power-ondio.c
 target/sh/archos/ondio/powermgmt-ondio.c
 target/sh/archos/ondio/usb-ondio.c
+target/sh/archos/mascodec-archos.c
+target/sh/archos/audio-archos.c
 #if (CONFIG_TUNER & TEA5767)
 target/sh/archos/ondio/fmradio_i2c-ondio.c
 #endif
@@ -708,9 +707,9 @@ target/arm/ata-pp5020.c
 target/arm/wmcodec-pp.c
 target/arm/i2s-pp.c
 target/arm/adc-pp5020.c
-target/arm/philips/backlight-hdd.c
 target/arm/philips/power-hdd.c
 target/arm/philips/fmradio_i2c-hdd.c
+target/arm/philips/hdd1630/backlight-hdd1630.c
 target/arm/philips/hdd1630/button-hdd1630.c
 target/arm/philips/hdd1630/lcd-hdd1630.c
 target/arm/philips/hdd1630/lcd-as-hdd1630.S
@@ -729,9 +728,9 @@ target/arm/ata-pp5020.c
 target/arm/wmcodec-pp.c
 target/arm/i2s-pp.c
 target/arm/adc-pp5020.c
-target/arm/philips/backlight-hdd.c
 target/arm/philips/power-hdd.c
 target/arm/philips/fmradio_i2c-hdd.c
+target/arm/philips/hdd6330/backlight-hdd6330.c
 target/arm/philips/hdd6330/button-hdd6330.c
 target/arm/philips/hdd6330/lcd-hdd6330.c
 target/arm/philips/hdd6330/powermgmt-hdd6330.c
@@ -1497,6 +1496,7 @@ target/arm/s5l8700/udacodec-meizu.c
 #ifdef IPOD_NANO2G
 #ifndef SIMULATOR
 target/arm/ipod/button-clickwheel.c
+target/arm/s5l8700/postmortemstub.S
 target/arm/s5l8700/kernel-s5l8700.c
 target/arm/s5l8700/dma-s5l8700.c
 target/arm/s5l8700/ipodnano2g/backlight-nano2g.c
@@ -1508,7 +1508,6 @@ target/arm/s5l8700/ipodnano2g/nand-nano2g.c
 target/arm/s5l8700/ipodnano2g/pmu-nano2g.c
 target/arm/s5l8700/ipodnano2g/rtc-nano2g.c
 #ifndef BOOTLOADER
-drivers/audio/wm8975.c
 target/arm/usb-s3c6400x.c
 target/arm/s5l8700/debug-s5l8700.c
 target/arm/s5l8700/pcm-s5l8700.c
@@ -1683,17 +1682,17 @@ target/arm/usb-fw-pp502x.c
 #ifdef MPIO_HD200
 #ifndef SIMULATOR
 /* TODO: currently including all files */
-target/coldfire/mpio/hd200/adc-hd200.c
+target/coldfire/ata-as-coldfire.S
+target/coldfire/mpio/system-mpio.c
+target/coldfire/mpio/power-mpio.c
+target/coldfire/mpio/backlight-mpio.c
+target/coldfire/mpio/usb-mpio.c
+target/coldfire/mpio/ata-mpio.c
+target/coldfire/mpio/adc-mpio.c
 target/coldfire/mpio/hd200/button-hd200.c
 target/coldfire/mpio/hd200/lcd-hd200.c
 target/coldfire/mpio/hd200/lcd-as-hd200.S
-target/coldfire/mpio/hd200/power-hd200.c
 target/coldfire/mpio/hd200/powermgmt-hd200.c
-target/coldfire/mpio/hd200/backlight-hd200.c
-target/coldfire/mpio/hd200/system-hd200.c
-target/coldfire/mpio/hd200/usb-hd200.c
-target/coldfire/mpio/ata-mpio.c
-target/coldfire/ata-as-coldfire.S
 #ifndef BOOTLOADER
 target/coldfire/mpio/audio-mpio.c
 target/coldfire/wmcodec-coldfire.c
@@ -1715,6 +1714,7 @@ target/hosted/android/kernel-android.c
 target/hosted/android/pcm-android.c
 target/hosted/android/powermgmt-android.c
 target/hosted/android/system-android.c
+target/hosted/android/telephony-android.c
 #ifdef APPLICATION
 target/hosted/android/app/button-application.c
 #endif

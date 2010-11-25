@@ -25,7 +25,6 @@
  *  - implement 2 layers with alpha colors
  *  - take brush width into account when drawing shapes
  *  - handle bigger than screen bitmaps
- *  - cache fonts when building the font preview (else it only works well on simulators because they have "fast" disk read)
  */
 
 #include "plugin.h"
@@ -33,6 +32,8 @@
 #include "lib/rgb_hsv.h"
 #include "lib/playback_control.h"
 
+#include "pluginbitmaps/rockpaint.h"
+#include "pluginbitmaps/rockpaint_hsvrgb.h"
 
 
 /***********************************************************************
@@ -155,6 +156,17 @@
 #define ROCKPAINT_LEFT      BUTTON_LEFT
 #define ROCKPAINT_RIGHT     BUTTON_RIGHT
 
+#elif CONFIG_KEYPAD == PHILIPS_HDD6330_PAD
+#define ROCKPAINT_QUIT      BUTTON_POWER
+#define ROCKPAINT_DRAW      BUTTON_PLAY
+#define ROCKPAINT_MENU      BUTTON_MENU
+#define ROCKPAINT_TOOLBAR   BUTTON_PREV
+#define ROCKPAINT_TOOLBAR2  BUTTON_NEXT
+#define ROCKPAINT_UP        BUTTON_UP
+#define ROCKPAINT_DOWN      BUTTON_DOWN
+#define ROCKPAINT_LEFT      BUTTON_LEFT
+#define ROCKPAINT_RIGHT     BUTTON_RIGHT
+
 #elif CONFIG_KEYPAD == PHILIPS_SA9200_PAD
 #define ROCKPAINT_QUIT      BUTTON_POWER
 #define ROCKPAINT_DRAW      BUTTON_PLAY
@@ -254,9 +266,6 @@
 #define COLOR_BROWN        LCD_RGBPACK(128,64,0)
 #define COLOR_LIGHTBROWN   LCD_RGBPACK(255,128,64)
 
-#define SPLASH_SCREEN PLUGIN_APPS_DIR "/rockpaint/splash.bmp"
-#define ROCKPAINT_TITLE_FONT  2
-
 /***********************************************************************
  * Program Colors
  ***********************************************************************/
@@ -329,14 +338,15 @@
 static void draw_pixel(int x,int y);
 static void draw_line( int x1, int y1, int x2, int y2 );
 static void draw_rect( int x1, int y1, int x2, int y2 );
+static void draw_rect_full( int x1, int y1, int x2, int y2 );
 static void draw_toolbars(bool update);
 static void inv_cursor(bool update);
 static void restore_screen(void);
 static void clear_drawing(void);
+static void reset_tool(void);
 static void goto_menu(void);
 static int load_bitmap( const char *filename );
 static int save_bitmap( char *filename );
-static void draw_rect_full( int x1, int y1, int x2, int y2 );
 
 /***********************************************************************
  * Global variables
@@ -355,7 +365,6 @@ static int x=0, y=0; /* cursor position */
 static int prev_x=-1, prev_y=-1; /* previous saved cursor position */
 static int prev_x2=-1, prev_y2=-1;
 static int prev_x3=-1, prev_y3=-1;
-static int tool_mode=-1;
 
 
 static int bsize=1; /* brush size */
@@ -377,7 +386,14 @@ enum Tools { Brush = 0, /* Regular brush */
              RadialGradient = 13
            };
 
+enum States { State0 = 0, /* initial state */
+              State1,
+              State2,
+              State3,
+            };
+
 enum Tools tool = Brush;
+enum States state = State0;
 
 static bool quit=false;
 static int gridsize=0;
@@ -393,13 +409,23 @@ static fb_data rp_colors[18] =
 
 static fb_data save_buffer[ ROWS*COLS ];
 
-extern fb_data rockpaint[];
-extern fb_data rockpaint_hsvrgb[];
+struct tool_func {
+    void (*state_func)(void);
+    void (*preview_func)(void);
+};
+
+struct incdec_ctx {
+    int max;
+    int step[2];
+    bool wrap;
+};
+struct incdec_ctx incdec_x = { COLS, { 1, 4}, true };
+struct incdec_ctx incdec_y = { ROWS, { 1, 4}, true };
 
 /* Maximum string size allowed for the text tool */
 #define MAX_TEXT 256
 
-typedef union
+union buf
 {
     /* Used by fill and gradient algorithms */
     struct
@@ -428,22 +454,43 @@ typedef union
     {
         char text[MAX_TEXT];
         char font[MAX_PATH];
-        char old_font[MAX_PATH];
-        int fh_buf[30];
-        int fw_buf[30];
-        char fontname_buf[30][MAX_PATH];
+        bool initialized;
+        size_t cache_used;
+        /* fonts from cache_first to cache_last are stored. */
+        int cache_first;
+        int cache_last;
+        /* save these so that cache can be re-used next time. */
+        int fvi;
+        int si;
     } text;
-} buf;
+};
 
-static buf *buffer;
+static union buf *buffer;
+static bool audio_buf = false;
 
 /* Current filename */
 static char filename[MAX_PATH];
 
-/* Font preview buffer */
-//#define FONT_PREVIEW_WIDTH ((LCD_WIDTH-30)/8)
-//#define FONT_PREVIEW_HEIGHT 1000
-//static unsigned char fontpreview[FONT_PREVIEW_WIDTH*FONT_PREVIEW_HEIGHT];
+static bool incdec_value(int *pval, struct incdec_ctx *ctx, bool inc, bool bigstep)
+{
+    bool of = true;
+    int step = ctx->step[bigstep?1:0];
+    step = inc?step: -step;
+    *pval += step;
+    if (ctx->wrap)
+    {
+        if (*pval < 0) *pval += ctx->max;
+        else if (*pval >= ctx->max) *pval -= ctx->max;
+        else of = false;
+    }
+    else
+    {
+        if (*pval < 0) *pval = 0;
+        else if (*pval > ctx->max) *pval = ctx->max;
+        else of = false;
+    }
+    return of;
+}
 
 /***********************************************************************
  * Offscreen buffer/Text/Fonts handling
@@ -654,19 +701,20 @@ static bool browse( char *dst, int dst_size, const char *start )
     struct gui_synclist browse_list;
     int item_count = 0, selected, button;
     struct tree_context backup;
-    struct entry *dc;
+    struct entry *dc, *e;
     bool reload = true;
     int dirfilter = SHOW_ALL;
-    int *indexes = (int *) buffer->clipboard;
+    int *indexes = (int *) buffer;
+    size_t bbuf_len, len;
 
     char *a;
 
     rb->strcpy( bbuf, start );
-    a = bbuf+rb->strlen(bbuf)-1;
-    if( *a != '/' )
+    bbuf_len = rb->strlen(bbuf);
+    if( bbuf[bbuf_len-1] != '/' )
     {
-        a[1] = '/';
-        a[2] = '\0';
+        bbuf[bbuf_len++] = '/';
+        bbuf[bbuf_len] = '\0';
     }
     bbuf_s[0] = '\0';
 
@@ -680,9 +728,8 @@ static bool browse( char *dst, int dst_size, const char *start )
     if( *a != '/' )
     {
         *++a = '/';
-        *++a = '\0';
     }
-    rb->strcpy( a, dc[tree->selected_item].name );
+    rb->strcpy( a+1, dc[tree->selected_item].name );
     tree->dirfilter = &dirfilter;
     while( 1 )
     {
@@ -694,14 +741,13 @@ static bool browse( char *dst, int dst_size, const char *start )
             selected = 0;
             for( i = 0; i < tree->filesindir ; i++)
             {
+                e = &dc[i];
                 /* only displayes directories and .bmp files */
-                if( ((dc[i].attr & ATTR_DIRECTORY ) &&
-                      rb->strcmp( dc[i].name, "." ) &&
-                      rb->strcmp( dc[i].name, ".." )) ||
-                    ( !(dc[i].attr & ATTR_DIRECTORY) &&
-                        check_extention( dc[i].name, ".bmp" ) ) )
+                if( ( e->attr & ATTR_DIRECTORY ) ||
+                    ( !(e->attr & ATTR_DIRECTORY) &&
+                        check_extention( e->name, ".bmp" ) ) )
                 {
-                    if( !rb->strcmp( dc[i].name, bbuf_s ) )
+                    if( bbuf_s[0] && !rb->strcmp( e->name, bbuf_s ) )
                         selected = item_count;
                     indexes[item_count++] = i;
                 }
@@ -725,40 +771,40 @@ static bool browse( char *dst, int dst_size, const char *start )
                     rb->set_current_file( backup.currdir );
                     return false;
                 }
-                rb->strcpy( bbuf_s, ".." );
-            case ACTION_STD_OK:
-                if( button == ACTION_STD_OK )
-                {
-                    selected = rb->gui_synclist_get_sel_pos( &browse_list );
-                    if( selected < 0 || selected >= item_count )
-                        break;
-                    struct entry* e = &dc[indexes[selected]];
-                    rb->strlcpy( bbuf_s, e->name, sizeof( bbuf_s ) );
-                    if( !( e->attr & ATTR_DIRECTORY ) )
-                    {
-                        *tree = backup;
-                        rb->set_current_file( backup.currdir );
-                        rb->snprintf( dst, dst_size, "%s%s", bbuf, bbuf_s );
-                        return true;
-                    }
-                }
-                if( !rb->strcmp( bbuf_s, "." ) ) break;
-                a = bbuf+rb->strlen(bbuf);
-                if( !rb->strcmp( bbuf_s, ".." ) )
-                {
-                    a--;
-                    if( a == bbuf ) break;
-                    if( *a == '/' ) a--;
-                    while( *a != '/' ) a--;
-                    rb->strcpy( bbuf_s, ++a );
-                    /* select parent directory */
-                    bbuf_s[rb->strlen(bbuf_s)-1] = '\0';
-                    *a = '\0';
-                    reload = true;
-                    break;
-                }
-                rb->snprintf( a, bbuf+sizeof(bbuf)-a, "%s/", bbuf_s );
+                a = bbuf + bbuf_len - 1;
+                if( a == bbuf ) break;
+                while( *a == '/' ) a--;
+                *(a+1) = '\0';
+                while( *a != '/' ) a--;
+                /* select parent directory */
+                rb->strcpy( bbuf_s, ++a );
+                *a = '\0';
+                bbuf_len = a - bbuf;
                 reload = true;
+                break;
+
+            case ACTION_STD_OK:
+                selected = rb->gui_synclist_get_sel_pos( &browse_list );
+                if( selected < 0 || selected >= item_count )
+                    break;
+                e = &dc[indexes[selected]];
+                if( !( e->attr & ATTR_DIRECTORY ) )
+                {
+                    rb->snprintf( dst, dst_size, "%s%s", bbuf, e->name );
+                    *tree = backup;
+                    rb->set_current_file( backup.currdir );
+                    return true;
+                }
+                len = rb->strlen(e->name);
+                if( bbuf_len + len + 2 < (int)sizeof(bbuf) )
+                {
+                    bbuf_s[0] = '\0';
+                    rb->strcpy( bbuf+bbuf_len, e->name );
+                    bbuf_len += len;
+                    bbuf[bbuf_len++] = '/';
+                    bbuf[bbuf_len] = '\0';
+                    reload = true;
+                }
                 break;
 
             case ACTION_STD_MENU:
@@ -776,141 +822,215 @@ static bool browse( char *dst, int dst_size, const char *start )
  * on the simulators, disk spins too much on real targets -> rendered
  * font buffer needed.
  ***********************************************************************/
+/*
+ * cache font preview handling assumes:
+ * - fvi doesn't decrease by more than 1.
+ *   In other words, cache_first-1 must be cached before cache_first-2 is cached.
+ * - there is enough space to store all preview currently displayed.
+ */
 static bool browse_fonts( char *dst, int dst_size )
 {
-#define WIDTH ( LCD_WIDTH - 20 )
-#define HEIGHT ( LCD_HEIGHT - 20 )
 #define LINE_SPACE 2
-    int top, top_inside = 0, left;
+#define PREVIEW_SIZE(x) ((x)->size)
+#define PREVIEW_NEXT(x) (struct font_preview *)((char*)(x) + PREVIEW_SIZE(x))
 
-    DIR *d;
-    struct dirent *de;
+    struct tree_context backup;
+    struct entry *dc, *e;
+    int dirfilter = SHOW_FONT;
+
+    struct font_preview {
+        unsigned short width;
+        unsigned short height;
+        size_t size;    /* to avoid calculating size each time. */
+        fb_data preview[0];
+    } *font_preview = NULL;
+
+    int top = 0;
+
     int fvi = 0; /* first visible item */
     int lvi = 0; /* last visible item */
     int si = 0; /* selected item */
-    int osi = 0; /* old selected item */
     int li = 0; /* last item */
     int nvih = 0; /* next visible item height */
     int i;
-    int b_need_redraw = 1; /* Do we need to redraw ? */
+    bool need_redraw = true; /* Do we need to redraw ? */
+    bool reset_font = false;
+    bool ret = false;
 
     int cp = 0; /* current position */
-    int fh; /* font height */
+    int sp = 0; /* selected position */
+    int fh, fw; /* font height, width */
 
-    #define fh_buf buffer->text.fh_buf /* 30 might not be enough ... */
-    #define fw_buf buffer->text.fw_buf
-    int fw;
-    #define fontname_buf buffer->text.fontname_buf
+    unsigned char *cache = (unsigned char *) buffer + sizeof(buffer->text);
+    size_t cache_size = sizeof(*buffer) - sizeof(buffer->text);
+    size_t cache_used = 0;
+    int cache_first = 0, cache_last = -1;
+    char *a;
 
-    rb->snprintf( buffer->text.old_font, MAX_PATH,
-                  FONT_DIR "/%s.fnt",
+    rb->snprintf( bbuf_s, MAX_PATH, FONT_DIR "/%s.fnt",
                   rb->global_settings->font_file );
+
+    tree = rb->tree_get_context();
+    backup = *tree;
+    dc = tree->dircache;
+    a = backup.currdir+rb->strlen(backup.currdir)-1;
+    if( *a != '/' )
+    {
+        *++a = '/';
+    }
+    rb->strcpy( a+1, dc[tree->selected_item].name );
+    tree->dirfilter = &dirfilter;
+    rb->strcpy( bbuf, FONT_DIR "/" );
+    rb->set_current_file( bbuf );
+
+    if( buffer->text.initialized )
+    {
+        cache_used = buffer->text.cache_used;
+        cache_first = buffer->text.cache_first;
+        cache_last = buffer->text.cache_last;
+        fvi = buffer->text.fvi;
+        si = buffer->text.si;
+    }
+    buffer->text.initialized = true;
 
     while( 1 )
     {
-        if( !b_need_redraw )
+        if( !need_redraw )
         {
             /* we don't need to redraw ... but we need to unselect
              * the previously selected item */
-            cp = top_inside + LINE_SPACE;
-            for( i = 0; i+fvi < osi; i++ )
-            {
-                cp += fh_buf[i] + LINE_SPACE;
-            }
             rb->lcd_set_drawmode(DRMODE_COMPLEMENT);
-            rb->lcd_fillrect( left+10, cp, fw_buf[i], fh_buf[i] );
+            rb->lcd_fillrect( 10, sp, LCD_WIDTH-10, font_preview->height );
             rb->lcd_set_drawmode(DRMODE_SOLID);
         }
 
-        if( b_need_redraw )
+        if( need_redraw )
         {
-            b_need_redraw = 0;
-
-            d = rb->opendir( FONT_DIR "/" );
-            if( !d )
-            {
-                return false;
-            }
-            top_inside = draw_window( HEIGHT, WIDTH, &top, &left, "Fonts" );
-            i = 0;
-            li = -1;
-            while( i < fvi )
-            {
-                rb->readdir( d );
-                i++;
-            }
-            cp = top_inside+LINE_SPACE;
+            need_redraw = false;
 
             rb->lcd_set_foreground(COLOR_BLACK);
             rb->lcd_set_background(COLOR_LIGHTGRAY);
+            rb->lcd_clear_display();
 
-            while( cp < top+HEIGHT )
+            rb->font_getstringsize( "Fonts", NULL, &fh, FONT_UI );
+            rb->lcd_putsxy( 2, 2, "Fonts" );
+            top = fh + 4 + LINE_SPACE;
+
+            font_preview = (struct font_preview *) cache;
+            /* get first font preview to be displayed. */
+            for( i = cache_first; i < cache_last && i < fvi; i++ )
             {
-                de = rb->readdir( d );
-                if( !de )
+                font_preview = PREVIEW_NEXT(font_preview);
+            }
+            for( ; fvi < lvi && nvih > 0; fvi++ )
+            {
+                nvih -= font_preview->height + LINE_SPACE;
+                font_preview = PREVIEW_NEXT(font_preview);
+            }
+            nvih = 0;
+            i = fvi;
+
+            cp = top;
+            while( cp <= LCD_HEIGHT+LINE_SPACE && i < tree->filesindir )
+            {
+                e = &dc[i];
+                if( i < cache_first || i > cache_last )
                 {
-                    li = i-1;
-                    break;
+                    size_t siz;
+                    reset_font = true;
+                    rb->snprintf( bbuf, MAX_PATH, FONT_DIR "/%s", e->name );
+                    rb->font_load(NULL, bbuf );
+                    rb->font_getstringsize( e->name, &fw, &fh, FONT_UI );
+                    if( fw > LCD_WIDTH ) fw = LCD_WIDTH;
+                    siz = (sizeof(struct font_preview) + fw*fh*FB_DATA_SZ+3) & ~3;
+                    if( i < cache_first )
+                    {
+                        /* insert font preview to the top. */
+                        cache_used = 0;
+                        for( ; cache_first <= cache_last; cache_first++ )
+                        {
+                            font_preview = (struct font_preview *) (cache + cache_used);
+                            size_t size = PREVIEW_SIZE(font_preview);
+                            if( cache_used + size >= cache_size - siz )
+                                break;
+                            cache_used += size;
+                        }
+                        cache_last = cache_first-1;
+                        cache_first = i;
+                        rb->memmove( cache+siz, cache, cache_used );
+                        font_preview = (struct font_preview *) cache;
+                    }
+                    else /* i > cache_last */
+                    {
+                        /* add font preview to the bottom. */
+                        font_preview = (struct font_preview *) cache;
+                        while( cache_used >= cache_size - siz )
+                        {
+                            cache_used -= PREVIEW_SIZE(font_preview);
+                            font_preview = PREVIEW_NEXT(font_preview);
+                            cache_first++;
+                        }
+                        cache_last = i;
+                        rb->memmove( cache, font_preview, cache_used );
+                        font_preview = (struct font_preview *) (cache + cache_used);
+                    }
+                    cache_used += siz;
+                    /* create preview cache. */
+                    font_preview->width = fw;
+                    font_preview->height = fh;
+                    font_preview->size = siz;
+                    /* clear with background. */
+                    for( siz = fw*fh; siz > 0; )
+                    {
+                        font_preview->preview[--siz] = COLOR_LIGHTGRAY;
+                    }
+                    buffer_putsxyofs( font_preview->preview,
+                        fw, fh, 0, 0, 0, e->name );
                 }
-                if( !check_extention( de->d_name, ".fnt" ) )
-                    continue;
-                rb->snprintf( bbuf, MAX_PATH, FONT_DIR "/%s",
-                              de->d_name );
-                rb->font_load(NULL, bbuf );
-                rb->font_getstringsize( de->d_name, &fw, &fh, FONT_UI );
-                if( nvih > 0 )
+                else
                 {
-                    nvih -= fh;
-                    fvi++;
-                    if( nvih < 0 ) nvih = 0;
-                    i++;
-                    continue;
+                    fw = font_preview->width;
+                    fh = font_preview->height;
                 }
-                if( cp + fh >= top+HEIGHT )
+                if( cp + fh >= LCD_HEIGHT )
                 {
                     nvih = fh;
                     break;
                 }
-                rb->lcd_putsxy( left+10, cp, de->d_name );
-                fh_buf[i-fvi] = fh;
-                fw_buf[i-fvi] = fw;
+                rb->lcd_bitmap( font_preview->preview, 10, cp, fw, fh );
                 cp += fh + LINE_SPACE;
-                rb->strcpy( fontname_buf[i-fvi], bbuf );
                 i++;
+                font_preview = PREVIEW_NEXT(font_preview);
             }
             lvi = i-1;
-            if( li == -1 )
+            li = tree->filesindir-1;
+            if( reset_font )
             {
-                if( !(de = rb->readdir( d ) ) )
-                {
-                    li = lvi;
-                }
-                else if( !nvih && check_extention( de->d_name, ".fnt" ) )
-                {
-                    rb->snprintf( bbuf, MAX_PATH, FONT_DIR "/%s",
-                          de->d_name );
-                    rb->font_load(NULL, bbuf );
-                    rb->font_getstringsize( de->d_name, NULL, &fh, FONT_UI );
-                    nvih = fh;
-                }
+                rb->font_load(NULL, bbuf_s );
+                reset_font = false;
             }
-            rb->font_load(NULL, buffer->text.old_font );
-            rb->closedir( d );
+            if( lvi-fvi+1 < tree->filesindir )
+            {
+                rb->gui_scrollbar_draw( rb->screens[SCREEN_MAIN], 0, top,
+                                       9, LCD_HEIGHT-top,
+                                       tree->filesindir, fvi, lvi+1, VERTICAL );
+            }
         }
 
         rb->lcd_set_drawmode(DRMODE_COMPLEMENT);
-        cp = top_inside + LINE_SPACE;
-        for( i = 0; i+fvi < si; i++ )
+        sp = top;
+        font_preview = (struct font_preview *) cache;
+        for( i = cache_first; i < si; i++ )
         {
-            cp += fh_buf[i] + LINE_SPACE;
+            if( i >= fvi )
+                sp += font_preview->height + LINE_SPACE;
+            font_preview = PREVIEW_NEXT(font_preview);
         }
-        rb->lcd_fillrect( left+10, cp, fw_buf[i], fh_buf[i] );
+        rb->lcd_fillrect( 10, sp, LCD_WIDTH-10, font_preview->height );
         rb->lcd_set_drawmode(DRMODE_SOLID);
 
-        rb->lcd_update_rect( left, top, WIDTH, HEIGHT );
+        rb->lcd_update();
 
-        osi = si;
-        i = fvi;
         switch( rb->button_get(true) )
         {
             case ROCKPAINT_UP:
@@ -918,46 +1038,47 @@ static bool browse_fonts( char *dst, int dst_size )
                 if( si > 0 )
                 {
                     si--;
-                    if( si<fvi )
+                    if( si < fvi )
                     {
                         fvi = si;
+                        nvih = 0;
+                        need_redraw = true;
                     }
                 }
                 break;
 
             case ROCKPAINT_DOWN:
             case ROCKPAINT_DOWN|BUTTON_REPEAT:
-                if( li == -1 || si < li )
+                if( si < li )
                 {
                     si++;
+                    if( si > lvi )
+                    {
+                        need_redraw = true;
+                    }
                 }
                 break;
 
-            case ROCKPAINT_LEFT:
-                return false;
-
             case ROCKPAINT_RIGHT:
             case ROCKPAINT_DRAW:
-                rb->snprintf( dst, dst_size, "%s", fontname_buf[si-fvi] );
-                return true;
-        }
-
-        if( i != fvi || si > lvi )
-        {
-            b_need_redraw = 1;
-        }
-
-        if( si<=lvi )
-        {
-            nvih = 0;
+                ret = true;
+                rb->snprintf( dst, dst_size, FONT_DIR "/%s", dc[si].name );
+                /* fall through */
+            case ROCKPAINT_LEFT:
+            case ROCKPAINT_QUIT:
+                buffer->text.cache_used = cache_used;
+                buffer->text.cache_first = cache_first;
+                buffer->text.cache_last = cache_last;
+                buffer->text.fvi = fvi;
+                buffer->text.si = si;
+                *tree = backup;
+                rb->set_current_file( backup.currdir );
+                return ret;
         }
     }
-#undef fh_buf
-#undef fw_buf
-#undef fontname_buf
-#undef WIDTH
-#undef HEIGHT
 #undef LINE_SPACE
+#undef PREVIEW_SIZE
+#undef PREVIEW_NEXT
 }
 
 /***********************************************************************
@@ -971,6 +1092,12 @@ static unsigned int color_chooser( unsigned int color )
     int hue, saturation, value;
     int r, g, b; /* temp variables */
     int i, top, left;
+    int button;
+    int *pval;
+    static struct incdec_ctx ctxs[] = {
+        { 3600, { 10, 100}, true },  /* hue */
+        { 0xff, {  1,   8}, false }, /* the others */
+    };
 
     enum BaseColor { Hue = 0, Saturation = 1, Value = 2,
                      Red = 3, Green = 4, Blue = 5 };
@@ -1047,123 +1174,49 @@ static unsigned int color_chooser( unsigned int color )
 
         rb->lcd_update();
 
-        switch( rb->button_get(true) )
+        switch( button = rb->button_get(true) )
         {
             case ROCKPAINT_UP:
                 current = ( current + 5 )%6;
                 break;
 
             case ROCKPAINT_DOWN:
-                current = (current + 1 )%6;
+                current = ( current + 1 )%6;
                 break;
 
             case ROCKPAINT_LEFT:
-                has_changed = true;
-                switch( current )
-                {
-                    case Hue:
-                        hue = ( hue + 3600 - 10 )%3600;
-                        break;
-                    case Saturation:
-                        if( saturation ) saturation--;
-                        break;
-                    case Value:
-                        if( value ) value--;
-                        break;
-                    case Red:
-                        if( red ) red--;
-                        break;
-                    case Green:
-                        if( green ) green--;
-                        break;
-                    case Blue:
-                        if( blue ) blue--;
-                        break;
-                }
-                break;
-
             case ROCKPAINT_LEFT|BUTTON_REPEAT:
-                has_changed = true;
-                switch( current )
-                {
-                    case Hue:
-                        hue = ( hue + 3600 - 100 )%3600;
-                        break;
-                    case Saturation:
-                        if( saturation >= 8 ) saturation-=8;
-                        else saturation = 0;
-                        break;
-                    case Value:
-                        if( value >= 8 ) value-=8;
-                        else value = 0;
-                        break;
-                    case Red:
-                        if( red >= 8 ) red-=8;
-                        else red = 0;
-                        break;
-                    case Green:
-                        if( green >= 8 ) green-=8;
-                        else green = 0;
-                        break;
-                    case Blue:
-                        if( blue >= 8 ) blue-=8;
-                        else blue = 0;
-                        break;
-                }
-                break;
-
             case ROCKPAINT_RIGHT:
-                has_changed = true;
-                switch( current )
-                {
-                    case Hue:
-                        hue = ( hue + 10 )%3600;
-                        break;
-                    case Saturation:
-                        if( saturation < 0xff ) saturation++;
-                        break;
-                    case Value:
-                        if( value < 0xff ) value++;
-                        break;
-                    case Red:
-                        if( red < 0xff ) red++;
-                        break;
-                    case Green:
-                        if( green < 0xff ) green++;
-                        break;
-                    case Blue:
-                        if( blue < 0xff ) blue++;
-                        break;
-                }
-                break;
-
             case ROCKPAINT_RIGHT|BUTTON_REPEAT:
                 has_changed = true;
                 switch( current )
                 {
                     case Hue:
-                        hue = ( hue + 100 )%3600;
+                        pval = &hue;
                         break;
                     case Saturation:
-                        if( saturation < 0xff - 8 ) saturation+=8;
-                        else saturation = 0xff;
+                        pval = &saturation;
                         break;
                     case Value:
-                        if( value < 0xff - 8 ) value+=8;
-                        else value = 0xff;
+                        pval = &value;
                         break;
                     case Red:
-                        if( red < 0xff - 8 ) red+=8;
-                        else red = 0xff;
+                        pval = &red;
                         break;
                     case Green:
-                        if( green < 0xff - 8 ) green+=8;
-                        else green = 0xff;
+                        pval = &green;
                         break;
                     case Blue:
-                        if( blue < 0xff - 8 ) blue+=8;
-                        else blue = 0xff;
+                        pval = &blue;
                         break;
+                    default:
+                        pval = NULL;
+                        break;
+                }
+                if (pval)
+                {
+                    incdec_value(pval, &ctxs[(current != Hue? 1: 0)],
+                        (button&ROCKPAINT_RIGHT), (button&BUTTON_REPEAT));
                 }
                 break;
 
@@ -1233,7 +1286,7 @@ static void color_picker( int x, int y )
         if( y >= ROWS - PSIZE ) y -= PSIZE + 2;
         rb->lcd_drawrect( x + 2, y + 2, PSIZE - 2, PSIZE - 2 );
         rb->lcd_set_drawmode(DRMODE_SOLID);
-        rb->lcd_drawrect( x + 3, y + 3, PSIZE - 4, PSIZE - 4 );
+        rb->lcd_fillrect( x + 3, y + 3, PSIZE - 4, PSIZE - 4 );
 #undef PSIZE
         rb->lcd_set_foreground( rp_colors[ drawcolor ] );
     }
@@ -1441,10 +1494,10 @@ static void draw_rot_90_deg( int x1, int y1, int x2, int y2, int direction )
 }
 
 static void draw_paste_rectangle( int src_x1, int src_y1, int src_x2,
-                                  int src_y2, int x1, int y1, int mode )
+                                  int src_y2, int x1, int y1, int cut )
 {
     int i, width, height;
-    if( mode == SELECT_MENU_CUT )
+    if( cut )
     {
         i = drawcolor;
         drawcolor = bgdrawcolor;
@@ -1507,9 +1560,7 @@ static void draw_text( int x, int y )
 {
     int selected = 0;
     buffer->text.text[0] = '\0';
-    rb->snprintf( buffer->text.old_font, MAX_PATH,
-                  FONT_DIR "/%s.fnt",
-                  rb->global_settings->font_file );
+    buffer->text.font[0] = '\0';
     while( 1 )
     {
         switch( rb->do_menu( &text_menu, &selected, NULL, NULL ) )
@@ -1538,26 +1589,18 @@ static void draw_text( int x, int y )
                     {
                         case ROCKPAINT_LEFT:
                         case ROCKPAINT_LEFT | BUTTON_REPEAT:
-                            x-=bspeed * ( button & BUTTON_REPEAT ? 4 : 1 );
-                            if (x<0) x=COLS-1;
-                            break;
-
                         case ROCKPAINT_RIGHT:
                         case ROCKPAINT_RIGHT | BUTTON_REPEAT:
-                            x+=bspeed * ( button & BUTTON_REPEAT ? 4 : 1 );
-                            if (x>=COLS) x=0;
+                            incdec_value(&x, &incdec_x,
+                                (button&ROCKPAINT_RIGHT), (button&BUTTON_REPEAT));
                             break;
 
                         case ROCKPAINT_UP:
                         case ROCKPAINT_UP | BUTTON_REPEAT:
-                            y-=bspeed * ( button & BUTTON_REPEAT ? 4 : 1 );
-                            if (y<0) y=ROWS-1;
-                            break;
-
                         case ROCKPAINT_DOWN:
                         case ROCKPAINT_DOWN | BUTTON_REPEAT:
-                            y+=bspeed * ( button & BUTTON_REPEAT ? 4 : 1 );
-                            if (y>=ROWS-1) y=0;
+                            incdec_value(&y, &incdec_y,
+                                (button&ROCKPAINT_DOWN), (button&BUTTON_REPEAT));
                             break;
 
                         case ROCKPAINT_DRAW:
@@ -1579,7 +1622,13 @@ static void draw_text( int x, int y )
             case TEXT_MENU_CANCEL:
             default:
                 restore_screen();
-                rb->font_load(NULL, buffer->text.old_font );
+                if( buffer->text.font[0] )
+                {
+                    rb->snprintf( buffer->text.font, MAX_PATH,
+                                  FONT_DIR "/%s.fnt",
+                                  rb->global_settings->font_file );
+                    rb->font_load(NULL, buffer->text.font );
+                }
                 return;
         }
     }
@@ -1622,7 +1671,7 @@ static void draw_line( int x1, int y1, int x2, int y2 )
         yerr <<= 1;
 
         /* to leave off the last pixel of the line, leave off the "+ 1" */
-        for (i = abs(deltay) + 1; i; --i)
+        for (i = err + 1; i; --i)
         {
             draw_pixel(x, y);
             y += ystep;
@@ -1640,7 +1689,7 @@ static void draw_line( int x1, int y1, int x2, int y2 )
         xerr <<= 1;
         yerr <<= 1;
 
-        for (i = abs(deltax) + 1; i; --i)
+        for (i = err + 1; i; --i)
         {
             draw_pixel(x, y);
             x += xstep;
@@ -1712,6 +1761,7 @@ static void draw_curve( int x1, int y1, int x2, int y2,
         a3 = buffer->bezier[i].x3; \
         b3 = buffer->bezier[i].y3; \
         d = buffer->bezier[i].depth;
+
         PUSH( x1<<4, y1<<4, xb<<4, yb<<4, x2<<4, y2<<4, 0 );
         while( i )
         {
@@ -1941,6 +1991,8 @@ static void draw_fill( int x0, int y0 )
     short y = y0;
     unsigned int prev_color = save_buffer[ x0+y0*COLS ];
 
+    if( preview )
+        return;
     if( prev_color == rp_colors[ drawcolor ] ) return;
 
     PUSH( x, y );
@@ -1971,123 +2023,102 @@ static void draw_fill( int x0, int y0 )
 }
 
 /* For preview purposes only */
+/* use same algorithm as draw_line() to draw line. */
 static void line_gradient( int x1, int y1, int x2, int y2 )
 {
-    int r1, g1, b1;
-    int r2, g2, b2;
     int h1, s1, v1, h2, s2, v2, r, g, b;
-    int w, h, x, y;
+    int xerr = x2 - x1, yerr = y2 - y1, xstep, ystep;
+    int i, delta, err;
+    fb_data color1, color2;
 
-    bool a = false;
-
-    x1 <<= 1;
-    y1 <<= 1;
-    x2 <<= 1;
-    y2 <<= 1;
-
-    w = x1 - x2;
-    h = y1 - y2;
-
-    if( w == 0 && h == 0 )
+    if( xerr == 0 && yerr == 0 )
     {
-        draw_pixel( x1>>1, y1>>1 );
+        draw_pixel( x1, y1 );
         return;
     }
 
-    r1 = RGB_UNPACK_RED( rp_colors[ bgdrawcolor ] );
-    g1 = RGB_UNPACK_GREEN( rp_colors[ bgdrawcolor ] );
-    b1 = RGB_UNPACK_BLUE( rp_colors[ bgdrawcolor ] );
-    r2 = RGB_UNPACK_RED( rp_colors[ drawcolor ] );
-    g2 = RGB_UNPACK_GREEN( rp_colors[ drawcolor ] );
-    b2 = RGB_UNPACK_BLUE( rp_colors[ drawcolor ] );
+    xstep = xerr > 0 ? 1 : -1;
+    ystep = yerr > 0 ? 1 : -1;
+    xerr = abs(xerr) << 1;
+    yerr = abs(yerr) << 1;
 
-    if( w < 0 )
-    {
-        w *= -1;
-        a = true;
-    }
-    if( h < 0 )
-    {
-        h *= -1;
-        a = !a;
-    }
-    if( a )
-    {
-        r = r1;
-        r1 = r2;
-        r2 = r;
-        g = g1;
-        g1 = g2;
-        g2 = g;
-        b = b1;
-        b1 = b2;
-        b2 = b;
-    }
+    color1 = rp_colors[ bgdrawcolor ];
+    color2 = rp_colors[ drawcolor ];
 
-    rgb2hsv( r1, g1, b1, &h1, &s1, &v1 );
-    rgb2hsv( r2, g2, b2, &h2, &s2, &v2 );
+    r = RGB_UNPACK_RED( color1 );
+    g = RGB_UNPACK_GREEN( color1 );
+    b = RGB_UNPACK_BLUE( color1 );
+    rgb2hsv( r, g, b, &h1, &s1, &v1 );
 
-    if( w > h )
+    r = RGB_UNPACK_RED( color2 );
+    g = RGB_UNPACK_GREEN( color2 );
+    b = RGB_UNPACK_BLUE( color2 );
+    rgb2hsv( r, g, b, &h2, &s2, &v2 );
+
+    if( xerr > yerr )
     {
-        if( x1 > x2 )
+        err = xerr>>1;
+        delta = err+1;
+        /* to leave off the last pixel of the line, leave off the "+ 1" */
+        for (i = delta; i; --i)
         {
-            x = x2;
-            y = y2;
-            x2 = x1;
-            y2 = y1;
-            x1 = x;
-            y1 = y;
-        }
-        w = x1 - x2;
-        h = y1 - y2;
-        while( x1 <= x2 )
-        {
-            hsv2rgb( h1+((h2-h1)*(x1-x2))/w,
-                     s1+((s2-s1)*(x1-x2))/w,
-                     v1+((v2-v1)*(x1-x2))/w,
+            hsv2rgb( h2+((h1-h2)*i)/delta,
+                     s2+((s1-s2)*i)/delta,
+                     v2+((v1-v2)*i)/delta,
                      &r, &g, &b );
             rp_colors[ drawcolor ] = LCD_RGBPACK( r, g, b );
             rb->lcd_set_foreground( rp_colors[ drawcolor ] );
-            draw_pixel( (x1+1)>>1, (y1+1)>>1 );
-            x1+=2;
-            y1 = y2 - ( x2 - x1 ) * h / w;
+            draw_pixel(x1, y1);
+            x1 += xstep;
+            err -= yerr;
+            if (err < 0) {
+                y1 += ystep;
+                err += xerr;
+            }
         }
     }
-    else /* h > w */
+    else /* yerr >= xerr */
     {
-        if( y1 > y2 )
+        err = yerr>>1;
+        delta = err+1;
+        for (i = delta; i; --i)
         {
-            x = x2;
-            y = y2;
-            x2 = x1;
-            y2 = y1;
-            x1 = x;
-            y1 = y;
-        }
-        w = x1 - x2;
-        h = y1 - y2;
-        while( y1 <= y2 )
-        {
-            hsv2rgb( h1+((h2-h1)*(y1-y2))/h,
-                     s1+((s2-s1)*(y1-y2))/h,
-                     v1+((v2-v1)*(y1-y2))/h,
+            hsv2rgb( h2+((h1-h2)*i)/delta,
+                     s2+((s1-s2)*i)/delta,
+                     v2+((v1-v2)*i)/delta,
                      &r, &g, &b );
             rp_colors[ drawcolor ] = LCD_RGBPACK( r, g, b );
             rb->lcd_set_foreground( rp_colors[ drawcolor ] );
-            draw_pixel( (x1+1)>>1, (y1+1)>>1 );
-            y1+=2;
-            x1 = x2 - ( y2 - y1 ) * w / h;
+            draw_pixel(x1, y1);
+            y1 += ystep;
+            err -= xerr;
+            if (err < 0) {
+                x1 += xstep;
+                err += yerr;
+            }
         }
     }
-    if( a )
-    {
-        rp_colors[ drawcolor ] = LCD_RGBPACK( r1, g1, b1 );
-    }
-    else
-    {
-        rp_colors[ drawcolor ] = LCD_RGBPACK( r2, g2, b2 );
-    }
+    rp_colors[ drawcolor ] = color2;
 }
+
+/* macros used by linear_gradient() and radial_gradient(). */
+#define PUSH( _x, _y ) \
+    save_buffer[(_x)+(_y)*COLS] = mark_color; \
+    buffer->coord[i].x = (short)(_x); \
+    buffer->coord[i].y = (short)(_y); \
+    i++;
+#define POP( _x, _y ) \
+    i--; \
+    _x = (int)buffer->coord[i].x; \
+    _y = (int)buffer->coord[i].y;
+#define PUSH2( _x, _y ) \
+    j--; \
+    buffer->coord[j].x = (short)(_x); \
+    buffer->coord[j].y = (short)(_y);
+#define POP2( _x, _y ) \
+    _x = (int)buffer->coord[j].x; \
+    _y = (int)buffer->coord[j].y; \
+    j++;
 
 static void linear_gradient( int x1, int y1, int x2, int y2 )
 {
@@ -2097,16 +2128,19 @@ static void linear_gradient( int x1, int y1, int x2, int y2 )
     int r2 = RGB_UNPACK_RED( rp_colors[ drawcolor ] );
     int g2 = RGB_UNPACK_GREEN( rp_colors[ drawcolor ] );
     int b2 = RGB_UNPACK_BLUE( rp_colors[ drawcolor ] );
+    fb_data color = rp_colors[ drawcolor ];
 
     int h1, s1, v1, h2, s2, v2, r, g, b;
 
     /* radius^2 */
     int radius2 = ( x1 - x2 ) * ( x1 - x2 ) + ( y1 - y2 ) * ( y1 - y2 );
-    int dist2, i=0;
+    int dist2, i=0, j=COLS*ROWS;
 
     /* We only propagate the gradient to neighboring pixels with the same
      * color as ( x1, y1 ) */
-    unsigned int prev_color = save_buffer[ x1+y1*COLS ];
+    fb_data prev_color = save_buffer[ x1+y1*COLS ];
+    /* to mark pixel that the pixel is already in LIFO. */
+    fb_data mark_color = ~prev_color;
 
     int x = x1;
     int y = y1;
@@ -2115,23 +2149,20 @@ static void linear_gradient( int x1, int y1, int x2, int y2 )
     if( preview )
     {
         line_gradient( x1, y1, x2, y2 );
+        return;
+    }
+    if( rp_colors[ drawcolor ] == rp_colors[ bgdrawcolor ] )
+    {
+        draw_fill( x1, y1 );
+        return;
     }
 
     rgb2hsv( r1, g1, b1, &h1, &s1, &v1 );
     rgb2hsv( r2, g2, b2, &h2, &s2, &v2 );
 
-#define PUSH( x0, y0 ) \
-    buffer->coord[i].x = (short)(x0); \
-    buffer->coord[i].y = (short)(y0); \
-    i++;
-#define POP( a, b ) \
-    i--; \
-    a = (int)buffer->coord[i].x; \
-    b = (int)buffer->coord[i].y;
-
     PUSH( x, y );
 
-    while( i != 0 )
+    while( i > 0 )
     {
         POP( x, y );
 
@@ -2150,14 +2181,13 @@ static void linear_gradient( int x1, int y1, int x2, int y2 )
         }
         else
         {
-            rp_colors[ drawcolor ] = LCD_RGBPACK( r2, g2, b2 );
+            rp_colors[ drawcolor ] = color;
         }
         if( rp_colors[ drawcolor ] == prev_color )
         {
-            if( rp_colors[ drawcolor ])
-                rp_colors[ drawcolor ]--; /* GRUIK */
-            else
-                rp_colors[ drawcolor ]++; /* GRUIK */
+            /* "mark" that pixel was checked. correct color later. */
+            PUSH2( x, y );
+            rp_colors[ drawcolor ] = mark_color;
         }
         rb->lcd_set_foreground( rp_colors[ drawcolor ] );
         draw_pixel( x, y );
@@ -2179,10 +2209,15 @@ static void linear_gradient( int x1, int y1, int x2, int y2 )
             PUSH( x, y+1 );
         }
     }
-#undef PUSH
-#undef POP
-
-    rp_colors[ drawcolor ] = LCD_RGBPACK( r2, g2, b2 );
+    while (j < COLS*ROWS)
+    {
+        /* correct color. */
+        POP2( x, y );
+        rp_colors[ drawcolor ] = prev_color;
+        rb->lcd_set_foreground( rp_colors[ drawcolor ] );
+        draw_pixel( x, y );
+    }
+    rp_colors[ drawcolor ] = color;
 }
 
 static void radial_gradient( int x1, int y1, int x2, int y2 )
@@ -2193,16 +2228,19 @@ static void radial_gradient( int x1, int y1, int x2, int y2 )
     int r2 = RGB_UNPACK_RED( rp_colors[ drawcolor ] );
     int g2 = RGB_UNPACK_GREEN( rp_colors[ drawcolor ] );
     int b2 = RGB_UNPACK_BLUE( rp_colors[ drawcolor ] );
+    fb_data color = rp_colors[ drawcolor ];
 
     int h1, s1, v1, h2, s2, v2, r, g, b;
 
     /* radius^2 */
     int radius2 = ( x1 - x2 ) * ( x1 - x2 ) + ( y1 - y2 ) * ( y1 - y2 );
-    int dist2, i=0;
+    int dist2, i=0, j=COLS*ROWS;
 
     /* We only propagate the gradient to neighboring pixels with the same
      * color as ( x1, y1 ) */
-    unsigned int prev_color = save_buffer[ x1+y1*COLS ];
+    fb_data prev_color = save_buffer[ x1+y1*COLS ];
+    /* to mark pixel that the pixel is already in LIFO. */
+    fb_data mark_color = ~prev_color;
 
     int x = x1;
     int y = y1;
@@ -2211,27 +2249,25 @@ static void radial_gradient( int x1, int y1, int x2, int y2 )
     if( preview )
     {
         line_gradient( x1, y1, x2, y2 );
+        return;
+    }
+    if( rp_colors[ drawcolor ] == rp_colors[ bgdrawcolor ] )
+    {
+        draw_fill( x1, y1 );
+        return;
     }
 
     rgb2hsv( r1, g1, b1, &h1, &s1, &v1 );
     rgb2hsv( r2, g2, b2, &h2, &s2, &v2 );
 
-#define PUSH( x0, y0 ) \
-    buffer->coord[i].x = (short)(x0); \
-    buffer->coord[i].y = (short)(y0); \
-    i++;
-#define POP( a, b ) \
-    i--; \
-    a = (int)buffer->coord[i].x; \
-    b = (int)buffer->coord[i].y;
-
     PUSH( x, y );
 
-    while( i != 0 )
+    while( i > 0 )
     {
         POP( x, y );
 
-        if( ( dist2 = (x1-(x))*(x1-(x))+(y1-(y))*(y1-(y)) ) < radius2 )
+        dist2 = ( x - x1 ) * ( x - x1 ) + ( y - y1 ) * ( y - y1 );
+        if( dist2 < radius2 )
         {
             hsv2rgb( h1+((h2-h1)*dist2)/radius2,
                      s1+((s2-s1)*dist2)/radius2,
@@ -2241,14 +2277,13 @@ static void radial_gradient( int x1, int y1, int x2, int y2 )
         }
         else
         {
-            rp_colors[ drawcolor ] = LCD_RGBPACK( r2, g2, b2 );
+            rp_colors[ drawcolor ] = color;
         }
         if( rp_colors[ drawcolor ] == prev_color )
         {
-            if( rp_colors[ drawcolor ])
-                rp_colors[ drawcolor ]--; /* GRUIK */
-            else
-                rp_colors[ drawcolor ]++; /* GRUIK */
+            /* "mark" that pixel was checked. correct color later. */
+            PUSH2( x, y );
+            rp_colors[ drawcolor ] = mark_color;
         }
         rb->lcd_set_foreground( rp_colors[ drawcolor ] );
         draw_pixel( x, y );
@@ -2270,11 +2305,21 @@ static void radial_gradient( int x1, int y1, int x2, int y2 )
             PUSH( x, y+1 );
         }
     }
+    while (j < COLS*ROWS)
+    {
+        /* correct color. */
+        POP2( x, y );
+        rp_colors[ drawcolor ] = prev_color;
+        rb->lcd_set_foreground( rp_colors[ drawcolor ] );
+        draw_pixel( x, y );
+    }
+    rp_colors[ drawcolor ] = color;
+}
+
 #undef PUSH
 #undef POP
-
-    rp_colors[ drawcolor ] = LCD_RGBPACK( r2, g2, b2 );
-}
+#undef PUSH2
+#undef POP2
 
 static void draw_toolbars(bool update)
 {
@@ -2394,13 +2439,11 @@ static void toolbar( void )
                     i = ( x - TB_TL_LEFT )/(TB_TL_SIZE+TB_TL_SPACING);
                     j = ( y - (TOP+TB_TL_TOP) )/(TB_TL_SIZE+TB_TL_SPACING);
                     tool = i*2+j;
-                    prev_x = -1;
-                    prev_y = -1;
-                    prev_x2 = -1;
-                    prev_y2 = -1;
-                    prev_x3 = -1;
-                    prev_y3 = -1;
-                    preview = false;
+                    reset_tool();
+                    if( tool == Text )
+                    {
+                        buffer->text.initialized = false;
+                    }
                 }
                 else if( x >= TB_MENU_LEFT && y >= TOP+TB_MENU_TOP-2)
                 {
@@ -2415,38 +2458,24 @@ static void toolbar( void )
 
             case ROCKPAINT_LEFT:
             case ROCKPAINT_LEFT | BUTTON_REPEAT:
-                inv_cursor(false);
-                x-=bspeed * ( button & BUTTON_REPEAT ? 4 : 1 );
-                if (x<0) x=COLS-1;
-                inv_cursor(true);
-                break;
-
             case ROCKPAINT_RIGHT:
             case ROCKPAINT_RIGHT | BUTTON_REPEAT:
                 inv_cursor(false);
-                x+=bspeed * ( button & BUTTON_REPEAT ? 4 : 1 );
-                if (x>=COLS) x=0;
+                incdec_value(&x, &incdec_x,
+                    (button&ROCKPAINT_RIGHT), (button&BUTTON_REPEAT));
                 inv_cursor(true);
                 break;
 
             case ROCKPAINT_UP:
             case ROCKPAINT_UP | BUTTON_REPEAT:
-                inv_cursor(false);
-                y-=bspeed * ( button & BUTTON_REPEAT ? 4 : 1 );
-                if (y<LCD_HEIGHT-TB_HEIGHT)
-                {
-                    return;
-                }
-                inv_cursor(true);
-                break;
-
             case ROCKPAINT_DOWN:
             case ROCKPAINT_DOWN | BUTTON_REPEAT:
                 inv_cursor(false);
-                y+=bspeed * ( button & BUTTON_REPEAT ? 4 : 1 );
-                if (y>=LCD_HEIGHT)
+                if (incdec_value(&y, &incdec_y,
+                        (button&ROCKPAINT_DOWN), (button&BUTTON_REPEAT))
+                    || y < LCD_HEIGHT-TB_HEIGHT)
                 {
-                    y = 0;
+                    /* went out of region. exit toolbar. */
                     return;
                 }
                 inv_cursor(true);
@@ -2558,8 +2587,13 @@ static void goto_menu(void)
                 for(multi = 0; multi<3; multi++)
                     if(bspeed == times_list[multi]) break;
                 rb->set_option( "Brush Speed", &multi, INT, times_options, 3, NULL );
-                if( multi >= 0 )
+                if( multi >= 0 ) {
                     bspeed = times_list[multi];
+                    incdec_x.step[0] = bspeed;
+                    incdec_x.step[1] = bspeed * 4;
+                    incdec_y.step[0] = bspeed;
+                    incdec_y.step[1] = bspeed * 4;
+                }
                 break;
 
             case MAIN_MENU_COLOR:
@@ -2575,7 +2609,10 @@ static void goto_menu(void)
                 break;
 
             case MAIN_MENU_PLAYBACK_CONTROL:
-                playback_control( NULL );
+                if (!audio_buf)
+                    playback_control( NULL );
+                else
+                    rb->splash(HZ, "Cannot restart playback");
                 break;
 
             case MAIN_MENU_EXIT:
@@ -2599,14 +2636,269 @@ static void reset_tool( void )
     prev_y2 = -1;
     prev_x3 = -1;
     prev_y3 = -1;
-    tool_mode = -1;
-    preview = false;
+    /* reset state */
+    state = State0;
+    /* always preview color picker */
+    preview = (tool == ColorPicker);
 }
+
+/* brush tool */
+static void state_func_brush(void)
+{
+    if( state == State0 )
+    {
+        state = State1;
+    }
+    else
+    {
+        state = State0;
+    }
+}
+
+/* fill tool */
+static void state_func_fill(void)
+{
+    draw_fill( x, y );
+    restore_screen();
+}
+
+/* select rectangle tool */
+static void state_func_select(void)
+{
+    int mode;
+    if( state == State0 )
+    {
+        prev_x = x;
+        prev_y = y;
+        preview = true;
+        state = State1;
+    }
+    else if( state == State1 )
+    {
+        mode = rb->do_menu( &select_menu, NULL, NULL, false );
+        switch( mode )
+        {
+            case SELECT_MENU_CUT:
+            case SELECT_MENU_COPY:
+                prev_x2 = x;
+                prev_y2 = y;
+                if( prev_x < x ) x = prev_x;
+                if( prev_y < y ) y = prev_y;
+                prev_x3 = abs(prev_x2 - prev_x);
+                prev_y3 = abs(prev_y2 - prev_y);
+                copy_to_clipboard();
+                state = (mode == SELECT_MENU_CUT? State2: State3);
+                break;
+
+            case SELECT_MENU_INVERT:
+                draw_invert( prev_x, prev_y, x, y );
+                reset_tool();
+                break;
+
+            case SELECT_MENU_HFLIP:
+                draw_hflip( prev_x, prev_y, x, y );
+                reset_tool();
+                break;
+
+            case SELECT_MENU_VFLIP:
+                draw_vflip( prev_x, prev_y, x, y );
+                reset_tool();
+                break;
+
+            case SELECT_MENU_ROTATE90:
+                draw_rot_90_deg( prev_x, prev_y, x, y, 1 );
+                reset_tool();
+                break;
+
+            case SELECT_MENU_ROTATE180:
+                draw_hflip( prev_x, prev_y, x, y );
+                draw_vflip( prev_x, prev_y, x, y );
+                reset_tool();
+                break;
+
+            case SELECT_MENU_ROTATE270:
+                draw_rot_90_deg( prev_x, prev_y, x, y, -1 );
+                reset_tool();
+                break;
+
+            case SELECT_MENU_CANCEL:
+                reset_tool();
+                break;
+
+            default:
+                break;
+        }
+        restore_screen();
+    }
+    else
+    {
+        preview = false;
+        draw_paste_rectangle( prev_x, prev_y, prev_x2, prev_y2,
+                              x, y, state == State2 );
+        reset_tool();
+        restore_screen();
+    }
+}
+
+static void preview_select(void)
+{
+    if( state == State1 )
+    {
+        /* we are defining the selection */
+        draw_select_rectangle( prev_x, prev_y, x, y );
+    }
+    else
+    {
+        /* we are pasting the selected data */
+        draw_paste_rectangle( prev_x, prev_y, prev_x2, prev_y2,
+                              x, y, state == State2 );
+        draw_select_rectangle( x, y, x+prev_x3, y+prev_y3 );
+    }
+}
+
+/* color picker tool */
+static void state_func_picker(void)
+{
+    preview = false;
+    color_picker( x, y );
+    reset_tool();
+}
+
+static void preview_picker(void)
+{
+    color_picker( x, y );
+}
+
+/* curve tool */
+static void state_func_curve(void)
+{
+    if( state == State0 )
+    {
+        prev_x = x;
+        prev_y = y;
+        preview = true;
+        state = State1;
+    }
+    else if( state == State1 )
+    {
+        prev_x2 = x;
+        prev_y2 = y;
+        state = State2;
+    }
+    else if( state == State2 )
+    {
+        prev_x3 = x;
+        prev_y3 = y;
+        state = State3;
+    }
+    else
+    {
+        preview = false;
+        draw_curve( prev_x, prev_y, prev_x2, prev_y2,
+                   prev_x3, prev_y3, x, y );
+        reset_tool();
+        restore_screen();
+    }
+}
+
+static void preview_curve(void)
+{
+    if( state == State1 )
+    {
+        draw_line( prev_x, prev_y, x, y );
+    }
+    else
+    {
+        draw_curve( prev_x, prev_y, prev_x2, prev_y2,
+                   prev_x3, prev_y3, x, y );
+    }
+}
+
+/* text tool */
+static void state_func_text(void)
+{
+    draw_text( x, y );
+}
+
+/* tools which take 2 point */
+static void preview_2point(void);
+static void state_func_2point(void)
+{
+    if( state == State0 )
+    {
+        prev_x = x;
+        prev_y = y;
+        state = State1;
+        preview = true;
+    }
+    else
+    {
+        preview = false;
+        preview_2point();
+        reset_tool();
+        restore_screen();
+    }
+}
+
+static void preview_2point(void)
+{
+    if( state == State1 )
+    {
+        switch( tool )
+        {
+            case Line:
+                draw_line( prev_x, prev_y, x, y );
+                break;
+            case Rectangle:
+                draw_rect( prev_x, prev_y, x, y );
+                break;
+            case RectangleFull:
+                draw_rect_full( prev_x, prev_y, x, y );
+                break;
+            case Oval:
+                draw_oval_empty( prev_x, prev_y, x, y );
+                break;
+            case OvalFull:
+                draw_oval_full( prev_x, prev_y, x, y );
+                break;
+            case LinearGradient:
+                linear_gradient( prev_x, prev_y, x, y );
+                break;
+            case RadialGradient:
+                radial_gradient( prev_x, prev_y, x, y );
+                break;
+            default:
+                break;
+        }
+        if( !preview )
+        {
+            reset_tool();
+            restore_screen();
+        }
+    }
+}
+
+static const struct tool_func tools[14] = {
+    [Brush]           = { state_func_brush,  NULL },
+    [Fill]            = { state_func_fill,   NULL },
+    [SelectRectangle] = { state_func_select, preview_select },
+    [ColorPicker]     = { state_func_picker, preview_picker },
+    [Line]            = { state_func_2point, preview_2point },
+    [Unused]          = { NULL, NULL },
+    [Curve]           = { state_func_curve,  preview_curve },
+    [Text]            = { state_func_text,   NULL },
+    [Rectangle]       = { state_func_2point, preview_2point },
+    [RectangleFull]   = { state_func_2point, preview_2point },
+    [Oval]            = { state_func_2point, preview_2point },
+    [OvalFull]        = { state_func_2point, preview_2point },
+    [LinearGradient]  = { state_func_2point, preview_2point },
+    [RadialGradient]  = { state_func_2point, preview_2point },
+};
 
 static bool rockpaint_loop( void )
 {
-    int button=0,i,j;
-    int accelaration;
+    int button = 0, i, j;
+    bool bigstep;
 
     x = 10;
     toolbar();
@@ -2616,199 +2908,46 @@ static bool rockpaint_loop( void )
 
     while (!quit) {
         button = rb->button_get(true);
-
-        if( tool == Brush && prev_x != -1 )
-        {
-            accelaration = 1;
-        }
-        else if( button & BUTTON_REPEAT )
-        {
-            accelaration = 4;
-        }
-        else
-        {
-            accelaration = 1;
-        }
+        bigstep = (button & BUTTON_REPEAT) && !(tool == Brush && state == State1);
 
         switch(button)
         {
             case ROCKPAINT_QUIT:
-                rb->lcd_set_drawmode(DRMODE_SOLID);
-                return PLUGIN_OK;
+                if (state != State0)
+                {
+                    reset_tool();
+                    restore_screen();
+                    inv_cursor(true);
+                }
+                else
+                {
+                    rb->lcd_set_drawmode(DRMODE_SOLID);
+                    return PLUGIN_OK;
+                }
+                break;
 
             case ROCKPAINT_MENU:
-                inv_cursor(false);
                 goto_menu();
                 restore_screen();
                 inv_cursor(true);
                 break;
 
             case ROCKPAINT_DRAW:
-                inv_cursor(false);
-                switch( tool )
+                if( tools[tool].state_func )
                 {
-                    case Brush:
-                        if( prev_x == -1 ) prev_x = 1;
-                        else prev_x = -1;
-                        break;
-
-                    case SelectRectangle:
-                    case Line:
-                    case Curve:
-                    case Rectangle:
-                    case RectangleFull:
-                    case Oval:
-                    case OvalFull:
-                    case LinearGradient:
-                    case RadialGradient:
-                        /* Curve uses 4 points, others use 2 */
-                        if( prev_x == -1 || prev_y == -1 )
-                        {
-                            prev_x = x;
-                            prev_y = y;
-                            preview = true;
-                        }
-                        else if( tool == Curve
-                                 && ( prev_x2 == -1 || prev_y2 == -1 ) )
-                        {
-                            prev_x2 = x;
-                            prev_y2 = y;
-                        }
-                        else if( tool == SelectRectangle
-                                 && ( prev_x2 == -1 || prev_y2 == -1 ) )
-                        {
-                            tool_mode = rb->do_menu( &select_menu,
-                                                     NULL, NULL, false );
-                            switch( tool_mode )
-                            {
-                                case SELECT_MENU_CUT:
-                                case SELECT_MENU_COPY:
-                                    prev_x2 = x;
-                                    prev_y2 = y;
-                                    copy_to_clipboard();
-                                    if( prev_x < x ) x = prev_x;
-                                    if( prev_y < y ) y = prev_y;
-                                    break;
-
-                                case SELECT_MENU_INVERT:
-                                    draw_invert( prev_x, prev_y, x, y );
-                                    reset_tool();
-                                    break;
-
-                                case SELECT_MENU_HFLIP:
-                                    draw_hflip( prev_x, prev_y, x, y );
-                                    reset_tool();
-                                    break;
-
-                                case SELECT_MENU_VFLIP:
-                                    draw_vflip( prev_x, prev_y, x, y );
-                                    reset_tool();
-                                    break;
-
-                                case SELECT_MENU_ROTATE90:
-                                    draw_rot_90_deg( prev_x, prev_y, x, y, 1 );
-                                    reset_tool();
-                                    break;
-
-                                case SELECT_MENU_ROTATE180:
-                                    draw_hflip( prev_x, prev_y, x, y );
-                                    draw_vflip( prev_x, prev_y, x, y );
-                                    reset_tool();
-                                    break;
-
-                                case SELECT_MENU_ROTATE270:
-                                    draw_rot_90_deg( prev_x, prev_y, x, y, -1 );
-                                    reset_tool();
-                                    break;
-
-                                case SELECT_MENU_CANCEL:
-                                    reset_tool();
-                                    break;
-
-                                default:
-                                    break;
-                            }
-                            restore_screen();
-                        }
-                        else if( tool == Curve
-                                 && ( prev_x3 == -1 || prev_y3 == -1 ) )
-                        {
-                            prev_x3 = x;
-                            prev_y3 = y;
-                        }
-                        else
-                        {
-                            preview = false;
-                            switch( tool )
-                            {
-                                case SelectRectangle:
-                                    draw_paste_rectangle( prev_x, prev_y,
-                                                          prev_x2, prev_y2,
-                                                          x, y, tool_mode );
-                                    break;
-                                case Line:
-                                    draw_line( prev_x, prev_y, x, y );
-                                    break;
-                                case Curve:
-                                    draw_curve( prev_x, prev_y,
-                                               prev_x2, prev_y2,
-                                               prev_x3, prev_y3,
-                                               x, y );
-                                    break;
-                                case Rectangle:
-                                    draw_rect( prev_x, prev_y, x, y );
-                                    break;
-                                case RectangleFull:
-                                    draw_rect_full( prev_x, prev_y, x, y );
-                                    break;
-                                case Oval:
-                                    draw_oval_empty( prev_x, prev_y, x, y );
-                                    break;
-                                case OvalFull:
-                                    draw_oval_full( prev_x, prev_y, x, y );
-                                    break;
-                                case LinearGradient:
-                                    linear_gradient( prev_x, prev_y, x, y );
-                                    break;
-                                case RadialGradient:
-                                    radial_gradient( prev_x, prev_y, x, y );
-                                    break;
-                                default:
-                                    break;
-                            }
-                            reset_tool();
-                            restore_screen();
-                        }
-                        break;
-
-                    case Fill:
-                        draw_fill( x, y );
-                        restore_screen();
-                        break;
-
-                    case ColorPicker:
-                        color_picker( x, y );
-                        break;
-
-                    case Text:
-                        draw_text( x, y );
-                        break;
-
-                    default:
-                        break;
+                    inv_cursor(false);
+                    tools[tool].state_func();
+                    inv_cursor(true);
                 }
-                inv_cursor(true);
                 break;
 
             case ROCKPAINT_DRAW|BUTTON_REPEAT:
-                if( tool == Curve )
+                if( tool == Curve && state != State0 )
                 {
                     /* 3 point bezier curve */
                     preview = false;
-                    draw_curve( prev_x, prev_y,
-                               prev_x2, prev_y2,
-                               -1, -1,
-                               x, y );
+                    draw_curve( prev_x, prev_y, prev_x2, prev_y2,
+                               -1, -1, x, y );
                     reset_tool();
                     restore_screen();
                     inv_cursor( true );
@@ -2816,17 +2955,9 @@ static bool rockpaint_loop( void )
                 break;
 
             case ROCKPAINT_TOOLBAR:
-                i = x; j = y;
-                x = 10;
-                toolbar();
-                x = i; y = j;
-                restore_screen();
-                inv_cursor(true);
-                break;
-
             case ROCKPAINT_TOOLBAR2:
                 i = x; j = y;
-                x = 110;
+                x = (button == ROCKPAINT_TOOLBAR2) ? 110: 10;
                 toolbar();
                 x = i; y = j;
                 restore_screen();
@@ -2835,33 +2966,22 @@ static bool rockpaint_loop( void )
 
             case ROCKPAINT_LEFT:
             case ROCKPAINT_LEFT | BUTTON_REPEAT:
-                inv_cursor(false);
-                x-=bspeed * accelaration;
-                if (x<0) x=COLS-1;
-                inv_cursor(true);
-                break;
-
             case ROCKPAINT_RIGHT:
             case ROCKPAINT_RIGHT | BUTTON_REPEAT:
                 inv_cursor(false);
-                x+=bspeed * accelaration;
-                if (x>=COLS) x=0;
+                incdec_value(&x, &incdec_x,
+                    (button&ROCKPAINT_RIGHT), bigstep);
                 inv_cursor(true);
                 break;
 
             case ROCKPAINT_UP:
             case ROCKPAINT_UP | BUTTON_REPEAT:
-                inv_cursor(false);
-                y-=bspeed * accelaration;
-                if (y<0) y=ROWS-1;
-                inv_cursor(true);
-                break;
-
             case ROCKPAINT_DOWN:
             case ROCKPAINT_DOWN | BUTTON_REPEAT:
                 inv_cursor(false);
-                y+=bspeed * accelaration;
-                if (y>=ROWS)
+                if (incdec_value(&y, &incdec_y,
+                        (button&ROCKPAINT_DOWN), bigstep)
+                    && (button&ROCKPAINT_DOWN))
                 {
                     toolbar();
                     restore_screen();
@@ -2874,97 +2994,16 @@ static bool rockpaint_loop( void )
                     return PLUGIN_USB_CONNECTED;
                 break;
         }
-        if( tool == Brush && prev_x == 1 )
+        if( tool == Brush && state == State1 )
         {
             inv_cursor(false);
             draw_brush( x, y );
             inv_cursor(true);
         }
-        if( preview || tool == ColorPicker )
-            /* always preview color picker */
+        if( preview && tools[tool].preview_func )
         {
             restore_screen();
-            switch( tool )
-            {
-                case SelectRectangle:
-                    if( prev_x2 == -1 || prev_y2 == -1 )
-                    {
-                        /* we are defining the selection */
-                        draw_select_rectangle( prev_x, prev_y, x, y );
-                    }
-                    else
-                    {
-                        /* we are pasting the selected data */
-                        draw_paste_rectangle( prev_x, prev_y, prev_x2,
-                                              prev_y2, x, y, tool_mode );
-                        prev_x3 = prev_x2-prev_x;
-                        if( prev_x3 < 0 ) prev_x3 *= -1;
-                        prev_y3 = prev_y2-prev_y;
-                        if( prev_y3 < 0 ) prev_y3 *= -1;
-                        draw_select_rectangle( x, y, x+prev_x3, y+prev_y3 );
-                        prev_x3 = -1;
-                        prev_y3 = -1;
-                    }
-                    break;
-
-                case Brush:
-                    break;
-
-                case Line:
-                    draw_line( prev_x, prev_y, x, y );
-                    break;
-
-                case Curve:
-                    if( prev_x2 == -1 || prev_y2 == -1 )
-                    {
-                        draw_line( prev_x, prev_y, x, y );
-                    }
-                    else
-                    {
-                        draw_curve( prev_x, prev_y,
-                                   prev_x2, prev_y2,
-                                   prev_x3, prev_y3,
-                                   x, y );
-                    }
-                    break;
-
-                case Rectangle:
-                    draw_rect( prev_x, prev_y, x, y );
-                    break;
-
-                case RectangleFull:
-                    draw_rect_full( prev_x, prev_y, x, y );
-                    break;
-
-                case Oval:
-                    draw_oval_empty( prev_x, prev_y, x, y );
-                    break;
-
-                case OvalFull:
-                    draw_oval_full( prev_x, prev_y, x, y );
-                    break;
-
-                case Fill:
-                    break;
-
-                case ColorPicker:
-                    preview = true;
-                    color_picker( x, y );
-                    preview = false;
-                    break;
-
-                case LinearGradient:
-                    line_gradient( prev_x, prev_y, x, y );
-                    break;
-
-                case RadialGradient:
-                    line_gradient( prev_x, prev_y, x, y );
-                    break;
-
-                case Text:
-                default:
-                    break;
-            }
+            tools[tool].preview_func();
             inv_cursor( true );
         }
         if( gridsize > 0 )
@@ -3025,19 +3064,20 @@ static int save_bitmap( char *file )
 enum plugin_status plugin_start(const void* parameter)
 {
     size_t buffer_size;
-    buffer = (buf*) (((uintptr_t)rb->plugin_get_buffer(&buffer_size) + 3) & ~3);
+    unsigned char *temp;
+    temp = rb->plugin_get_buffer(&buffer_size);
     if (buffer_size < sizeof(*buffer) + 3)
     {
         /* steal from audiobuffer if plugin buffer is too small */
-        buffer = (buf*)
-             (((uintptr_t)rb->plugin_get_audio_buffer(&buffer_size) + 3) & ~3);
-
+        temp = rb->plugin_get_audio_buffer(&buffer_size);
         if (buffer_size < sizeof(*buffer) + 3)
         {
             rb->splash(HZ, "Not enough memory");
             return PLUGIN_ERROR;
         }
+        audio_buf = true;
     }
+    buffer = (union buf*) (((uintptr_t)temp + 3) & ~3);
 
     rb->lcd_set_foreground(COLOR_WHITE);
     rb->lcd_set_backdrop(NULL);

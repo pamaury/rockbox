@@ -21,76 +21,107 @@
 
 package org.rockbox;
 
+
 import android.app.Activity;
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.ResultReceiver;
 import android.util.Log;
+import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
+import android.widget.Toast;
 
 public class RockboxActivity extends Activity 
 {
+    private RockboxService rbservice;
+
     /** Called when the activity is first created. */
     @Override
     public void onCreate(Bundle savedInstanceState) 
     {
         super.onCreate(savedInstanceState);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
-        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN
-                       ,WindowManager.LayoutParams.FLAG_FULLSCREEN);
-        final Intent intent = new Intent(this, 
-                RockboxService.class);
-        startService(intent);
-        /* Now it gets a bit tricky:
-         * The service is started in the same thread as we are now,
-         * but the service also initializes the framebuffer
-         * Unforunately, this happens *after* any of the default 
-         * startup methods of an activity, so we need to poll for it 
-         * 
-         * In order to get the fb, we need to let the Service start up
-         * run, we can wait in a separate thread for fb to get ready
-         * This thread waits for the fb to become ready */
-        new Thread(new Runnable()
-        {
-            public void run() 
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                             WindowManager.LayoutParams.FLAG_FULLSCREEN);
+
+        Intent intent = new Intent(this, RockboxService.class);
+        intent.putExtra("callback", new ResultReceiver(new Handler(getMainLooper())) {
+            private ProgressDialog loadingdialog;
+
+            private void createProgressDialog()
             {
-                try {
-                    while (RockboxService.fb == null)
-                        Thread.sleep(250);
-                } catch (InterruptedException e) {
-                } catch (Exception e) {
-                    LOG(e.toString());
-                }
-                /* drawing needs to happen in ui thread */
-                runOnUiThread(new Runnable() 
-                {    @Override
-                    public void run() {
-                        setContentView(RockboxService.fb);
-                        RockboxService.fb.invalidate();
-                    }
-                });
+                loadingdialog = new ProgressDialog(RockboxActivity.this);
+                loadingdialog.setMessage(getString(R.string.rockbox_extracting));
+                loadingdialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
+                loadingdialog.setIndeterminate(true);
+                loadingdialog.setCancelable(false);
+                loadingdialog.show();
             }
-        }).start();
+
+            @Override
+            protected void onReceiveResult(final int resultCode, final Bundle resultData)
+            {
+                switch (resultCode) {
+                    case RockboxService.RESULT_LIB_LOADED:
+                        rbservice = RockboxService.get_instance();
+                        if (loadingdialog != null)
+                            loadingdialog.setIndeterminate(true);
+                        break;
+                    case RockboxService.RESULT_LIB_LOAD_PROGRESS:
+                        if (loadingdialog == null)
+                            createProgressDialog();
+
+                        loadingdialog.setIndeterminate(false);
+                        loadingdialog.setMax(resultData.getInt("max", 100));
+                        loadingdialog.setProgress(resultData.getInt("value", 0));
+                        break;
+                    case RockboxService.RESULT_FB_INITIALIZED:
+                        attachFramebuffer();
+                        if (loadingdialog != null)
+                            loadingdialog.dismiss();
+                        break;
+                    case RockboxService.RESULT_ERROR_OCCURED:
+                        Toast.makeText(RockboxActivity.this, resultData.getString("error"), Toast.LENGTH_LONG);
+                        break;
+                }
+            }
+        });
+        startService(intent);
     }
-    
+
+    private boolean isRockboxRunning()
+    {
+        if (rbservice == null)
+            rbservice = RockboxService.get_instance();
+        return (rbservice!= null && rbservice.isRockboxRunning() == true);    	
+    }
+
+    private void attachFramebuffer()
+    {
+        View rbFramebuffer = rbservice.get_fb();
+        try {
+            setContentView(rbFramebuffer);
+        } catch (IllegalStateException e) {
+            /* we are already using the View,
+             * need to remove it and re-attach it */
+            ViewGroup g = (ViewGroup) rbFramebuffer.getParent();
+            g.removeView(rbFramebuffer);
+            setContentView(rbFramebuffer);
+        } finally {
+            rbFramebuffer.requestFocus();
+            rbservice.set_activity(this);
+        }
+    }
+
     public void onResume()
     {
         super.onResume();
-        
-        if (RockboxService.fb != null)
-        {
-            try {
-                setContentView(RockboxService.fb);
-            } catch (IllegalStateException e) {
-                /* we are already using the View,
-                 * need to remove it and re-attach it */
-                ViewGroup g = (ViewGroup)RockboxService.fb.getParent();
-                g.removeView(RockboxService.fb);
-                setContentView(RockboxService.fb);
-            }
-            RockboxService.fb.resume();
-        }
+        if (isRockboxRunning())
+            attachFramebuffer();
     }
     
     /* this is also called when the backlight goes off,
@@ -100,21 +131,27 @@ public class RockboxActivity extends Activity
     protected void onPause() 
     {
         super.onPause();
-        RockboxService.fb.suspend();
+        if (rbservice != null)
+        {
+        	rbservice.set_activity(null);
+        	rbservice.get_fb().dispatchWindowVisibilityChanged(View.INVISIBLE);
+        }
     }
     
     @Override
     protected void onStop() 
     {
         super.onStop();
-        RockboxService.fb.suspend();
+        if (rbservice != null)
+        	rbservice.set_activity(null);
     }
     
     @Override
     protected void onDestroy() 
     {
         super.onDestroy();
-        RockboxService.fb.suspend();
+        if (rbservice != null)
+        	rbservice.set_activity(null);
     }
 
     private void LOG(CharSequence text)
