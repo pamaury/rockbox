@@ -36,7 +36,7 @@
 
 #define USB_AUDIO_USE_INTERMEDIATE_BUFFER
 //#define USE_AUDIO_INTF_HAVE_NAMES
-#define USB_AUDIO_DUMP_TO_FILE
+//#define USB_AUDIO_DUMP_TO_FILE
 
 /* Strings */
 enum
@@ -287,16 +287,14 @@ static int as_playback_freq_idx; /* audio playback streaming frequency index (in
 static int out_iso_ep_adr; /* output isochronous endpoint */
 static int in_iso_ep_adr; /* input isochronous endpoint */
 
-static int iso_recv_stats = 0;
-
 static unsigned char usb_buffer[128] USB_DEVBSS_ATTR;
 
 #ifdef USB_AUDIO_USE_INTERMEDIATE_BUFFER
 /* Size of the intermediate audio buffer used for playback */
-#define PLAYBACK_AUDIO_BUFFER_SIZE      2000 * 1024
+#define PLAYBACK_AUDIO_BUFFER_SIZE      200 * 1024
 /* When playback start, the code doesn't start pcm output directly to avoid early overflow.
  * This setting control the amount of data that is initial buffered before playback starts. */
-#define PLAYBACK_INITIAL_BUFFERING_SIZE 200 * 1024
+#define PLAYBACK_INITIAL_BUFFERING_SIZE 1024
 #endif
 
 #ifdef USB_AUDIO_USE_INTERMEDIATE_BUFFER
@@ -307,7 +305,7 @@ static bool playback_audio_underflow;
 #endif
 
 #define USB_AUDIO_NB_SLOTS    16
-#define USB_AUDIO_SLOT_SIZE   1024 * 3
+#define USB_AUDIO_SLOT_SIZE   128
 static unsigned char *usb_audio_slot_buffers[USB_AUDIO_NB_SLOTS];
 static unsigned char usb_audio_ep_slots[2][USB_AUDIO_NB_SLOTS * USB_DRV_SLOT_SIZE] USB_DRV_SLOT_ATTR;
 
@@ -350,6 +348,7 @@ static void set_playback_sampling_frequency(unsigned long f)
     }
     
     logf("usbaudio: set playback sampling frequency to %lu Hz for a requested %lu Hz", hw_freq_sampr[as_playback_freq_idx], f);
+    pcm_set_frequency(hw_freq_sampr[as_playback_freq_idx]);
 }
 
 static unsigned long get_playback_sampling_frequency(void)
@@ -698,6 +697,7 @@ static void usb_audio_start_playback(void)
     
     audio_set_input_source(AUDIO_SRC_PLAYBACK, SRCF_PLAYBACK);
     audio_set_output_source(AUDIO_SRC_PLAYBACK);
+    logf("usbaudio: start playback at %lu Hz", hw_freq_sampr[as_playback_freq_idx]);
     pcm_set_frequency(hw_freq_sampr[as_playback_freq_idx]);
     pcm_play_data(&playback_audio_pcm_get_more, NULL, 0);
     if(!pcm_is_playing())
@@ -1112,8 +1112,6 @@ void usb_audio_transfer_complete(int ep, int dir, int status, int length, void *
     {
         if(status == 0)
         {
-            iso_recv_stats += length;
-            
             #ifdef USB_AUDIO_USE_INTERMEDIATE_BUFFER
             //logf("usbaudio: start=%d end=%d length=%d", usb_audio_buffer_start, usb_audio_buffer_end, length);
             while(length > 0)
