@@ -927,25 +927,34 @@ Lyre prototype 1 */
 /* Define the implemented USB transport classes */
 #if CONFIG_USBOTG == USBOTG_ISP1583
 #define USB_HAS_BULK
-#elif (CONFIG_USBOTG == USBOTG_ARC) || \
-    (CONFIG_USBOTG == USBOTG_JZ4740) || \
+#elif (CONFIG_USBOTG == USBOTG_JZ4740) || \
     (CONFIG_USBOTG == USBOTG_M66591) || \
     (CONFIG_USBOTG == USBOTG_AS3525)
 #define USB_HAS_BULK
 #define USB_HAS_INTERRUPT
 #elif defined(CPU_TCC780X) || defined(CPU_TCC77X)
 #define USB_HAS_BULK
-#elif CONFIG_USBOTG == USBOTG_S3C6400X || CONFIG_USBOTG == USBOTG_AS3525v2
+#elif CONFIG_USBOTG == USBOTG_S3C6400X
 #define USB_HAS_BULK
 //#define USB_HAS_INTERRUPT -- seems to be broken
 #endif /* CONFIG_USBOTG */
 
 #if CONFIG_USBOTG == USBOTG_ARC
 /* keep coherent with usb-arc.c */
-#define USB_DRV_SLOT_ATTR   __attribute__ ((aligned(32))) USB_DEVBSS_ATTR
-#define USB_DRV_SLOT_SIZE   /* sizeof(struct transfer_descriptor) */32
-#define HAVE_NEW_USB_API
-#define USB_HAS_ISOCHRONOUS
+#  define USB_DRV_SLOT_ATTR   __attribute__ ((aligned(32))) USB_DEVBSS_ATTR
+#  define USB_DRV_SLOT_SIZE   /* sizeof(struct transfer_descriptor) */32
+#  define HAVE_NEW_USB_API
+#  define USB_HAS_ISOCHRONOUS
+#  define USB_HAS_BULK
+#  define USB_HAS_INTERRUPT
+#elif CONFIG_USBOTG == USBOTG_AS3525v2
+/* keep coherent with usb-drv-as3525v2.c */
+#  define USB_DRV_SLOT_ATTR   __attribute__ ((aligned(32))) USB_DEVBSS_ATTR
+#  define USB_DRV_SLOT_SIZE   /* sizeof(struct usb_transfer_descriptor) */8
+#  define HAVE_NEW_USB_API
+//#  define USB_HAS_ISOCHRONOUS
+//#  define USB_HAS_BULK
+//#  define USB_HAS_INTERRUPT
 #endif
 
 /* define the class drivers to enable */

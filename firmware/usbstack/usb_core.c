@@ -22,7 +22,7 @@
 #include "thread.h"
 #include "kernel.h"
 #include "string.h"
-//#define LOGF_ENABLE
+#define LOGF_ENABLE
 #include "logf.h"
 
 #include "usb.h"
@@ -755,7 +755,9 @@ static void request_handler_device_get_descriptor(struct usb_ctrlrequest* req)
         if (ptr != response_data)
             memcpy(response_data, ptr, length);
 
+        logf("send desc");
         usb_drv_send_blocking(EP_CONTROL, response_data, length);
+        logf("wait ack");
         usb_drv_recv_blocking(EP_CONTROL, NULL, 0);
     }
 }

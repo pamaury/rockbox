@@ -90,7 +90,7 @@ int usb_drv_nb_endpoint_slots(int ep);
  * are started using usb_drv_start_repeat and are stopped using usb_drv_stop_repeat. In this mode, no attention
  * is paid to data corruption: if the completion handlers are not fast enough, a buffer can be reused and the 
  * data overwritten. This mode shoud only be used for isochronous endpoints.
- * WARNING: for speed reasons, in this mode, the completion handler might me called from the interrupt handler,
+ * WARNING: for speed reasons, in this mode, the completion handler might be called from the interrupt handler,
  *          special care must be taken about the action done is this completion handler ! */
 #define USB_DRV_ENDPOINT_MODE_REPEAT    2
 
