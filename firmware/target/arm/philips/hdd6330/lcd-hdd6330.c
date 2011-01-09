@@ -24,20 +24,26 @@
 #include "kernel.h"
 #include "system.h"
 
+/* register defines for Philips LCD 220x176x16 - model: LPH9165-2 */
+#define LCD_REG_UNKNOWN_00        0x00
+#define LCD_REG_UNKNOWN_01        0x01
+#define LCD_REG_UNKNOWN_05        0x05
+#define LCD_REG_WRITE_DATA_2_GRAM 0x06
+#define LCD_REG_HORIZ_ADDR_START  0x08
+#define LCD_REG_HORIZ_ADDR_END    0x09
+#define LCD_REG_VERT_ADDR_START   0x0a
+#define LCD_REG_VERT_ADDR_END     0x0b
+
 /* Display status */
 static unsigned lcd_yuv_options SHAREDBSS_ATTR = 0;
+
+/* Used for flip offset correction */
+static int x_offset;
 
 /* wait for LCD */
 static inline void lcd_wait_write(void)
 {
-    int i = 0;
-    while (LCD2_PORT & LCD2_BUSY_MASK)
-    {
-        if (i < 2000)
-            i++;
-        else
-            LCD2_PORT &= ~LCD2_BUSY_MASK;
-    }
+    while (LCD2_PORT & LCD2_BUSY_MASK);
 }
 
 /* send LCD data */
@@ -48,22 +54,23 @@ static void lcd_send_data(unsigned data)
 }
 
 /* send LCD command */
-static void lcd_send_cmd(unsigned cmd)
+static void lcd_send_reg(unsigned reg)
 {
     lcd_wait_write();
-    LCD2_PORT = LCD2_CMD_MASK | (cmd & 0xff);
+    LCD2_PORT = LCD2_CMD_MASK | (reg & 0xff);
     lcd_wait_write();
-}
-
-static inline void lcd_send_pixel(unsigned pixel)
-{
-    lcd_send_data(pixel >> 8);
-    lcd_send_data(pixel);
 }
 
 void lcd_init_device(void)
 {
-    /* init handled by the OF bootloader */
+    lcd_send_reg(LCD_REG_UNKNOWN_00);
+    lcd_send_data(0x00);
+    lcd_send_reg(LCD_REG_UNKNOWN_01);
+    lcd_send_data(0x48);
+    lcd_send_reg(LCD_REG_UNKNOWN_05);
+    lcd_send_data(0x0f);
+
+    x_offset = 16;
 }
 
 /*** hardware configuration ***/
@@ -79,13 +86,18 @@ void lcd_set_contrast(int val)
 
 void lcd_set_invert_display(bool yesno)
 {
-    (void)yesno;
+    int invert = (yesno) ? 0x40 : 0x00;
+    lcd_send_reg(LCD_REG_UNKNOWN_00);
+    lcd_send_data(invert);
 }
 
 /* turn the display upside down (call lcd_update() afterwards) */
 void lcd_set_flip(bool yesno)
 {
-    (void)yesno;
+    int flip = (yesno) ? 0x88 : 0x48;
+    x_offset = (yesno) ? 4 : 16;
+    lcd_send_reg(LCD_REG_UNKNOWN_01);
+    lcd_send_data(flip);
 }
 
 void lcd_yuv_set_options(unsigned options)
@@ -93,21 +105,96 @@ void lcd_yuv_set_options(unsigned options)
     lcd_yuv_options = options;
 }
 
+#define CSUB_X 2
+#define CSUB_Y 2
+
+/*   YUV- > RGB565 conversion
+ *   |R|   |1.000000 -0.000001  1.402000| |Y'|
+ *   |G| = |1.000000 -0.334136 -0.714136| |Pb|
+ *   |B|   |1.000000  1.772000  0.000000| |Pr|
+ *   Scaled, normalized, rounded and tweaked to yield RGB 565:
+ *   |R|   |74   0 101| |Y' -  16| >> 9
+ *   |G| = |74 -24 -51| |Cb - 128| >> 8
+ *   |B|   |74 128   0| |Cr - 128| >> 9
+*/
+
+extern void lcd_yuv_write_inner_loop(unsigned char const * const ysrc,
+                                     unsigned char const * const usrc,
+                                     unsigned char const * const vsrc,
+                                     int width);
+
 /* Performance function to blit a YUV bitmap directly to the LCD */
 void lcd_blit_yuv(unsigned char * const src[3],
                   int src_x, int src_y, int stride,
                   int x, int y, int width, int height)
 {
-    (void)src;
-    (void)src_x;
-    (void)src_y;
-    (void)stride;
-    (void)x;
-    (void)y;
-    (void)width;
-    (void)height;
+    int h;
+
+    width = (width + 1) & ~1;
+
+    lcd_send_reg(LCD_REG_HORIZ_ADDR_START);
+    lcd_send_data(y);
+
+    lcd_send_reg(LCD_REG_HORIZ_ADDR_END);
+    lcd_send_data(y + height - 1);
+
+    lcd_send_reg(LCD_REG_VERT_ADDR_START);
+    lcd_send_data(x + x_offset);
+
+    lcd_send_reg(LCD_REG_VERT_ADDR_END);
+    lcd_send_data(x + width - 1 + x_offset);
+
+    lcd_send_reg(LCD_REG_WRITE_DATA_2_GRAM);
+
+    const int stride_div_csub_x = stride/CSUB_X;
+
+    h=0;
+    while (1)
+    {
+        /* upsampling, YUV->RGB conversion and reduction to RGB565 in one go */
+        const unsigned char *ysrc = src[0] + stride * src_y + src_x;
+
+        const int uvoffset = stride_div_csub_x * (src_y/CSUB_Y) +
+                             (src_x/CSUB_X);
+
+        const unsigned char *usrc = src[1] + uvoffset;
+        const unsigned char *vsrc = src[2] + uvoffset;
+
+        int pixels_to_write;
+
+        if (h==0)
+        {
+            while (!(LCD2_BLOCK_CTRL & LCD2_BLOCK_READY));
+            LCD2_BLOCK_CONFIG = 0;
+
+            if (height == 0) break;
+
+            pixels_to_write = (width * height) * 2;
+            h = height;
+
+            /* calculate how much we can do in one go */
+            if (pixels_to_write > 0x10000)
+            {
+                h = (0x10000/2) / width;
+                pixels_to_write = (width * h) * 2;
+            }
+
+            height -= h;
+            LCD2_BLOCK_CTRL = 0x10000080;
+            LCD2_BLOCK_CONFIG = 0xc0010000 | (pixels_to_write - 1);
+            LCD2_BLOCK_CTRL = 0x34000000;
+        }
+
+        lcd_yuv_write_inner_loop(ysrc,usrc,vsrc,width);
+
+        src_y++;
+        h--;
+    }
+
+    while (!(LCD2_BLOCK_CTRL & LCD2_BLOCK_READY));
+    LCD2_BLOCK_CONFIG = 0;
 }
- 
+
 /* Update the display.
    This must be called after all other LCD functions that change the display. */
 void lcd_update(void)
@@ -118,42 +205,77 @@ void lcd_update(void)
 /* Update a fraction of the display. */
 void lcd_update_rect(int x, int y, int width, int height)
 {
-    const fb_data *addr;
-    
+    unsigned long *addr;
+    int new_x, new_width;
+
+    /* Ensure x and width are both even - so we can read 32-bit aligned 
+       data from lcd_framebuffer */
+    new_x = x&~1;
+    new_width = width&~1;
+    if (new_x+new_width < x+width) new_width += 2;
+    x = new_x;
+    width = new_width;
+
     if (x + width >= LCD_WIDTH)
         width = LCD_WIDTH - x;
     if (y + height >= LCD_HEIGHT)
         height = LCD_HEIGHT - y;
-        
+
     if ((width <= 0) || (height <= 0))
         return; /* Nothing left to do. */
 
-    addr = &lcd_framebuffer[y][x];
-
-    lcd_send_cmd(0x01);
-    lcd_send_data(0x48);
-
-    lcd_send_cmd(0x05);
-    lcd_send_data(0x0f);
-
-    lcd_send_cmd(0x08);
+    lcd_send_reg(LCD_REG_HORIZ_ADDR_START);
     lcd_send_data(y);
 
-    lcd_send_cmd(0x09);
+    lcd_send_reg(LCD_REG_HORIZ_ADDR_END);
     lcd_send_data(y + height - 1);
 
-    lcd_send_cmd(0x0a);
-    lcd_send_data(x + 16);
+    lcd_send_reg(LCD_REG_VERT_ADDR_START);
+    lcd_send_data(x + x_offset);
 
-    lcd_send_cmd(0x0b);
-    lcd_send_data(x + width - 1 + 16);
+    lcd_send_reg(LCD_REG_VERT_ADDR_END);
+    lcd_send_data(x + width - 1 + x_offset);
 
-    lcd_send_cmd(0x06);
-    do {
-        int w = width;
-        do {
-            lcd_send_pixel(*addr++);
-        } while (--w > 0);
-        addr += LCD_WIDTH - width;
-    } while (--height > 0);
+    lcd_send_reg(LCD_REG_WRITE_DATA_2_GRAM);
+
+    addr = (unsigned long*)&lcd_framebuffer[y][x];
+
+    while (height > 0)
+    {
+        int c, r;
+        int h, pixels_to_write;
+
+        pixels_to_write = (width * height) * 2;
+        h = height;
+
+        /* calculate how much we can do in one go */
+        if (pixels_to_write > 0x10000) 
+        {
+            h = (0x10000/2) / width;
+            pixels_to_write = (width * h) * 2;
+        }
+
+        LCD2_BLOCK_CTRL = 0x10000080;
+        LCD2_BLOCK_CONFIG = 0xc0010000 | (pixels_to_write - 1);
+        LCD2_BLOCK_CTRL = 0x34000000;
+
+        /* for each row */
+        for (r = 0; r < h; r++) 
+        {
+            /* for each column */
+            for (c = 0; c < width; c += 2) 
+            {
+                while (!(LCD2_BLOCK_CTRL & LCD2_BLOCK_TXOK));
+
+                /* output 2 pixels */
+                LCD2_BLOCK_DATA = *addr++;
+            }
+            addr += (LCD_WIDTH - width)/2;
+        }
+
+        while (!(LCD2_BLOCK_CTRL & LCD2_BLOCK_READY));
+        LCD2_BLOCK_CONFIG = 0;
+
+        height -= h;
+    }
 }

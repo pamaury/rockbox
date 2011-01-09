@@ -4388,7 +4388,7 @@
     rtc: "OFF = Revert"
     mrobe500: "POWER = Revert"
     iriverh100,iriverh120,iriverh300: "STOP = Revert"
-    ipod*,sansac200*: "MENU = Revert"
+    ipod*,sansac200*,mpiohd300: "MENU = Revert"
     iaudiox5,iaudiom5: "RECORD = Revert"
     iriverh10,iriverh10_5gb,sansae200*,sansafuze*: "PREV = Revert"
     gigabeatfx: "POWER = Revert"
@@ -4402,7 +4402,7 @@
     rtc: "OFF = tilbakestill"
     mrobe500: "POWER = Tilbakestill"
     iriverh100,iriverh120,iriverh300: "STOP = Tilbakestill"
-    ipod*,sansac200*: "MENU = Tilbakestill"
+    ipod*,sansac200*,mpiohd300: "MENU = Tilbakestill"
     iaudiox5,iaudiom5: "RECORD = Tilbakestill"
     iriverh10,iriverh10_5gb,sansae200*,sansafuze*: "PREV = Tilbakestill"
     gigabeatfx: "POWER = Tilbakestill"
@@ -4629,6 +4629,7 @@
     iriverh10,iriverh10_5gb: "SELECT=Set PREV=Cancel"
     gigabeats: "SELECT=Set POWER=Cancel"
     vibe500: "OK=Set C=Cancel"
+    mpiohd300: "ENTER=Set MENU=Cancel"
   </source>
   <dest>
     *: none
@@ -4637,6 +4638,7 @@
     iriverh10,iriverh10_5gb: "VEL = vel – TILBAKE = avbryt"
     gigabeats: "VEL = vel – PÅ/AV = avbryt"
     vibe500: "OK = vel – C = avbryt"
+    mpiohd300: "ENTER = vel – MENU = avbryt"
   </dest>
   <voice>
     *: none
@@ -7612,19 +7614,16 @@
 </phrase>
 <phrase>
   id: LANG_REC_SIZE
-  desc: in record timesplit options
-  user: core
+  desc: deprecated
+  user:
   <source>
     *: none
-    recording: "Filesize"
   </source>
   <dest>
     *: none
-    recording: "Filstorleik"
   </dest>
   <voice>
     *: none
-    recording: "Filstorleik"
   </voice>
 </phrase>
 <phrase>
@@ -9290,6 +9289,7 @@
     ipod*,iaudiox5,iaudiom5,iriverh10,iriverh10_5gb,sansae200*,sansac200*,gigabeat*,mrobe100,sansaclip*,sansafuze*: "SELECT = Set"
     gogearsa9200: "PLAY = Set"
     vibe500: "OK = Set"
+    mpiohd300: "ENTER = Set"
   </source>
   <dest>
     *: none
@@ -9299,6 +9299,7 @@
     ipod*,iaudiox5,iaudiom5,iriverh10,iriverh10_5gb,sansae200*,sansac200*,gigabeat*,mrobe100,sansaclip*,sansafuze*: "SELECT = velg"
     gogearsa9200: "PLAY = velg"
     vibe500: "OK = velg"
+    mpiohd300: "ENTER = velg"
   </dest>
   <voice>
     *: none
@@ -10763,5 +10764,19 @@
   <voice>
     *: none
     gigabeatfx: "Høg"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_FILESIZE
+  desc: in record timesplit options and in track information viewer 
+  user: core
+  <source>
+    *: "Filesize"
+  </source>
+  <dest>
+    *: "Filstorleik"
+  </dest>
+  <voice>
+    *: "Filstorleik"
   </voice>
 </phrase>

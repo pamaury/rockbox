@@ -46,29 +46,32 @@ bool tidy_loaded_and_changed = false;
 
 #define DEFAULT_FILES PLUGIN_APPS_DIR "/disktidy.config"
 #define CUSTOM_FILES  PLUGIN_APPS_DIR "/disktidy_custom.config"
+
 void add_item(const char* name, int index)
 {
     char *a;
-    rb->strcpy(tidy_types[index].filestring, name);
+    struct tidy_type *entry = tidy_types + index;
+    rb->strcpy(entry->filestring, name);
     if (name[rb->strlen(name)-1] == '/')
     {
-        tidy_types[index].directory = true;
-        tidy_types[index].filestring[rb->strlen(name)-1] = '\0';
+        entry->directory = true;
+        entry->filestring[rb->strlen(name)-1] = '\0';
     }
     else
-        tidy_types[index].directory = false;
-    a = rb->strchr(name, '*');
+        entry->directory = false;
+    a = rb->strchr(entry->filestring, '*');
     if (a)
     {
-        tidy_types[index].pre = a - name;
-        tidy_types[index].post = rb->strlen(a+1);
+        entry->pre = a - entry->filestring;
+        entry->post = rb->strlen(a+1);
     }
     else
     {
-        tidy_types[index].pre = -1;
-        tidy_types[index].post = -1;
+        entry->pre = -1;
+        entry->post = -1;
     }
 }
+
 static int find_file_string(const char *file, char *last_group)
 {
     char temp[MAX_PATH];
@@ -176,7 +179,8 @@ bool tidy_remove_item(char *item, int attr)
                 return false;
             if (attr&ATTR_DIRECTORY)
                 ret = tidy_types[i].directory;
-            else ret = true;
+            else
+                ret = !tidy_types[i].directory;
         }
     }
     return ret;
@@ -225,7 +229,10 @@ void tidy_path_remove_entry(char *path, int old_path_length, int *path_length)
     *path_length = old_path_length;
 }
 
-/* path is assumed to be array of size MAX_PATH */
+/* Removes the directory specified by 'path'. This includes recursively
+   removing all files and directories in that directory.
+   path is assumed to be array of size MAX_PATH.
+*/
 enum tidy_return tidy_removedir(char *path, int *path_length)
 {
     /* delete directory */
@@ -376,7 +383,8 @@ enum tidy_return tidy_clean(char *path, int *path_length)
 
                     removed++; /* increment removed files counter */
                     /* delete file */
-                    rb->remove(path);
+                    if (rb->remove(path) != 0)
+                        DEBUGF("Could not delete file %s\n", path);
 
                     /* restore path */
                     tidy_path_remove_entry(path, old_path_length, path_length);
@@ -530,6 +538,36 @@ enum tidy_return tidy_lcd_menu(void)
     return status;
 }
 
+/* Creates a file and writes information about what files to
+   delete and what to keep to it.
+   Returns true iff the file was successfully created.
+*/
+static bool save_config(const char *file_name)
+{
+    int fd, i;
+    bool result;
+
+    fd = rb->creat(file_name, 0666);
+    result = (fd >= 0);
+
+    if (result)
+    {
+        for (i=0; i<tidy_type_count; i++)
+        {
+	    rb->fdprintf(fd, "%s%s: %s\n", tidy_types[i].filestring,
+	                 tidy_types[i].directory ? "/" : "",
+	                 tidy_types[i].remove ? "yes" : "no");
+        }
+        rb->close(fd);
+    }
+    else
+    {
+        DEBUGF("Could not create file %s\n", file_name);
+    }
+
+    return result;
+}
+
 /* this is the plugin entry point */
 enum plugin_status plugin_start(const void* parameter)
 {
@@ -547,18 +585,7 @@ enum plugin_status plugin_start(const void* parameter)
     status = tidy_lcd_menu();
     if (tidy_loaded_and_changed)
     {
-        int fd = rb->creat(CUSTOM_FILES, 0666);
-        int i;
-        if (fd >= 0)
-        {
-            for(i=0;i<tidy_type_count;i++)
-            {
-                rb->fdprintf(fd, "%s%c: %s\n", tidy_types[i].filestring,
-                             tidy_types[i].directory?'/':'\0',
-                             tidy_types[i].remove?"yes":"no");
-            }
-            rb->close(fd);
-        }
+        save_config(CUSTOM_FILES);
     }
     if (status == TIDY_RETURN_ABORT)
         return PLUGIN_OK;

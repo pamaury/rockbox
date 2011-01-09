@@ -526,18 +526,18 @@ static int parse_logical_if(struct skin_element *element,
     token->value.data = lif;
     lif->token = element->params[0].data.code->data;
     
-    if (!strcmp(op, "="))
+    if (!strncmp(op, "=", 1))
         lif->op = IF_EQUALS;
-    if (!strcmp(op, "!="))
+    else if (!strncmp(op, "!=", 2))
         lif->op = IF_NOTEQUALS;
-    if (!strcmp(op, "<"))
-        lif->op = IF_LESSTHAN;
-    if (!strcmp(op, "<="))
-        lif->op = IF_LESSTHAN_EQ;
-    if (!strcmp(op, ">"))
-        lif->op = IF_GREATERTHAN;
-    if (!strcmp(op, ">="))
+    else if (!strncmp(op, ">=", 2))
         lif->op = IF_GREATERTHAN_EQ;
+    else if (!strncmp(op, "<=", 2))
+        lif->op = IF_LESSTHAN_EQ;
+    else if (!strncmp(op, ">", 2))
+        lif->op = IF_GREATERTHAN;
+    else if (!strncmp(op, "<", 1))
+        lif->op = IF_LESSTHAN;
     
     memcpy(&lif->operand, &element->params[2], sizeof(lif->operand));
     if (element->params_count > 3)
@@ -1646,8 +1646,7 @@ bool skin_data_load(enum screen_type screen, struct wps_data *wps_data,
         strlcpy(bmpdir, buf, dot - buf + 1);
     }
     else
-    {   /* fall back to backdrop dir for built-in themes */
-        /* no get_user_file_path(), assuming we ship bmps for built-in themes */
+    {
         snprintf(bmpdir, MAX_PATH, "%s", BACKDROP_DIR);
     }
     /* load the bitmaps that were found by the parsing */

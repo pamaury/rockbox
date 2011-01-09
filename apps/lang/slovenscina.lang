@@ -1623,7 +1623,7 @@
     rtc: "OFF = Revert"
     mrobe500: "POWER = Revert"
     iriverh100,iriverh120,iriverh300: "STOP = Revert"
-    ipod*,sansac200*: "MENU = Revert"
+    ipod*,sansac200*,mpiohd300: "MENU = Revert"
     iaudiox5,iaudiom5: "RECORD = Revert"
     iriverh10,iriverh10_5gb,sansae200*,sansafuze*: "PREV = Revert"
     gigabeatfx: "POWER = Revert"
@@ -1635,6 +1635,7 @@
   <dest>
     *: "OFF Preklici"
     vibe500: "C Preklici"
+    mpiohd300: "MENU Preklici"
   </dest>
   <voice>
     *: ""
@@ -1760,10 +1761,12 @@
     iriverh10,iriverh10_5gb: "SELECT=Set PREV=Cancel"
     gigabeats: "SELECT=Set POWER=Cancel"
     vibe500: "OK=Set C=Cancel"
+    mpiohd300: "ENTER=Set MENU=Cancel"
   </source>
   <dest>
     *: "PLAY=nastavi OFF=Odpovej"
     vibe500: "OK=nastavi C=Odpovej"
+    mpiohd300: "ENTER=nastavi MENU=Odpovej"
   </dest>
   <voice>
     *: ""
@@ -3753,19 +3756,16 @@
 </phrase>
 <phrase>
   id: LANG_REC_SIZE
-  desc: in record timesplit options
-  user: core
+  desc: deprecated
+  user:
   <source>
     *: none
-    recording: "Filesize"
   </source>
   <dest>
     *: none
-    recording: "Filesize"
   </dest>
   <voice>
     *: none
-    recording: "Filesize"
   </voice>
 </phrase>
 <phrase>
@@ -5381,6 +5381,7 @@
     ipod*,iaudiox5,iaudiom5,iriverh10,iriverh10_5gb,sansae200*,sansac200*,gigabeat*,mrobe100,sansaclip*,sansafuze*: "SELECT = Set"
     gogearsa9200: "PLAY = Set"
     vibe500: "OK = Set"
+    mpiohd300: "ENTER = Set"
   </source>
   <dest>
     *: none
@@ -5390,6 +5391,7 @@
     ipod*,iaudiox5,iaudiom5,iriverh10,iriverh10_5gb,sansae200*,sansac200*,gigabeat*,mrobe100,sansaclip*,sansafuze*: "SELECT = Set"
     gogearsa9200: "PLAY = Set"
     vibe500: "OK = Set"
+    mpiohd300: "ENTER = Set"
   </dest>
   <voice>
     *: none

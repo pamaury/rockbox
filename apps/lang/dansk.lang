@@ -3744,7 +3744,7 @@
     rtc: "OFF = Revert"
     mrobe500: "POWER = Revert"
     iriverh100,iriverh120,iriverh300: "STOP = Revert"
-    ipod*,sansac200*: "MENU = Revert"
+    ipod*,sansac200*,mpiohd300: "MENU = Revert"
     iaudiox5,iaudiom5: "RECORD = Revert"
     iriverh10,iriverh10_5gb,sansae200*,sansafuze*: "PREV = Revert"
     gigabeatfx: "POWER = Revert"
@@ -3758,7 +3758,7 @@
     rtc: "SLUK = Fortryd"
     mrobe500: "TÆND/SLUK = Fortryd"
     iriverh100,iriverh120,iriverh300: "STOP = Fortryd"
-    ipod*,sansac200*: "MENU = Fortryd"
+    ipod*,sansac200*,mpiohd300: "MENU = Fortryd"
     iaudiox5,iaudiom5: "OPTAG = Fortryd"
     iriverh10,iriverh10_5gb,sansae200*,sansafuze*: "FORRIGE = Fortryd"
     gigabeatfx: "TÆND/SLUK = Fortryd"
@@ -3995,6 +3995,7 @@
     iriverh10,iriverh10_5gb: "SELECT=Set PREV=Cancel"
     gigabeats: "SELECT=Set POWER=Cancel"
     vibe500: "OK=Set C=Cancel"
+    mpiohd300: "ENTER=Set MENU=Cancel"
   </source>
   <dest>
     *: none
@@ -4003,6 +4004,7 @@
     iriverh10,iriverh10_5gb: "VÆLG=Sæt FORRIGE=Annuller"
     gigabeats: "VÆLG=Sæt TÆND/SLUK=Annuller"
     vibe500: "OK=Sæt C=Annuller"
+    mpiohd300: "ENTER=Sæt MENU=Annuller"
   </dest>
   <voice>
     *: none
@@ -7697,19 +7699,16 @@
 </phrase>
 <phrase>
   id: LANG_REC_SIZE
-  desc: in record timesplit options
-  user: core
+  desc: deprecated
+  user:
   <source>
     *: none
-    recording: "Filesize"
   </source>
   <dest>
     *: none
-    recording: "Filestørrelse"
   </dest>
   <voice>
     *: none
-    recording: "Filestørrelse"
   </voice>
 </phrase>
 <phrase>
@@ -9621,6 +9620,7 @@
     ipod*,iaudiox5,iaudiom5,iriverh10,iriverh10_5gb,sansae200*,sansac200*,gigabeat*,mrobe100,sansaclip*,sansafuze*: "SELECT = Set"
     gogearsa9200: "PLAY = Set"
     vibe500: "OK = Set"
+    mpiohd300: "ENTER = Set"
   </source>
   <dest>
     *: none
@@ -9630,6 +9630,7 @@
     ipod*,iaudiox5,iaudiom5,iriverh10,iriverh10_5gb,sansae200*,sansac200*,gigabeat*,mrobe100,sansaclip*,sansafuze*: "VÆLG = Indstil"
     gogearsa9200: "SPIL = Indstil"
     vibe500: "OK = Indstil"
+    mpiohd300: "ENTER = Indstil"
   </dest>
   <voice>
     *: none
@@ -12593,5 +12594,19 @@
   <voice>
     *: none
     recording_histogram: "Histogram interval"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_FILESIZE
+  desc: in record timesplit options and in track information viewer 
+  user: core
+  <source>
+    *: "Filesize"
+  </source>
+  <dest>
+    *: "Filestørrelse"
+  </dest>
+  <voice>
+    *: "Filestørrelse"
   </voice>
 </phrase>

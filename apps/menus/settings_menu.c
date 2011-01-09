@@ -424,6 +424,12 @@ MAKE_MENU(hotkey_menu, ID2P(LANG_HOTKEY), 0, Icon_NOICON,
 /***********************************/
 /*    SETTINGS MENU                */
 
+#ifdef HAVE_TAGCACHE
+#if CONFIG_CODEC == SWCODEC 
+MENUITEM_SETTING(autoresume_enable, &global_settings.autoresume_enable, NULL);
+#endif
+#endif
+
 static struct browse_folder_info langs = { LANG_DIR, SHOW_LNG };
 
 MENUITEM_FUNCTION(browse_langs, MENU_FUNC_USEPARAM, ID2P(LANG_LANGUAGE),
@@ -436,7 +442,13 @@ MAKE_MENU(settings_menu_item, ID2P(LANG_GENERAL_SETTINGS), 0,
           &tagcache_menu,
 #endif
           &display_menu, &system_menu,
-          &bookmark_settings_menu, &browse_langs, &voice_settings_menu,
+          &bookmark_settings_menu,
+#ifdef HAVE_TAGCACHE
+#if CONFIG_CODEC == SWCODEC 
+          &autoresume_enable,
+#endif          
+#endif
+          &browse_langs, &voice_settings_menu,
 #ifdef HAVE_HOTKEY
           &hotkey_menu,
 #endif

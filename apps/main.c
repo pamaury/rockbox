@@ -76,6 +76,9 @@
 #include "skin_engine/skin_engine.h"
 #include "statusbar-skinned.h"
 #include "bootchart.h"
+#if defined(APPLICATION) && (CONFIG_PLATFORM & PLATFORM_ANDROID)
+#include "notification.h"
+#endif
 
 #ifdef IPOD_ACCESSORY_PROTOCOL
 #include "iap.h"
@@ -172,13 +175,13 @@ int main(void)
 #ifdef AUTOROCK
     {
         char filename[MAX_PATH];
-        const char *file = get_user_file_path(
+        const char *file = 
 #ifdef APPLICATION
                                 ROCKBOX_DIR
 #else
                                 PLUGIN_APPS_DIR
 #endif
-            "/autostart.rock", NEED_WRITE|IS_FILE, filename, sizeof(filename));
+                                    "/autostart.rock";
         if(file_exists(file)) /* no complaint if it doesn't exist */
         {
             plugin_load(file, NULL); /* start if it does */
@@ -333,11 +336,11 @@ static void init_tagcache(void)
 
 static void init(void)
 {
+    system_init();
+    kernel_init();
 #ifdef APPLICATION
     paths_init();
 #endif
-    system_init();
-    kernel_init();
     buffer_init();
     enable_irq();
     lcd_init();
@@ -350,6 +353,9 @@ static void init(void)
     backlight_init();
 #if (CONFIG_PLATFORM & PLATFORM_SDL)
     sim_tasks_init();
+#endif
+#if (CONFIG_PLATFORM & PLATFORM_ANDROID)
+    notification_init();
 #endif
     lang_init(core_language_builtin, language_strings, 
               LANG_LAST_INDEX_IN_ARRAY);
@@ -547,7 +553,7 @@ static void init(void)
         lcd_putsf(0, 1, "ATA error: %d", rc);
         lcd_puts(0, 3, "Press ON to debug");
         lcd_update();
-        while(!(button_get(true) & BUTTON_REL)); /*DO NOT CHANGE TO ACTION SYSTEM */
+        while(!(button_get(true) & BUTTON_REL)); /* DO NOT CHANGE TO ACTION SYSTEM */
         dbg_ports();
 #endif
         panicf("ata: %d", rc);

@@ -234,6 +234,7 @@ static bool tv_font_setting(void)
     rb->strlcat(backup.currdir, "/", MAX_PATH);
     rb->strlcat(backup.currdir, dc[tree->selected_item].name, MAX_PATH);
     tree->dirfilter = &dirfilter;
+    tree->browse = NULL;
     rb->snprintf(font_path, MAX_PATH, "%s/", FONT_DIR);
     rb->set_current_file(font_path);
     count = tree->filesindir;
@@ -328,6 +329,8 @@ unsigned tv_display_menu(void)
         case 1: /* change settings */
             tv_copy_preferences(&new_prefs);
             result = tv_options_menu();
+            if (tv_compare_preferences(&new_prefs))
+                preferences_changed = true;
             if (!tv_set_preferences(&new_prefs))
                 result = TV_MENU_RESULT_ERROR;
             break;

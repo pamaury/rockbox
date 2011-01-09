@@ -336,6 +336,15 @@ CONFIG_KEYPAD == SANSA_M200_PAD
 #define MPEG_RW         BUTTON_REW
 #define MPEG_FF         BUTTON_FF
 
+#elif CONFIG_KEYPAD == MPIO_HD300_PAD
+#define MPEG_MENU       BUTTON_MENU
+#define MPEG_PAUSE      (BUTTON_PLAY | BUTTON_REL)
+#define MPEG_STOP       (BUTTON_PLAY | BUTTON_REPEAT)
+#define MPEG_VOLDOWN    BUTTON_DOWN
+#define MPEG_VOLUP      BUTTON_UP
+#define MPEG_RW         BUTTON_REW
+#define MPEG_FF         BUTTON_FF
+
 #else
 #error No keymap defined!
 #endif
@@ -371,6 +380,14 @@ CONFIG_KEYPAD == SANSA_M200_PAD
                                 /* 3% of 30min file == 54s step size */
 #define MIN_FF_REWIND_STEP (TS_SECOND/2)
 #define OSD_MIN_UPDATE_INTERVAL (HZ/2)
+#define FPS_UPDATE_INTERVAL (HZ) /* Get new FPS reading each second */
+
+enum video_action
+{
+    VIDEO_STOP = 0,
+    VIDEO_PREV,
+    VIDEO_NEXT,
+};
 
 /* OSD status - same order as icon array */
 enum osd_status_enum
@@ -396,7 +413,9 @@ enum osd_bits
     OSD_REFRESH_RESUME     = 0x0020, /* Resume playback upon timeout */
     OSD_NODRAW             = 0x8000, /* OR bitflag - don't draw anything */
     OSD_SHOW               = 0x4000, /* OR bitflag - show the OSD */
-    OSD_HP_PAUSE           = 0x2000,
+#ifdef HAVE_HEADPHONE_DETECTION
+    OSD_HP_PAUSE           = 0x2000, /* OR bitflag - headphones caused pause */
+#endif
     OSD_HIDE               = 0x0000, /* hide the OSD (aid readability) */
     OSD_REFRESH_ALL        = 0x000f, /* Only immediate graphical elements */
 };
@@ -439,9 +458,25 @@ struct osd
     uint32_t curr_time;
     unsigned auto_refresh;
     unsigned flags;
+    int font;
+};
+
+struct fps
+{
+    /* FPS Display */
+    struct vo_rect rect;    /* OSD coordinates */
+    int pf_x;               /* Screen coordinates */
+    int pf_y;
+    int pf_width;
+    int pf_height;
+    long update_tick;       /* When to next update FPS reading */
+    #define FPS_FORMAT  "%d.%02d"
+    #define FPS_DIMSTR  "999.99" /* For establishing rect size */
+    #define FPS_BUFSIZE sizeof("999.99")
 };
 
 static struct osd osd;
+static struct fps fps NOCACHEBSS_ATTR; /* Accessed on other processor */
 
 static void osd_show(unsigned show);
 
@@ -555,6 +590,12 @@ static void draw_scrollbar_draw_rect(const struct vo_rect *rc, int min,
                         min, max, val);
 }
 
+static void draw_setfont(int font)
+{
+    osd.font = font;
+    mylcd_setfont(font);
+}
+
 #ifdef LCD_PORTRAIT
 /* Portrait displays need rotated text rendering */
 
@@ -628,7 +669,7 @@ static void draw_putsxy_oriented(int x, int y, const char *str)
     unsigned short ch;
     unsigned short *ucs;
     int ofs = MIN(x, 0);
-    struct font* pf = rb->font_get(FONT_UI);
+    struct font* pf = rb->font_get(osd.font);
 
     ucs = rb->bidi_l2v(str, 1);
 
@@ -678,6 +719,96 @@ static void draw_putsxy_oriented(int x, int y, const char *str)
 }
 #endif /* LCD_PORTRAIT */
 
+/** FPS Display **/
+
+/* Post-frame callback (on video thread) - update the FPS rectangle from the
+ * framebuffer */
+static void fps_post_frame_callback(void)
+{
+    vo_lock();
+    mylcd_update_rect(fps.pf_x, fps.pf_y,
+                      fps.pf_width, fps.pf_height);
+    vo_unlock();
+}
+
+/* Set up to have the callback only update the intersection of the video
+ * rectangle and the FPS text rectangle - if they don't intersect, then
+ * the callback is set to NULL */
+static void fps_update_post_frame_callback(void)
+{
+    void (*cb)(void) = NULL;
+
+    if (settings.showfps) {
+        struct vo_rect cliprect;
+
+        if (stream_vo_get_clip(&cliprect)) {
+            /* Oriented screen coordinates -> OSD coordinates */
+            vo_rect_offset(&cliprect, -osd.x, -osd.y);
+
+            if (vo_rect_intersect(&cliprect, &cliprect, &fps.rect)) {
+                int x = cliprect.l;
+                int y = cliprect.t;
+                int width = cliprect.r - cliprect.l;
+                int height = cliprect.b - cliprect.t;
+
+                /* OSD coordinates -> framebuffer coordinates */
+                fps.pf_x = _X;
+                fps.pf_y = _Y;
+                fps.pf_width = _W;
+                fps.pf_height = _H;
+
+                cb = fps_post_frame_callback;
+            }
+        }
+    }
+
+    stream_set_callback(VIDEO_SET_POST_FRAME_CALLBACK, cb);
+}
+
+/* Refresh the FPS display */
+static void fps_refresh(void)
+{
+    char str[FPS_BUFSIZE];
+    struct video_output_stats stats;
+    int w, h, sw;
+    long tick;
+
+    tick = *rb->current_tick;
+
+    if (TIME_BEFORE(tick, fps.update_tick))
+        return;
+
+    fps.update_tick = tick + FPS_UPDATE_INTERVAL;
+
+    stream_video_stats(&stats);
+
+    rb->snprintf(str, FPS_BUFSIZE, FPS_FORMAT,
+                 stats.fps / 100, stats.fps % 100);
+
+    w = fps.rect.r - fps.rect.l;
+    h = fps.rect.b - fps.rect.t;
+
+    draw_clear_area(fps.rect.l, fps.rect.t, w, h);
+    mylcd_getstringsize(str, &sw, NULL);
+    draw_putsxy_oriented(fps.rect.r - sw, fps.rect.t, str);
+
+    vo_lock();
+    draw_update_rect(fps.rect.l, fps.rect.t, w, h);
+    vo_unlock();
+}
+
+/* Initialize the FPS display */
+static void fps_init(void)
+{
+    fps.update_tick = *rb->current_tick;
+    fps.rect.l = fps.rect.t = 0;
+    mylcd_getstringsize(FPS_DIMSTR, &fps.rect.r, &fps.rect.b);
+    vo_rect_offset(&fps.rect, -osd.x, -osd.y);
+    fps_update_post_frame_callback();
+}
+
+/** OSD **/
+
 #if defined(HAVE_LCD_ENABLE) || defined(HAVE_LCD_SLEEP)
 /* So we can refresh the overlay */
 static void osd_lcd_enable_hook(void* param)
@@ -725,7 +856,7 @@ static void osd_text_init(void)
     int phys;
     int spc_width;
 
-    mylcd_setfont(FONT_UI);
+    draw_setfont(FONT_UI);
 
     osd.x = 0;
     osd.width = SCREEN_WIDTH;
@@ -794,7 +925,7 @@ static void osd_text_init(void)
 #endif
     osd.y = SCREEN_HEIGHT - osd.height;
 
-    mylcd_setfont(FONT_SYSFIXED);
+    draw_setfont(FONT_SYSFIXED);
 }
 
 static void osd_init(void)
@@ -817,7 +948,20 @@ static void osd_init(void)
     osd.auto_refresh = OSD_REFRESH_TIME;
     osd.next_auto_refresh = *rb->current_tick;
     osd_text_init();
+    fps_init();
 }
+
+#ifdef HAVE_HEADPHONE_DETECTION
+static void osd_set_hp_pause_flag(bool set)
+{
+    if (set)
+        osd.flags |= OSD_HP_PAUSE;
+    else
+        osd.flags &= ~OSD_HP_PAUSE;
+}
+#else
+#define osd_set_hp_pause_flag(set)
+#endif /* HAVE_HEADPHONE_DETECTION */
 
 static void osd_schedule_refresh(unsigned refresh)
 {
@@ -1017,6 +1161,9 @@ static void osd_refresh(int hint)
 
     tick = *rb->current_tick;
 
+    if (settings.showfps)
+        fps_refresh();
+
     if (hint == OSD_REFRESH_DEFAULT) {
         /* The default which forces no updates */
 
@@ -1086,7 +1233,7 @@ static void osd_refresh(int hint)
     oldfg = mylcd_get_foreground();
     oldbg = mylcd_get_background();
 
-    mylcd_setfont(FONT_UI);
+    draw_setfont(FONT_UI);
     mylcd_set_foreground(osd.fgcolor);
     mylcd_set_background(osd.bgcolor);
 
@@ -1110,7 +1257,7 @@ static void osd_refresh(int hint)
     }
 
     /* Go back to defaults */
-    mylcd_setfont(FONT_SYSFIXED);
+    draw_setfont(FONT_SYSFIXED);
     mylcd_set_foreground(oldfg);
     mylcd_set_background(oldbg);
 
@@ -1197,8 +1344,10 @@ static int osd_get_status(void)
     return osd.status & OSD_STATUS_MASK;
 }
 
-/* Handle Fast-forward/Rewind keys using WPS settings (and some nicked code ;) */
-static uint32_t osd_ff_rw(int btn, unsigned refresh)
+/* Handle Fast-forward/Rewind keys using WPS settings (and some nicked code ;)
+ * Returns last button code
+ */
+static int osd_ff_rw(int btn, unsigned refresh, uint32_t *new_time)
 {
     unsigned int step = TS_SECOND*rb->global_settings->ff_rewind_min_step;
     const long ff_rw_accel = (rb->global_settings->ff_rewind_accel + 3);
@@ -1208,6 +1357,7 @@ static uint32_t osd_ff_rw(int btn, unsigned refresh)
     unsigned int max_step = 0;
     uint32_t ff_rw_count = 0;
     unsigned status = osd.status;
+    int new_btn;
 
     osd_cancel_refresh(OSD_REFRESH_VIDEO | OSD_REFRESH_RESUME |
                        OSD_REFRESH_TIME);
@@ -1223,9 +1373,8 @@ static uint32_t osd_ff_rw(int btn, unsigned refresh)
 #ifdef MPEG_RC_FF
     case MPEG_RC_FF:
 #endif
-        if (!(btn & BUTTON_REPEAT))
-            osd_set_status(OSD_STATUS_FF);
-        btn = MPEG_FF | BUTTON_REPEAT; /* simplify code below */
+        osd_set_status(OSD_STATUS_FF);
+        new_btn = btn | BUTTON_REPEAT; /* simplify code below */
         break;
     case MPEG_RW:
 #ifdef MPEG_RW2
@@ -1234,103 +1383,75 @@ static uint32_t osd_ff_rw(int btn, unsigned refresh)
 #ifdef MPEG_RC_RW
     case MPEG_RC_RW:
 #endif
-        if (!(btn & BUTTON_REPEAT))
-            osd_set_status(OSD_STATUS_RW);
-        btn = MPEG_RW | BUTTON_REPEAT; /* simplify code below */
+        osd_set_status(OSD_STATUS_RW);
+        new_btn = btn | BUTTON_REPEAT; /* simplify code below */
         break;
     default:
-        btn = -1;
+        new_btn = BUTTON_NONE; /* Fail tests below but still do proper exit */
     }
 
     while (1)
     {
         stream_keep_disk_active();
 
-        switch (btn)
-        {
-        case BUTTON_NONE:
-            osd_refresh(OSD_REFRESH_DEFAULT);
-            break;
+        if (new_btn == (btn | BUTTON_REPEAT)) {
+            if (osd.status == OSD_STATUS_FF) {
+                /* fast forwarding, calc max step relative to end */
+                max_step = muldiv_uint32(duration - (time + ff_rw_count),
+                                         FF_REWIND_MAX_PERCENT, 100);
+            } else {
+                /* rewinding, calc max step relative to start */
+                max_step = muldiv_uint32(time - ff_rw_count,
+                                         FF_REWIND_MAX_PERCENT, 100);
+            }
 
-        case MPEG_FF | BUTTON_REPEAT:
-        case MPEG_RW | BUTTON_REPEAT:
-#ifdef MPEG_FF2
-        case MPEG_FF2 | BUTTON_REPEAT:
-#endif
-#ifdef MPEG_RW2
-        case MPEG_RW2 | BUTTON_REPEAT:
-#endif
-#ifdef MPEG_RC_FF
-        case MPEG_RC_FF | BUTTON_REPEAT:
-        case MPEG_RC_RW | BUTTON_REPEAT:
-#endif
-            break;
+            max_step = MAX(max_step, MIN_FF_REWIND_STEP);
 
-        case MPEG_FF | BUTTON_REL:
-        case MPEG_RW | BUTTON_REL:
-#ifdef MPEG_FF2
-        case MPEG_FF2 | BUTTON_REL:
-#endif
-#ifdef MPEG_RW2
-        case MPEG_RW2 | BUTTON_REL:
-#endif
-#ifdef MPEG_RC_FF
-        case MPEG_RC_FF | BUTTON_REL:
-        case MPEG_RC_RW | BUTTON_REL:
-#endif
-            if (osd.status == OSD_STATUS_FF)
-                time += ff_rw_count;
-            else if (osd.status == OSD_STATUS_RW)
-                time -= ff_rw_count;
+            if (step > max_step)
+                step = max_step;
 
-            /* Fall-through */
-        case -1:
-        default:
+            ff_rw_count += step;
+
+            /* smooth seeking by multiplying step by: 1 + (2 ^ -accel) */
+            step += step >> ff_rw_accel;
+
+            if (osd.status == OSD_STATUS_FF) {
+                if (duration - time <= ff_rw_count)
+                    ff_rw_count = duration - time;
+
+                osd.curr_time = time + ff_rw_count;
+            } else {
+                if (time <= ff_rw_count)
+                    ff_rw_count = time;
+
+                osd.curr_time = time - ff_rw_count;
+            }
+
+            osd_refresh(OSD_REFRESH_TIME);
+
+            new_btn = mpeg_button_get(TIMEOUT_BLOCK);
+        }
+        else {
+            if (new_btn == (btn | BUTTON_REL)) {
+                if (osd.status == OSD_STATUS_FF)
+                    time += ff_rw_count;
+                else if (osd.status == OSD_STATUS_RW)
+                    time -= ff_rw_count;
+            }
+
+            *new_time = time;
+
             osd_schedule_refresh(refresh);
             osd_set_status(status);
             osd_schedule_refresh(OSD_REFRESH_TIME);
-            return time;
+
+            return new_btn;
         }
-
-        if (osd.status == OSD_STATUS_FF) {
-            /* fast forwarding, calc max step relative to end */
-            max_step = muldiv_uint32(duration - (time + ff_rw_count),
-                                     FF_REWIND_MAX_PERCENT, 100);
-        } else {
-            /* rewinding, calc max step relative to start */
-            max_step = muldiv_uint32(time - ff_rw_count,
-                                     FF_REWIND_MAX_PERCENT, 100);
-        }
-
-        max_step = MAX(max_step, MIN_FF_REWIND_STEP);
-
-        if (step > max_step)
-            step = max_step;
-
-        ff_rw_count += step;
-
-        /* smooth seeking by multiplying step by: 1 + (2 ^ -accel) */
-        step += step >> ff_rw_accel;
-
-        if (osd.status == OSD_STATUS_FF) {
-            if (duration - time <= ff_rw_count)
-                ff_rw_count = duration - time;
-
-            osd.curr_time = time + ff_rw_count;
-        } else {
-            if (time <= ff_rw_count)
-                ff_rw_count = time;
-
-            osd.curr_time = time - ff_rw_count;
-        }
-
-        osd_refresh(OSD_REFRESH_TIME);
-
-        btn = rb->button_get_w_tmo(OSD_MIN_UPDATE_INTERVAL);
     }
 }
 
-static int osd_status(void)
+/* Return adjusted STREAM_* status */
+static int osd_stream_status(void)
 {
     int status = stream_status();
 
@@ -1378,6 +1499,7 @@ static int osd_play(uint32_t time)
 {
     int retval;
 
+    osd_set_hp_pause_flag(false);
     osd_cancel_refresh(OSD_REFRESH_VIDEO | OSD_REFRESH_RESUME);
 
     retval = stream_seek(time, SEEK_SET);
@@ -1386,6 +1508,7 @@ static int osd_play(uint32_t time)
         osd_backlight_on_video_mode(true);
         osd_backlight_brightness_video_mode(true);
         stream_show_vo(true);
+
         retval = stream_play();
 
         if (retval >= STREAM_OK)
@@ -1420,6 +1543,8 @@ static int osd_pause(void)
     unsigned refresh = osd.auto_refresh;
     int status = osd_halt();
 
+    osd_set_hp_pause_flag(false);
+
     if (status == STREAM_PLAYING && (refresh & OSD_REFRESH_RESUME)) {
         /* Resume pending - change to a still video frame update */
         osd_schedule_refresh(OSD_REFRESH_VIDEO);
@@ -1438,6 +1563,7 @@ static void osd_resume(void)
 {
     /* Cancel video and resume auto refresh - the resyc when starting
      * playback will perform those tasks */
+    osd_set_hp_pause_flag(false);
     osd_backlight_on_video_mode(true);
     osd_backlight_brightness_video_mode(true);
     osd_cancel_refresh(OSD_REFRESH_VIDEO | OSD_REFRESH_RESUME);
@@ -1450,9 +1576,10 @@ static void osd_stop(void)
 {
     uint32_t resume_time;
 
+    osd_set_hp_pause_flag(false);
     osd_cancel_refresh(OSD_REFRESH_VIDEO | OSD_REFRESH_RESUME);
     osd_set_status(OSD_STATUS_STOPPED | OSD_NODRAW);
-    osd_show(OSD_HIDE | OSD_NODRAW);
+    osd_show(OSD_HIDE);
 
     stream_stop();
 
@@ -1465,35 +1592,142 @@ static void osd_stop(void)
     osd_backlight_brightness_video_mode(false);
 }
 
-/* Perform a seek if seeking is possible for this stream - if playing, a delay
- * will be inserted before restarting in case the user decides to seek again */
-static void osd_seek(int btn)
+/* Perform a seek by button if seeking is possible for this stream.
+ *
+ * A delay will be inserted before restarting in case the user decides to
+ * seek again soon after.
+ *
+ * Returns last button code
+ */
+static int osd_seek_btn(int btn)
 {
     int status;
-    unsigned refresh;
+    unsigned refresh = 0;
     uint32_t time;
 
     if (!stream_can_seek())
-        return;
+        return true;
 
-    /* Halt playback - not strictly nescessary but nice */
+    /* Halt playback - not strictly necessary but nice when doing
+     * buttons */
     status = osd_halt();
 
     if (status == STREAM_STOPPED)
-        return;
+        return true;
 
     osd_show(OSD_SHOW);
 
+    /* Obtain a new playback point according to the buttons */
     if (status == STREAM_PLAYING)
         refresh = OSD_REFRESH_RESUME; /* delay resume if playing */
     else
         refresh = OSD_REFRESH_VIDEO;  /* refresh if paused */
 
-    /* Obtain a new playback point */
-    time = osd_ff_rw(btn, refresh);
+    btn = osd_ff_rw(btn, refresh, &time);
 
     /* Tell engine to resume at that time */
     stream_seek(time, SEEK_SET);
+
+    return btn;
+}
+
+/* Perform a seek by time if seeking is possible for this stream
+ *
+ * If playing, the seeking is immediate, otherise a delay is added to showing
+ * a still if paused in case the user does another seek soon after.
+ *
+ * If seeking isn't possible, a time of zero performs a skip to the
+ * beginning.
+ */
+static void osd_seek_time(uint32_t time)
+{
+    int status;
+    unsigned refresh = 0;
+
+    if (!stream_can_seek() && time != 0)
+        return;
+
+    stream_wait_status();
+    status = osd_stream_status();
+
+    if (status == STREAM_STOPPED)
+        return;
+
+    if (status == STREAM_PLAYING)    /* merely preserve resume */
+        refresh = osd.auto_refresh & OSD_REFRESH_RESUME;
+    else
+        refresh = OSD_REFRESH_VIDEO; /* refresh if paused */
+
+    /* Cancel print or resume if pending */
+    osd_cancel_refresh(OSD_REFRESH_VIDEO | OSD_REFRESH_RESUME);
+
+    /* Tell engine to seek to the given time - no state change */
+    stream_seek(time, SEEK_SET);
+
+    osd_update_time();
+    osd_refresh(OSD_REFRESH_TIME);
+    osd_schedule_refresh(refresh);
+}
+
+/* Has this file one of the supported extensions? */
+static bool is_videofile(const char* file)
+{
+    static const char * const extensions[] =
+    {
+        /* Should match apps/plugins/viewers.config */
+        "mpg", "mpeg", "mpv", "m2v"
+    };
+
+    const char* ext = rb->strrchr(file, '.');
+    int i;
+
+    if (!ext)
+        return false;
+
+    for (i = ARRAYLEN(extensions) - 1; i >= 0; i--)
+    {
+        if (!rb->strcasecmp(ext + 1, extensions[i]))
+            break;
+    }
+
+    return i >= 0;
+}
+
+/* deliver the next/previous video file in the current directory.
+   returns false if there is none. */
+static bool get_videofile(int direction, char* videofile, size_t bufsize)
+{
+    struct tree_context *tree = rb->tree_get_context();
+    struct entry *dircache = tree->dircache;
+    int i, step, end, found = 0;
+    char *videoname = rb->strrchr(videofile, '/') + 1;
+    size_t rest = bufsize - (videoname - videofile) - 1;
+
+    if (direction == VIDEO_NEXT) {
+        i = 0;
+        step = 1;
+        end = tree->filesindir;
+    } else {
+        i = tree->filesindir-1;
+        step = -1;
+        end = -1;
+    }
+    for (; i != end; i += step)
+    {
+        const char* name = dircache[i].name;
+        if (!rb->strcmp(name, videoname)) {
+            found = 1;
+            continue;
+        }
+        if (found && rb->strlen(name) <= rest &&
+            !(dircache[i].attr & ATTR_DIRECTORY) && is_videofile(name))
+        {
+            rb->strcpy(videoname, name);
+            return true;
+        }
+    }
+
+    return false;
 }
 
 #ifdef HAVE_HEADPHONE_DETECTION
@@ -1506,17 +1740,20 @@ static void osd_handle_phone_plug(bool inserted)
     /* Wait for any incomplete state transition to complete first */
     stream_wait_status();
 
-    int status = osd_status();
+    int status = osd_stream_status();
 
     if (inserted) {
         if (rb->global_settings->unplug_mode > 1) {
-            if (status == STREAM_PAUSED) {
+            if (status == STREAM_PAUSED &&
+                (osd.flags & OSD_HP_PAUSE)) {
                 osd_resume();
             }
         }
     } else {
         if (status == STREAM_PLAYING) {
             osd_pause();
+
+            osd_set_hp_pause_flag(true);
 
             if (stream_can_seek() && rb->global_settings->unplug_rw) {
                 stream_seek(-rb->global_settings->unplug_rw*TS_SECOND,
@@ -1531,8 +1768,10 @@ static void osd_handle_phone_plug(bool inserted)
 }
 #endif
 
-static void button_loop(void)
+static int button_loop(void)
 {
+    int next_action = (settings.play_mode == 0) ? VIDEO_STOP : VIDEO_NEXT;
+
     rb->lcd_setfont(FONT_SYSFIXED);
 #ifdef HAVE_LCD_COLOR
     rb->lcd_set_foreground(LCD_WHITE);
@@ -1550,18 +1789,13 @@ static void button_loop(void)
     /* Start playback at the specified starting time */
     if (osd_play(settings.resume_time) < STREAM_OK) {
         rb->splash(HZ*2, "Playback failed");
-        return;
+        return VIDEO_STOP;
     }
 
     /* Gently poll the video player for EOS and handle UI */
     while (stream_status() != STREAM_STOPPED)
     {
-        int button;
-
-        mpeg_menu_sysevent_clear();
-        button = rb->button_get_w_tmo(OSD_MIN_UPDATE_INTERVAL/2);
-
-        button = mpeg_menu_sysevent_callback(button, NULL);
+        int button = mpeg_button_get(OSD_MIN_UPDATE_INTERVAL/2);
 
         switch (button)
         {
@@ -1629,6 +1863,10 @@ static void button_loop(void)
 
             result = mpeg_menu();
 
+            next_action = (settings.play_mode == 0) ? VIDEO_STOP : VIDEO_NEXT;
+
+            fps_update_post_frame_callback();
+
             /* The menu can change the font, so restore */
             rb->lcd_setfont(FONT_SYSFIXED);
 #ifdef HAVE_LCD_COLOR
@@ -1641,6 +1879,7 @@ static void button_loop(void)
             switch (result)
             {
             case MPEG_MENU_QUIT:
+                next_action = VIDEO_STOP;
                 osd_stop();
                 break;
 
@@ -1679,6 +1918,8 @@ static void button_loop(void)
 #endif
         case ACTION_STD_CANCEL:
         {
+        cancel_playback:
+            next_action = VIDEO_STOP;
             osd_stop();
             break;
             } /* MPEG_STOP: */
@@ -1691,7 +1932,7 @@ static void button_loop(void)
         case MPEG_RC_PAUSE:
 #endif
         {
-            int status = osd_status();
+            int status = osd_stream_status();
 
             if (status == STREAM_PLAYING) {
                 /* Playing => Paused */
@@ -1706,21 +1947,72 @@ static void button_loop(void)
             } /* MPEG_PAUSE*: */
 
         case MPEG_RW:
-        case MPEG_FF:
 #ifdef MPEG_RW2
         case MPEG_RW2:
 #endif
+#ifdef MPEG_RC_RW
+        case MPEG_RC_RW:
+#endif
+        {
+            int old_button = button;
+
+            /* If button has been released: skip to next/previous file */
+            button = mpeg_button_get(OSD_MIN_UPDATE_INTERVAL);
+
+            if ((old_button | BUTTON_REL) == button) {
+                /* Check current playback position */
+                osd_update_time();
+
+                if (settings.play_mode == 0 || osd.curr_time >= 3*TS_SECOND) {
+                    /* Start the current video from the beginning */
+                    osd_seek_time(0*TS_SECOND);
+                }
+                else {
+                    /* Release within 3 seconds of start: skip to previous
+                     * file */
+                    osd_stop();
+                    next_action = VIDEO_PREV;
+                }
+            }
+            else if ((button & ~BUTTON_REPEAT) == old_button) {
+                button = osd_seek_btn(old_button);
+            }
+
+            if (button == ACTION_STD_CANCEL)
+                goto cancel_playback; /* jump to stop handling above */
+
+            rb->default_event_handler(button);
+            break;
+            } /* MPEG_RW: */
+
+        case MPEG_FF:
 #ifdef MPEG_FF2
         case MPEG_FF2:
 #endif
-#ifdef MPEG_RC_RW
-        case MPEG_RC_RW:
+#ifdef MPEG_RC_FF
         case MPEG_RC_FF:
 #endif
         {
-            osd_seek(button);
+            int old_button = button;
+
+            if (settings.play_mode != 0)
+                button = mpeg_button_get(OSD_MIN_UPDATE_INTERVAL);
+
+            if ((old_button | BUTTON_REL) == button) {
+                /* If button has been released: skip to next file */
+                osd_stop();
+                next_action = VIDEO_NEXT;
+            }
+            else if ((button & ~BUTTON_REPEAT) == old_button) {
+                button = osd_seek_btn(old_button);
+            }
+
+            if (button == ACTION_STD_CANCEL)
+                goto cancel_playback; /* jump to stop handling above */
+
+            rb->default_event_handler(button);
             break;
-            } /* MPEG_RW: MPEG_FF: */
+            } /* MPEG_FF: */
 
 #ifdef HAVE_HEADPHONE_DETECTION
         case SYS_PHONE_PLUGGED:
@@ -1733,6 +2025,7 @@ static void button_loop(void)
 
         default:
         {
+            osd_refresh(OSD_REFRESH_DEFAULT);
             rb->default_event_handler(button);
             break;
             } /* default: */
@@ -1750,14 +2043,15 @@ static void button_loop(void)
 #endif
 
     rb->lcd_setfont(FONT_UI);
+
+    return next_action;
 }
 
 enum plugin_status plugin_start(const void* parameter)
 {
-    int status = PLUGIN_ERROR; /* assume failure */
-    int result;
-    int err;
-    const char *errstring;
+    static char videofile[MAX_PATH];
+    int status = PLUGIN_OK; /* assume success */
+    bool quit = false;
 
     if (parameter == NULL) {
         /* No file = GTFO */
@@ -1777,47 +2071,124 @@ enum plugin_status plugin_start(const void* parameter)
     rb->lcd_clear_display();
     rb->lcd_update();
 
+    rb->strcpy(videofile, (const char*) parameter);
+
     if (stream_init() < STREAM_OK) {
+        /* Fatal because this should not fail */
         DEBUGF("Could not initialize streams\n");
+        status = PLUGIN_ERROR;
     } else {
-        rb->splash(0, "Loading...");
-        init_settings((char*)parameter);
+        int next_action = VIDEO_STOP;
+        bool get_videofile_says = true;
 
-        err = stream_open((char *)parameter);
+        while (!quit)
+        {
+            int result;
 
-        if (err >= STREAM_OK) {
-            /* start menu */
-            rb->lcd_clear_display();
-            rb->lcd_update();
-            result = mpeg_start_menu(stream_get_duration());
+            init_settings(videofile);
 
-            if (result != MPEG_START_QUIT) {
-                /* Enter button loop and process UI */
-                button_loop();
+            result = stream_open(videofile);
+
+            if (result >= STREAM_OK) {
+                /* start menu */
+                rb->lcd_clear_display();
+                rb->lcd_update();
+                result = mpeg_start_menu(stream_get_duration());
+
+                next_action = VIDEO_STOP;
+                if (result != MPEG_START_QUIT) {
+                    /* Enter button loop and process UI */
+                    next_action = button_loop();
+                }
+
+                stream_close();
+
+                rb->lcd_clear_display();
+                rb->lcd_update();
+
+                save_settings();
+            } else {
+                /* Problem with file; display message about it - not
+                 * considered a plugin error */
+                long tick;
+                const char *errstring;
+
+                DEBUGF("Could not open %s\n", videofile);
+                switch (result)
+                {
+                case STREAM_UNSUPPORTED:
+                    errstring = "Unsupported format";
+                    break;
+                default:
+                    errstring = "Error opening file: %d";
+                }
+
+                tick = *rb->current_tick + HZ*2;
+
+                rb->splashf(0, errstring, result);
+
+                /* Be sure it doesn't get stuck in an unbreakable loop of bad
+                 * files, just in case! Otherwise, keep searching in the
+                 * chosen direction until a good one is found. */
+                while (!quit && TIME_BEFORE(*rb->current_tick, tick))
+                {
+                    int button = mpeg_button_get(HZ*2);
+
+                    switch (button)
+                    {
+                    case MPEG_STOP:
+                    case ACTION_STD_CANCEL:
+                        /* Abort the search and exit */
+                        next_action = VIDEO_STOP;
+                        quit = true;
+                        break;
+
+                    case BUTTON_NONE:
+                        if (settings.play_mode != 0) {
+                            if (next_action == VIDEO_STOP) {
+                                /* Default to next file */
+                                next_action = VIDEO_NEXT;
+                            }
+                            else if (next_action == VIDEO_PREV &&
+                                     !get_videofile_says) {
+                                /* Was first file already; avoid endlessly
+                                 * retrying it */
+                                next_action = VIDEO_STOP;
+                            }
+                        }
+                        break;
+
+                    default:
+                        rb->default_event_handler(button);
+                    } /* switch */
+                } /* while */
             }
 
-            stream_close();
-
-            rb->lcd_clear_display();
-            rb->lcd_update();
-
-            save_settings();
-            status = PLUGIN_OK;
-
-            mpeg_menu_sysevent_handle();
-        } else {
-            DEBUGF("Could not open %s\n", (char*)parameter);
-            switch (err)
+            /* return value of button_loop says, what's next */
+            switch (next_action)
             {
-            case STREAM_UNSUPPORTED:
-                errstring = "Unsupported format";
+            case VIDEO_NEXT:
+            {
+                get_videofile_says = get_videofile(VIDEO_NEXT, videofile,
+                                                   sizeof(videofile));
+                /* quit after finished the last videofile */
+                quit = !get_videofile_says;
                 break;
-            default:
-                errstring = "Error opening file: %d";
+                }
+            case VIDEO_PREV:
+            {
+                get_videofile_says = get_videofile(VIDEO_PREV, videofile,
+                                                   sizeof(videofile));
+                /* if there is no previous file, play the same videofile */
+                break;
+                }
+            case VIDEO_STOP:
+            {
+                quit = true;
+                break;
+                }
             }
-
-            rb->splashf(HZ*2, errstring, err);
-        }
+        } /* while */
     }
 
 #if defined(HAVE_LCD_MODES) && (HAVE_LCD_MODES & LCD_MODE_YUV)
@@ -1827,5 +2198,10 @@ enum plugin_status plugin_start(const void* parameter)
     stream_exit();
 
     rb->talk_disable(false);
+
+    /* Actually handle delayed processing of system events of interest
+     * that were captured in other button loops */
+    mpeg_sysevent_handle();
+
     return status;
 }

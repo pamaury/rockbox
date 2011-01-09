@@ -1336,7 +1336,7 @@
     *: none
     rtc: "OFF = Revert"
     iriverh100,iriverh120,iriverh300: "STOP = Revert"
-    ipod*,sansac200*,gogearsa9200: "MENU = Revert"
+    ipod*,sansac200*,gogearsa9200,mpiohd300: "MENU = Revert"
     iaudiox5,iaudiom5: "RECORD = Revert"
     iriverh10,iriverh10_5gb,sansae200*,sansafuze*: "PREV = Revert"
     gigabeatfx: "POWER = Revert"
@@ -1348,7 +1348,7 @@
     *: none
     rtc: "OFF за отказ"
     iriverh100,iriverh120,iriverh300: "STOP за отказ"
-    ipod*,sansac200*,gogearsa9200: "MENU за отказ"
+    ipod*,sansac200*,gogearsa9200,mpiohd300: "MENU за отказ"
     iaudiox5,iaudiom5: "RECORD за отказ"
     iriverh10,iriverh10_5gb,sansae200*,sansafuze*: "PREV за отказ"
     gigabeatfx: "POWER за отказ"
@@ -3016,19 +3016,16 @@
 </phrase>
 <phrase>
   id: LANG_REC_SIZE
-  desc: in record timesplit options
-  user: core
+  desc: deprecated
+  user:
   <source>
     *: none
-    recording: "Filesize"
   </source>
   <dest>
     *: none
-    recording: "Размер на файла"
   </dest>
   <voice>
     *: none
-    recording: none
   </voice>
 </phrase>
 <phrase>
@@ -4455,6 +4452,7 @@
     iriverh100,iriverh120,iriverh300: "NAVI = Set"
     ipod*,iaudiox5,iaudiom5,iriverh10,iriverh10_5gb,sansae200*,sansac200*,gigabeat*,mrobe100,gogearsa9200: "SELECT = Set"
     vibe500: "OK = Set"
+    mpiohd300: "ENTER = Set"
   </source>
   <dest>
     *: none
@@ -4462,6 +4460,7 @@
     iriverh100,iriverh120,iriverh300: "NAVI = Запази"
     ipod*,iaudiox5,iaudiom5,iriverh10,iriverh10_5gb,sansae200*,sansac200*,gigabeat*,mrobe100,gogearsa9200: "SELECT = Запази"
     vibe500: "OK = Запази"
+    mpiohd300: "ENTER = Запази"
   </dest>
   <voice>
     *: none
@@ -10328,6 +10327,7 @@
     iriverh10,iriverh10_5gb: "SELECT=Set PREV=Cancel"
     gigabeats: "SELECT=Set POWER=Cancel"
     vibe500: "OK=Set C=Cancel"
+    mpiohd300: "ENTER=Set MENU=Cancel"
   </source>
   <dest>
     *: none
@@ -10336,6 +10336,7 @@
     iriverh10,iriverh10_5gb: "SELECT=Установяване PREV=Отказ"
     gigabeats: "SELECT=Установяване POWER=Отказ"
     vibe500: "OK=Установяване C=Отказ"
+    mpiohd300: "ENTER=Установяване MENU=Отказ"
   </dest>
   <voice>
     *: none
@@ -10838,5 +10839,19 @@
   <voice>
     *: none
     gigabeatfx: "High"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_FILESIZE
+  desc: in record timesplit options and in track information viewer 
+  user: core
+  <source>
+    *: "Filesize"
+  </source>
+  <dest>
+    *: "Размер на файла"
+  </dest>
+  <voice>
+    *: "Размер на файла"
   </voice>
 </phrase>

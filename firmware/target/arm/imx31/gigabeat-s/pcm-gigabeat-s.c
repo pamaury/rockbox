@@ -109,20 +109,33 @@ static void play_dma_callback(void)
 
 void pcm_play_lock(void)
 {
+    /* Need to prevent DVFS from causing interrupt priority inversion if audio
+     * is locked and a DVFS interrupt fires, blocking reenabling of audio by a 
+     * low-priority mode for at least the duration of the lengthy DVFS routine.
+     * Not really an issue with state changes but lockout when playing.
+     *
+     * Keep direct use of DVFS code away from here though. This could provide
+     * more services in the future anyway. */
+    kernel_audio_locking(true);
     ++dma_play_data.locked;
 }
 
 void pcm_play_unlock(void)
 {
-    if (--dma_play_data.locked == 0 && dma_play_data.state != 0)
+    if (--dma_play_data.locked == 0)
     {
-        int oldstatus = disable_irq_save();
-        int pending = dma_play_data.callback_pending;
-        dma_play_data.callback_pending = 0;
-        restore_irq(oldstatus);
+        if (dma_play_data.state != 0)
+        {
+            int oldstatus = disable_irq_save();
+            int pending = dma_play_data.callback_pending;
+            dma_play_data.callback_pending = 0;
+            restore_irq(oldstatus);
 
-        if (pending != 0)
-            play_dma_callback();
+            if (pending != 0)
+                play_dma_callback();
+        }
+
+        kernel_audio_locking(false);
     }
 }
 
@@ -269,6 +282,17 @@ static void play_stop_pcm(void)
 
     SSI_STCR2 &= ~SSI_STCR_TFEN0; /* Disable TX */
     SSI_SCR2 &= ~(SSI_SCR_TE | SSI_SCR_SSIEN); /* Disable transmission, SSI */
+
+    if (pcm_playing)
+    {
+        /* Stopping: clear buffer info to ensure 0-size readbacks when
+         * stopped */
+        unsigned long dsa = 0;
+        dma_play_bd.buf_addr = NULL;
+        dma_play_bd.mode.count = 0;
+        clean_dcache_range(&dsa, sizeof(dsa));
+        sdma_write_words(&dsa, CHANNEL_CONTEXT_ADDR(DMA_PLAY_CH_NUM)+0x0b, 1);
+    }
 
     /* Clear any pending callback */
     dma_play_data.callback_pending = 0;
@@ -431,20 +455,26 @@ static void rec_dma_callback(void)
 
 void pcm_rec_lock(void)
 {
+    kernel_audio_locking(true);    
     ++dma_rec_data.locked;
 }
 
 void pcm_rec_unlock(void)
 {
-    if (--dma_rec_data.locked == 0 && dma_rec_data.state != 0)
+    if (--dma_rec_data.locked == 0)
     {
-        int oldstatus = disable_irq_save();
-        int pending = dma_rec_data.callback_pending;
-        dma_rec_data.callback_pending = 0;
-        restore_irq(oldstatus);
+        if (dma_rec_data.state != 0)
+        {
+            int oldstatus = disable_irq_save();
+            int pending = dma_rec_data.callback_pending;
+            dma_rec_data.callback_pending = 0;
+            restore_irq(oldstatus);
 
-        if (pending != 0)
-            rec_dma_callback();
+            if (pending != 0)
+                rec_dma_callback();
+        }
+
+        kernel_audio_locking(false);
     }
 }
 
@@ -462,6 +492,17 @@ void pcm_rec_dma_stop(void)
 
     SSI_SCR1 &= ~SSI_SCR_RE;      /* Disable RX */
     SSI_SRCR1 &= ~SSI_SRCR_RFEN0; /* Disable RX FIFO */
+
+    if (pcm_recording)
+    {
+        /* Stopping: clear buffer info to ensure 0-size readbacks when
+         * stopped */
+        unsigned long pda = 0;
+        dma_rec_bd.buf_addr = NULL;
+        dma_rec_bd.mode.count = 0;
+        clean_dcache_range(&pda, sizeof(pda));
+        sdma_write_words(&pda, CHANNEL_CONTEXT_ADDR(DMA_REC_CH_NUM)+0x0a, 1);
+    }
 
     /* Clear any pending callback */
     dma_rec_data.callback_pending = 0;

@@ -106,7 +106,7 @@ enum
 enum { SHOW_ALL, SHOW_SUPPORTED, SHOW_MUSIC, SHOW_PLAYLIST, SHOW_ID3DB,
        NUM_FILTER_MODES,
        SHOW_WPS, SHOW_RWPS, SHOW_FMS, SHOW_RFMS, SHOW_SBS, SHOW_RSBS, SHOW_FMR, SHOW_CFG,
-       SHOW_LNG, SHOW_MOD, SHOW_FONT, SHOW_PLUGINS};
+       SHOW_LNG, SHOW_MOD, SHOW_FONT, SHOW_PLUGINS, SHOW_M3U};
 
 /* file and dir sort options */
 enum { SORT_ALPHA, SORT_DATE, SORT_DATE_REVERSED, SORT_TYPE, /* available as settings */
@@ -576,6 +576,7 @@ struct user_settings
     bool tagcache_ram;        /* load tagcache to ram? */
 #endif
     bool tagcache_autoupdate; /* automatically keep tagcache in sync? */
+    bool autoresume_enable;   /* enable auto-resume feature? */
     bool runtimedb;           /* runtime database active? */
 #endif /* HAVE_TAGCACHE */
 

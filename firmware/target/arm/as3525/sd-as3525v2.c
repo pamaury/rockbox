@@ -64,6 +64,7 @@
 #define MCI_NO_RESP     (0<<0)
 #define MCI_RESP        (1<<0)
 #define MCI_LONG_RESP   (1<<1)
+#define MCI_ACMD        (1<<2)
 
 /* controller registers */
 #define SD_BASE 0xC6070000
@@ -396,6 +397,10 @@ static bool send_cmd(const int drive, const int cmd, const int arg, const int fl
         unsigned long *response)
 {
     int card_no;
+    
+    if ((flags & MCI_ACMD) && /* send SD_APP_CMD first */
+        !send_cmd(drive, SD_APP_CMD, card_info[drive].rca, MCI_RESP, response))
+        return false;
 
 #if defined(HAVE_MULTIDRIVE)
     if(sd_present(SD_SLOT_AS3525))
@@ -491,6 +496,8 @@ static int sd_init_card(const int drive)
     long init_timeout;
     bool sd_v2 = false;
 
+    card_info[drive].rca = 0;
+
     /*  assume 24 MHz clock / 60 = 400 kHz  */
     MCI_CLKDIV = (MCI_CLKDIV & ~(0xFF)) | 0x3C;    /* CLK_DIV_0 : bits 7:0  */
 
@@ -516,12 +523,9 @@ static int sd_init_card(const int drive)
         if(TIME_AFTER(current_tick, init_timeout))
             return -2;
 
-        /* app_cmd */
-        send_cmd(drive, SD_APP_CMD, 0, MCI_RESP, &response);
-
          /* ACMD41 For v2 cards set HCS bit[30] & send host voltage range to all */
         if(!send_cmd(drive, SD_APP_OP_COND, (0x00FF8000 | (sd_v2 ? 1<<30 : 0)),
-                        MCI_RESP, &card_info[drive].ocr))
+                        MCI_ACMD|MCI_RESP, &card_info[drive].ocr))
             return -3;
     } while(!(card_info[drive].ocr & (1<<31)) );
 
@@ -541,28 +545,33 @@ static int sd_init_card(const int drive)
 #endif
     /*  End of Card Identification Mode   ************************************/
 
-    /* Attempt to switch cards to HS timings, non HS cards just ignore this */
-    /*  CMD7 w/rca: Select card to put it in TRAN state */
-    if(!send_cmd(drive, SD_SELECT_CARD, card_info[drive].rca, MCI_NO_RESP, NULL))
-        return -7;
+    if (sd_v2)
+    {
+        /* Attempt to switch cards to HS timings, non HS cards just ignore this */
+        /*  CMD7 w/rca: Select card to put it in TRAN state */
+        if(!send_cmd(drive, SD_SELECT_CARD, card_info[drive].rca, MCI_NO_RESP, NULL))
+            return -7;
 
-    if(sd_wait_for_tran_state(drive))
-        return -8;
+        if(sd_wait_for_tran_state(drive))
+            return -8;
 
-    /* CMD6 */
-    if(!send_cmd(drive, SD_SWITCH_FUNC, 0x80fffff1, MCI_NO_RESP, NULL))
-        return -9;
-    mci_delay();
+        /* CMD6 */
+        if(!send_cmd(drive, SD_SWITCH_FUNC, 0x80fffff1, MCI_NO_RESP, NULL))
+            return -9;
+        mci_delay();
 
-    /*  We need to go back to STBY state now so we can read csd */
-    /*  CMD7 w/rca=0:  Deselect card to put it in STBY state */
-    if(!send_cmd(drive, SD_DESELECT_CARD, 0, MCI_NO_RESP, NULL))
-        return -10;
+        /*  We need to go back to STBY state now so we can read csd */
+        /*  CMD7 w/rca=0:  Deselect card to put it in STBY state */
+        if(!send_cmd(drive, SD_DESELECT_CARD, 0, MCI_NO_RESP, NULL))
+            return -10;
+    }
 
     /* CMD9 send CSD */
     if(!send_cmd(drive, SD_SEND_CSD, card_info[drive].rca,
                  MCI_RESP|MCI_LONG_RESP, card_info[drive].csd))
         return -11;
+
+    mci_delay();
 
     sd_parse_csd(&card_info[drive]);
 
@@ -580,18 +589,12 @@ static int sd_init_card(const int drive)
     /*  Switch to to 4 bit widebus mode  */
     if(sd_wait_for_tran_state(drive) < 0)
         return -13;
-    /* CMD55 */              /*  Response is requested due to timing issue  */
-    if(!send_cmd(drive, SD_APP_CMD, card_info[drive].rca, MCI_RESP, &response))
-        return -14;
     /* ACMD6  */
-    if(!send_cmd(drive, SD_SET_BUS_WIDTH, 2, MCI_NO_RESP, NULL))
+    if(!send_cmd(drive, SD_SET_BUS_WIDTH, 2, MCI_ACMD|MCI_NO_RESP, NULL))
         return -15;
     mci_delay();
-    /* CMD55 */             /*  Response is requested due to timing issue  */
-    if(!send_cmd(drive, SD_APP_CMD, card_info[drive].rca, MCI_RESP, &response))
-        return -16;
     /* ACMD42  */
-    if(!send_cmd(drive, SD_SET_CLR_CARD_DETECT, 0, MCI_NO_RESP, NULL))
+    if(!send_cmd(drive, SD_SET_CLR_CARD_DETECT, 0, MCI_ACMD|MCI_NO_RESP, NULL))
         return -17;
 
     /* Now that card is widebus make controller aware */

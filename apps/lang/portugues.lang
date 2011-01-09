@@ -18,6 +18,7 @@
 # - Joao (FS#446)
 # - Rui Marinho
 # - Rui Araújo
+# - Gabriel Maia
 <phrase>
   id: LANG_SET_BOOL_YES
   desc: bool true representation
@@ -4119,7 +4120,7 @@
     rtc: "OFF = Revert"
     mrobe500: "POWER = Revert"
     iriverh100,iriverh120,iriverh300: "STOP = Revert"
-    ipod*,sansac200*: "MENU = Revert"
+    ipod*,sansac200*,mpiohd300: "MENU = Revert"
     iaudiox5,iaudiom5: "RECORD = Revert"
     iriverh10,iriverh10_5gb,sansae200*,sansafuze*: "PREV = Revert"
     gigabeatfx: "POWER = Revert"
@@ -4133,7 +4134,7 @@
     rtc: "OFF = Reverter"
     mrobe500: "POWER = Reverter"
     iriverh100,iriverh120,iriverh300: "STOP = Reverter"
-    ipod*,sansac200*: "MENU = Reverter"
+    ipod*,sansac200*,mpiohd300: "MENU = Reverter"
     iaudiox5,iaudiom5: "RECORD = Reverter"
     iriverh10,iriverh10_5gb,sansae200*,sansafuze*: "PREV = Reverter"
     gigabeatfx: "POWER = Reverter"
@@ -4401,6 +4402,7 @@
     iriverh10,iriverh10_5gb: "SELECT=Set PREV=Cancel"
     gigabeats: "SELECT=Set POWER=Cancel"
     vibe500: "OK=Set C=Cancel"
+    mpiohd300: "ENTER=Set MENU=Cancel"
   </source>
   <dest>
     *: none
@@ -4409,6 +4411,7 @@
     iriverh10,iriverh10_5gb: "SELECT=Definir PREV=Cancelar"
     gigabeats: "SELECT=Definir POWER=Cancelar"
     vibe500: "OK=Alterar C=Cancelar"
+    mpiohd300: "ENTER=Alterar MENU=Cancelar"
   </dest>
   <voice>
     *: none
@@ -7609,6 +7612,7 @@
     ipod*,iaudiox5,iaudiom5,iriverh10,iriverh10_5gb,sansae200*,sansac200*,gigabeat*,mrobe100,sansaclip*,sansafuze*: "SELECT = Set"
     gogearsa9200: "PLAY = Set"
     vibe500: "OK = Set"
+    mpiohd300: "ENTER = Set"
   </source>
   <dest>
     *: none
@@ -7618,6 +7622,7 @@
     ipod*,iaudiox5,iaudiom5,iriverh10,iriverh10_5gb,sansae200*,sansac200*,gigabeat*,mrobe100,sansaclip*,sansafuze*: "SELECT = Definir"
     gogearsa9200: "PLAY = Definir"
     vibe500: "OK = Definir"
+    mpiohd300: "ENTER = Definir"
   </dest>
   <voice>
     *: none
@@ -9788,19 +9793,16 @@
 </phrase>
 <phrase>
   id: LANG_REC_SIZE
-  desc: in record timesplit options
-  user: core
+  desc: deprecated
+  user:
   <source>
     *: none
-    recording: "Filesize"
   </source>
   <dest>
     *: none
-    recording: "Tamanho de Ficheiro"
   </dest>
   <voice>
     *: none
-    recording: "Tamanho de Ficheiro"
   </voice>
 </phrase>
 <phrase>
@@ -12566,5 +12568,64 @@
   <voice>
     *: none
     recording_histogram: "Intervalo do Histograma"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_FILESIZE
+  desc: in record timesplit options and in track information viewer 
+  user: core
+  <source>
+    *: "Filesize"
+  </source>
+  <dest>
+    *: "Tamanho de Ficheiro"
+  </dest>
+  <voice>
+    *: "Tamanho de Ficheiro"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_AUTORESUME_ENABLE_YES
+  desc: resume settings menu
+  user: core
+  <source>
+    *: "Yes (requires initialized database)"
+  </source>
+  <dest>
+    *: "Sim (requer base de dados inicializada)"
+  </dest>
+  <voice>
+    *: "Sim (requer base de dados inicializada)"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_FM_RSSI
+  desc: Signal strength of a received FM station
+  user: core
+  <source>
+    *: none
+    radio: "Signal strength:"
+  </source>
+  <dest>
+    *: none
+    radio: "Força do sinal:"
+  </dest>
+  <voice>
+    *: none
+    radio: "Força do sinal:"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_AUTORESUME_ENABLE
+  desc: resume settings menu
+  user: core
+  <source>
+    *: "Enable automatic resume"
+  </source>
+  <dest>
+    *: "Habilitar retoma da reprodução automática"
+  </dest>
+  <voice>
+    *: "Habilitar retoma da reprodução automática"
   </voice>
 </phrase>

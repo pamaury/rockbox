@@ -23,10 +23,8 @@
 #include "storage.h"
 #include "debug.h"
 #include "fat.h"
-#ifdef HAVE_HOTSWAP
 #include "dir.h" /* for release_dirs() */
 #include "file.h" /* for release_files() */
-#endif
 #include "disk.h"
 #include <string.h>
 
@@ -225,6 +223,9 @@ int disk_mount(int drive)
         DEBUGF("No partition found, trying to mount sector 0.\n");
         if (!fat_mount(IF_MV2(volume,) IF_MD2(drive,) 0))
         {
+#ifdef MAX_LOG_SECTOR_SIZE
+            disk_sector_multiplier = fat_get_bytes_per_sector(IF_MV(volume))/SECTOR_SIZE;
+#endif
             mounted = 1;
             vol_drive[volume] = drive; /* remember the drive for this volume */
         }
@@ -235,12 +236,13 @@ int disk_mount(int drive)
     return mounted;
 }
 
-#ifdef HAVE_HOTSWAP
 int disk_unmount(int drive)
 {
     int unmounted = 0;
     int i;
+#ifdef HAVE_HOTSWAP
     mutex_lock(&disk_mutex);
+#endif
     for (i=0; i<NUM_VOLUMES; i++)
     {
         if (vol_drive[i] == drive)
@@ -252,8 +254,28 @@ int disk_unmount(int drive)
             fat_unmount(i, false);
         }
     }
+#ifdef HAVE_HOTSWAP
     mutex_unlock(&disk_mutex);
+#endif
 
     return unmounted;
 }
-#endif /* #ifdef HAVE_HOTSWAP */
+
+int disk_unmount_all(void)
+{
+#ifndef HAVE_MULTIDRIVE
+    return disk_unmount(0);
+#else  /* HAVE_MULTIDRIVE */
+    int unmounted = 0;
+    int i;
+    for (i = 0; i < NUM_DRIVES; i++)
+    {
+#ifdef HAVE_HOTSWAP
+        if (storage_present(i))
+#endif
+            unmounted += disk_unmount(i);
+    }
+
+    return unmounted;
+#endif  /* HAVE_MULTIDRIVE */
+}

@@ -4093,7 +4093,7 @@
   <source>
     *: "OFF = Revert"
     iriverh100,iriverh120,iriverh300: "STOP = Revert"
-    ipod*,sansac200*: "MENU = Revert"
+    ipod*,sansac200*,mpiohd300: "MENU = Revert"
     iaudiox5: "RECORD = Revert"
     iriverh10,iriverh10_5gb,sansae200*,sansafuze*: "PREV = Revert"
     gigabeatfx: "POWER = Revert"
@@ -4102,7 +4102,7 @@
   <dest>
     *: "OFF tagasi pöördumiseks"
     iriverh100,iriverh120,iriverh300: "STOP tagasi pöördumiseks"
-    ipod*,sansac200*: "MENU tagasi pöördumiseks"
+    ipod*,sansac200*,mpiohd300: "MENU tagasi pöördumiseks"
     iaudiox5: "RECORD tagasi pöördumiseks"
     iriverh10,iriverh10_5gb,sansae200*,sansafuze*: "PREV tagasi pöördumiseks"
     gigabeatfx: "POWER tagasi pöördumiseks"
@@ -4334,11 +4334,13 @@
     *: "PLAY=Set OFF=Cancel"
     ipod*: "SELECT=Set MENU=Cancel"
     vibe500: "OK=Set C=Cancel"
+    mpiohd300: "ENTER=Set MENU=Cancel"
   </source>
   <dest>
     *: "PLAY=Set OFF=Cancel"
     ipod*: "SELECT=Set MENU=Cancel"
     vibe500: "OK=Set C=Cancel"
+    mpiohd300: "ENTER=Set MENU=Cancel"
   </dest>
   <voice>
     *: ""
@@ -7351,16 +7353,16 @@
 </phrase>
 <phrase>
   id: LANG_REC_SIZE
-  desc: in record timesplit options
-  user: core
+  desc: deprecated
+  user:
   <source>
-    *: "Filesize"
+    *: none
   </source>
   <dest>
-    *: "Failisuurus"
+    *: none
   </dest>
   <voice>
-    *: "Filesize"
+    *: none
   </voice>
 </phrase>
 <phrase>
@@ -7905,5 +7907,19 @@
   </dest>
   <voice>
     *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_FILESIZE
+  desc: in record timesplit options and in track information viewer 
+  user: core
+  <source>
+    *: "Filesize"
+  </source>
+  <dest>
+    *: "Failisuurus"
+  </dest>
+  <voice>
+    *: "Failisuurus"
   </voice>
 </phrase>

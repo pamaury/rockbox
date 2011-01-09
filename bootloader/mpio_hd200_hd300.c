@@ -59,6 +59,7 @@
 #define EVENT_ON   0x01
 #define EVENT_AC   0x02
 #define EVENT_USB  0x04
+#define EVENT_RTC  0x08
 
 /* From common.c */
 extern int line;
@@ -79,15 +80,28 @@ int usb_screen(void)
    return 0;
 }
 
+/* return true if charger is present */
 static inline bool _charger_inserted(void)
 {
     return (GPIO1_READ & (1<<14)) ? false : true;
 }
 
+/* returns true if end of charge condition is reached */
 static inline bool _battery_full(void)
 {
     return (GPIO_READ & (1<<30)) ? true : false;
 }
+
+#ifdef MPIO_HD300
+/* returns true if startup is due to RTC alarm */
+static inline bool _rtc_alarm(void)
+{
+    if ( (GPIO1_READ & (1<<4)) && (GPIO1_READ & (1<<5)) )
+        return false;
+
+    return true;
+}
+#endif
 
 /* Reset the cookie for the crt0 crash check */
 static inline void __reset_cookie(void)
@@ -168,12 +182,20 @@ static void lcd_putstring_centered(const char *string)
     lcd_putsxy((LCD_WIDTH-w)/2, (LCD_HEIGHT-h)/2, string);
 }
 
+/* This function initializes ATA driver, mounts partitions,
+ * loads rockbox image from disk to ram and finally
+ * jumps to entry point in ram
+ */
 static void rb_boot(void)
 {
     int rc;
 
     /* boost to speedup rb image loading */
     cpu_boost(true);
+
+    reset_screen();
+    printf("Rockbox boot loader");
+    printf("Version " RBVERSION);
 
     rc = storage_init();
     if(rc)
@@ -211,6 +233,9 @@ static void rb_boot(void)
     start_rockbox();
 }
 
+/* This function prints small bootmenu where
+ * you can choose to boot OF, rockbox or just shutdown
+ */
 static void bootmenu(void)
 {
     enum option_t i;
@@ -263,7 +288,9 @@ static void bootmenu(void)
         switch (button)
         {
             case BUTTON_REW:
+#ifdef MPIO_HD200
             case BUTTON_RC_REW:
+#endif
                 if (option > rockbox)
                     option--;
                 else
@@ -271,7 +298,9 @@ static void bootmenu(void)
                 break;
 
             case BUTTON_FF:
+#ifdef MPIO_HD200
             case BUTTON_RC_FF:
+#endif
                 if (option < shutdown)
                     option++;
                 else
@@ -279,8 +308,10 @@ static void bootmenu(void)
                 break;
 
             case BUTTON_PLAY:
+#ifdef MPIO_HD200
             case BUTTON_RC_PLAY:
             case (BUTTON_PLAY|BUTTON_REC):
+#endif
                 reset_screen();
 
                 switch (option)
@@ -294,7 +325,7 @@ static void bootmenu(void)
                         break;
 
                     default:
-                        return;
+                        __shutdown();
                         break;
                 }
         }
@@ -313,6 +344,14 @@ void main(void)
     bool blink_toggle = false;
 
     int button;
+
+    /* hold status variables
+     * this two must have different
+     * values in the begining
+     */
+    bool hold = false;
+    bool last_hold = true;
+
     unsigned int event = EVENT_NONE;
     unsigned int last_event = EVENT_NONE;
 
@@ -333,34 +372,52 @@ void main(void)
 
     lcd_init();
 
-    /* only lowlevel functions no queue init */
-    _backlight_init();
-    _backlight_hw_on();
-
-    /* setup font system*/
+    /* setup font system */
     font_init();
     lcd_setfont(FONT_SYSFIXED);
 
-     /* buttons reading init*/
+     /* buttons reading init */
     adc_init();
     button_init();
 
     usb_init();
     cpu_idle_mode(true);
 
+    /* lowlevel init only */
+    _backlight_init();
+
     /* Handle wakeup event. Possibilities are:
-     * ON button (PLAY)
+     * RTC alarm (HD300)
+     * ON button (PLAY or RC_PLAY on HD200)
      * USB insert
      * AC charger plug
      */
-
     while(1)
     {
+        /* check hold status */
+        hold = button_hold();
+
+        /* backlight handling
+         * change only on hold toggle */
+        if ( hold != last_hold )
+        {
+            if ( hold )
+                _backlight_hw_off();
+            else
+                _backlight_hw_on();
+
+            last_hold = hold;
+        }
+
         /* read buttons */
         event = EVENT_NONE;
         button = button_get_w_tmo(HZ);
 
-        if ( (button & BUTTON_PLAY) || (button & BUTTON_RC_PLAY) )
+        if ( (button & BUTTON_PLAY)
+#ifdef MPIO_HD200
+             || (button & BUTTON_RC_PLAY)
+#endif
+           )
             event |= EVENT_ON;
  
         if ( usb_detect() == USB_INSERTED )
@@ -368,20 +425,31 @@ void main(void)
 
         if ( _charger_inserted() )
             event |= EVENT_AC;
+#ifdef MPIO_HD300
+        if ( _rtc_alarm() )
+            event |= EVENT_RTC;
+#endif
 
         reset_screen();
         switch (event)
         {
+#ifdef MPIO_HD300
+            case EVENT_RTC:
+            case (EVENT_RTC | EVENT_ON):
+            /* start regardles of buttons state */
+                rb_boot();
+                break;
+#endif
             case EVENT_ON:
             case (EVENT_ON | EVENT_AC):
             /* hold is handled in button driver */
-                    cpu_idle_mode(false);
-                    ide_power_enable(true);
+                cpu_idle_mode(false);
+                ide_power_enable(true);
 
-                    if (button == (BUTTON_PLAY|BUTTON_REC))
-                        bootmenu();
-                    else
-                        rb_boot();
+                if (button & BUTTON_REC)
+                    bootmenu();
+                else
+                    rb_boot();
 
                 break;
 
@@ -447,6 +515,7 @@ void main(void)
                     /* init USB */
                     ide_power_enable(true);
                     sleep(HZ/20);
+                    ata_enable(false);
                     usb_enable(true);
                 }
                 
@@ -467,6 +536,7 @@ void main(void)
                 {
                     /* disable USB */
                     usb_enable(false);
+                    ata_enable(true);
                     sleep(HZ);
                     ide_power_enable(false);
                     sleep(HZ);

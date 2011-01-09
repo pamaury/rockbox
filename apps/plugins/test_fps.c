@@ -33,6 +33,8 @@
 #define FPS_QUIT (BUTTON_HOME|BUTTON_REPEAT)
 #elif CONFIG_KEYPAD == MPIO_HD200_PAD
 #define FPS_QUIT (BUTTON_REC|BUTTON_PLAY)
+#elif CONFIG_KEYPAD == MPIO_HD300_PAD
+#define FPS_QUIT (BUTTON_REC|BUTTON_REPEAT)
 #elif defined(BUTTON_OFF)
 #define FPS_QUIT BUTTON_OFF
 #else
@@ -368,6 +370,7 @@ enum plugin_status plugin_start(const void* parameter)
     backlight_force_on(); /* backlight control in lib/helper.c */
 
     time_main_update();
+    rb->sleep(HZ);
 #if defined(HAVE_LCD_COLOR) && (MEMORYSIZE > 2)
     time_main_yuv();
 #endif

@@ -48,8 +48,8 @@
 #define ATTR_DIRECTORY   0x10
 #define ATTR_ARCHIVE     0x20
 #define ATTR_VOLUME      0x40 /* this is a volume, not a real directory */
+#define ATTR_LINK        0x80
 
-#if (CONFIG_PLATFORM & (PLATFORM_NATIVE|PLATFORM_SDL))
 #ifdef HAVE_DIRCACHE
 # include "dircache.h"
 # define DIR DIR_CACHED
@@ -61,7 +61,7 @@
 # define mkdir mkdir_cached
 # define rmdir rmdir_cached
 #else
-#include "dir_uncached.h"
+# include "dir_uncached.h"
 # define DIR DIR_UNCACHED
 # define dirent dirent_uncached
 # define opendir opendir_uncached
@@ -71,9 +71,10 @@
 # define mkdir mkdir_uncached
 # define rmdir rmdir_uncached
 #endif
-#else
-#include "dir-target.h"
-#include "dir_uncached.h"
-#endif
+
+
+typedef DIR* (*opendir_func)(const char* name);
+typedef int (*closedir_func)(DIR* dir);
+typedef struct dirent* (*readdir_func)(DIR* dir);
 
 #endif

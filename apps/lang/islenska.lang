@@ -3280,7 +3280,7 @@
     rtc: "OFF = Revert"
     mrobe500: "POWER = Revert"
     iriverh100,iriverh120,iriverh300: "STOP = Revert"
-    ipod*,sansac200*: "MENU = Revert"
+    ipod*,sansac200*,mpiohd300: "MENU = Revert"
     iaudiox5,iaudiom5: "RECORD = Revert"
     iriverh10,iriverh10_5gb,sansae200*,sansafuze*: "PREV = Revert"
     gigabeatfx: "POWER = Revert"
@@ -3294,7 +3294,7 @@
     rtc: "OFF = Revert"
     mrobe500: "POWER = Revert"
     iriverh100,iriverh120,iriverh300: "STOP = Revert"
-    ipod*,sansac200*: "MENU = Revert"
+    ipod*,sansac200*,mpiohd300: "MENU = Revert"
     iaudiox5,iaudiom5: "RECORD = Revert"
     iriverh10,iriverh10_5gb,sansae200*,sansafuze*: "PREV = Revert"
     gigabeatfx: "POWER = Revert"
@@ -3546,6 +3546,7 @@
     iriverh10,iriverh10_5gb: "SELECT=Set PREV=Cancel"
     gigabeats: "SELECT=Set POWER=Cancel"
     vibe500: "OK=Set C=Cancel"
+    mpiohd300: "ENTER=Set MENU=Cancel"
   </source>
   <dest>
     *: none
@@ -3554,6 +3555,7 @@
     iriverh10,iriverh10_5gb: "SELECT=Vista PREV=Hætta við"
     gigabeats: "SELECT=Vista POWER=Hætta við"
     vibe500: "OK=Vista C=Hætta við"
+    mpiohd300: "ENTER=Vista MENU=Hætta við"
   </dest>
   <voice>
     *: none

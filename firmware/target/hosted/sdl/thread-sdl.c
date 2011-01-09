@@ -632,8 +632,8 @@ void thread_exit(void)
     remove_thread(THREAD_ID_CURRENT);
     /* This should never and must never be reached - if it is, the
      * state is corrupted */
-    THREAD_PANICF("thread_exit->K:*R",
-                  thread_id_entry(THREAD_ID_CURRENT));
+    THREAD_PANICF("thread_exit->K:*R (ID: %d)",
+                  thread_id_entry(THREAD_ID_CURRENT)->id);
     while (1);
 }
 
@@ -670,9 +670,9 @@ void thread_get_name(char *buffer, int size,
     {
         /* Display thread name if one or ID if none */
         bool named = thread->name && *thread->name;
-        const char *fmt = named ? "%s" : "%08lX";
+        const char *fmt = named ? "%s" : "%04lX";
         intptr_t name = named ?
-            (intptr_t)thread->name : (intptr_t)thread;
+            (intptr_t)thread->name : (intptr_t)thread->id;
         snprintf(buffer, size, fmt, name);
     }
 }

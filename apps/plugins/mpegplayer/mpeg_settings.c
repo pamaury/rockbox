@@ -224,6 +224,14 @@ struct mpeg_settings settings;
 #define MPEG_START_TIME_DOWN        BUTTON_VOL_DOWN
 #define MPEG_START_TIME_EXIT        BUTTON_REC
 
+#elif CONFIG_KEYPAD == MPIO_HD300_PAD
+#define MPEG_START_TIME_SELECT      BUTTON_ENTER
+#define MPEG_START_TIME_LEFT        BUTTON_REW
+#define MPEG_START_TIME_RIGHT       BUTTON_FF
+#define MPEG_START_TIME_UP          BUTTON_UP
+#define MPEG_START_TIME_DOWN        BUTTON_DOWN
+#define MPEG_START_TIME_EXIT        BUTTON_REC
+
 #else
 #error No keymap defined!
 #endif
@@ -275,6 +283,7 @@ static struct configdata config[] =
     {TYPE_INT, 0, 2, { .int_p = &settings.crossfeed }, "Crossfeed", NULL},
     {TYPE_INT, 0, 2, { .int_p = &settings.equalizer }, "Equalizer", NULL},
     {TYPE_INT, 0, 2, { .int_p = &settings.dithering }, "Dithering", NULL},
+    {TYPE_INT, 0, 2, { .int_p = &settings.play_mode }, "Play mode", NULL},
 #ifdef HAVE_BACKLIGHT_BRIGHTNESS
     {TYPE_INT, -1, INT_MAX, { .int_p = &settings.backlight_brightness },
      "Backlight brightness", NULL},
@@ -284,6 +293,11 @@ static struct configdata config[] =
 static const struct opt_items noyes[2] = {
     { "No", -1 },
     { "Yes", -1 },
+};
+
+static const struct opt_items singleall[2] = {
+    { "Single", -1 },
+    { "All", -1 },
 };
 
 static const struct opt_items enabledisable[2] = {
@@ -301,39 +315,6 @@ static const struct opt_items globaloff[2] = {
 #endif
 
 static void mpeg_settings(void);
-static long mpeg_menu_sysevent_id;
-
-void mpeg_menu_sysevent_clear(void)
-{
-    mpeg_menu_sysevent_id = 0;
-}
-
-int mpeg_menu_sysevent_callback(int btn, const struct menu_item_ex *menu)
-{
-    switch (btn)
-    {
-    case SYS_USB_CONNECTED:
-    case SYS_POWEROFF:
-        mpeg_menu_sysevent_id = btn;
-        return ACTION_STD_CANCEL;
-    }
-
-    return btn;
-    (void)menu;
-}
-
-long mpeg_menu_sysevent(void)
-{
-    return mpeg_menu_sysevent_id;
-}
-
-void mpeg_menu_sysevent_handle(void)
-{
-    long id = mpeg_menu_sysevent();
-    if (id != 0)
-        rb->default_event_handler(id);
-}
-
 static bool mpeg_set_option(const char* string,
                             void* variable,
                             enum optiontype type,
@@ -341,14 +322,14 @@ static bool mpeg_set_option(const char* string,
                             int numoptions,
                             void (*function)(int))
 {
-    mpeg_menu_sysevent_clear();
+    mpeg_sysevent_clear();
 
     /* This eats SYS_POWEROFF - :\ */
     bool usb = rb->set_option(string, variable, type, options, numoptions,
                               function);
 
     if (usb)
-        mpeg_menu_sysevent_id = ACTION_STD_CANCEL;
+        mpeg_sysevent_set();
 
     return usb;
 }
@@ -361,13 +342,13 @@ static bool mpeg_set_int(const char *string, const char *unit,
                          int max,
                          const char* (*formatter)(char*, size_t, int, const char*))
 {
-    mpeg_menu_sysevent_clear();
+    mpeg_sysevent_clear();
 
     bool usb = rb->set_int(string, unit, voice_unit, variable, function,
                            step, min, max, formatter);
 
     if (usb)
-        mpeg_menu_sysevent_id = ACTION_STD_CANCEL;
+        mpeg_sysevent_set();
 
     return usb;
 }
@@ -620,20 +601,37 @@ static void draw_slider(uint32_t range, uint32_t pos, struct vo_rect *rc)
 
 static bool display_thumb_image(const struct vo_rect *rc)
 {
+    bool retval = true;
+    unsigned ltgray = MYLCD_LIGHTGRAY;
+    unsigned dkgray = MYLCD_DARKGRAY;
+
+    int oldcolor = mylcd_get_foreground();
+
     if (!stream_display_thumb(rc))
     {
-        mylcd_splash(0, "Frame not available");
-        return false;
+        /* Display "No Frame" and erase any border */
+        const char * const str = "No Frame";
+        int x, y, w, h;
+
+        mylcd_getstringsize(str, &w, &h);
+        x = (rc->r + rc->l - w) / 2;
+        y = (rc->b + rc->t - h) / 2;
+        mylcd_putsxy(x, y, str);
+
+        mylcd_update_rect(x, y, w, h);
+
+        ltgray = dkgray = mylcd_get_background();
+        retval = false;
     }
 
-    /* Draw a raised border around the frame */
-    int oldcolor = mylcd_get_foreground();
-    mylcd_set_foreground(MYLCD_LIGHTGRAY);
+    /* Draw a raised border around the frame (or erase if no frame) */
+
+    mylcd_set_foreground(ltgray);
 
     mylcd_hline(rc->l-1, rc->r-1, rc->t-1);
     mylcd_vline(rc->l-1, rc->t, rc->b-1);
 
-    mylcd_set_foreground(MYLCD_DARKGRAY);
+    mylcd_set_foreground(dkgray);
 
     mylcd_hline(rc->l-1, rc->r, rc->b);
     mylcd_vline(rc->r, rc->t-1, rc->b);
@@ -645,7 +643,7 @@ static bool display_thumb_image(const struct vo_rect *rc)
     mylcd_update_rect(rc->l-1, rc->b, rc->r - rc->l + 2, 1);
     mylcd_update_rect(rc->r, rc->t, 1, rc->b - rc->t);
 
-    return true;
+    return retval;
 }
 
 /* Add an amount to the specified time - with saturation */
@@ -764,11 +762,7 @@ static int get_start_time(uint32_t duration)
 
     while (slider_state < STATE9)
     {
-        mpeg_menu_sysevent_clear();
-        button = tmo == TIMEOUT_BLOCK ?
-            rb->button_get(true) : rb->button_get_w_tmo(tmo);
-
-        button = mpeg_menu_sysevent_callback(button, NULL);
+        button = mpeg_button_get(tmo);
 
         switch (button)
         {
@@ -908,7 +902,7 @@ static int show_start_menu(uint32_t duration)
     char hms_str[32];
     struct hms hms;
 
-    MENUITEM_STRINGLIST(menu, "Mpegplayer Menu", mpeg_menu_sysevent_callback,
+    MENUITEM_STRINGLIST(menu, "Mpegplayer Menu", mpeg_sysevent_callback,
                         "Play from beginning", resume_str, "Set start time",
                         "Settings", "Quit mpegplayer");
 
@@ -921,7 +915,7 @@ static int show_start_menu(uint32_t duration)
 
     while (!menu_quit)
     {
-        mpeg_menu_sysevent_clear();
+        mpeg_sysevent_clear();
         result = rb->do_menu(&menu, &selected, NULL, false);
 
         switch (result)
@@ -958,7 +952,7 @@ static int show_start_menu(uint32_t duration)
             break;
         }
 
-        if (mpeg_menu_sysevent() != 0)
+        if (mpeg_sysevent() != 0)
         {
             result = MPEG_START_QUIT;
             menu_quit = true;
@@ -971,7 +965,7 @@ static int show_start_menu(uint32_t duration)
 /* Return the desired resume action */
 int mpeg_start_menu(uint32_t duration)
 {
-    mpeg_menu_sysevent_clear();
+    mpeg_sysevent_clear();
 
     switch (settings.resume_options)
     {
@@ -994,12 +988,12 @@ int mpeg_menu(void)
 {
     int result;
 
-    MENUITEM_STRINGLIST(menu, "Mpegplayer Menu", mpeg_menu_sysevent_callback,
+    MENUITEM_STRINGLIST(menu, "Mpegplayer Menu", mpeg_sysevent_callback,
                         "Settings", "Resume playback", "Quit mpegplayer");
 
     rb->button_clear_queue();
 
-    mpeg_menu_sysevent_clear();
+    mpeg_sysevent_clear();
 
     result = rb->do_menu(&menu, NULL, NULL, false);
 
@@ -1019,7 +1013,7 @@ int mpeg_menu(void)
         break;
     }
 
-    if (mpeg_menu_sysevent() != 0)
+    if (mpeg_sysevent() != 0)
         result = MPEG_MENU_QUIT;
 
     return result;
@@ -1031,7 +1025,7 @@ static void display_options(void)
     int result;
     bool menu_quit = false;
 
-    MENUITEM_STRINGLIST(menu, "Display Options", mpeg_menu_sysevent_callback,
+    MENUITEM_STRINGLIST(menu, "Display Options", mpeg_sysevent_callback,
 #if MPEG_OPTION_DITHERING_ENABLED
                         "Dithering",
 #endif
@@ -1045,7 +1039,7 @@ static void display_options(void)
 
     while (!menu_quit)
     {
-        mpeg_menu_sysevent_clear();
+        mpeg_sysevent_clear();
         result = rb->do_menu(&menu, &selected, NULL, false);
 
         switch (result)
@@ -1094,7 +1088,7 @@ static void display_options(void)
             break;
         }
 
-        if (mpeg_menu_sysevent() != 0)
+        if (mpeg_sysevent() != 0)
             menu_quit = true;
     }
 }
@@ -1105,7 +1099,7 @@ static void audio_options(void)
     int result;
     bool menu_quit = false;
 
-    MENUITEM_STRINGLIST(menu, "Audio Options", mpeg_menu_sysevent_callback,
+    MENUITEM_STRINGLIST(menu, "Audio Options", mpeg_sysevent_callback,
                         "Tone Controls", "Channel Modes", "Crossfeed",
                         "Equalizer", "Dithering");
 
@@ -1113,7 +1107,7 @@ static void audio_options(void)
 
     while (!menu_quit)
     {
-        mpeg_menu_sysevent_clear();
+        mpeg_sysevent_clear();
         result = rb->do_menu(&menu, &selected, NULL, false);
 
         switch (result)
@@ -1153,7 +1147,7 @@ static void audio_options(void)
             break;
         }
 
-        if (mpeg_menu_sysevent() != 0)
+        if (mpeg_sysevent() != 0)
             menu_quit = true;
     }
 }
@@ -1189,15 +1183,15 @@ static void mpeg_settings(void)
     bool menu_quit = false;
     static char clear_str[32];
 
-    MENUITEM_STRINGLIST(menu, "Settings", mpeg_menu_sysevent_callback,
+    MENUITEM_STRINGLIST(menu, "Settings", mpeg_sysevent_callback,
                         "Display Options", "Audio Options",
-                        "Resume Options", clear_str);
+                        "Resume Options", "Play Mode", clear_str);
 
     rb->button_clear_queue();
 
     while (!menu_quit)
     {
-        mpeg_menu_sysevent_clear();
+        mpeg_sysevent_clear();
 
         /* Format and add resume option to the menu display */
         rb->snprintf(clear_str, sizeof(clear_str),
@@ -1219,6 +1213,11 @@ static void mpeg_settings(void)
             resume_options();
             break;
 
+        case MPEG_SETTING_PLAY_MODE:
+            mpeg_set_option("Play mode", &settings.play_mode,
+                            INT, singleall, 2, NULL);
+            break;
+
         case MPEG_SETTING_CLEAR_RESUMES:
             clear_resume_count();
             break;
@@ -1228,7 +1227,7 @@ static void mpeg_settings(void)
             break;
         }
 
-        if (mpeg_menu_sysevent() != 0)
+        if (mpeg_sysevent() != 0)
             menu_quit = true;
     }
 }
@@ -1239,6 +1238,7 @@ void init_settings(const char* filename)
     settings.showfps = 0;     /* Do not show FPS */
     settings.limitfps = 1;    /* Limit FPS */
     settings.skipframes = 1;  /* Skip frames */
+    settings.play_mode = 0;   /* Play single video */
     settings.resume_options = MPEG_RESUME_MENU_ALWAYS; /* Enable start menu */
     settings.resume_count = 0;
 #ifdef HAVE_BACKLIGHT_BRIGHTNESS

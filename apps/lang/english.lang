@@ -63,9 +63,10 @@
 # H320/H340         iriverh300
 # H10               iriverh10
 # IFP 7XX           iriverifp7xx
-# iaudio
+# iaudio/Cowon
 # X5                iaudiox5
 # M5                iaudiom5
+# D2                cowond2*
 # ipod
 # All iPods         ipod*
 # 4G Color/Photo    ipodcolor
@@ -76,21 +77,26 @@
 # mini              ipodmini1g
 # mini 2G           ipodmini2g
 # Toshiba
+# All gigabeats     gigabeat*
 # Gigabeat Fxx      gigabeatfx
 # Gigabeat Sxx      gigabeats
-#
 # Sandisk
-# Sansa E200        sansae200
+# Sansa E200        sansae200*
 # Sansa C200        sansac200*
-#
+# Sansa Fuze        sansafuze*
+# Sansa Clip        sansaclip*
 # Olympus
 # m:robe 100        mrobe100
-#
+# m:robe 500        mrobe500
+# Mpio
+# HD200             mpiohd200
+# HD300             mpiohd300
 # Packard Bell
 # Vibe 500          vibe500
-#
 # Philips
 # GoGear SA9200     gogearsa9200
+# Samsung
+# YH820/YH920/YH925 samsungyh*
 
 <phrase>
   id: LANG_SET_BOOL_YES
@@ -4026,6 +4032,7 @@
     ipod*,iaudiox5,iaudiom5,iriverh10,iriverh10_5gb,sansae200*,sansac200*,gigabeat*,mrobe100,sansaclip*,sansafuze*: "SELECT = Set"
     gogearsa9200: "PLAY = Set"
     vibe500: "OK = Set"
+    mpiohd300: "ENTER = Set"
   </source>
   <dest>
     *: none
@@ -4035,6 +4042,7 @@
     ipod*,iaudiox5,iaudiom5,iriverh10,iriverh10_5gb,sansae200*,sansac200*,gigabeat*,mrobe100,sansaclip*,sansafuze*: "SELECT = Set"
     gogearsa9200: "PLAY = Set"
     vibe500: "OK = Set"
+    mpiohd300: "ENTER = Set"
   </dest>
   <voice>
     *: none
@@ -4050,7 +4058,7 @@
     rtc: "OFF = Revert"
     mrobe500: "POWER = Revert"
     iriverh100,iriverh120,iriverh300: "STOP = Revert"
-    ipod*,sansac200*: "MENU = Revert"
+    ipod*,sansac200*,mpiohd300: "MENU = Revert"
     iaudiox5,iaudiom5: "RECORD = Revert"
     iriverh10,iriverh10_5gb,sansae200*,sansafuze*: "PREV = Revert"
     gigabeatfx: "POWER = Revert"
@@ -4064,7 +4072,7 @@
     rtc: "OFF = Revert"
     mrobe500: "POWER = Revert"
     iriverh100,iriverh120,iriverh300: "STOP = Revert"
-    ipod*,sansac200*: "MENU = Revert"
+    ipod*,sansac200*,mpiohd300: "MENU = Revert"
     iaudiox5,iaudiom5: "RECORD = Revert"
     iriverh10,iriverh10_5gb,sansae200*,sansafuze*: "PREV = Revert"
     gigabeatfx: "POWER = Revert"
@@ -4601,6 +4609,7 @@
     iriverh10,iriverh10_5gb: "SELECT=Set PREV=Cancel"
     gigabeats: "SELECT=Set POWER=Cancel"
     vibe500: "OK=Set C=Cancel"
+    mpiohd300: "ENTER=Set MENU=Cancel"
   </source>
   <dest>
     *: none
@@ -4609,6 +4618,7 @@
     iriverh10,iriverh10_5gb: "SELECT=Set PREV=Cancel"
     gigabeats: "SELECT=Set POWER=Cancel"
     vibe500: "OK=Set C=Cancel"
+    mpiohd300: "ENTER=Set MENU=Cancel"
   </dest>
   <voice>
     *: none
@@ -5950,19 +5960,16 @@
 </phrase>
 <phrase>
   id: LANG_REC_SIZE
-  desc: in record timesplit options
+  desc: deprecated
   user: core
   <source>
     *: none
-    recording: "Filesize"
   </source>
   <dest>
     *: none
-    recording: "Filesize"
   </dest>
   <voice>
     *: none
-    recording: "Filesize"
   </voice>
 </phrase>
 <phrase>
@@ -10509,15 +10516,15 @@
   user: core
   <source>
     *: none
-    ipodvideo: "Bass Cutoff"
+    ipodvideo,ipod6g: "Bass Cutoff"
   </source>
   <dest>
     *: none
-    ipodvideo: "Bass Cutoff"
+    ipodvideo,ipod6g: "Bass Cutoff"
   </dest>
   <voice>
     *: none
-    ipodvideo: "Bass Cutoff"
+    ipodvideo,ipod6g: "Bass Cutoff"
   </voice>
 </phrase>
 <phrase>
@@ -10526,15 +10533,15 @@
   user: core
   <source>
     *: none
-    ipodvideo: "Treble Cutoff"
+    ipodvideo,ipod6g: "Treble Cutoff"
   </source>
   <dest>
     *: none
-    ipodvideo: "Treble Cutoff"
+    ipodvideo,ipod6g: "Treble Cutoff"
   </dest>
   <voice>
     *: none
-    ipodvideo: "Treble Cutoff"
+    ipodvideo,ipod6g: "Treble Cutoff"
   </voice>
 </phrase>
 <phrase>
@@ -12662,5 +12669,47 @@
   <voice>
     *: none
     radio: "Signal strength:"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_FILESIZE
+  desc: in record timesplit options and in track information viewer 
+  user: core
+  <source>
+    *: "Filesize"
+  </source>
+  <dest>
+    *: "Filesize"
+  </dest>
+  <voice>
+    *: "Filesize"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_AUTORESUME_ENABLE
+  desc: resume settings menu
+  user: core
+  <source>
+    *: "Enable automatic resume"
+  </source>
+  <dest>
+    *: "Enable automatic resume"
+  </dest>
+  <voice>
+    *: "Enable automatic resume"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_AUTORESUME_ENABLE_YES
+  desc: resume settings menu
+  user: core
+  <source>
+    *: "Yes (requires initialized database)"
+  </source>
+  <dest>
+    *: "Yes (requires initialized database)"
+  </dest>
+  <voice>
+    *: "Yes (requires initialized database)"
   </voice>
 </phrase>

@@ -368,10 +368,19 @@ static int rm_parse_header(int fd, RMContext *rmctx, struct mp3entry *id3)
 
                 if (v == FOURCC('.','r','a',0xfd))
                 {
-                    skipped += real_read_audio_stream_info(fd, rmctx);
-                    if(skipped < 0)
+                    int temp;
+                    temp= real_read_audio_stream_info(fd, rmctx);
+                    if(temp < 0)
                         return -1;
+                    else
+                        skipped += temp;
+                } 
+                else
+                {
+                    DEBUGF("Unknown header signature :\"%s\"\n", fourcc2str(v));
+                    return -1;
                 }
+                    
 
                 break;
 

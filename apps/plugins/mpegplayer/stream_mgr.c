@@ -330,8 +330,9 @@ static uint32_t stream_seek_intl(uint32_t time, int whence,
     {
         bool wb;
 
-        /* Place streams in a non-running state - keep them on actl */
-        actl_stream_broadcast(STREAM_STOP, 0);
+        /* Place streams in a non-running state - keep them on actl if
+         * still there */
+        actl_stream_broadcast(STREAM_PAUSE, 0);
 
         /* Stop all buffering or else risk clobbering random-access data */
         wb = disk_buf_send_msg(STREAM_STOP, 0);
@@ -557,7 +558,8 @@ static void stream_on_seek(struct stream_seek_data *skd)
 
         stream_mgr_lock();
 
-        if (stream_can_seek())
+        /* Either seeking must be possible or a full rewind must be done */
+        if (stream_can_seek() || time_from_whence(time, whence) == 0)
         {
             bool buffer;
 
@@ -592,7 +594,7 @@ static int stream_on_close(void)
 
     stream_mgr_lock();
 
-    /* Any open file? */
+    /* Any open file that was accepted for playback? */
     if (stream_mgr.filename != NULL)
     {
         /* Yes - hide video */
@@ -602,11 +604,12 @@ static int stream_on_close(void)
         stream_on_stop(false);
         /* Tell parser file is finished */
         parser_close_stream();
-        /* Close file */
-        disk_buf_close();
         /* Reinitialize manager */
         stream_mgr_init_state();
     }
+
+    /* Let disk buffer reset itself - file might be open even if no good */
+    disk_buf_close();
 
     stream_mgr_unlock();
 
@@ -667,13 +670,51 @@ void stream_clear_notify(struct stream *str, int for_msg)
     }
 }
 
+/* Special handling for certain messages since they involve multiple
+ * operations behind the scenes */
+static intptr_t send_video_msg(long id, intptr_t data)
+{
+    intptr_t retval = 0;
+
+    if (video_str.thread != 0 && disk_buf.in_file >= 0)
+    {
+
+        switch (id)
+        {
+        case VIDEO_DISPLAY_SHOW:
+            if (data != 0 && disk_buf_status() == STREAM_STOPPED)
+            {   /* Only prepare image if showing and not playing */
+                parser_prepare_image(str_parser.last_seek_time);
+            }
+            break;
+
+        case VIDEO_PRINT_FRAME:
+            if (data)
+                break;
+        case VIDEO_PRINT_THUMBNAIL:
+            if (disk_buf_status() != STREAM_STOPPED)
+                break; /* Prepare image if not playing */
+
+            /* Ignore return and try video thread anyway */
+            parser_prepare_image(str_parser.last_seek_time);
+
+            /* Image ready - pass message to video thread */
+            break;
+        }
+
+        retval = str_send_msg(&video_str, id, data);
+    }
+
+    return retval;
+}
+
 /* Show/hide the video output */
 bool stream_show_vo(bool show)
 {
     bool vis;
     stream_mgr_lock();
 
-    vis = parser_send_video_msg(VIDEO_DISPLAY_SHOW, show);
+    vis = send_video_msg(VIDEO_DISPLAY_SHOW, show);
 #ifndef HAVE_LCD_COLOR
     grey_show(show);
 #endif
@@ -687,7 +728,7 @@ bool stream_vo_is_visible(void)
 {
     bool vis;
     stream_mgr_lock();
-    vis = parser_send_video_msg(VIDEO_DISPLAY_IS_VISIBLE, 0);
+    vis = send_video_msg(VIDEO_DISPLAY_IS_VISIBLE, 0);
     stream_mgr_unlock();
     return vis;
 }
@@ -720,9 +761,28 @@ void stream_vo_set_clip(const struct vo_rect *rc)
         rc = &stream_mgr.parms.rc;
     }
 
-    parser_send_video_msg(VIDEO_SET_CLIP_RECT, (intptr_t)rc);
+    send_video_msg(VIDEO_SET_CLIP_RECT, (intptr_t)rc);
 
     stream_mgr_unlock();
+}
+
+bool stream_vo_get_clip(struct vo_rect *rc)
+{
+    bool retval;
+
+    if (!rc)
+        return false;
+
+    stream_mgr_lock();
+
+    retval = send_video_msg(VIDEO_GET_CLIP_RECT,
+                            (intptr_t)&stream_mgr.parms.rc);
+
+    *rc = stream_mgr.parms.rc;
+
+    stream_mgr_unlock();
+
+    return retval;
 }
 
 #ifndef HAVE_LCD_COLOR
@@ -749,7 +809,7 @@ bool stream_display_thumb(const struct vo_rect *rc)
     stream_mgr_lock();
 
     stream_mgr.parms.rc = *rc;
-    retval = parser_send_video_msg(VIDEO_PRINT_THUMBNAIL,
+    retval = send_video_msg(VIDEO_PRINT_THUMBNAIL,
                 (intptr_t)&stream_mgr.parms.rc);
 
     stream_mgr_unlock();
@@ -762,7 +822,24 @@ bool stream_draw_frame(bool no_prepare)
     bool retval;
     stream_mgr_lock();
 
-    retval = parser_send_video_msg(VIDEO_PRINT_FRAME, no_prepare);
+    retval = send_video_msg(VIDEO_PRINT_FRAME, no_prepare);
+
+    stream_mgr_unlock();
+
+    return retval;
+}
+
+bool stream_set_callback(long id, void *fn)
+{
+    bool retval = false;
+
+    stream_mgr_lock();
+
+    switch (id)
+    {
+    case VIDEO_SET_POST_FRAME_CALLBACK:
+        retval =  send_video_msg(id, (intptr_t)fn);
+    }
 
     stream_mgr_unlock();
 

@@ -3950,6 +3950,7 @@
     ipod*,iaudiox5,iaudiom5,iriverh10,iriverh10_5gb,sansae200*,sansac200*,gigabeat*,mrobe100,sansaclip*,sansafuze*: "SELECT = Set"
     gogearsa9200: "PLAY = Set"
     vibe500: "OK = Set"
+    mpiohd300: "ENTER = Set"
   </source>
   <dest>
     *: none
@@ -3959,6 +3960,7 @@
     ipod*,iaudiox5,iaudiom5,iriverh10,iriverh10_5gb,sansae200*,sansac200*,gigabeat*,mrobe100,sansaclip*,sansafuze*: "SELECT = Nastaviť"
     gogearsa9200: "PLAY = Nastaviť"
     vibe500: "OK = Nastaviť"
+    mpiohd300: "ENTER = Nastaviť"
   </dest>
   <voice>
     *: none
@@ -3974,7 +3976,7 @@
     rtc: "OFF = Revert"
     mrobe500: "POWER = Revert"
     iriverh100,iriverh120,iriverh300: "STOP = Revert"
-    ipod*,sansac200*: "MENU = Revert"
+    ipod*,sansac200*,mpiohd300: "MENU = Revert"
     iaudiox5,iaudiom5: "RECORD = Revert"
     iriverh10,iriverh10_5gb,sansae200*,sansafuze*: "PREV = Revert"
     gigabeatfx: "POWER = Revert"
@@ -3988,7 +3990,7 @@
     rtc: "OFF = Vrátiť"
     mrobe500: "POWER = Vrátiť"
     iriverh100,iriverh120,iriverh300: "STOP = Vrátiť"
-    ipod*,sansac200*: "MENU = Vrátiť"
+    ipod*,sansac200*,mpiohd300: "MENU = Vrátiť"
     iaudiox5,iaudiom5: "RECORD = Vrátiť"
     iriverh10,iriverh10_5gb,sansae200*,sansafuze*: "PREV = Vrátiť"
     gigabeatfx: "POWER = Vrátiť"
@@ -4525,6 +4527,7 @@
     iriverh10,iriverh10_5gb: "SELECT=Set PREV=Cancel"
     gigabeats: "SELECT=Set POWER=Cancel"
     vibe500: "OK=Set C=Cancel"
+    mpiohd300: "ENTER=Set MENU=Cancel"
   </source>
   <dest>
     *: none
@@ -4533,6 +4536,7 @@
     iriverh10,iriverh10_5gb: "SELECT=Nastaviť PREV=Zrušiť"
     gigabeats: "SELECT=Nastaviť POWER=Zrušiť"
     vibe500: "OK=Nastaviť C=Zrušiť"
+    mpiohd300: "ENTER=Nastaviť MENU=Zrušiť"
   </dest>
   <voice>
     *: none
@@ -5874,19 +5878,16 @@
 </phrase>
 <phrase>
   id: LANG_REC_SIZE
-  desc: in record timesplit options
-  user: core
+  desc: deprecated
+  user:
   <source>
     *: none
-    recording: "Filesize"
   </source>
   <dest>
     *: none
-    recording: "Veľkosť Súboru"
   </dest>
   <voice>
     *: none
-    recording: "Veľkosť súboru"
   </voice>
 </phrase>
 <phrase>
@@ -12567,5 +12568,19 @@
   </dest>
   <voice>
     *: "Začať prezeranie súborov tu"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_FILESIZE
+  desc: in record timesplit options and in track information viewer 
+  user: core
+  <source>
+    *: "Filesize"
+  </source>
+  <dest>
+    *: "Veľkosť Súboru"
+  </dest>
+  <voice>
+    *: "Veľkosť Súboru"
   </voice>
 </phrase>

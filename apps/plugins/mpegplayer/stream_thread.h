@@ -73,7 +73,6 @@ enum thread_states
     TSTATE_DECODE,          /* is in a decoding state */
     TSTATE_RENDER,          /* is in a rendering state */
     TSTATE_RENDER_WAIT,     /* is waiting to render */
-    TSTATE_RENDER_WAIT_END, /* is waiting on remaining data */
 };
 
 /* Commands that streams respond to */
@@ -108,6 +107,8 @@ enum stream_message
     VIDEO_PRINT_FRAME,        /* Print the frame at the current position */
     VIDEO_PRINT_THUMBNAIL,    /* Print a thumbnail of the current position */
     VIDEO_SET_CLIP_RECT,      /* Set the visible video area */
+    VIDEO_GET_CLIP_RECT,      /* Return the visible video area */
+    VIDEO_SET_POST_FRAME_CALLBACK, /* Set a callback after frame is drawn */
     STREAM_MESSAGE_LAST,
 };
 
@@ -160,8 +161,19 @@ extern struct stream audio_str IBSS_ATTR;
 
 bool video_thread_init(void);
 void video_thread_exit(void);
+
+struct video_output_stats
+{
+    int    num_drawn;       /* Number of frames drawn since reset */
+    int    num_skipped;     /* Number of frames skipped since reset */
+    int    fps;             /* fps rate in 100ths of a frame per second */
+};
+
+void video_thread_get_stats(struct video_output_stats *s);
+
 bool audio_thread_init(void);
 void audio_thread_exit(void);
+
 
 /* Some queue function wrappers to keep things clean-ish */
 

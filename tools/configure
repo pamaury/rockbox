@@ -24,6 +24,7 @@ rbdir="/.rockbox"
 need_full_path=
 bindir=
 libdir=
+sharedir=
 
 app_platform=
 app_lcd_width=
@@ -86,7 +87,7 @@ app_get_platform() {
     # setup files and paths depending on the platform
     if [ "$app_platform" = "sdl" ]; then
         if [ -z "$ARG_PREFIX" ]; then
-            rbdir="/usr/local/share/rockbox"
+            sharedir="/usr/local/share/rockbox"
             bindir="/usr/local/bin"
             libdir="/usr/local/lib"
         else
@@ -98,7 +99,7 @@ app_get_platform() {
                         exit
                     fi
                 fi
-                rbdir="$ARG_PREFIX/share/rockbox"
+                sharedir="$ARG_PREFIX/share/rockbox"
                 bindir="$ARG_PREFIX/bin"
                 libdir="$ARG_PREFIX/lib"
             else
@@ -118,11 +119,11 @@ app_get_platform() {
             exit
         fi
         if [ -z "$ANDROID_NDK_PATH" ]; then
-            echo "ERROR: You need the Android NDK installed and have the ANDROID_NDK_PATH"
+            echo "ERROR: You need the Android NDK installed (r5 or higher) and have the ANDROID_NDK_PATH"
             echo "environment variable point to the root directory of the Android NDK."
             exit
         fi
-        rbdir="/data/data/org.rockbox/app_rockbox/rockbox"
+        sharedir="/data/data/org.rockbox/app_rockbox/rockbox"
         bindir="/data/data/org.rockbox/lib"
         libdir="/data/data/org.rockbox/app_rockbox"
         output="librockbox.so"
@@ -202,7 +203,8 @@ simcc () {
 
  app_type=$1
  winbuild=""
- GCCOPTS='-W -Wall -g -fno-builtin'
+ GCCOPTS=`echo $CCOPTS | sed -e s/-ffreestanding// -e s/-nostdlib// -e s/-Wundef// -e s/-O//`
+ GCCOPTS="$GCCOPTS -fno-builtin -g"
  GCCOPTIMIZE=''
  LDOPTS='-lm' # button-sdl.c uses sqrt()
 
@@ -476,12 +478,16 @@ mipselcc () {
 }
 
 androidcc () {
-    gccchoice="4.4.0"
-    prefixtools $ANDROID_NDK_PATH/build/prebuilt/linux-x86/arm-eabi-$gccchoice/bin/arm-eabi-
+    gccchoice="4.4.3"
+    gcctarget="arm-linux-androideabi-"
+    gccprefix=$ANDROID_NDK_PATH/toolchains/$gcctarget$gccchoice/prebuilt/linux-x86
+    PATH=$PATH:$gccprefix/bin prefixtools $gcctarget
     GCCOPTS=`echo $CCOPTS | sed -e s/-ffreestanding// -e s/-nostdlib// -e s/-Wundef//`
-    GCCOPTS="$GCCOPTS -ffunction-sections -fno-short-enums -march=armv5te -mtune=xscale -msoft-float -fomit-frame-pointer"
-    GLOBAL_LDOPTS="$GLOBAL_LDOPTS -nostdlib -lc -Wl,--no-undefined -Wl,--gc-sections -Wl,-z,noexecstack -L$ANDROID_NDK_PATH/build/platforms/android-4/arch-arm/usr/lib/ -Wl,-rpath-link=$ANDROID_NKD_PATH/build/platforms/android-4/arch-arm/usr/lib"
-    LDOPTS="$LDOPTS -shared -nostdlib -lm -ldl -llog"
+    GCCOPTS="$GCCOPTS -ffunction-sections -march=armv5te -mtune=xscale -msoft-float -fomit-frame-pointer \
+		--sysroot=$ANDROID_NDK_PATH/platforms/android-4/arch-arm"
+    GLOBAL_LDOPTS="$GLOBAL_LDOPTS -nostdlib -lc -Wl,--no-undefined -Wl,--gc-sections -Wl,-z,noexecstack \
+		--sysroot=$ANDROID_NDK_PATH/platforms/android-4/arch-arm"
+    LDOPTS="$LDOPTS -shared -nostdlib -ldl -llog"
     extradefines="$extradefines -DANDROID"
     endian="little"
     SHARED_FLAG="-shared"
@@ -1062,32 +1068,32 @@ cat <<EOF
   6) AV300                                       26) Mini 2G
                           ==Toshiba==            27) 1G, 2G
  ==Cowon/iAudio==         40) Gigabeat F/X       28) Nano 2G
- 30) X5/X5V/X5L           41) Gigabeat S
- 31) M5/M5L                                      ==SanDisk==
- 32) 7                    ==Olympus=             50) Sansa e200
- 33) D2                   70) M:Robe 500         51) Sansa e200R
- 34) M3/M3L               71) M:Robe 100         52) Sansa c200
-                                                 53) Sansa m200
- ==Creative==             ==Philips==            54) Sansa c100
- 90) Zen Vision:M 30GB    100) GoGear SA9200     55) Sansa Clip
- 91) Zen Vision:M 60GB    101) GoGear HDD1630/   56) Sansa e200v2
- 92) Zen Vision                HDD1830           57) Sansa m200v4
-                          102) GoGear HDD6330    58) Sansa Fuze
- ==Onda==                                        59) Sansa c200v2
- 120) VX747               ==Meizu==              60) Sansa Clipv2
- 121) VX767               110) M6SL              61) Sansa View
- 122) VX747+              111) M6SP              62) Sansa Clip+
- 123) VX777               112) M3                63) Sansa Fuze v2
- 
-                                                 ==Logik==
- ==Samsung==              ==Tatung==             80) DAX 1GB MP3/DAB
- 140) YH-820              150) Elio TPJ-1022
- 141) YH-920                                     ==Lyre project==
- 142) YH-925              ==Packard Bell==       130) Lyre proto 1
- 143) YP-S3               160) Vibe 500          131) Mini2440
-
- ==MPIO==                                        == Application ==
- 170) HD200                                      200) Application
+ 30) X5/X5V/X5L           41) Gigabeat S         29) Classic/6G
+ 31) M5/M5L
+ 32) 7                    ==Olympus=             ==SanDisk==
+ 33) D2                   70) M:Robe 500         50) Sansa e200
+ 34) M3/M3L               71) M:Robe 100         51) Sansa e200R
+                                                 52) Sansa c200
+ ==Creative==             ==Philips==            53) Sansa m200
+ 90) Zen Vision:M 30GB    100) GoGear SA9200     54) Sansa c100
+ 91) Zen Vision:M 60GB    101) GoGear HDD1630/   55) Sansa Clip
+ 92) Zen Vision                HDD1830           56) Sansa e200v2
+                          102) GoGear HDD6330    57) Sansa m200v4
+ ==Onda==                                        58) Sansa Fuze
+ 120) VX747               ==Meizu==              59) Sansa c200v2
+ 121) VX767               110) M6SL              60) Sansa Clipv2
+ 122) VX747+              111) M6SP              61) Sansa View
+ 123) VX777               112) M3                62) Sansa Clip+
+                                                 63) Sansa Fuze v2
+ ==Samsung==              ==Tatung==
+ 140) YH-820              150) Elio TPJ-1022     ==Logik==
+ 141) YH-920                                     80) DAX 1GB MP3/DAB
+ 142) YH-925              ==Packard Bell==       
+ 143) YP-S3               160) Vibe 500          ==Lyre project==
+                                                 130) Lyre proto 1
+ ==MPIO==                 == Application ==      131) Mini2440
+ 170) HD200               200) Application
+ 171) HD300
 
 EOF
 
@@ -1651,6 +1657,29 @@ fi
     t_cpu="arm"
     t_manufacturer="s5l8700"
     t_model="ipodnano2g"
+    ;;
+
+   29|ipod6g)
+    target_id=71
+    modelname="ipod6g"
+    target="-DIPOD_6G"
+    memory=64 # always
+    arm926ejscc
+    tool="$rootdir/tools/scramble -add=ip6g"
+    bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
+    bmp2rb_native="$rootdir/tools/bmp2rb -f 4"
+    output="rockbox.ipod"
+    appextra="recorder:gui:radio"
+    plugins="yes"
+    swcodec="yes"
+    bootoutput="bootloader-$modelname.ipod"
+    # toolset is the tools within the tools directory that we build for
+    # this particular target.
+    toolset=$ipodbitmaptools
+    # architecture, manufacturer and model for the target-tree build
+    t_cpu="arm"
+    t_manufacturer="s5l8702"
+    t_model="ipod6g"
     ;;
 
    30|iaudiox5)
@@ -2362,7 +2391,7 @@ fi
     arm7tdmicc
     tool="$rootdir/tools/scramble -mi4v3 -model=6330 -type=RBOS"
     bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
-    bmp2rb_native="$rootdir/tools/bmp2rb -f 4"
+    bmp2rb_native="$rootdir/tools/bmp2rb -f 5"
     output="rockbox.mi4"
     appextra="recorder:gui:radio"
     plugins="yes"
@@ -2715,6 +2744,29 @@ fi
     t_cpu="coldfire"
     t_manufacturer="mpio"
     t_model="hd200"
+    ;;
+
+   171|mpiohd300)
+    target_id=70
+    modelname="mpiohd300"
+    target="-DMPIO_HD300"
+    memory=16 # always
+    coldfirecc
+    tool="$rootdir/tools/scramble -add=hd30"
+    bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
+    bmp2rb_native="$rootdir/tools/bmp2rb -f 2"
+    output="rockbox.mpio"
+    bootoutput="bootloader.mpio"
+    appextra="recorder:gui:radio"
+    plugins="yes"
+    swcodec="yes"
+    # toolset is the tools within the tools directory that we build for
+    # this particular target.
+    toolset="$genericbitmaptools"
+    # architecture, manufacturer and model for the target-tree build
+    t_cpu="coldfire"
+    t_manufacturer="mpio"
+    t_model="hd300"
     ;;
 
    200|app*)
@@ -3119,14 +3171,12 @@ else
   defendian="ROCKBOX_LITTLE_ENDIAN"
 fi
 
-if [ "$ARG_RBDIR" ]; then
-  if [ "$need_full_path" != "yes" ]; then
+if [ "$ARG_RBDIR" != "" ]; then
     if [ -z `echo $ARG_RBDIR | grep '^/'` ]; then
         rbdir="/"$ARG_RBDIR
     else
         rbdir=$ARG_RBDIR
-    fi
-  fi
+    fi 
   echo "Using alternate rockbox dir: ${rbdir}"
 fi
 
@@ -3137,6 +3187,7 @@ sed > autoconf.h \
  -e "s<@config_rtc@<$config_rtc<g" \
  -e "s<@have_rtc_alarm@<$have_rtc_alarm<g" \
  -e "s<@RBDIR@<${rbdir}<g" \
+ -e "s<@sharepath@<${sharedir}<g" \
  -e "s<@binpath@<${bindir}<g" \
  -e "s<@libpath@<${libdir}<g" \
  -e "s<@have_backlight@<$have_backlight<g" \
@@ -3177,6 +3228,7 @@ sed > autoconf.h \
 
 /* root of Rockbox */
 #define ROCKBOX_DIR "@RBDIR@"
+#define ROCKBOX_SHARE_PATH "@sharepath@"
 #define ROCKBOX_BINARY_PATH "@binpath@"
 #define ROCKBOX_LIBRARY_PATH "@libpath@"
 
@@ -3188,10 +3240,6 @@ if test -n "$t_cpu"; then
   if [ "$simulator" = "yes" ]; then # a few more includes for the sim target tree
     TARGET_INC="$TARGET_INC -I\$(FIRMDIR)/target/hosted/sdl/"
     TARGET_INC="$TARGET_INC -I\$(FIRMDIR)/target/hosted/"
-  fi
-  if [ -n "$app_platform" -a "$app_platform" = "android" ]; then
-    # android's gcc doesn't add this :/
-    TARGET_INC="$TARGET_INC -I$ANDROID_NDK_PATH/build/platforms/android-4/arch-arm/usr/include"
   fi
   TARGET_INC="$TARGET_INC -I\$(FIRMDIR)/target/$t_cpu/$t_manufacturer"
   TARGET_INC="$TARGET_INC -I\$(FIRMDIR)/target/$t_cpu"
@@ -3307,6 +3355,7 @@ sed > Makefile \
  -e "s<@LANGS@<${buildlangs}<g" \
  -e "s<@USE_ELF@<${USE_ELF}<g" \
  -e "s<@RBDIR@<${rbdir}<g" \
+ -e "s<@sharepath@<${sharedir}<g" \
  -e "s<@binpath@<${bindir}<g" \
  -e "s<@libpath@<${libdir}<g" \
  -e "s<@PREFIX@<$ARG_PREFIX<g" \
@@ -3376,6 +3425,7 @@ export ENC_OPTS=@ENC_OPTS@
 export ENCODER=@ENCODER@
 export USE_ELF=@USE_ELF@
 export RBDIR=@RBDIR@
+export ROCKBOX_SHARE_PATH=@sharepath@
 export ROCKBOX_BINARY_PATH=@binpath@
 export ROCKBOX_LIBRARY_PATH=@libpath@
 export SDLCONFIG=@SDLCONFIG@

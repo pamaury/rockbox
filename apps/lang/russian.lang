@@ -4168,7 +4168,7 @@
     rtc: "OFF = Revert"
     mrobe500: "POWER = Revert"
     iriverh100,iriverh120,iriverh300: "STOP = Revert"
-    ipod*,sansac200*: "MENU = Revert"
+    ipod*,sansac200*,mpiohd300: "MENU = Revert"
     iaudiox5,iaudiom5: "RECORD = Revert"
     iriverh10,iriverh10_5gb,sansae200*,sansafuze*: "PREV = Revert"
     gigabeatfx: "POWER = Revert"
@@ -4182,7 +4182,7 @@
     rtc: "ВЫКЛ. = Отмена"
     mrobe500: "ВЫКЛ. = Отмена"
     iriverh100,iriverh120,iriverh300: "СТОП = Отмена"
-    ipod*,sansac200*: "МЕНЮ = Отмена"
+    ipod*,sansac200*,mpiohd300: "МЕНЮ = Отмена"
     iaudiox5,iaudiom5: "ЗАПИСЬ = Отмена"
     iriverh10,iriverh10_5gb,sansae200*,sansafuze*: "ПРЕД. = Отмена"
     gigabeatfx: "ВЫКЛ. = Отмена"
@@ -4415,6 +4415,7 @@
     iriverh10,iriverh10_5gb: "SELECT=Set PREV=Cancel"
     gigabeats: "SELECT=Set POWER=Cancel"
     vibe500: "OK=Set C=Cancel"
+    mpiohd300: "ENTER=Set MENU=Cancel"
   </source>
   <dest>
     *: none
@@ -4423,6 +4424,7 @@
     iriverh10,iriverh10_5gb: "ВЫБОР=Уст., ПРЕД.=Отм."
     gigabeats: "ВЫБОР=Уст., ВЫКЛ.=Отм."
     vibe500: "OK=Уст., C=Отм."
+    mpiohd300: "ENTER=Уст., MENU=Отм."
   </dest>
   <voice>
     *: none
@@ -7633,19 +7635,16 @@
 </phrase>
 <phrase>
   id: LANG_REC_SIZE
-  desc: in record timesplit options
-  user: core
+  desc: deprecated
+  user:
   <source>
     *: none
-    recording: "Filesize"
   </source>
   <dest>
     *: none
-    recording: "Размер файла"
   </dest>
   <voice>
     *: none
-    recording: "Размер файла"
   </voice>
 </phrase>
 <phrase>
@@ -8218,6 +8217,7 @@
     ipod*,iaudiox5,iaudiom5,iriverh10,iriverh10_5gb,sansae200*,sansac200*,gigabeat*,mrobe100,sansaclip*,sansafuze*: "SELECT = Set"
     gogearsa9200: "PLAY = Set"
     vibe500: "OK = Set"
+    mpiohd300: "ENTER = Set"
   </source>
   <dest>
     *: none
@@ -8227,6 +8227,7 @@
     ipod*,iaudiox5,iaudiom5,iriverh10,iriverh10_5gb,sansae200*,sansac200*,gigabeat*,mrobe100,sansaclip*,sansafuze*: "ВЫБОР = Установить"
     gogearsa9200: "ВОСПР. = Установить"
     vibe500: "OK = Установить"
+    mpiohd300: "ENTER = Установить"
   </dest>
   <voice>
     *: none
@@ -12587,10 +12588,24 @@
   </source>
   <dest>
     *: none
-    radio: "Signal strength:"
+    radio: "Мощность сигнала:"
   </dest>
   <voice>
     *: none
-    radio: "Мощьность сигнала:"
+    radio: "Мощность сигнала"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_FILESIZE
+  desc: in record timesplit options and in track information viewer 
+  user: core
+  <source>
+    *: "Filesize"
+  </source>
+  <dest>
+    *: "Размер файла"
+  </dest>
+  <voice>
+    *: "Размер файла"
   </voice>
 </phrase>

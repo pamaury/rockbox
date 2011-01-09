@@ -3933,6 +3933,7 @@
     ipod*,iaudiox5,iaudiom5,iriverh10,iriverh10_5gb,sansae200*,sansac200*,gigabeat*,mrobe100,sansaclip*,sansafuze*: "SELECT = Set"
     gogearsa9200: "PLAY = Set"
     vibe500: "OK = Set"
+    mpiohd300: "ENTER = Set"
   </source>
   <dest>
     *: none
@@ -3942,6 +3943,7 @@
     ipod*,iaudiox5,iaudiom5,iriverh10,iriverh10_5gb,sansae200*,sansac200*,gigabeat*,mrobe100,sansaclip*,sansafuze*: "SELECT = Постави"
     gogearsa9200: "PLAY = Постави"
     vibe500: "OK = Постави"
+    mpiohd300: "ENTER = Постави"
   </dest>
   <voice>
     *: none
@@ -3957,7 +3959,7 @@
     rtc: "OFF = Revert"
     mrobe500: "POWER = Revert"
     iriverh100,iriverh120,iriverh300: "STOP = Revert"
-    ipod*,sansac200*: "MENU = Revert"
+    ipod*,sansac200*,mpiohd300: "MENU = Revert"
     iaudiox5,iaudiom5: "RECORD = Revert"
     iriverh10,iriverh10_5gb,sansae200*,sansafuze*: "PREV = Revert"
     gigabeatfx: "POWER = Revert"
@@ -3971,7 +3973,7 @@
     rtc: "OFF = Врати на старо"
     mrobe500: "POWER = Врати на старо"
     iriverh100,iriverh120,iriverh300: "STOP = Врати на старо"
-    ipod*,sansac200*: "MENU = Врати на старо"
+    ipod*,sansac200*,mpiohd300: "MENU = Врати на старо"
     iaudiox5,iaudiom5: "RECORD = Врати на старо"
     iriverh10,iriverh10_5gb,sansae200*,sansafuze*: "PREV = Врати на старо"
     gigabeatfx: "POWER = Врати на старо"
@@ -4508,6 +4510,7 @@
     iriverh10,iriverh10_5gb: "SELECT=Set PREV=Cancel"
     gigabeats: "SELECT=Set POWER=Cancel"
     vibe500: "OK=Set C=Cancel"
+    mpiohd300: "ENTER=Set MENU=Cancel"
   </source>
   <dest>
     *: none
@@ -4516,6 +4519,7 @@
     iriverh10,iriverh10_5gb: "SELECT=Постави PREV=Одустани"
     gigabeats: "SELECT=Постави POWER=Одустани"
     vibe500: "OK=Постави C=Одустани"
+    mpiohd300: "ENTER=Постави MENU=Одустани"
   </dest>
   <voice>
     *: none
@@ -5857,19 +5861,16 @@
 </phrase>
 <phrase>
   id: LANG_REC_SIZE
-  desc: in record timesplit options
-  user: core
+  desc: deprecated
+  user:
   <source>
     *: none
-    recording: "Filesize"
   </source>
   <dest>
     *: none
-    recording: "Величина фајла"
   </dest>
   <voice>
     *: none
-    recording: "Величина фајла"
   </voice>
 </phrase>
 <phrase>
@@ -12568,5 +12569,19 @@
   </dest>
   <voice>
     *: "Покрени прегледач фајлова у овом фолдеру"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_FILESIZE
+  desc: in record timesplit options and in track information viewer 
+  user: core
+  <source>
+    *: "Filesize"
+  </source>
+  <dest>
+    *: "Величина фајла"
+  </dest>
+  <voice>
+    *: "Величина фајла"
   </voice>
 </phrase>

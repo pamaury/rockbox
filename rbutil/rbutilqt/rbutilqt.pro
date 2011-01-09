@@ -64,23 +64,35 @@ mac {
 !static:unix:!mac {
     LIBSPEEX = $$system(pkg-config --silence-errors --libs speex speexdsp)
 }
+# The external Makefiles use ar to create libs. To allow cross-compiling pass
+# the ar that matches the current gcc. Since qmake doesn't provide a variable
+# holding the correct ar without any additions we need to figure it ourselves
+# here. This assumes that QMAKE_CC will always be "gcc", maybe with a postfix.
+MYAR = $$replace(QMAKE_CC,gcc.*,ar)
 
 rbspeex.commands = @$(MAKE) \
         TARGET_DIR=$$MYBUILDDIR -C $$RBBASE_DIR/tools/rbspeex \
-        librbspeex$$RBLIBPOSTFIX CC=\"$$QMAKE_CC\" \
-        SYS_SPEEX=\"$$LIBSPEEX\"
+        librbspeex$$RBLIBPOSTFIX \
+        SYS_SPEEX=\"$$LIBSPEEX\" \
+        CC=\"$$QMAKE_CC\" AR=\"$$MYAR\"
 libucl.commands = @$(MAKE) \
         TARGET_DIR=$$MYBUILDDIR -C $$RBBASE_DIR/tools/ucl/src \
-        libucl$$RBLIBPOSTFIX CC=\"$$QMAKE_CC\"
+        libucl$$RBLIBPOSTFIX \
+        CC=\"$$QMAKE_CC\" AR=\"$$MYAR\"
 libmkamsboot.commands = @$(MAKE) \
         TARGET_DIR=$$MYBUILDDIR -C $$RBBASE_DIR/rbutil/mkamsboot \
-        libmkamsboot$$RBLIBPOSTFIX CC=\"$$QMAKE_CC\"
+        APPVERSION=\"rbutil\" \
+        libmkamsboot$$RBLIBPOSTFIX \
+        CC=\"$$QMAKE_CC\" AR=\"$$MYAR\"
 libmktccboot.commands = @$(MAKE) \
         TARGET_DIR=$$MYBUILDDIR -C $$RBBASE_DIR/rbutil/mktccboot \
-        libmktccboot$$RBLIBPOSTFIX CC=\"$$QMAKE_CC\"
+        libmktccboot$$RBLIBPOSTFIX \
+        CC=\"$$QMAKE_CC\" AR=\"$$MYAR\"
 libmkmpioboot.commands = @$(MAKE) \
         TARGET_DIR=$$MYBUILDDIR -C $$RBBASE_DIR/rbutil/mkmpioboot \
-        libmkmpioboot$$RBLIBPOSTFIX CC=\"$$QMAKE_CC\"
+        APPVERSION=\"rbutil\" \
+        libmkmpioboot$$RBLIBPOSTFIX \
+        CC=\"$$QMAKE_CC\" AR=\"$$MYAR\"
 QMAKE_EXTRA_TARGETS += rbspeex libucl libmkamsboot libmktccboot libmkmpioboot
 PRE_TARGETDEPS += rbspeex libucl libmkamsboot libmktccboot libmkmpioboot
 
@@ -104,7 +116,7 @@ INCLUDEPATH += $$RBBASE_DIR/rbutil/ipodpatcher $$RBBASE_DIR/rbutil/sansapatcher 
 
 DEPENDPATH = $$INCLUDEPATH
 
-LIBS += -L$$OUT_PWD -L$$MYBUILDDIR -lrbspeex -lmkamsboot -lmktccboot -lmkmpioboot -lucl
+LIBS += -L$$OUT_PWD -L$$MYBUILDDIR -lrbspeex -lmkamsboot -lmktccboot -lmkmpioboot -lucl -lz
 
 # Add a (possibly found) libspeex now, don't do this before -lrbspeex!
 !static:!isEmpty(LIBSPEEX) {
@@ -130,6 +142,9 @@ DEFINES += RBUTIL _LARGEFILE64_SOURCE
 
 # platform specific
 win32 {
+    # use MinGW's implementation of stdio functions for extended format string
+    # support.
+    DEFINES += __USE_MINGW_ANSI_STDIO=1
     LIBS += -lsetupapi -lnetapi32
 }
 win32:static {
@@ -141,10 +156,6 @@ unix:!static:!libusb1:!macx {
 unix:!static:libusb1:!macx {
     DEFINES += LIBUSB1
     LIBS += -lusb-1.0
-}
-unix {
-    # explicitly link zlib, we do need it. Don't rely on implicit linking via Qt.
-    LIBS += -lz
 }
 
 unix:!macx:static {
@@ -167,7 +178,7 @@ macx:intel {
 }
 macx {
     CONFIG += x86
-    LIBS += -L/usr/local/lib -lz \
+    LIBS += -L/usr/local/lib \
             -framework IOKit -framework CoreFoundation -framework Carbon \
             -framework SystemConfiguration -framework CoreServices
     INCLUDEPATH += /usr/local/include

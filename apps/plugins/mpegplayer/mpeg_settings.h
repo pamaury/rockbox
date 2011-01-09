@@ -62,6 +62,7 @@ enum mpeg_setting_id
     MPEG_SETTING_DISPLAY_SETTINGS,
     MPEG_SETTING_AUDIO_SETTINGS,
     MPEG_SETTING_ENABLE_START_MENU,
+    MPEG_SETTING_PLAY_MODE,
     MPEG_SETTING_CLEAR_RESUMES,
 };
 
@@ -83,6 +84,7 @@ struct mpeg_settings {
 #if MPEG_OPTION_DITHERING_ENABLED
     int displayoptions;
 #endif
+    int play_mode;             /* play single file or all files in directory */
     /* Audio options - simple on/off specification */
     int tone_controls;
     int channel_modes;
@@ -99,11 +101,6 @@ extern struct mpeg_settings settings;
 
 int mpeg_start_menu(uint32_t duration);
 int mpeg_menu(void);
-
-void mpeg_menu_sysevent_clear(void);
-long mpeg_menu_sysevent(void);
-int mpeg_menu_sysevent_callback(int btn, const struct menu_item_ex *menu);
-void mpeg_menu_sysevent_handle(void);
 
 void init_settings(const char* filename);
 void save_settings(void);

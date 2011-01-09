@@ -56,6 +56,7 @@ mem_mon,apps
 metronome,apps
 midi2wav,viewers
 midi,viewers
+mikmod,viewers
 minesweeper,games
 mosaique,demos
 mp3_encoder,apps
@@ -70,7 +71,7 @@ pitch_detector,apps
 plasma,demos
 png,viewers
 pong,games
-ppmviewer,viewers
+ppm,viewers
 properties,viewers
 random_folder_advance_config,apps
 remote_control,apps

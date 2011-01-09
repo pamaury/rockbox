@@ -3954,6 +3954,7 @@
     ipod*,iaudiox5,iaudiom5,iriverh10,iriverh10_5gb,sansae200*,sansac200*,gigabeat*,mrobe100,sansaclip*,sansafuze*: "SELECT = Set"
     gogearsa9200: "PLAY = Set"
     vibe500: "OK = Set"
+    mpiohd300: "ENTER = Set"
   </source>
   <dest>
     *: none
@@ -3963,6 +3964,7 @@
     ipod*,iaudiox5,iaudiom5,iriverh10,iriverh10_5gb,sansae200*,sansac200*,gigabeat*,mrobe100,sansaclip*,sansafuze*: "SELECT = Speichern"
     gogearsa9200: "PLAY = Speichern"
     vibe500: "OK = Speichern"
+    mpiohd300: "ENTER = Speichern"
   </dest>
   <voice>
     *: none
@@ -3978,7 +3980,7 @@
     rtc: "OFF = Revert"
     mrobe500: "POWER = Revert"
     iriverh100,iriverh120,iriverh300: "STOP = Revert"
-    ipod*,sansac200*: "MENU = Revert"
+    ipod*,sansac200*,mpiohd300: "MENU = Revert"
     iaudiox5,iaudiom5: "RECORD = Revert"
     iriverh10,iriverh10_5gb,sansae200*,sansafuze*: "PREV = Revert"
     gigabeatfx: "POWER = Revert"
@@ -3992,7 +3994,7 @@
     rtc: "OFF = Abbrechen"
     mrobe500: "POWER = Abbrechen"
     iriverh100,iriverh120,iriverh300: "STOP = Abbrechen"
-    ipod*,sansac200*: "MENU = Abbrechen"
+    ipod*,sansac200*,mpiohd300: "MENU = Abbrechen"
     iaudiox5,iaudiom5: "RECORD = Abbrechen"
     iriverh10,iriverh10_5gb,sansae200*,sansafuze*: "PREV = Abbrechen"
     gigabeatfx: "POWER = Abbrechen"
@@ -4529,6 +4531,7 @@
     iriverh10,iriverh10_5gb: "SELECT=Set PREV=Cancel"
     gigabeats: "SELECT=Set POWER=Cancel"
     vibe500: "OK=Set C=Cancel"
+    mpiohd300: "ENTER=Set MENU=Cancel"
   </source>
   <dest>
     *: none
@@ -4537,6 +4540,7 @@
     iriverh10,iriverh10_5gb: "SELECT=OK PREV=Abbruch"
     gigabeats: "SELECT=OK POWER=Abbruch"
     vibe500: "OK=OK C=Abbruch"
+    mpiohd300: "ENTER=OK MENU=Abbruch"
   </dest>
   <voice>
     *: none
@@ -5878,19 +5882,16 @@
 </phrase>
 <phrase>
   id: LANG_REC_SIZE
-  desc: in record timesplit options
-  user: core
+  desc: deprecated
+  user:
   <source>
     *: none
-    recording: "Filesize"
   </source>
   <dest>
     *: none
-    recording: "Dateigröße"
   </dest>
   <voice>
     *: none
-    recording: "Dateigröße"
   </voice>
 </phrase>
 <phrase>
@@ -12588,5 +12589,19 @@
   </dest>
   <voice>
     *: "Dateibrowser hier starten"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_FILESIZE
+  desc: in record timesplit options and in track information viewer 
+  user: core
+  <source>
+    *: "Filesize"
+  </source>
+  <dest>
+    *: "Dateigröße"
+  </dest>
+  <voice>
+    *: "Dateigröße"
   </voice>
 </phrase>

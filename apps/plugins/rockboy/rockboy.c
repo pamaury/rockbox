@@ -81,7 +81,7 @@ static void setoptions (void)
      * is not as expected to avoid crash */
     if(fd < 0 || filesize!=optionssize)
     {
-        // no options to read, set defaults
+    /* no options to read, set defaults */
 #ifdef HAVE_TOUCHSCREEN
         options.LEFT    = BUTTON_MIDLEFT;
         options.RIGHT   = BUTTON_MIDRIGHT;
@@ -306,6 +306,18 @@ static void setoptions (void)
         options.SELECT = BUTTON_UP;
         options.MENU   = BUTTON_MENU;
 
+#elif CONFIG_KEYPAD == MPIO_HD300_PAD
+        options.UP     = BUTTON_UP;
+        options.DOWN   = BUTTON_DOWN;
+        options.LEFT   = BUTTON_REW;
+        options.RIGHT  = BUTTON_FF;
+
+        options.A      = BUTTON_MENU;
+        options.B      = BUTTON_ENTER;
+        options.START  = BUTTON_PLAY;
+        options.SELECT = (BUTTON_ENTER | BUTTON_REPEAT);
+        options.MENU   = (BUTTON_MENU | BUTTON_REPEAT);
+
 #else
 #error No Keymap Defined!
 #endif
@@ -452,13 +464,14 @@ enum plugin_status plugin_start(const void* parameter)
 
     backlight_use_settings();
 
+    if(!rb->audio_status())
+        rockboy_pcm_close();
+
     if(shut&&!cleanshut)
     {
         rb->splash(HZ/2, errormsg);
         return PLUGIN_ERROR;
     }
-    if(!rb->audio_status())
-        rockboy_pcm_close();
 
     rb->splash(HZ/2, "Closing Rockboy");
 

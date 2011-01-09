@@ -1139,7 +1139,7 @@ const struct settings_list settings[] = {
                    ID2P(LANG_START_NEW_FILE), ID2P(LANG_STOP_RECORDING),ID2P(LANG_STOP_RECORDING_AND_SHUTDOWN)),
     CHOICE_SETTING(F_RECSETTING, rec_split_method, LANG_SPLIT_MEASURE, 0,
                    "rec split method", "Time,Filesize", NULL, 2,
-                   ID2P(LANG_TIME), ID2P(LANG_REC_SIZE)),
+                   ID2P(LANG_TIME), ID2P(LANG_FILESIZE)),
     {F_T_INT|F_RECSETTING, &global_settings.rec_source, LANG_RECORDING_SOURCE,
         INT(0), "rec source",
         &HAVE_MIC_REC_(",mic") 
@@ -1257,8 +1257,13 @@ const struct settings_list settings[] = {
                    ID2P(LANG_RANDOM)),
 
 #ifdef HAVE_TAGCACHE
+#if CONFIG_CODEC == SWCODEC 
+    BOOL_SETTING(0, autoresume_enable, LANG_AUTORESUME_ENABLE, false,
+                 "autoresume enable", off_on,
+                 LANG_AUTORESUME_ENABLE_YES, LANG_SET_BOOL_NO, NULL),
     OFFON_SETTING(0, runtimedb, LANG_RUNTIMEDB_ACTIVE, false,
                   "gather runtime data", NULL),
+#endif                  
 #endif
 
 #if CONFIG_CODEC == SWCODEC
@@ -1423,7 +1428,8 @@ const struct settings_list settings[] = {
                   "treble cutoff", SOUND_TREBLE_CUTOFF),
 #endif
 #ifdef HAVE_DIRCACHE
-    OFFON_SETTING(F_BANFROMQS,dircache,LANG_DIRCACHE_ENABLE,false,"dircache",NULL),
+    /*enable dircache for all targets > 2MB of RAM by default*/
+    OFFON_SETTING(F_BANFROMQS,dircache,LANG_DIRCACHE_ENABLE,true,"dircache",NULL),
     SYSTEM_SETTING(NVRAM(4),dircache_size,0),
 #endif
 

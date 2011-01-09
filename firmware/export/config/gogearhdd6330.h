@@ -57,7 +57,7 @@
 #define LCD_WIDTH  220
 #define LCD_HEIGHT 176
 #define LCD_DEPTH  16   /* 65536 colours */
-#define LCD_PIXELFORMAT RGB565  /* rgb565 byte-swapped */
+#define LCD_PIXELFORMAT RGB565SWAPPED /* rgb565 byte-swapped */
 
 #ifndef BOOTLOADER
 /* Define this if your LCD can be enabled/disabled */
@@ -71,10 +71,10 @@
 #endif
 
 /* define this if you can flip your LCD */
-/* #define HAVE_LCD_FLIP */
+#define HAVE_LCD_FLIP
 
 /* define this if you can invert the colours on your LCD */
-/* #define HAVE_LCD_INVERT */
+#define HAVE_LCD_INVERT
 
 /* #define IRAM_LCDFRAMEBUFFER IDATA_ATTR *//* put the lcd frame buffer in IRAM */
 

@@ -1893,7 +1893,7 @@ static bool dbg_save_roms(void)
     fd = creat("/internal_rom_000000-3FFFFF.bin", 0666);
 #elif defined(IAUDIO_X5) || defined(IAUDIO_M5) || defined(IAUDIO_M3)
     fd = creat("/internal_rom_000000-3FFFFF.bin", 0666);
-#elif defined(MPIO_HD200)
+#elif defined(MPIO_HD200) || defined(MPIO_HD300)
     fd = creat("/internal_rom_000000-1FFFFF.bin", 0666);
 #endif
     if(fd >= 0)
@@ -2085,6 +2085,16 @@ static bool dbg_screendump(void)
     return false;
 }
 #endif /* HAVE_LCD_BITMAP */
+
+extern bool write_metadata_log;
+
+static bool dbg_metadatalog(void)
+{
+    write_metadata_log = !write_metadata_log;
+    splashf(HZ, "Metadata log %s",
+                 write_metadata_log?"enabled":"disabled");
+    return false;
+}
 
 #if CONFIG_CPU == SH7034 || defined(CPU_COLDFIRE)
 static bool dbg_set_memory_guard(void)
@@ -2376,6 +2386,7 @@ static const struct the_menu_item menuitems[] = {
         { "Dump ATA identify info", dbg_identify_info},
 #endif
 #endif
+        { "Metadata log", dbg_metadatalog },
 #ifdef HAVE_DIRCACHE
         { "View dircache info", dbg_dircache_info },
 #endif

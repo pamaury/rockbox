@@ -28,6 +28,7 @@
 #include "config.h"
 
 #define HAVE_STATVFS (!defined(WIN32))
+#define HAVE_LSTAT   (!defined(WIN32))
 
 #if HAVE_STATVFS
 #include <sys/statvfs.h>
@@ -293,7 +294,6 @@ static const char *get_sim_pathname(const char *name)
 MYDIR *sim_opendir(const char *name)
 {
     DIR_T *dir;
-
     dir = (DIR_T *) OPENDIR(get_sim_pathname(name));
 
     if (dir)
@@ -309,13 +309,21 @@ MYDIR *sim_opendir(const char *name)
     return (MYDIR *)0;
 }
 
+#if defined(WIN32)
+static inline struct tm* localtime_r (const time_t *clock, struct tm *result) {
+       if (!clock || !result) return NULL;
+       memcpy(result,localtime(clock),sizeof(*result));
+       return result;
+}
+#endif
+
 struct sim_dirent *sim_readdir(MYDIR *dir)
 {
     char buffer[MAX_PATH]; /* sufficiently big */
     static struct sim_dirent secret;
     STAT_T s;
     DIRENT_T *x11 = READDIR(dir->dir);
-    struct tm* tm;
+    struct tm tm;
 
     if(!x11)
         return (struct sim_dirent *)0;
@@ -325,20 +333,35 @@ struct sim_dirent *sim_readdir(MYDIR *dir)
     /* build file name */
     snprintf(buffer, sizeof(buffer), "%s/%s", 
         get_sim_pathname(dir->name), secret.d_name);
-    STAT(buffer, &s); /* get info */
+    if (STAT(buffer, &s)) /* get info */
+        return NULL;
 
 #define ATTR_DIRECTORY 0x10
 
-    secret.info.attribute = S_ISDIR(s.st_mode)?ATTR_DIRECTORY:0;
-    secret.info.size = s.st_size;
+    secret.info.attribute = 0;
 
-    tm = localtime(&(s.st_mtime));
-    secret.info.wrtdate = ((tm->tm_year - 80) << 9) |
-                        ((tm->tm_mon + 1) << 5) |
-                        tm->tm_mday;
-    secret.info.wrttime = (tm->tm_hour << 11) |
-                        (tm->tm_min << 5) |
-                        (tm->tm_sec >> 1);
+    if (S_ISDIR(s.st_mode))
+        secret.info.attribute = ATTR_DIRECTORY;
+
+    secret.info.size = s.st_size;
+    
+    if (localtime_r(&(s.st_mtime), &tm) == NULL)
+        return NULL;
+    secret.info.wrtdate = ((tm.tm_year - 80) << 9) |
+                        ((tm.tm_mon + 1) << 5) |
+                        tm.tm_mday;
+    secret.info.wrttime = (tm.tm_hour << 11) |
+                        (tm.tm_min << 5) |
+                        (tm.tm_sec >> 1);
+
+#if HAVE_LSTAT
+#define ATTR_LINK      0x80
+    if (!lstat(buffer, &s) && S_ISLNK(s.st_mode))
+    {
+        secret.info.attribute |= ATTR_LINK;
+    }
+#endif
+
     return &secret;
 }
 

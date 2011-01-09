@@ -1149,7 +1149,11 @@ void switch_thread(void)
     }
 
 #ifdef RB_PROFILE
+#ifdef CPU_COLDFIRE
+    _profile_thread_stopped(thread->id & THREAD_ID_SLOT_MASK);
+#else
     profile_thread_stopped(thread->id & THREAD_ID_SLOT_MASK);
+#endif
 #endif
 
     /* Begin task switching by saving our current context so that we can
@@ -1505,7 +1509,7 @@ static struct thread_entry * find_empty_thread_slot(void)
 
 /*---------------------------------------------------------------------------
  * Return the thread_entry pointer for a thread_id. Return the current
- * thread if the ID is 0 (alias for current).
+ * thread if the ID is (unsigned int)-1 (alias for current).
  *---------------------------------------------------------------------------
  */
 struct thread_entry * thread_id_entry(unsigned int thread_id)
@@ -2375,8 +2379,8 @@ void thread_get_name(char *buffer, int size,
         const char *fmt = "%s";
         if (name == NULL IF_COP(|| name == THREAD_DESTRUCT) || *name == '\0')
         {
-            name = (const char *)thread;
-            fmt = "%08lX";
+            name = (const char *)(unsigned int)thread->id;
+            fmt = "%04lX";
         }
         snprintf(buffer, size, fmt, name);
     }

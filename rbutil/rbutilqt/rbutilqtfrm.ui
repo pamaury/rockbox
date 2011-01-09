@@ -370,7 +370,7 @@
         <item row="1" column="1">
          <widget class="QLabel" name="labelThemes">
           <property name="text">
-           <string>&lt;b&gt;Install Themes&lt;/b&gt;&lt;br/&gt;Rockbox' look can be customized by themes. You can choose and install several officially distributed themes.</string>
+           <string>&lt;b&gt;Install Themes&lt;/b&gt;&lt;br/&gt;Rockbox&apos;s look can be customized by themes. You can choose and install several officially distributed themes.</string>
           </property>
           <property name="wordWrap">
            <bool>true</bool>

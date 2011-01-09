@@ -69,6 +69,7 @@
 #define TCC7801      7801
 #define S5L8700      8700
 #define S5L8701      8701
+#define S5L8702      8702
 #define JZ4732       4732
 #define AS3525       3525
 #define AT91SAM9260  9260
@@ -130,6 +131,7 @@
 #define MPIO_HD200_PAD     44
 #define ANDROID_PAD        45
 #define SDL_PAD            46
+#define MPIO_HD300_PAD     47
 
 /* CONFIG_REMOTE_KEYPAD */
 #define H100_REMOTE   1
@@ -212,6 +214,7 @@
 #define LCD_MINI2440  37 /* as used by the Mini2440 */
 #define LCD_HDD6330   38 /* as used by the Philips HDD6330 */
 #define LCD_VIBE500   39 /* as used by the Packard Bell Vibe 500 */
+#define LCD_IPOD6G    40 /* as used by the iPod Nano 2nd Generation */
 
 /* LCD_PIXELFORMAT */
 #define HORIZONTAL_PACKING 1
@@ -248,6 +251,7 @@ Lyre prototype 1 */
 #define I2C_S5L8700 13
 #define I2C_JZ47XX  14 /* Ingenic Jz47XX style */
 #define I2C_AS3525  15
+#define I2C_S5L8702 16 /* Same as S5L8700, but with two channels */
 
 /* CONFIG_LED */
 #define LED_REAL     1 /* SW controlled LED (Archos recorders, player) */
@@ -278,7 +282,8 @@ Lyre prototype 1 */
 #define RTC_S35390A  15
 #define RTC_JZ47XX   16 /* Ingenic Jz47XX */
 #define RTC_NANO2G   17 /* This seems to be a PCF5063x */
-#define RTC_D2       18 /* Either PCF50606 or PCF50635 */ 
+#define RTC_D2       18 /* Either PCF50606 or PCF50635 */
+#define RTC_S35380A  19 
 
 /* USB On-the-go */
 #define USBOTG_M66591   6591 /* M:Robe 500 */
@@ -288,8 +293,8 @@ Lyre prototype 1 */
 #define USBOTG_ARC      5020 /* PortalPlayer 502x */
 #define USBOTG_JZ4740   4740 /* Ingenic Jz4740/Jz4732 */
 #define USBOTG_AS3525   3525 /* AMS AS3525 */
-#define USBOTG_AS3525v2 3535 /* AMS AS3525v2 FIXME : same than S3C6400X */
-#define USBOTG_S3C6400X 6400 /* Samsung S3C6400X, also used in the S5L8701 */
+#define USBOTG_AS3525v2 3535 /* AMS AS3525v2 FIXME : same as S3C6400X */
+#define USBOTG_S3C6400X 6400 /* Samsung S3C6400X, also used in the S5L8701/S5L8702/S5L8720 */
 
 /* Multiple cores */
 #define CPU 0
@@ -336,6 +341,8 @@ Lyre prototype 1 */
 #include "config/ipod4g.h"
 #elif defined(IPOD_NANO2G)
 #include "config/ipodnano2g.h"
+#elif defined(IPOD_6G)
+#include "config/ipod6g.h"
 #elif defined(IRIVER_IFP7XX)
 #include "config/iriverifp7xx.h"
 #elif defined(GIGABEAT_F)
@@ -428,6 +435,8 @@ Lyre prototype 1 */
 #include "config/vibe500.h"
 #elif defined(MPIO_HD200)
 #include "config/mpiohd200.h"
+#elif defined(MPIO_HD300)
+#include "config/mpiohd300.h"
 
 #elif defined(APPLICATION)
 #include "config/application.h"
@@ -440,6 +449,10 @@ Lyre prototype 1 */
 /* keep this include after the target configs */
 #ifdef SIMULATOR
 #include "config/sim.h"
+#endif
+
+#ifndef CONFIG_PLATFORM
+#define CONFIG_PLATFORM PLATFORM_NATIVE
 #endif
 
 /* setup basic macros from capability masks */
@@ -467,7 +480,7 @@ Lyre prototype 1 */
 #endif
 
 /* define for all cpus from S5L870X family */
-#if (CONFIG_CPU == S5L8700) || (CONFIG_CPU == S5L8701)
+#if (CONFIG_CPU == S5L8700) || (CONFIG_CPU == S5L8701) || (CONFIG_CPU == S5L8702)
 #define CPU_S5L870X
 #endif
 
@@ -492,7 +505,8 @@ Lyre prototype 1 */
 #define ARM_ARCH 6 /* ARMv6 */
 
 #elif defined(CPU_TCC77X) || defined(CPU_TCC780X) || (CONFIG_CPU == DM320) \
-  || (CONFIG_CPU == AT91SAM9260) || (CONFIG_CPU == AS3525v2)
+  || (CONFIG_CPU == AT91SAM9260) || (CONFIG_CPU == AS3525v2) \
+  || (CONFIG_CPU == S5L8702) || (CONFIG_PLATFORM & PLATFORM_ANDROID)
 #define CPU_ARM
 #define ARM_ARCH 5 /* ARMv5 */
 
@@ -511,10 +525,6 @@ Lyre prototype 1 */
 
 #if !defined(CONFIG_BACKLIGHT_FADING)
 #define CONFIG_BACKLIGHT_FADING BACKLIGHT_NO_FADING
-#endif
-
-#ifndef CONFIG_PLATFORM
-#define CONFIG_PLATFORM PLATFORM_NATIVE
 #endif
 
 #ifndef CONFIG_TUNER
@@ -714,8 +724,11 @@ Lyre prototype 1 */
 #if CONFIG_CPU != IMX31L
 #define INCLUDE_TIMEOUT_API
 #endif
-#endif /* HAVE_USBSTACK */
+#endif /* HAVE_USBSTACK && USBOTG_ARC */
 
+#if defined(HAVE_USBSTACK) && CONFIG_USBOTG == USBOTG_AS3525
+#define USB_DETECT_BY_DRV
+#endif /* HAVE_USBSTACK && USBOTG_AS3525 */
 
 #endif /* BOOTLOADER */
 
@@ -822,9 +835,11 @@ Lyre prototype 1 */
  * from crashes to freezes to exploding daps.
  */
 #define INIT_ATTR       __attribute__ ((section(".init")))
+#define INITDATA_ATTR   __attribute__ ((section(".initdata")))
 #define HAVE_INIT_ATTR
 #else
 #define INIT_ATTR
+#define INITDATA_ATTR
 #endif
 
 #if (CONFIG_PLATFORM & PLATFORM_HOSTED) && defined(__APPLE__)

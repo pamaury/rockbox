@@ -2887,7 +2887,7 @@
     rtc: "OFF = Revert"
     mrobe500: "POWER = Revert"
     iriverh100,iriverh120,iriverh300: "STOP = Revert"
-    ipod*,sansac200*: "MENU = Revert"
+    ipod*,sansac200*,mpiohd300: "MENU = Revert"
     iaudiox5,iaudiom5: "RECORD = Revert"
     iriverh10,iriverh10_5gb,sansae200*,sansafuze*: "PREV = Revert"
     gigabeatfx: "POWER = Revert"
@@ -2901,7 +2901,7 @@
     rtc: "OFF = Cancelar"
     mrobe500: "POWER = Cancelar"
     iriverh100,iriverh120,iriverh300: "STOP = Cancelar"
-    ipod*,sansac200*: "MENÚ = Cancelar"
+    ipod*,sansac200*,mpiohd300: "MENÚ = Cancelar"
     iaudiox5,iaudiom5: "RECORD = Cancelar"
     iriverh10,iriverh10_5gb,sansae200*,sansafuze*: "PREV = Cancelar"
     gigabeatfx: "POWER = Cancelar"
@@ -3050,6 +3050,7 @@
     iriverh10,iriverh10_5gb: "SELECT=Set PREV=Cancel"
     gigabeats: "SELECT=Set POWER=Cancel"
     vibe500: "OK=Set C=Cancel"
+    mpiohd300: "ENTER=Set MENU=Cancel"
   </source>
   <dest>
     *: none
@@ -3058,6 +3059,7 @@
     iriverh10,iriverh10_5gb: "SELECT=Aceptar PREV=Cancelar"
     gigabeats: "SELECT=Aceptar POWER=Cancelar"
     vibe500: "OK=Aceptar C=Cancelar"
+    mpiohd300: "ENTER=Aceptar MENU=Cancelar"
   </dest>
   <voice>
     *: none
@@ -5922,19 +5924,16 @@
 </phrase>
 <phrase>
   id: LANG_REC_SIZE
-  desc: in record timesplit options
-  user: core
+  desc: deprecated
+  user:
   <source>
     *: none
-    recording: "Filesize"
   </source>
   <dest>
     *: none
-    recording: "Tamaño de archivo"
   </dest>
   <voice>
     *: none
-    recording: "Tamaño de archivo"
   </voice>
 </phrase>
 <phrase>
@@ -9112,6 +9111,7 @@
     ipod*,iaudiox5,iaudiom5,iriverh10,iriverh10_5gb,sansae200*,sansac200*,gigabeat*,mrobe100,sansaclip*,sansafuze*: "SELECT = Set"
     gogearsa9200: "PLAY = Set"
     vibe500: "OK = Set"
+    mpiohd300: "ENTER = Set"
   </source>
   <dest>
     *: none
@@ -9121,6 +9121,7 @@
     ipod*,iaudiox5,iaudiom5,iriverh10,iriverh10_5gb,sansae200*,sansac200*,gigabeat*,mrobe100,sansaclip*,sansafuze*: "SELECT = Fijar"
     gogearsa9200: "PLAY = Fijar"
     vibe500: "OK = Fijar"
+    mpiohd300: "ENTER = Fijar"
   </dest>
   <voice>
     *: none
@@ -12585,5 +12586,19 @@
   <voice>
     *: none
     radio: "Intesidad de la señal:"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_FILESIZE
+  desc: in record timesplit options and in track information viewer 
+  user: core
+  <source>
+    *: "Filesize"
+  </source>
+  <dest>
+    *: "Tamaño de archivo"
+  </dest>
+  <voice>
+    *: "Tamaño de archivo"
   </voice>
 </phrase>

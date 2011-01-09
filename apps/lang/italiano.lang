@@ -3952,6 +3952,7 @@
     ipod*,iaudiox5,iaudiom5,iriverh10,iriverh10_5gb,sansae200*,sansac200*,gigabeat*,mrobe100,sansaclip*,sansafuze*: "SELECT = Set"
     gogearsa9200: "PLAY = Set"
     vibe500: "OK = Set"
+    mpiohd300: "ENTER = Set"
   </source>
   <dest>
     *: none
@@ -3961,6 +3962,7 @@
     ipod*,iaudiox5,iaudiom5,iriverh10,iriverh10_5gb,sansae200*,sansac200*,gigabeat*,mrobe100,sansaclip*,sansafuze*: "SELECT = Imposta"
     gogearsa9200: "PLAY = Imposta"
     vibe500: "OK = Imposta"
+    mpiohd300: "ENTER = Imposta"
   </dest>
   <voice>
     *: none
@@ -3976,7 +3978,7 @@
     rtc: "OFF = Revert"
     mrobe500: "POWER = Revert"
     iriverh100,iriverh120,iriverh300: "STOP = Revert"
-    ipod*,sansac200*: "MENU = Revert"
+    ipod*,sansac200*,mpiohd300: "MENU = Revert"
     iaudiox5,iaudiom5: "RECORD = Revert"
     iriverh10,iriverh10_5gb,sansae200*,sansafuze*: "PREV = Revert"
     gigabeatfx: "POWER = Revert"
@@ -3990,7 +3992,7 @@
     rtc: "OFF = Annulla"
     mrobe500: "POWER = Annulla"
     iriverh100,iriverh120,iriverh300: "STOP = Annulla"
-    ipod*,sansac200*: "MENU = Annulla"
+    ipod*,sansac200*,mpiohd300: "MENU = Annulla"
     iaudiox5,iaudiom5: "RECORD = Annulla"
     iriverh10,iriverh10_5gb,sansae200*,sansafuze*: "PREV = Annulla"
     gigabeatfx: "POWER = Annulla"
@@ -4527,6 +4529,7 @@
     iriverh10,iriverh10_5gb: "SELECT=Set PREV=Cancel"
     gigabeats: "SELECT=Set POWER=Cancel"
     vibe500: "OK=Set C=Cancel"
+    mpiohd300: "ENTER=Set MENU=Cancel"
   </source>
   <dest>
     *: none
@@ -4535,6 +4538,7 @@
     iriverh10,iriverh10_5gb: "SELECT=Imposta PREV=Annulla"
     gigabeats: "SELECT=Imposta POWER=Annulla"
     vibe500: "OK=Imposta C=Annulla"
+    mpiohd300: "ENTER=Imposta MENU=Annulla"
   </dest>
   <voice>
     *: none
@@ -5876,19 +5880,16 @@
 </phrase>
 <phrase>
   id: LANG_REC_SIZE
-  desc: in record timesplit options
-  user: core
+  desc: deprecated
+  user:
   <source>
     *: none
-    recording: "Filesize"
   </source>
   <dest>
     *: none
-    recording: "Dimensione file"
   </dest>
   <voice>
     *: none
-    recording: "Dimensione file"
   </voice>
 </phrase>
 <phrase>
@@ -12571,5 +12572,64 @@
   </dest>
   <voice>
     *: "Avvia Sfoglia File Dalla Radice"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_FM_RSSI
+  desc: Signal strength of a received FM station
+  user: core
+  <source>
+    *: none
+    radio: "Signal strength:"
+  </source>
+  <dest>
+    *: none
+    radio: "Potenza segnale:"
+  </dest>
+  <voice>
+    *: none
+    radio: "Potenza segnale:"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_FILESIZE
+  desc: in record timesplit options and in track information viewer 
+  user: core
+  <source>
+    *: "Filesize"
+  </source>
+  <dest>
+    *: "Dimensione file"
+  </dest>
+  <voice>
+    *: "Dimensione file"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_AUTORESUME_ENABLE
+  desc: resume settings menu
+  user: core
+  <source>
+    *: "Enable automatic resume"
+  </source>
+  <dest>
+    *: "Abilita Riprendi Automatico"
+  </dest>
+  <voice>
+    *: "Abilita Riprendi Automatico"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_AUTORESUME_ENABLE_YES
+  desc: resume settings menu
+  user: core
+  <source>
+    *: "Yes (requires initialized database)"
+  </source>
+  <dest>
+    *: "Sì (richiede database inizializzato)"
+  </dest>
+  <voice>
+    *: "Sì (richiede database inizializzato)"
   </voice>
 </phrase>

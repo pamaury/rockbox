@@ -3956,6 +3956,7 @@
     ipod*,iaudiox5,iaudiom5,iriverh10,iriverh10_5gb,sansae200*,sansac200*,gigabeat*,mrobe100,sansaclip*,sansafuze*: "SELECT = Set"
     gogearsa9200: "PLAY = Set"
     vibe500: "OK = Set"
+    mpiohd300: "ENTER = Set"
   </source>
   <dest>
     *: none
@@ -3965,6 +3966,7 @@
     ipod*,iaudiox5,iaudiom5,iriverh10,iriverh10_5gb,sansae200*,sansac200*,gigabeat*,mrobe100,sansaclip*,sansafuze*: "VÄLJ = Ställ"
     gogearsa9200: "SPELA = Ställ"
     vibe500: "OK = Ställ"
+    mpiohd300: "ENTER = Ställ"
   </dest>
   <voice>
     *: none
@@ -3980,7 +3982,7 @@
     rtc: "OFF = Revert"
     mrobe500: "POWER = Revert"
     iriverh100,iriverh120,iriverh300: "STOP = Revert"
-    ipod*,sansac200*: "MENU = Revert"
+    ipod*,sansac200*,mpiohd300: "MENU = Revert"
     iaudiox5,iaudiom5: "RECORD = Revert"
     iriverh10,iriverh10_5gb,sansae200*,sansafuze*: "PREV = Revert"
     gigabeatfx: "POWER = Revert"
@@ -3994,7 +3996,7 @@
     rtc: "AV = Avbryt"
     mrobe500: "PÅ/AV = Avbryt"
     iriverh100,iriverh120,iriverh300: "STOPP = Avbryt"
-    ipod*,sansac200*: "MENY = Avbryt"
+    ipod*,sansac200*,mpiohd300: "MENY = Avbryt"
     iaudiox5,iaudiom5: "SPELA IN = Avbryt"
     iriverh10,iriverh10_5gb,sansae200*,sansafuze*: "FÖREGÅENDE = Avbryt"
     gigabeatfx: "PÅ/AV = Avbryt"
@@ -4531,6 +4533,7 @@
     iriverh10,iriverh10_5gb: "SELECT=Set PREV=Cancel"
     gigabeats: "SELECT=Set POWER=Cancel"
     vibe500: "OK=Set C=Cancel"
+    mpiohd300: "ENTER=Set MENU=Cancel"
   </source>
   <dest>
     *: none
@@ -4539,6 +4542,7 @@
     iriverh10,iriverh10_5gb: "VÄLJ=Sätt FÖREGÅENDE=Avbryt"
     gigabeats: "VÄLJ=Sätt PÅ/AV=Avbryt"
     vibe500: "OK=Sätt C=Avbryt"
+    mpiohd300: "ENTER=Sätt MENU=Avbryt"
   </dest>
   <voice>
     *: none
@@ -5880,19 +5884,16 @@
 </phrase>
 <phrase>
   id: LANG_REC_SIZE
-  desc: in record timesplit options
-  user: core
+  desc: deprecated
+  user:
   <source>
     *: none
-    recording: "Filesize"
   </source>
   <dest>
     *: none
-    recording: "Filstorlek"
   </dest>
   <voice>
     *: none
-    recording: "Filstorlek"
   </voice>
 </phrase>
 <phrase>
@@ -12574,5 +12575,19 @@
   </dest>
   <voice>
     *: "Starta filhanteraren i rotkatalogen"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_FILESIZE
+  desc: in record timesplit options and in track information viewer 
+  user: core
+  <source>
+    *: "Filesize"
+  </source>
+  <dest>
+    *: "Filstorlek"
+  </dest>
+  <voice>
+    *: "Filstorlek"
   </voice>
 </phrase>

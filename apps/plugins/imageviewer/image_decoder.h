@@ -29,6 +29,9 @@ enum image_type {
     IMAGE_BMP = 0,
     IMAGE_JPEG,
     IMAGE_PNG,
+#ifdef HAVE_LCD_COLOR
+    IMAGE_PPM,
+#endif
     MAX_IMAGE_TYPES
 };
 

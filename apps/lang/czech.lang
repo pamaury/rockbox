@@ -430,7 +430,7 @@
     *: "Playlisty"
   </dest>
   <voice>
-    *: "Plejlisty"
+    *: "Plejlisty, neozvučené"
   </voice>
 </phrase>
 <phrase>
@@ -444,7 +444,7 @@
     *: "Pluginy"
   </dest>
   <voice>
-    *: "Plaginy, neozvučené"
+    *: "Plaginy, neozvučitelné"
   </voice>
 </phrase>
 <phrase>
@@ -3954,6 +3954,7 @@
     ipod*,iaudiox5,iaudiom5,iriverh10,iriverh10_5gb,sansae200*,sansac200*,gigabeat*,mrobe100,sansaclip*,sansafuze*: "SELECT = Set"
     gogearsa9200: "PLAY = Set"
     vibe500: "OK = Set"
+    mpiohd300: "ENTER = Set"
   </source>
   <dest>
     *: none
@@ -3963,6 +3964,7 @@
     ipod*,iaudiox5,iaudiom5,iriverh10,iriverh10_5gb,sansae200*,sansac200*,gigabeat*,mrobe100,sansaclip*,sansafuze*: "SELECT = Nastavit"
     gogearsa9200: "PLAY = Nastavit"
     vibe500: "OK = Nastavit"
+    mpiohd300: "ENTER = Nastavit"
   </dest>
   <voice>
     *: none
@@ -3978,7 +3980,7 @@
     rtc: "OFF = Revert"
     mrobe500: "POWER = Revert"
     iriverh100,iriverh120,iriverh300: "STOP = Revert"
-    ipod*,sansac200*: "MENU = Revert"
+    ipod*,sansac200*,mpiohd300: "MENU = Revert"
     iaudiox5,iaudiom5: "RECORD = Revert"
     iriverh10,iriverh10_5gb,sansae200*,sansafuze*: "PREV = Revert"
     gigabeatfx: "POWER = Revert"
@@ -3992,7 +3994,7 @@
     rtc: "OFF = Vrátit zpět"
     mrobe500: "POWER = Vrátit zpět"
     iriverh100,iriverh120,iriverh300: "STOP = Vrátit zpět"
-    ipod*,sansac200*: "MENU = Vrátit zpět"
+    ipod*,sansac200*,mpiohd300: "MENU = Vrátit zpět"
     iaudiox5,iaudiom5: "RECORD = Vrátit zpět"
     iriverh10,iriverh10_5gb,sansae200*,sansafuze*: "PREV = Vrátit zpět"
     gigabeatfx: "POWER = Vrátit zpět"
@@ -4529,6 +4531,7 @@
     iriverh10,iriverh10_5gb: "SELECT=Set PREV=Cancel"
     gigabeats: "SELECT=Set POWER=Cancel"
     vibe500: "OK=Set C=Cancel"
+    mpiohd300: "ENTER=Set MENU=Cancel"
   </source>
   <dest>
     *: none
@@ -4537,6 +4540,7 @@
     iriverh10,iriverh10_5gb: "SELECT=Nastavit PREV=Storno"
     gigabeats: "SELECT=Nastavit POWER=Storno"
     vibe500: "OK=Nastavit C=Storno"
+    mpiohd300: "ENTER=Nastavit MENU=Storno"
   </dest>
   <voice>
     *: none
@@ -5135,11 +5139,11 @@
   </source>
   <dest>
     *: none
-    radio: "Předvolba"
+    radio: "Předvolby"
   </dest>
   <voice>
     *: none
-    radio: "Předvolba"
+    radio: "Předvolby"
   </voice>
 </phrase>
 <phrase>
@@ -5254,7 +5258,7 @@
   </source>
   <dest>
     *: none
-    radio: "Vyhledávám %d.%02d MHz"
+    radio: "Ladím %d.%02d MHz"
   </dest>
   <voice>
     *: none
@@ -5288,11 +5292,11 @@
   </source>
   <dest>
     *: none
-    radio: "Vyhledat"
+    radio: "Ladění"
   </dest>
   <voice>
     *: none
-    radio: "Vyhledat"
+    radio: "Ladění"
   </voice>
 </phrase>
 <phrase>
@@ -5878,19 +5882,16 @@
 </phrase>
 <phrase>
   id: LANG_REC_SIZE
-  desc: in record timesplit options
-  user: core
+  desc: deprecated
+  user:
   <source>
     *: none
-    recording: "Filesize"
   </source>
   <dest>
     *: none
-    recording: "Velikost souboru"
   </dest>
   <voice>
     *: none
-    recording: "Velikost souboru"
   </voice>
 </phrase>
 <phrase>
@@ -6673,9 +6674,9 @@
   </dest>
   <voice>
     *: none
-    multivolume: "há dé 1"
-    sansae200*,sansac200*,sansafuze*: "mikro es dé"
-    archosondio*: "em em cé"
+    multivolume: "hárdisk há dé 1"
+    sansae200*,sansac200*,sansafuze*: "paměťová karta mikro es dé"
+    archosondio*: "paměťová karta em em cé"
   </voice>
 </phrase>
 <phrase>
@@ -10394,11 +10395,11 @@
   </source>
   <dest>
     *: none
-    multivolume: "Nepřítomný"
+    multivolume: "Není"
   </dest>
   <voice>
     *: none
-    multivolume: "Nepřítomný"
+    multivolume: "Není"
   </voice>
 </phrase>
 <phrase>  
@@ -12571,5 +12572,36 @@
   </dest>
   <voice>
     *: "Začít prohlížení souborů na růtu"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_FM_RSSI
+  desc: Signal strength of a received FM station
+  user: core
+  <source>
+    *: none
+    radio: "Signal strength:"
+  </source>
+  <dest>
+    *: none
+    radio: "Síla signálu:"
+  </dest>
+  <voice>
+    *: none
+    radio: "Síla signálu"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_FILESIZE
+  desc: in record timesplit options and in track information viewer 
+  user: core
+  <source>
+    *: "Filesize"
+  </source>
+  <dest>
+    *: "Velikost souboru"
+  </dest>
+  <voice>
+    *: "Velikost souboru"
   </voice>
 </phrase>

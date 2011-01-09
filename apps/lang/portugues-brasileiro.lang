@@ -3950,6 +3950,7 @@
     ipod*,iaudiox5,iaudiom5,iriverh10,iriverh10_5gb,sansae200*,sansac200*,gigabeat*,mrobe100,sansaclip*,sansafuze*: "SELECT = Set"
     gogearsa9200: "PLAY = Set"
     vibe500: "OK = Set"
+    mpiohd300: "ENTER = Set"
   </source>
   <dest>
     *: none
@@ -3959,6 +3960,7 @@
     ipod*,iaudiox5,iaudiom5,iriverh10,iriverh10_5gb,sansae200*,sansac200*,gigabeat*,mrobe100,sansaclip*,sansafuze*: "SELECT = Ajustar"
     gogearsa9200: "PLAY = Ajustar"
     vibe500: "OK = Ajustar"
+    mpiohd300: "ENTER = Ajustar"
   </dest>
   <voice>
     *: none
@@ -4525,6 +4527,7 @@
     iriverh10,iriverh10_5gb: "SELECT=Set PREV=Cancel"
     gigabeats: "SELECT=Set POWER=Cancel"
     vibe500: "OK=Set C=Cancel"
+    mpiohd300: "ENTER=Set MENU=Cancel"
   </source>
   <dest>
     *: none
@@ -4533,6 +4536,7 @@
     iriverh10,iriverh10_5gb: "SELECT=Alterar PREV=Cancelar"
     gigabeats: "SELECT=Alterar POWER=Cancelar"
     vibe500: "OK=Alterar C=Cancelar"
+    mpiohd300: "ENTER=Alterar MENU=Cancelar"
   </dest>
   <voice>
     *: none
@@ -5874,19 +5878,16 @@
 </phrase>
 <phrase>
   id: LANG_REC_SIZE
-  desc: in record timesplit options
-  user: core
+  desc: deprecated
+  user:
   <source>
     *: none
-    recording: "Filesize"
   </source>
   <dest>
     *: none
-    recording: "Tamanho do Arquivo"
   </dest>
   <voice>
     *: none
-    recording: "Tamanho do Arquivo"
   </voice>
 </phrase>
 <phrase>
@@ -12539,5 +12540,19 @@
   </dest>
   <voice>
     *: "Atualizar ao Parar"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_FILESIZE
+  desc: in record timesplit options and in track information viewer 
+  user: core
+  <source>
+    *: "Filesize"
+  </source>
+  <dest>
+    *: "Tamanho do Arquivo"
+  </dest>
+  <voice>
+    *: "Tamanho do Arquivo"
   </voice>
 </phrase>

@@ -106,7 +106,7 @@ struct queue_sender_list
     struct thread_entry *senders[QUEUE_LENGTH]; /* message->thread map */
     struct thread_entry *list;                  /* list of senders in map */
     /* Send info for last message dequeued or NULL if replied or not sent */
-    struct thread_entry *curr_sender;
+    struct thread_entry * volatile curr_sender;
 #ifdef HAVE_PRIORITY_SCHEDULING
     struct blocker blocker;
 #endif
@@ -126,10 +126,10 @@ struct event_queue
 {
     struct thread_entry *queue;         /* waiter list */
     struct queue_event events[QUEUE_LENGTH]; /* list of events */
-    unsigned int read;                  /* head of queue */
-    unsigned int write;                 /* tail of queue */
+    unsigned int volatile read;         /* head of queue */
+    unsigned int volatile write;        /* tail of queue */
 #ifdef HAVE_EXTENDED_MESSAGING_AND_NAME
-    struct queue_sender_list *send;     /* list of threads waiting for
+    struct queue_sender_list * volatile send; /* list of threads waiting for
                                            reply to an event */
 #ifdef HAVE_PRIORITY_SCHEDULING
     struct blocker *blocker_p;          /* priority inheritance info
@@ -142,17 +142,19 @@ struct event_queue
 struct mutex
 {
     struct thread_entry *queue;         /* waiter list */
-    int count;                          /* lock owner recursion count */
+    int recursion;                      /* lock owner recursion count */
 #ifdef HAVE_PRIORITY_SCHEDULING
     struct blocker blocker;             /* priority inheritance info
                                            for waiters */
     bool no_preempt;                    /* don't allow higher-priority thread
                                            to be scheduled even if woken */
 #else
-    struct thread_entry *thread;
+    struct thread_entry *thread;        /* Indicates owner thread - an owner
+                                           implies a locked state - same goes
+                                           for priority scheduling
+                                           (in blocker struct for that) */
 #endif
     IF_COP( struct corelock cl; )       /* multiprocessor sync */
-    bool locked;                        /* locked semaphore */
 };
 
 #ifdef HAVE_SEMAPHORE_OBJECTS
@@ -169,7 +171,7 @@ struct semaphore
 struct wakeup
 {
     struct thread_entry *queue;         /* waiter list */
-    bool signalled;                     /* signalled status */
+    bool volatile signalled;            /* signalled status */
     IF_COP( struct corelock cl; )       /* multiprocessor sync */
 };
 #endif
@@ -265,10 +267,17 @@ extern void mutex_init(struct mutex *m);
 extern void mutex_lock(struct mutex *m);
 extern void mutex_unlock(struct mutex *m);
 #ifdef HAVE_PRIORITY_SCHEDULING
-/* Temporary function to disable mutex preempting a thread on unlock */
+/* Deprecated temporary function to disable mutex preempting a thread on
+ * unlock - firmware/drivers/fat.c and a couple places in apps/buffering.c -
+ * reliance on it is a bug! */
 static inline void mutex_set_preempt(struct mutex *m, bool preempt)
     { m->no_preempt = !preempt; }
-#endif
+#else
+/* Deprecated but needed for now - firmware/drivers/ata_mmc.c */
+static inline bool mutex_test(const struct mutex *m)
+    { return m->thread != NULL; }
+#endif /* HAVE_PRIORITY_SCHEDULING */
+
 #ifdef HAVE_SEMAPHORE_OBJECTS
 extern void semaphore_init(struct semaphore *s, int max, int start);
 extern void semaphore_wait(struct semaphore *s);

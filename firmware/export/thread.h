@@ -201,8 +201,8 @@ struct thread_list
 #ifdef HAVE_PRIORITY_SCHEDULING
 struct blocker
 {
-    struct thread_entry *thread;   /* thread blocking other threads
-                                      (aka. object owner) */
+    struct thread_entry * volatile thread; /* thread blocking other threads
+                                              (aka. object owner) */
     int priority;                  /* highest priority waiter */
     struct thread_entry * (*wakeup_protocol)(struct thread_entry *thread);
 };
@@ -269,7 +269,7 @@ struct thread_entry
     /* Only enabled when using queue_send for now */
 #endif
 #if defined(HAVE_EXTENDED_MESSAGING_AND_NAME) || NUM_CORES > 1
-    intptr_t retval;           /* Return value from a blocked operation/
+    volatile intptr_t retval;  /* Return value from a blocked operation/
                                   misc. use */
 #endif
 #ifdef HAVE_PRIORITY_SCHEDULING
@@ -375,8 +375,8 @@ unsigned int create_thread(void (*function)(void),
 void trigger_cpu_boost(void);
 void cancel_cpu_boost(void);
 #else
-#define trigger_cpu_boost()
-#define cancel_cpu_boost()
+#define trigger_cpu_boost() do { } while(0)
+#define cancel_cpu_boost() do { } while(0)
 #endif
 /* Return thread entry from id */
 struct thread_entry *thread_id_entry(unsigned int thread_id);

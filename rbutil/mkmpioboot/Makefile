@@ -28,7 +28,9 @@ endif
 
 ifdef RBARCH
 CFLAGS += -arch $(RBARCH)
-OBJDIR = $(RBARCH)/
+OBJDIR = $(TARGET_DIR)build/$(RBARCH)/
+else
+OBJDIR = $(TARGET_DIR)build/
 endif
 
 
@@ -52,7 +54,7 @@ $(OBJDIR)%.o: %.c
 
 libmkmpioboot$(RBARCH).a: $(LIBOBJS)
 	@echo AR $@
-	$(SILENT)$(AR) ruc $(TARGET_DIR)$@ $^
+	$(SILENT)$(AR) rucs $(TARGET_DIR)$@ $^
 
 # building the standalone executable
 $(OUTPUT): $(OBJS) $(EXTRADEPS)
@@ -74,7 +76,7 @@ libmkmpioboot-universal: $(TARGET_DIR)libmkmpiobooti386.a $(TARGET_DIR)libmkmpio
 	$(SILENT)lipo -create $(TARGET_DIR)libmkmpiobootppc.a $(TARGET_DIR)libmkmpiobooti386.a -output $(TARGET_DIR)libmkmpioboot.a
 
 clean:
-	rm -f $(OBJS) $(OUTPUT) libmkmpioboot.o $(TARGET_DIR)libmkmpioboot*.a mkmpioboot.dmg
+	rm -f $(OBJS) $(OUTPUT) $(TARGET_DIR)libmkmpioboot*.a mkmpioboot.dmg
 	rm -rf mkmpioboot-* i386 ppc $(OBJDIR)
 
 mkmpioboot-i386:

@@ -42,11 +42,7 @@
 #   (Retour aux minuscules quand nécessaire plus quelques changements mineurs dans 
 #    les entrées vocales par Simon Descarpentries (Siltaar) <siltaar chez fdn.fr> Mar 07)
 #    
-#    Refonte totale du fichier par Mustapha Senhaji (Moos) <moos75 AT gmail.com>
-#
-#    Nov 2005, Avr 2006, Mai 2006, Juil 2006, Oct 2006, Dec 2006, Mar 2007, Sep 2007,
-#    Oct 2007, Nov 2007, Dec 2007, Jan 2008, Avril 2008, Août 2008, Oct 2008
-#    Dec 2008, Fév 2009, Août 2009, Nov 2009, Fev 2010, Oct 2010
+#    Refonte totale du fichier par Mustapha Senhaji en 2005 (moos) <moos75 AT gmail.com>
 #
 <phrase>
   id: LANG_SET_BOOL_YES
@@ -3982,6 +3978,7 @@
     ipod*,iaudiox5,iaudiom5,iriverh10,iriverh10_5gb,sansae200*,sansac200*,gigabeat*,mrobe100,sansaclip*,sansafuze*: "SELECT = Set"
     gogearsa9200: "PLAY = Set"
     vibe500: "OK = Set"
+    mpiohd300: "ENTER = Set"
   </source>
   <dest>
     *: none
@@ -3991,6 +3988,7 @@
     ipod*,iaudiox5,iaudiom5,iriverh10,iriverh10_5gb,sansae200*,sansac200*,gigabeat*,mrobe100,sansaclip*,sansafuze*: "SELECT = Valider"
     gogearsa9200: "PLAY = Valider"
     vibe500: "OK = Valider"
+    mpiohd300: "ENTER = Valider"
   </dest>
   <voice>
     *: none
@@ -4006,7 +4004,7 @@
     rtc: "OFF = Revert"
     mrobe500: "POWER = Revert"
     iriverh100,iriverh120,iriverh300: "STOP = Revert"
-    ipod*,sansac200*: "MENU = Revert"
+    ipod*,sansac200*,mpiohd300: "MENU = Revert"
     iaudiox5,iaudiom5: "RECORD = Revert"
     iriverh10,iriverh10_5gb,sansae200*,sansafuze*: "PREV = Revert"
     gigabeatfx: "POWER = Revert"
@@ -4020,7 +4018,7 @@
     rtc: "OFF = Annuler"
     mrobe500: "POWER = Annuler"
     iriverh100,iriverh120,iriverh300: "STOP = Annuler"
-    ipod*,sansac200*: "MENU = Annuler"
+    ipod*,sansac200*,mpiohd300: "MENU = Annuler"
     iaudiox5,iaudiom5: "RECORD = Annuler"
     iriverh10,iriverh10_5gb,sansae200*,sansafuze*: "PREV = Annuler"
     gigabeatfx: "POWER = Annuler"
@@ -4557,6 +4555,7 @@
     iriverh10,iriverh10_5gb: "SELECT=Set PREV=Cancel"
     gigabeats: "SELECT=Set POWER=Cancel"
     vibe500: "OK=Set C=Cancel"
+    mpiohd300: "ENTER=Set MENU=Cancel"
   </source>
   <dest>
     *: none
@@ -4565,6 +4564,7 @@
     iriverh10,iriverh10_5gb: "SELECT=Valider PREV=Annuler"
     gigabeats: "SELECT=Valider POWER=Annuler"
     vibe500: "OK=Valider C=Annuler"
+    mpiohd300: "ENTER=Valider MENU=Annuler"
   </dest>
   <voice>
     *: none
@@ -5906,19 +5906,16 @@
 </phrase>
 <phrase>
   id: LANG_REC_SIZE
-  desc: in record timesplit options
-  user: core
+  desc: deprecated
+  user:
   <source>
     *: none
-    recording: "Filesize"
   </source>
   <dest>
     *: none
-    recording: "Taille du fichier"
   </dest>
   <voice>
     *: none
-    recording: "Taille du fichier"
   </voice>
 </phrase>
 <phrase>
@@ -6613,7 +6610,7 @@
     archosplayer: "Buf:"
   </source>
   <dest>
-    *: "Tampon :"
+    *: "Tampon:"
     archosplayer: "Tamp.:"
   </dest>
   <voice>
@@ -6630,7 +6627,7 @@
     iriverh10,ipodmini1g,ipodmini2g: "Batt: %d%% %dh %dm"
   </source>
   <dest>
-    *: "Batterie : %d%% %dh %dm"
+    *: "Batterie: %d%% %dh %dm"
     archosplayer,archosrecorder,archosfmrecorder,archosrecorderv2,archosondio*,iriverifp7xx: "%d%% %dh %dm"
     iriverh10,ipodmini1g,ipodmini2g: "Batt: %d%% %dh %dm"
   </dest>
@@ -6646,7 +6643,7 @@
     *: "Disk:"
   </source>
   <dest>
-    *: "Disque :"
+    *: "Disque:"
   </dest>
   <voice>
     *: "Disque"
@@ -6660,7 +6657,7 @@
     *: "Free:"
   </source>
   <dest>
-    *: "Libre :"
+    *: "Libre:"
   </dest>
   <voice>
     *: "Espace disque libre:"
@@ -7162,10 +7159,10 @@
     *: "Show Track Info"
   </source>
   <dest>
-    *: "Montrer infos tags"
+    *: "Infos sur le titre joué"
   </dest>
   <voice>
-    *: "Montrer les infos des tags"
+    *: "Infos sur le titre joué"
   </voice>
 </phrase>
 <phrase>
@@ -7930,7 +7927,7 @@
     *: "Mode:"
   </source>
   <dest>
-    *: "Mode :"
+    *: "Mode:"
   </dest>
   <voice>
     *: ""
@@ -8304,11 +8301,11 @@
   </source>
   <dest>
     *: none
-    charging: "Batterie : en charge..."
+    charging: "Batterie: en charge..."
   </dest>
   <voice>
     *: none
-    charging: "Batterie : en charge"
+    charging: "Batterie: en charge"
   </voice>
 </phrase>
 <phrase>
@@ -8321,7 +8318,7 @@
   </source>
   <dest>
     *: none
-    archosrecorder: "Batterie : charge max."
+    archosrecorder: "Batterie: charge max."
   </dest>
   <voice>
     *: none
@@ -8338,7 +8335,7 @@
   </source>
   <dest>
     *: none
-    charging: "Batterie : charge persistante"
+    charging: "Batterie: charge persistante"
   </dest>
   <voice>
     *: none
@@ -9733,7 +9730,7 @@
   </source>
   <dest>
     *: none
-    swcodec: "Mode édition : %s %s"
+    swcodec: "Mode édition: %s %s"
   </dest>
   <voice>
     *: none
@@ -9784,7 +9781,7 @@
   </source>
   <dest>
     *: none
-    lcd_bitmap: "Mode :"
+    lcd_bitmap: "Mode:"
   </dest>
   <voice>
     *: none
@@ -10856,7 +10853,7 @@
   </source>
   <dest>
     *: none
-    recording: "Nom de fichier :"
+    recording: "Nom de fichier:"
   </dest>
   <voice>
     *: none
@@ -10890,7 +10887,7 @@
   </source>
   <dest>
     *: none
-    recording: "Temps de coupe :"
+    recording: "Temps de coupe:"
   </dest>
   <voice>
     *: none
@@ -10907,7 +10904,7 @@
   </source>
   <dest>
     *: none
-    recording: "Taille :"
+    recording: "Taille:"
   </dest>
   <voice>
     *: none
@@ -11552,7 +11549,7 @@
     *: "Skin RAM usage:"
   </source>
   <dest>
-    *: "Tampon du thème :"
+    *: "Tampon du thème:"
   </dest>
   <voice>
     *: "Tampon du thème utilisé"
@@ -11903,10 +11900,10 @@
     *: "Custom"
   </source>
   <dest>
-    *: "Personnalisée"
+    *: "Personnalisé"
   </dest>
   <voice>
-    *: "Personnalisée"
+    *: "Personnalisé"
   </voice>
 </phrase>
 <phrase>
@@ -12616,5 +12613,47 @@
   <voice>
     *: none
     radio: "Puissance du signal:"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_FILESIZE
+  desc: in record timesplit options and in track information viewer 
+  user: core
+  <source>
+    *: "Filesize"
+  </source>
+  <dest>
+    *: "Taille du fichier"
+  </dest>
+  <voice>
+    *: "Taille du fichier"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_AUTORESUME_ENABLE
+  desc: resume settings menu
+  user: core
+  <source>
+    *: "Enable automatic resume"
+  </source>
+  <dest>
+    *: "Activer la reprise automatique"
+  </dest>
+  <voice>
+    *: "Activer la reprise automatique"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_AUTORESUME_ENABLE_YES
+  desc: resume settings menu
+  user: core
+  <source>
+    *: "Yes (requires initialized database)"
+  </source>
+  <dest>
+    *: "Oui (nécessite l'activation de la base de données)"
+  </dest>
+  <voice>
+    *: "Oui (nécessite l'activation de la base de données)"
   </voice>
 </phrase>
