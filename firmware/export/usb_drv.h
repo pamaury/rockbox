@@ -48,7 +48,7 @@ int usb_drv_send(int endpoint, void* ptr, int length);
 int usb_drv_recv(int endpoint, void* ptr, int length);
 #endif
 /* mid api */
-/* these are internal routed to the usb_drv_queue_* functions for the new api
+/* these are internally routed to the usb_drv_queue_* functions for the new api
  * and to usb_drv_{send, recv} for the old api */
 int usb_drv_send_blocking(int endpoint, void* ptr, int length);
 int usb_drv_send_nonblocking(int endpoint, void* ptr, int length);
@@ -77,8 +77,8 @@ int usb_drv_nb_endpoint_slots(int ep);
 #define USB_DRV_ENDPOINT_MODE_VOID      0
 /* Queue mode:
  * The endpoint is activated and the slots are used to queue transfers up to the maximum number of slots.
- * Use usb_drv_queue_{send,send_nonblocking,recv} to add transfers to the queue. In this mode, there is no
- * limit on the size of a transfer: the driver is responsible for splitting bit transfers and perhaps use
+ * Use usb_drv_queue_{send,recv}_{non,}blocking to add transfers to the queue. In this mode, there is no
+ * limit on the size of a transfer: the driver is responsible for splitting the transfers and perhaps use
  * several slots for one transfer. As a consequence, the number of slots does not represent the maximum 
  * number of queueable transfers. The only guarantee is that a slot must suffice for a transfer as big as
  * the maximum packet size. */
