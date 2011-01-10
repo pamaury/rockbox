@@ -968,7 +968,7 @@ Lyre prototype 1 */
 #  define USB_DRV_SLOT_SIZE   /* sizeof(struct usb_transfer_descriptor) */8
 #  define HAVE_NEW_USB_API
 //#  define USB_HAS_ISOCHRONOUS
-//#  define USB_HAS_BULK
+#  define USB_HAS_BULK
 //#  define USB_HAS_INTERRUPT
 #endif
 

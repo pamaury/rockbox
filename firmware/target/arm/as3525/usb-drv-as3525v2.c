@@ -31,7 +31,7 @@
 #include "panic.h"
 #include "mmu-arm.h"
 #include "system.h"
-#define LOGF_ENABLE
+//#define LOGF_ENABLE
 #include "logf.h"
 #include "usb-drv-as3525v2.h"
 #include "usb_core.h"
@@ -296,8 +296,8 @@ static void complete_head_td(struct usb_endpoint *endpoint, int status, int xfer
         endpoint->head_td = (endpoint->head_td + 1) % endpoint->nb_tds;
     }
 
-    logf("usb-drv: complete head td on EP%d: status=%d xfered=%d", endpoint->ep,
-        status, xfered);
+    logf("usb-drv: complete head td on EP%d %s: status=%d xfered=%d", EP_NUM(endpoint->ep),
+        EP_DIR(endpoint->ep) ? "IN" : "OUT", status, xfered);
     logf("usb-drv: queue state: head=%d tail=%d", endpoint->head_td, endpoint->tail_td);
 
     usb_core_transfer_complete(EP_NUM(endpoint->ep), endpoint->ep & USB_DIR_IN, status, xfered, buffer);
@@ -751,9 +751,12 @@ void INT_USB(void)
             DCTL |= DCTL_sftdiscon;
             usb_delay();
             usb_drv_exit();
+            #if 0
             usb_core_exit();
             usb_core_init(); // calls usb_drv_init() which reset g_usbreset_count
-            // usb_drv_init(); /* reset g_usbreset_count here */
+            #else
+            usb_drv_init(); /* reset g_usbreset_count here */
+            #endif
         }
 
         /* Clear the Remote Wakeup Signalling */

@@ -25,7 +25,7 @@
 #include "kernel.h"
 #include "usb_serial.h"
 #include "usb_class_driver.h"
-/*#define LOGF_ENABLE*/
+#define LOGF_ENABLE
 #include "logf.h"
 
 /* serial interface */
@@ -77,13 +77,18 @@ static int usb_interface;
 
 int usb_serial_request_endpoints(struct usb_class_driver *drv)
 {
+    logf("serial: request endpoints");
     ep_in = usb_core_request_endpoint(USB_ENDPOINT_XFER_BULK, USB_DIR_IN, drv);
     if (ep_in < 0)
+    {
+        logf("serial: failed to request bulk in ep");
         return -1;
+    }
 
-    ep_out = usb_core_request_endpoint(USB_ENDPOINT_XFER_BULK, USB_DIR_OUT,
-            drv);
-    if (ep_out < 0) {
+    ep_out = usb_core_request_endpoint(USB_ENDPOINT_XFER_BULK, USB_DIR_OUT, drv);
+    if (ep_out < 0)
+    {
+        logf("serial: failed to request bulk out ep");
         usb_core_release_endpoint(ep_in);
         return -1;
     }
@@ -93,6 +98,7 @@ int usb_serial_request_endpoints(struct usb_class_driver *drv)
 
 int usb_serial_set_first_interface(int interface)
 {
+    logf("serial: set first interface");
     usb_interface = interface;
     return interface + 1;
 }
@@ -100,6 +106,7 @@ int usb_serial_set_first_interface(int interface)
 int usb_serial_get_config_descriptor(unsigned char *dest, int max_packet_size)
 {
     unsigned char *orig_dest = dest;
+    logf("serial: get config desc");
 
     interface_descriptor.bInterfaceNumber = usb_interface;
     PACK_DATA(dest, interface_descriptor);
