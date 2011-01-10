@@ -433,6 +433,7 @@ void usb_core_init(void)
     usb_drv_init();
 
 #ifdef HAVE_NEW_USB_API
+    logf("usb_core: init EP0");
     usb_drv_select_endpoint_mode(EP_CONTROL | USB_DIR_OUT, USB_DRV_ENDPOINT_MODE_QUEUE);
     usb_drv_allocate_slots(EP_CONTROL | USB_DIR_OUT, sizeof(ep0_slots[0]), ep0_slots[0]);
     usb_drv_select_endpoint_mode(EP_CONTROL | USB_DIR_IN, USB_DRV_ENDPOINT_MODE_QUEUE);
@@ -578,7 +579,7 @@ static void allocate_interfaces_and_endpoints(void)
 
     memset(ep_data, 0, sizeof(ep_data));
 
-    for(i = 0; i < USB_NUM_ENDPOINTS; i++) {
+    for(i = 1; i < USB_NUM_ENDPOINTS; i++) {
         usb_drv_release_endpoint(i | USB_DIR_OUT);
         usb_drv_release_endpoint(i | USB_DIR_IN);
     }
@@ -995,6 +996,13 @@ void usb_core_bus_reset(void)
 #ifdef HAVE_USB_CHARGING_ENABLE
     usb_charging_maxcurrent_change(usb_charging_maxcurrent());
 #endif
+#ifdef HAVE_NEW_USB_API
+    logf("usb_core: reinit EP0");
+    usb_drv_select_endpoint_mode(EP_CONTROL | USB_DIR_OUT, USB_DRV_ENDPOINT_MODE_QUEUE);
+    usb_drv_allocate_slots(EP_CONTROL | USB_DIR_OUT, sizeof(ep0_slots[0]), ep0_slots[0]);
+    usb_drv_select_endpoint_mode(EP_CONTROL | USB_DIR_IN, USB_DRV_ENDPOINT_MODE_QUEUE);
+    usb_drv_allocate_slots(EP_CONTROL | USB_DIR_IN, sizeof(ep0_slots[1]), ep0_slots[1]);
+#endif /* HAVE_NEW_USB_API */
 }
 
 /* called by usb_drv_transfer_completed() */

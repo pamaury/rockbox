@@ -282,10 +282,7 @@ static void handle_ep0_setup(void)
 
 static void complete_head_td(struct usb_endpoint *endpoint, int status, int xfered)
 {
-    logf("usb-drv: complete head td on EP%d: status=%d xfered=%d", endpoint->ep,
-        status, xfered);
-    usb_core_transfer_complete(endpoint->ep, endpoint->ep & USB_DIR_IN, status, xfered,
-        endpoint->tds[endpoint->head_td].buffer);
+    void *buffer = endpoint->tds[endpoint->head_td].buffer;
 
     if(endpoint->mode == USB_DRV_ENDPOINT_MODE_QUEUE)
     {
@@ -298,6 +295,12 @@ static void complete_head_td(struct usb_endpoint *endpoint, int status, int xfer
     {
         endpoint->head_td = (endpoint->head_td + 1) % endpoint->nb_tds;
     }
+
+    logf("usb-drv: complete head td on EP%d: status=%d xfered=%d", endpoint->ep,
+        status, xfered);
+    logf("usb-drv: queue state: head=%d tail=%d", endpoint->head_td, endpoint->tail_td);
+
+    usb_core_transfer_complete(EP_NUM(endpoint->ep), endpoint->ep & USB_DIR_IN, status, xfered, buffer);
 }
 
 static void cancel_all_tds(struct usb_endpoint *endpoint)
@@ -352,10 +355,8 @@ static void start_head_td(struct usb_endpoint *endpoint)
     int ep = EP_NUM(endpoint->ep);
     bool dir_in = EP_DIR(endpoint->ep);
 
-    logf("usb-drv: xfer EP%d, len=%d, dir_in=%d", ep, len, dir_in);
+    logf("usb-drv: start xfer EP%d, len=%d, dir_in=%d", ep, len, dir_in);
     logf("usb-drv: head_td=%d tail_td=%d", endpoint->head_td, endpoint->tail_td);
-
-    return;
 
     volatile unsigned long *epctl = dir_in ? &DIEPCTL(ep) : &DOEPCTL(ep);
     volatile unsigned long *eptsiz = dir_in ? &DIEPTSIZ(ep) : &DOEPTSIZ(ep);
@@ -545,6 +546,7 @@ void usb_drv_init(void)
         endpoints[ep][DIR_IN].nb_tds = 0;
         endpoints[ep][DIR_IN].head_td = -1;
         endpoints[ep][DIR_IN].wait = false;
+        endpoints[ep][DIR_IN].mode = USB_DRV_ENDPOINT_MODE_VOID;
     }
     FOR_EACH_OUT_EP_AND_EP0(i, ep)
     {
@@ -553,6 +555,7 @@ void usb_drv_init(void)
         endpoints[ep][DIR_OUT].nb_tds = 0;
         endpoints[ep][DIR_OUT].head_td = -1;
         endpoints[ep][DIR_OUT].wait = false;
+        endpoints[ep][DIR_OUT].mode = USB_DRV_ENDPOINT_MODE_VOID;
     }
     /* Enable global interrupts */
     enable_global_interrupts();
@@ -748,7 +751,9 @@ void INT_USB(void)
             DCTL |= DCTL_sftdiscon;
             usb_delay();
             usb_drv_exit();
-            usb_drv_init(); /* reset g_usbreset_count here */
+            usb_core_exit();
+            usb_core_init(); // calls usb_drv_init() which reset g_usbreset_count
+            // usb_drv_init(); /* reset g_usbreset_count here */
         }
 
         /* Clear the Remote Wakeup Signalling */
@@ -850,8 +855,9 @@ void usb_drv_release_endpoint(int ep)
 {
     logf("usb-drv: release EP%d %s", EP_NUM(ep), EP_DIR(ep) == DIR_IN ? "IN" : "OUT");
     usb_drv_reset_endpoint(EP_NUM(ep), EP_DIR(ep));
+    usb_drv_release_slots(ep);
+    usb_drv_select_endpoint_mode(ep, USB_DRV_ENDPOINT_MODE_VOID);
     endpoints[EP_NUM(ep)][EP_DIR(ep)].active = false;
-    endpoints[EP_NUM(ep)][EP_DIR(ep)].head_td = 0;
 }
 
 void usb_drv_cancel_all_transfers()
@@ -931,6 +937,12 @@ static int usb_drv_queue_transfer(int ep_num, bool send, bool wait, void *ptr, i
 {
     struct usb_endpoint *endpoint = &endpoints[ep_num][send];
     logf("usb-drv: queue transfer on EP%d: dir_in=%d len=%d wait=%d", ep_num, send, length, wait);
+    logf("usb-drv: queue state: nb=%d head=%d tail=%d", endpoint->nb_tds, endpoint->head_td, endpoint->tail_td);
+    if(endpoint->mode != USB_DRV_ENDPOINT_MODE_QUEUE)
+    {
+        logf("usb-drv: cannot queue on non-queue endpoint");
+        return 1;
+    }
 
     if(endpoint->head_td == -1)
     {
@@ -966,11 +978,9 @@ static int usb_drv_queue_transfer(int ep_num, bool send, bool wait, void *ptr, i
         }
     }
 
-    complete_head_td(endpoint, 1, 0);// debug
-
     if(wait)
     {
-        //wakeup_wait(&endpoint->complete, TIMEOUT_BLOCK);
+        wakeup_wait(&endpoint->complete, TIMEOUT_BLOCK);
         return endpoint->status;
     }
     else
