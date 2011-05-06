@@ -34,6 +34,9 @@
  * - bitm(reg_name,field_name)
  *   build a bitmask for the field
  */
+#define vextract(value, reg_name, field_name) \
+    ((value >> reg_name##_##field_name##_bitp) & reg_name##_##field_name##_bits)
+    
 #define extract(reg_name, field_name) \
     ((reg_name >> reg_name##_##field_name##_bitp) & reg_name##_##field_name##_bits)
 
@@ -112,7 +115,7 @@
 #define GINTMSK_modemismatch    (1 << 1) /** mode mismatch ? */
 #define GINTMSK_otgintr         (1 << 2)
 #define GINTMSK_sofintr         (1 << 3)
-#define GINTMSK_rxstsqlvl       (1 << 4)
+#define GINTMSK_rxstsqlvl       (1 << 4) /** Receive FIFO Non-Empt */
 #define GINTMSK_nptxfempty      (1 << 5) /** Non-periodic TX fifo empty ? */
 #define GINTMSK_ginnakeff       (1 << 6)
 #define GINTMSK_goutnakeff      (1 << 7)
@@ -138,6 +141,22 @@
 
 /** Receive Status Debug Read Register (Read Only) */
 #define GRXSTSR     BASE_REG(0x01C)
+#define GRXSTSR_epnum_bitp      0 /** Endpoint Number */
+#define GRXSTSR_epnum_bits      0xf
+#define GRXSTSR_bcnt_bitp       4 /** Byte Count */
+#define GRXSTSR_bcnt_bits       0x7ff
+#define GRXSTSR_dpid_bitp       15 /** Data PID */
+#define GRXSTSR_dpid_bits       0x3
+#define GRXSTSR_pktsts_bitp     17 /** Packet status */
+#define GRXSTSR_pktsts_bits     0xf
+#define GRXSTSR_fn_bitp         21 /** Frame Number */
+#define GRXSTSR_fn_bits         0xf
+/** - Packet status */
+#define GRXSTSR_pktsts_glboutnak    1 /** Global OUT NAK (triggers an interrupt) */
+#define GRXSTSR_pktsts_outdata      2 /** OUT data packet arrived */
+#define GRXSTSR_pktsts_outdone      3 /** OUT transfer completed (triggers an interrupt) */
+#define GRXSTSR_pktsts_setupdone    4 /** SETUP transaction completed (triggers an interrupt) */
+#define GRXSTSR_pktsts_setupdata    6 /** SETUP data packet arrived */
 
 /** Receive Status Read /Pop Register (Read Only) */
 #define GRXSTSP     BASE_REG(0x020)
@@ -150,6 +169,21 @@
 
 /** Non-Periodic Transmit FIFO/Queue Status Register */
 #define GNPTXSTS    BASE_REG(0x02C)
+#define GNPTXSTS_nptxfspcavail_bitp 0 /** Non-Periodic TxFIFO Space Available */
+#define GNPTXSTS_nptxfspcavail_bits 0xffff
+#define GNPTXSTS_nptxqspcavail_bitp 16 /** Non-Periodic Transmit Request Queue Space */
+#define GNPTXSTS_nptxqspcavail_bits 0xff
+#define GNPTXSTS_nptxqtop_bitp      23 /** Top of the Non-Periodic Transmit Request Queue */
+#define GNPTXSTS_nptxqtop_bits      0xff
+/** - top of the transmit queue */
+#define GNPTXSTS_nptxqtop_terminate     1 /** Terminate (last entry for selected endpoint) */
+#define GNPTXSTS_nptxqtop_token_bitp    1 /** Token */
+#define GNPTXSTS_nptxqtop_token_bits    0x3
+#define GNPTXSTS_nptxqtop_epnum_bitp    3 /** Endpoint number */
+#define GNPTXSTS_nptxqtop_epnum_bits    0xf
+/** - token */
+#define GNPTXSTS_nptxqtop_token_inout   0 /** IN Token */
+#define GNPTXSTS_nptxqtop_token_zlp     1 /** Zero-Length packet */
 
 /** I2C Access Register */
 #define GI2CCTL     BASE_REG(0x030)
@@ -447,6 +481,9 @@
 #define DOEPINT(ep)     DEV_REG(0x300 + (ep) * 0x20 + 0x8)
 /** Device Endpoint (ep) DMA Address Register */
 #define DOEPDMA(ep)     DEV_REG(0x300 + (ep) * 0x20 + 0x14)
+
+/** Device Endpoint (ep) Fifo  */
+#define DEPFIFO(ep)     DEV_REG(0x1000 + (ep) * 0x1000)
 
 /**
  * Parameters
