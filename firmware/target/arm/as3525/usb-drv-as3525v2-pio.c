@@ -394,8 +394,23 @@ static void write_fifo_data(unsigned epnum, unsigned size, void *buffer)
 
 static void handle_rx_data(unsigned epnum, unsigned size)
 {
-    logf("usb-drv: rx data on EP%d: %x bytes", epnum, size);
-    read_fifo_data(epnum, size, NULL);
+    struct usb_endpoint *endpoint = &endpoints[epnum][DIR_OUT];
+    
+    logf("usb-drv: rx data on EP%d: size=%x", epnum, size);
+    /* ignore data on inactivate endpoint or extra data (should never happen) */
+    if(!endpoint->busy || size > endpoint->rem_len)
+    {
+        read_fifo_data(epnum, size, NULL);
+        endpoint->status = 1;
+        DOEPCTL(epnum) |= DEPCTL_snak;
+        logf("usb-drv: ignore data (busy=%d rem_len=%d)", endpoint->busy,
+            endpoint->rem_len);
+        return;
+    }
+
+    read_fifo_data(epnum, size, endpoint->buf_ptr);
+    endpoint->rem_len -= size;
+    endpoint->buf_ptr += size;
 }
 
 static void handle_rx_done(unsigned epnum)
@@ -454,7 +469,7 @@ static void handle_rx_fifo(void)
 
 static void ep_try_tx(int epnum)
 {
-    struct usb_endpoint *endpoint = &endpoints[epnum][1];
+    struct usb_endpoint *endpoint = &endpoints[epnum][DIR_IN];
     /* only try if there is something to send ! */
     if(!endpoint->busy || endpoint->rem_len == 0)
         return;
@@ -501,12 +516,11 @@ static void handle_ep_in_int(int ep)
     
     if(sts & DIEPINT_xfercompl)
     {
+        logf("usb-drv: xfer complete on EP%d IN", ep);
+        DIEPCTL(ep) |= DEPCTL_snak;
         endpoint->busy = false;
-        endpoint->status = 0;
-        /* works even for EP0 */
-        int size = (DIEPTSIZ(ep) & DEPTSIZ_xfersize_bits);
-        int transfered = endpoint->len - size;
-        logf("len=%d reg=%d xfer=%d", endpoint->len, size, transfered);
+        int transfered = endpoint->len - endpoint->rem_len;
+        logf("len=%d xfer=%d", endpoint->len, transfered);
         usb_core_transfer_complete(ep, USB_DIR_IN, 0, transfered);
         if(endpoint->wait)
         {
@@ -516,8 +530,9 @@ static void handle_ep_in_int(int ep)
     }
     if(sts & DIEPINT_timeout)
     {
+        DIEPCTL(ep) |= DEPCTL_snak;
         endpoint->busy = false;
-        endpoint->status = -1;
+        endpoint->status = 1;
         /* for safety, act as if no bytes were transfered */
         endpoint->len = 0;
         usb_core_transfer_complete(ep, USB_DIR_IN, 1, 0);
@@ -542,13 +557,11 @@ static void handle_ep_out_int(int ep)
     if(sts & DOEPINT_xfercompl)
     {
         logf("usb-drv: xfer complete on EP%d OUT", ep);
+        DOEPCTL(ep) |= DEPCTL_snak;
         endpoint->busy = false;
-        endpoint->status = 0;
         /* works even for EP0 */
-        int transfered = endpoint->len - (DOEPTSIZ(ep) & DEPTSIZ_xfersize_bits);
-        logf("len=%d reg=%ld xfer=%d", endpoint->len,
-            (DOEPTSIZ(ep) & DEPTSIZ_xfersize_bits),
-            transfered);
+        int transfered = endpoint->len - endpoint->rem_len;
+        logf("len=%d xfer=%d", endpoint->len, transfered);
         usb_core_transfer_complete(ep, USB_DIR_OUT, 0, transfered);
         if(endpoint->wait)
         {
@@ -702,13 +715,12 @@ int usb_drv_request_endpoint(int type, int dir)
         return -1;
     }
 
-    unsigned long data = DEPCTL_setd0pid | (type << DEPCTL_eptype_bitp)
+    unsigned long data = (type << DEPCTL_eptype_bitp)
                         | (usb_drv_mps_by_type(type) << DEPCTL_mps_bitp)
                         | DEPCTL_usbactep | DEPCTL_snak;
-    unsigned long mask = ~(bitm(DEPCTL, eptype) | bitm(DEPCTL, mps));
 
-    if(dir == USB_DIR_IN) DIEPCTL(ep) = (DIEPCTL(ep) & mask) | data;
-    else DOEPCTL(ep) = (DOEPCTL(ep) & mask) | data;
+    if(dir == USB_DIR_IN) DIEPCTL(ep) = data;
+    else DOEPCTL(ep) = data;
 
     return ret;
 }
@@ -736,7 +748,11 @@ static int usb_drv_transfer(int ep, void *ptr, int len, bool dir_in, bool blocki
     #define DEPTSIZ *eptsiz
 
     if(endpoint->busy)
+    {
         logf("usb-drv: EP%d %s is already busy", ep, dir_in ? "IN" : "OUT");
+        restore_irq(oldlevel);
+        return -1;
+    }
 
     endpoint->busy = true;
     endpoint->len = len;
@@ -762,7 +778,8 @@ static int usb_drv_transfer(int ep, void *ptr, int len, bool dir_in, bool blocki
     DEPCTL |= DEPCTL_epena | DEPCTL_cnak;
 
     /* enable NPTX fifo empty interrupt */
-    GINTMSK |= GINTMSK_nptxfempty;
+    if(dir_in)
+        GINTMSK |= GINTMSK_nptxfempty;
 
     /* restore interrupts */
     restore_irq(oldlevel);

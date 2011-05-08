@@ -1013,8 +1013,9 @@ Lyre prototype 1 */
 
 #if (CONFIG_PLATFORM & PLATFORM_NATIVE)
 #ifdef USB_HAS_BULK
+#define USB_ENABLE_SERIAL
 #ifdef USE_ROCKBOX_USB
-#define USB_ENABLE_STORAGE
+//#define USB_ENABLE_STORAGE
 #endif /* USE_ROCKBOX_USB */
 #endif /* USB_HAS_BULK */
 
