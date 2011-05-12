@@ -1021,7 +1021,6 @@ Lyre prototype 1 */
 
 #ifdef USB_HAS_INTERRUPT
 #define USB_ENABLE_HID
-//#define USB_ENABLE_CHARGING_ONLY
 #else
 #define USB_ENABLE_CHARGING_ONLY
 #endif
