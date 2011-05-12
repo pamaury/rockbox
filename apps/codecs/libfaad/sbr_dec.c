@@ -73,29 +73,42 @@ static void sbr_save_matrix(sbr_info *sbr, uint8_t ch);
 
 
 sbr_info *sbrDecodeInit(uint16_t framelength, uint8_t id_aac, uint8_t id_ele,
-                        uint32_t sample_rate, uint8_t downSampledSBR
-#ifdef DRM
-                        , uint8_t IsDRM
-#endif
-                        )
+                        uint32_t sample_rate, uint8_t downSampledSBR, 
+                        uint8_t IsDRM)
 {
     (void)downSampledSBR;
+#ifndef DRM
+    (void)IsDRM;
+#endif 
 
     /* Allocate sbr_info. */
 #if defined(FAAD_STATIC_ALLOC)
     sbr_info *sbr = &s_sbr[id_ele];
 #else
     (void)id_ele;
-    sbr_info *sbr =(sbr_info*)faad_malloc(sizeof(sbr_info));
+    sbr_info *sbr = (sbr_info*)faad_malloc(sizeof(sbr_info));
+    if (sbr == NULL)
+    {
+        /* could not allocate memory */
+        return NULL;
+    }
 #endif
     memset(sbr, 0, sizeof(sbr_info));
+    
+    /* initialize PS variables */
+    ps_init(&sbr->ps);
     
     /* Allocate XLR temporary variable. Use static allocation if either 
      * FAAD_STATIC_ALLOC is set or XLR fits to IRAM. */
 #if defined(FAAD_STATIC_ALLOC) || defined(FAAD_HAVE_XLR_IN_IRAM)
     p_XLR  = &s_XLR;
 #else
-    p_XLR  =(XLR_t*)faad_malloc(sizeof(XLR_t));
+    p_XLR  = (XLR_t*)faad_malloc(sizeof(XLR_t));
+    if (p_XLR == NULL)
+    {
+        /* could not allocate memory */
+        return NULL;
+    }
 #endif
     memset(p_XLR, 0, sizeof(XLR_t));
 
@@ -546,7 +559,7 @@ uint8_t sbrDecodeSingleFramePS(sbr_info *sbr, real_t *left_channel, real_t *righ
     } else {
 #endif
 #ifdef PS_DEC
-        ps_decode(sbr->ps, p_XLR->X_L, p_XLR->X_R);
+        ps_decode(&sbr->ps, p_XLR->X_L, p_XLR->X_R);
 #endif
 #ifdef DRM_PS
     }

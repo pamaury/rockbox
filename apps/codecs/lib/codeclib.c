@@ -27,14 +27,15 @@
 #include "codeclib.h"
 #include "metadata.h"
 
-size_t mem_ptr;
-size_t bufsize;
-unsigned char* mp3buf;     // The actual MP3 buffer from Rockbox
-unsigned char* mallocbuf;  // 512K from the start of MP3 buffer
-unsigned char* filebuf;    // The rest of the MP3 buffer
+/* The following variables are used by codec_malloc() to make use of free RAM
+ * within the statically allocated codec buffer. */
+static size_t mem_ptr = 0;
+static size_t bufsize = 0;
+static unsigned char* mallocbuf = NULL;
 
 int codec_init(void)
 {
+    /* codec_get_buffer() aligns the resulting point to CACHEALIGN_SIZE. */
     mem_ptr = 0;
     mallocbuf = (unsigned char *)ci->codec_get_buffer((size_t *)&bufsize);
   
@@ -60,7 +61,9 @@ void* codec_malloc(size_t size)
         return NULL;
     
     x=&mallocbuf[mem_ptr];
-    mem_ptr+=(size+3)&~3; /* Keep memory 32-bit aligned */
+    
+    /* Keep memory aligned to CACHEALIGN_SIZE. */
+    mem_ptr += (size + (CACHEALIGN_SIZE-1)) & ~(CACHEALIGN_SIZE-1);
 
     return(x);
 }

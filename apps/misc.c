@@ -454,10 +454,7 @@ static void car_adapter_mode_processing(bool inserted)
             if ((audio_status() & AUDIO_STATUS_PLAY) &&
                 !(audio_status() & AUDIO_STATUS_PAUSE))
             {
-                if (global_settings.fade_on_stop)
-                    fade(false, false);
-                else
-                    audio_pause();
+                pause_action(true, true);
             }
             waiting_to_resume_play = false;
         }
@@ -495,21 +492,24 @@ static void unplug_change(bool inserted)
         int audio_stat = audio_status();
         if (inserted)
         {
+            backlight_on();
             if ((audio_stat & AUDIO_STATUS_PLAY) &&
                     headphone_caused_pause &&
                     global_settings.unplug_mode > 1 )
-                audio_resume();
-            backlight_on();
+                unpause_action(true, true);
             headphone_caused_pause = false;
         } else {
             if ((audio_stat & AUDIO_STATUS_PLAY) &&
                     !(audio_stat & AUDIO_STATUS_PAUSE))
             {
                 headphone_caused_pause = true;
-                audio_pause();
+                pause_action(false, false);
 
                 if (global_settings.unplug_rw)
                 {
+#if (CONFIG_CODEC == SWCODEC)
+                    audio_pre_ff_rewind();
+#endif
                     if (audio_current_track()->elapsed >
                             (unsigned long)(global_settings.unplug_rw*1000))
                         audio_ff_rewind(audio_current_track()->elapsed -
@@ -581,7 +581,7 @@ long default_event_handler_ex(long event, void (*callback)(void *), void *parame
             return SYS_CHARGER_DISCONNECTED;
 
         case SYS_CAR_ADAPTER_RESUME:
-            audio_resume();
+            unpause_action(true, true);
             return SYS_CAR_ADAPTER_RESUME;
 #endif
 #ifdef HAVE_HOTSWAP_STORAGE_AS_MAIN
@@ -658,9 +658,9 @@ long default_event_handler_ex(long event, void (*callback)(void *), void *parame
             if (status & AUDIO_STATUS_PLAY)
             {
                 if (status & AUDIO_STATUS_PAUSE)
-                    audio_resume();
+                    unpause_action(true, true);
                 else
-                    audio_pause();
+                    pause_action(true, true);
             }
             else
                 if (playlist_resume() != -1)

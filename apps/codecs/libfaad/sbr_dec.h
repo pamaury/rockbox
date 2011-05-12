@@ -176,7 +176,7 @@ typedef struct
     uint8_t tHFAdj;
 
 #ifdef PS_DEC
-    ps_info *ps;
+    ps_info ps;
 #endif
 #if (defined(PS_DEC) || defined(DRM_PS))
     uint8_t ps_used;
@@ -222,11 +222,8 @@ typedef struct
 } sbr_info;
 
 sbr_info *sbrDecodeInit(uint16_t framelength, uint8_t id_aac, uint8_t id_ele,
-                        uint32_t sample_rate, uint8_t downSampledSBR
-#ifdef DRM
-                        , uint8_t IsDRM
-#endif
-                        );
+                        uint32_t sample_rate, uint8_t downSampledSBR,
+                        uint8_t IsDRM);
 
 uint8_t sbrDecodeCoupleFrame(sbr_info *sbr, real_t *left_chan, real_t *right_chan,
                              const uint8_t just_seeked, const uint8_t downSampledSBR);
