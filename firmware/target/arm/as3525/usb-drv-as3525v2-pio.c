@@ -201,9 +201,7 @@ static void reset_endpoints(void)
             semaphore_release(&endpoints[ep][DIR_IN].complete);
         }
         if(DIEPCTL(ep) & DEPCTL_epena)
-            DIEPCTL(ep) = DEPCTL_epdis;
-        else
-            DIEPCTL(ep) = 0;
+            DIEPCTL(ep) |= DEPCTL_epdis;
     }
 
     FOR_EACH_OUT_EP_AND_EP0(i, ep)
@@ -217,9 +215,7 @@ static void reset_endpoints(void)
             semaphore_release(&endpoints[ep][DIR_OUT].complete);
         }
         if(DOEPCTL(ep) & DEPCTL_epena)
-            DOEPCTL(ep) =  DEPCTL_epdis;
-        else
-            DOEPCTL(ep) = 0;
+            DOEPCTL(ep) |=  DEPCTL_epdis;
     }
     /* 64 bytes packet size, active endpoint */
     DOEPCTL(0) = (DEPCTL_MPS_64 << DEPCTL_mps_bitp) | DEPCTL_usbactep | DEPCTL_snak;
@@ -333,6 +329,7 @@ void usb_drv_init(void)
 
 void usb_drv_cancel_all_transfers()
 {
+    logf("usb_drv_cancel_all_transfers");
     reset_endpoints();
 }
 
@@ -402,7 +399,7 @@ static void handle_rx_data(unsigned epnum, unsigned size)
     {
         read_fifo_data(epnum, size, NULL);
         endpoint->status = 1;
-        DOEPCTL(epnum) |= DEPCTL_snak;
+        DOEPCTL(epnum) |= DEPCTL_epdis;
         logf("usb-drv: ignore data (busy=%d rem_len=%d)", endpoint->busy,
             endpoint->rem_len);
         return;
@@ -444,27 +441,33 @@ static void handle_setup(unsigned epnum, unsigned size)
 
 static void handle_rx_fifo(void)
 {
-    /* Read and POP !! */
-    unsigned long rxstsp = GRXSTSP;
-    unsigned epnum = vextract(rxstsp, GRXSTSR, epnum);
-    unsigned status = vextract(rxstsp, GRXSTSR, pktsts);
-    unsigned size = vextract(rxstsp, GRXSTSR, bcnt);
-    
-    logf("usb-drv: RX fifo event: ep=%d sts=%d size=%x", epnum, status, size);
-
-    switch(status)
+    /* Handle multiple events at once */
+    do
     {
-        case GRXSTSR_pktsts_glboutnak: return;
-        case GRXSTSR_pktsts_outdata:
-            return handle_rx_data(epnum, size);
-        case GRXSTSR_pktsts_setupdata:
-            return handle_setup(epnum, size);
-        case GRXSTSR_pktsts_outdone:
-            return handle_rx_done(epnum);
-        case GRXSTSR_pktsts_setupdone:
-        default:
-            return;
-    }
+        /* Read and POP !! */
+        unsigned long rxstsp = GRXSTSP;
+        unsigned epnum = vextract(rxstsp, GRXSTSR, epnum);
+        unsigned status = vextract(rxstsp, GRXSTSR, pktsts);
+        unsigned size = vextract(rxstsp, GRXSTSR, bcnt);
+        
+        logf("usb-drv: RX fifo event: ep=%d sts=%d size=%x", epnum, status, size);
+
+        switch(status)
+        {
+            case GRXSTSR_pktsts_glboutnak:
+                break;
+            case GRXSTSR_pktsts_outdata:
+                return handle_rx_data(epnum, size);
+            case GRXSTSR_pktsts_setupdata:
+                return handle_setup(epnum, size);
+            case GRXSTSR_pktsts_outdone:
+                return handle_rx_done(epnum);
+            case GRXSTSR_pktsts_setupdone:
+                break;
+            default:
+                return;
+        }
+    }while(GINTSTS & GINTMSK_rxstsqlvl);
 }
 
 static void ep_try_tx(int epnum)
@@ -517,7 +520,6 @@ static void handle_ep_in_int(int ep)
     if(sts & DIEPINT_xfercompl)
     {
         logf("usb-drv: xfer complete on EP%d IN", ep);
-        DIEPCTL(ep) |= DEPCTL_snak;
         endpoint->busy = false;
         int transfered = endpoint->len - endpoint->rem_len;
         logf("len=%d xfer=%d", endpoint->len, transfered);
@@ -530,7 +532,6 @@ static void handle_ep_in_int(int ep)
     }
     if(sts & DIEPINT_timeout)
     {
-        DIEPCTL(ep) |= DEPCTL_snak;
         endpoint->busy = false;
         endpoint->status = 1;
         /* for safety, act as if no bytes were transfered */
@@ -557,7 +558,6 @@ static void handle_ep_out_int(int ep)
     if(sts & DOEPINT_xfercompl)
     {
         logf("usb-drv: xfer complete on EP%d OUT", ep);
-        DOEPCTL(ep) |= DEPCTL_snak;
         endpoint->busy = false;
         /* works even for EP0 */
         int transfered = endpoint->len - endpoint->rem_len;
@@ -688,7 +688,6 @@ int usb_drv_request_endpoint(int type, int dir)
 {
     int ep, ret = -1;
     unsigned i;
-    logf("usb-drv: request endpoint (type=%d,dir=%s)", type, dir == USB_DIR_IN ? "IN" : "OUT");
 
     if(dir == USB_DIR_IN)
         FOR_EACH_IN_EP(i, ep)
@@ -714,6 +713,9 @@ int usb_drv_request_endpoint(int type, int dir)
         logf("usb-drv: request failed");
         return -1;
     }
+
+    logf("usb-drv: request endpoint (type=%d,dir=%s) -> %d", type,
+        dir == USB_DIR_IN ? "IN" : "OUT", ret);
 
     unsigned long data = (type << DEPCTL_eptype_bitp)
                         | (usb_drv_mps_by_type(type) << DEPCTL_mps_bitp)
@@ -783,6 +785,8 @@ static int usb_drv_transfer(int ep, void *ptr, int len, bool dir_in, bool blocki
 
     /* restore interrupts */
     restore_irq(oldlevel);
+
+    logf("depctl%d: %x", ep, dir_in ? DIEPCTL(ep) : DOEPCTL(ep));
 
     if(blocking)
     {
