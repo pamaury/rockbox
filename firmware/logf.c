@@ -226,7 +226,7 @@ void _logf(const char *fmt, ...)
 #if defined(HAVE_SERIAL) && !defined(SIMULATOR)
     serial_tx("\r\n");
 #endif
-#if defined(USB_ENABLE_SERIAL) && 0
+#if defined(USB_ENABLE_SERIAL)
 
     if(logfindex < old_logfindex)
     {

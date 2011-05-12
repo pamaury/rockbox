@@ -220,7 +220,6 @@ void usb_serial_transfer_complete(int ep,int dir, int status, int length)
         case USB_DIR_OUT:
             logf("serial: %s", receive_buffer);
             /* Data received. TODO : Do something with it ? */
-            usb_serial_send(receive_buffer, length);
 
             /* Get the next bit */
             usb_drv_recv(ep_out, receive_buffer, sizeof receive_buffer);

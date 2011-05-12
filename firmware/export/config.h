@@ -989,7 +989,7 @@ Lyre prototype 1 */
 #define USB_HAS_BULK
 #elif CONFIG_USBOTG == USBOTG_S3C6400X || CONFIG_USBOTG == USBOTG_AS3525v2
 #define USB_HAS_BULK
-//#define USB_HAS_INTERRUPT -- seems to be broken
+#define USB_HAS_INTERRUPT -- seems to be broken
 #endif /* CONFIG_USBOTG */
 
 #if (CONFIG_USBOTG == USBOTG_ARC) || \
@@ -1020,7 +1020,7 @@ Lyre prototype 1 */
 #endif /* USB_HAS_BULK */
 
 #ifdef USB_HAS_INTERRUPT
-//#define USB_ENABLE_HID
+#define USB_ENABLE_HID
 //#define USB_ENABLE_CHARGING_ONLY
 #else
 #define USB_ENABLE_CHARGING_ONLY

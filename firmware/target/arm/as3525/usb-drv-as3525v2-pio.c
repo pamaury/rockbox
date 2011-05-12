@@ -31,7 +31,7 @@
 #include "panic.h"
 #include "mmu-arm.h"
 #include "system.h"
-#define LOGF_ENABLE
+//#define LOGF_ENABLE
 #include "logf.h"
 #include "usb-drv-as3525v2.h"
 #include "usb_core.h"
@@ -410,11 +410,6 @@ static void handle_rx_data(unsigned epnum, unsigned size)
     endpoint->buf_ptr += size;
 }
 
-static void handle_rx_done(unsigned epnum)
-{
-    logf("usb-drv: rx done on EP%d", epnum);
-}
-
 static void handle_setup(unsigned epnum, unsigned size)
 {
     if(epnum != 0)
@@ -454,15 +449,13 @@ static void handle_rx_fifo(void)
 
         switch(status)
         {
-            case GRXSTSR_pktsts_glboutnak:
-                break;
             case GRXSTSR_pktsts_outdata:
                 return handle_rx_data(epnum, size);
             case GRXSTSR_pktsts_setupdata:
                 return handle_setup(epnum, size);
             case GRXSTSR_pktsts_outdone:
-                return handle_rx_done(epnum);
             case GRXSTSR_pktsts_setupdone:
+            case GRXSTSR_pktsts_glboutnak:
                 break;
             default:
                 return;
