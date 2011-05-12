@@ -477,24 +477,32 @@ static void ep_try_tx(int epnum)
     if(!endpoint->busy || endpoint->rem_len == 0)
         return;
     /* FIXME: space available is in words = 4 bytes ! */
-    unsigned fifo_avail = extract(GNPTXSTS, nptxfspcavail) * 4;
-    unsigned nr_bytes = endpoint->rem_len;
+    int fifo_avail = extract(GNPTXSTS, nptxfspcavail) * 4;
+    int nr_bytes = endpoint->rem_len;
+
+    /* Don't send more than one packet and enable np tx fifo if necessary.
+     * I would have expected the controller to allow to write more than one
+     * packet at a time but it doesn't work */
+    if(nr_bytes > endpoint->mps)
+    {
+        nr_bytes = endpoint->mps;
+        GINTMSK |= GINTMSK_nptxfempty;
+    }
     
     if(nr_bytes > fifo_avail)
     {
-        /* If there is too much to send, round down to nearest multiple of a
-         * packet size (it might be 0 !) and enable np tx fifo interrupt
-         * to retry next time */
-        nr_bytes -= nr_bytes % endpoint->mps;
+        /* If there is too much to send, don't send anything and enable np tx
+         * fifo interrupt to retry next time */
+        nr_bytes = 0;
         GINTMSK |= GINTMSK_nptxfempty;
     }
-    /* there might be nothing to send at this point */
-    if(nr_bytes == 0)
-        return;
-    /* Advance pointers, decrement remaining length and send data */
-    write_fifo_data(epnum, nr_bytes, endpoint->buf_ptr);
-    endpoint->rem_len -= nr_bytes;
-    endpoint->buf_ptr += nr_bytes;
+    else
+    {
+        /* Advance pointers, decrement remaining length and send data */
+        write_fifo_data(epnum, nr_bytes, endpoint->buf_ptr);
+        endpoint->rem_len -= nr_bytes;
+        endpoint->buf_ptr += nr_bytes;
+    }
 }
 
 static void handle_tx_fifo(void)
@@ -769,10 +777,11 @@ static int usb_drv_transfer(int ep, void *ptr, int len, bool dir_in, bool blocki
 
     int nb_packets = (len + endpoint->mps - 1) / endpoint->mps;
 
-    /* If transfer size is a multiple of packet size, send a zero-length packet.
-     * Also handles the case of ack transfer (len=0) */
-    if((len % endpoint->mps) == 0)
-        nb_packets++;
+    /* Apparently, the driver expects to send one packet when len=0 but
+     * not N+1 when len=N*mps, I don't really understand why but it doesn't work
+     * otherwise */
+    if(len == 0)
+        nb_packets = 1;
     DEPTSIZ = (nb_packets << DEPTSIZ_pkcnt_bitp) | len;
 
     logf("nb_packets=%d", nb_packets);
@@ -785,8 +794,6 @@ static int usb_drv_transfer(int ep, void *ptr, int len, bool dir_in, bool blocki
 
     /* restore interrupts */
     restore_irq(oldlevel);
-
-    logf("depctl%d: %x", ep, dir_in ? DIEPCTL(ep) : DOEPCTL(ep));
 
     if(blocking)
     {
