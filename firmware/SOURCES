@@ -488,7 +488,7 @@ target/arm/pnx0101/timer-pnx0101.c
 #endif
 
 #if CONFIG_CPU == IMX233
-target/arm/imx233/i2c-imx233.c
+target/arm/imx233/i2c-sw-imx233.c
 target/arm/imx233/lcdif-imx233.c
 target/arm/imx233/clkctrl-imx233.c
 target/arm/imx233/system-imx233.c
