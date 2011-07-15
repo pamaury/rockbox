@@ -1287,8 +1287,8 @@ cat <<EOF
 ==Application==           ==MPIO==               130) Lyre proto 1
  200) SDL                 170) HD200             131) Mini2440
  201) Android             171) HD300
- 202) Nokia N8xx
- 203) Nokia N900          ==ROCKCHIP==
+ 202) Nokia N8xx                                 ==Mio Digiwalker==
+ 203) Nokia N900          ==ROCKCHIP==           205) Mio C510
  204) Pandora             180) rk27xx generic
 
 EOF
@@ -1310,6 +1310,8 @@ fi
   genericbitmaptools="$toolset bmp2rb"
   # scramble is used by all other targets
   scramblebitmaptools="$genericbitmaptools scramble"
+  #
+  mioc510tools="$genericbitmaptools scramble mkwinceboot"
 
 
   #  ---- For each target ----
@@ -3141,6 +3143,28 @@ fi
     t_cpu="hosted"
     t_manufacturer="pandora"
     t_model="app"
+    ;;
+
+   205|mioc510)
+    target_id=80
+    modelname="mioc510"
+    target="-DMIO_C510"
+    memory=64
+    arm9tdmicc
+    tool="$rootdir/tools/scramble -add=m510"
+    bmp2rb_mono="$rootdir/tools/bmp2rb -f 0"
+    bmp2rb_native="$rootdir/tools/bmp2rb -f 4"
+    output="rockbox.s3c"
+    appextra="recorder:gui:radio"
+    plugins="no"
+    swcodec="no"
+    toolset=$mioc510tools
+    boottool="$rootdir/tools/mkwinceboot $rootdir/tools/wince_binfs_hdr.bin"
+    bootoutput="winceimg.bin"
+    # architecture, manufacturer and model for the target-tree build
+    t_cpu="arm"
+    t_manufacturer="s3c2440"
+    t_model="mio_c510"
     ;;
 
    *)

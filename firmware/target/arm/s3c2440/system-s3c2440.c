@@ -23,6 +23,9 @@
 #include "panic.h"
 #include "mmu-arm.h"
 #include "cpu.h"
+#ifdef MIO_C510
+#include "led-mioc510.h"
+#endif
 
 #define default_interrupt(name) \
   extern __attribute__((weak,alias("UIRQ"))) void name (void)
@@ -114,7 +117,25 @@ void system_reboot(void)
 void system_exception_wait(void)
 {
     INTMSK = 0xFFFFFFFF;
+#ifdef MIO_C510
+    WTCON = WTCNT = WTDAT = 0;
+    bool flash = true;
+    /* Wait for power button */
+    while(GPFDAT & 1)
+    {
+        if(WTCNT == 0)
+        {
+            flash = !flash;
+            if(flash) set_leds(LED_ALL);
+            else clear_leds(LED_ALL);
+            WTCON = 0;
+            WTCNT = 762;
+            WTCON = 3 << 3 | 1 << 5 | 255 << 8;
+        }
+    }
+#else
     while ((GPGDAT & (1 << 0)) == 0); /* Wait for power button */
+#endif
 }
 
 static void set_page_tables(void)
@@ -193,6 +214,12 @@ void system_init(void)
     CLKSLOW |= 0x80;
 #elif defined(MINI2440)        
     /* TODO: anything? */
+#elif defined(MIO_C510)
+    /* Power down useless peripherals */
+    CLKCON &= ~(CLKCON_NAND | CLKCON_USBH | CLKCON_USBD | CLKCON_SDI |
+                CLKCON_UART0 | CLKCON_UART1 | CLKCON_UART2 |
+                CLKCON_I2C | CLKCON_I2S | CLKCON_SPI | CLKCON_CAM |
+                CLKCON_AC97);
 #else
 #error Unknown target    
 #endif

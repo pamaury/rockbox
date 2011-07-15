@@ -7,7 +7,7 @@
  *                     \/            \/     \/    \/            \/
  * $Id$
  *
- * Copyright © 2009 by Bob Cousins
+ * Copyright (C) 2011 by Amaury Pouly
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -19,44 +19,43 @@
  *
  ****************************************************************************/
 
-#ifndef _DMA_TARGET_H
-#define _DMA_TARGET_H
+#include "config.h"
+#include "system.h"
+#include "lcd.h"
+#include "backlight.h"
+#include "backlight-target.h"
 
-#include <stdbool.h>
-#include <stdlib.h>
-
-/* DMA Channel assignments */
-#ifdef GIGABEAT_F
-#define DMA_CHAN_ATA        0
-#define DMA_CHAN_AUDIO_OUT  2
-#elif defined(MINI2440)
-#define DMA_CHAN_SD         0
-#define DMA_CHAN_AUDIO_OUT  2
-#elif defined(MIO_C510)
-#define DMA_CHAN_SD         0
-#define DMA_CHAN_AUDIO_OUT  2
-#else
-#error Unsupported target
-#endif
-
-struct dma_request 
+void _backlight_set_brightness(int brightness)
 {
-    volatile void *source_addr;
-    volatile void *dest_addr;
-    unsigned long count;
-    unsigned long source_control;
-    unsigned long dest_control;
-    unsigned long source_map;
-    unsigned long control;
-    void (*callback)(void);
-};
+    TCNTB0 = 0x3FF;
+    TCMPB0 = brightness;
+    TCFG0 |= 0x20;
+    TCFG1 &= ~0xF;
+    TCON &= ~0xF;
+    TCON |= 2;
+    TCON &= ~0xF;
+    TCON |= 9;
+}
 
-void dma_init(void);
-void dma_enable_channel(int channel, struct dma_request *request);
+bool _backlight_init(void)
+{
+    S3C2440_GPIO_CONFIG(GPBCON, 0, GPIO_FUNCTION);
+    return true;
+}
 
-inline void dma_disable_channel(int channel);
-
-void dma_retain(void);
-void dma_release(void);
-
+void _backlight_on(void)
+{
+#ifdef HAVE_LCD_ENABLE
+    lcd_enable(true); /* power on lcd + visible display */
 #endif
+    /* don't do anything special, the core will set the brightness */
+}
+
+void _backlight_off(void)
+{
+    /* there is no real on/off but we can set to 0 brightness */
+    _backlight_set_brightness(0);
+#ifdef HAVE_LCD_ENABLE
+    lcd_enable(false); /* power off visible display */
+#endif
+}

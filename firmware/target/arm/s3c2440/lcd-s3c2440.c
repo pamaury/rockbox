@@ -223,6 +223,24 @@ static void LCD_SPI_init(void)
 #endif
 /****************************************************************************/
 
+#ifdef MIO_C510
+static void lcd_wait(unsigned int t) __attribute__((naked));
+
+static void lcd_wait(unsigned int t)
+{
+    asm volatile(
+        "    movs    r0, r0 \n\
+        0: \n\
+            bxeq    lr \n\
+            ldr     r2, =0x4D2 \n\
+        1: \n\
+            subs    r2, #1 \n\
+            bne     1b \n\
+            subs    r0, #1 \n\
+            b       0b");
+}
+#endif
+
 /* LCD init */
 void lcd_init_device(void)
 {
@@ -251,6 +269,18 @@ void lcd_init_device(void)
     GPEUP   |= 0x3800;
 #ifdef GIGABEAT_F
     GPBUP   |= 0x181;
+#endif
+
+#ifdef MIO_C510
+    GPJDAT &= ~8;
+    GPJDAT |= 4;
+    GPJUP = 0xffff;
+    GPJCON &= ~0xCF0;
+    GPJCON |= 0x50;
+    GPJDAT &= ~4;
+    lcd_wait(1);
+    GPJDAT |= 8;
+    lcd_wait(1);
 #endif
 
     bitset32(&CLKCON, 0x20);  /* enable LCD clock */
@@ -289,7 +319,7 @@ void lcd_sleep(void)
 }
 #endif
 
-#if defined(HAVE_LCD_ENABLE)
+#if defined(HAVE_LCD_ENABLE) && defined(GIGABEAT_F)
 static void LCD_SPI_powerup(void)
 {
     LCD_CTRL_clock(true);
@@ -324,6 +354,28 @@ void lcd_enable(bool state)
     else
     {
         lcd_on = false;
+    }
+}
+#endif
+
+#ifdef MIO_C510
+void lcd_enable(bool state)
+{
+    if(state)
+    {
+        GPJDAT &= ~4;
+        sleep(0x3C * HZ / 1000); // unsure
+        GPJDAT |= 8;
+        sleep(0x33 * HZ / 1000); // unsure
+        LCDCON1 |= LCD_ENVID;
+    }
+    else
+    {
+        sleep(0x64 * HZ / 1000);
+        LCDCON1 &= ~LCD_ENVID;
+        GPJDAT &= ~8;
+        sleep(0x3C * HZ / 1000);
+        GPJDAT |= 4;
     }
 }
 #endif
@@ -374,7 +426,7 @@ void lcd_set_invert_display(bool yesno) {
     }
     LCD_SPI_stop();
 }
-#else
+#elif defined(MINI2440)
 void lcd_set_flip(bool yesno) 
 {
     (void)yesno;
@@ -397,7 +449,10 @@ void lcd_set_invert_display(bool yesno)
     (void)yesno;
     /* Not implemented */
 }
+#elif defined(MIO_C510)
 
+#else
+#error Unsupported target
 #endif
 
 /* Update a fraction of the display. */

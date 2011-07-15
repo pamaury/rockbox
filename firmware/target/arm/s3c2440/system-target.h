@@ -61,6 +61,19 @@
     #define UNCACHED_BASE_ADDR 0x30000000
     #define UNCACHED_ADDR(a)  ((typeof(a))((unsigned int)(a) | UNCACHED_BASE_ADDR ))
 
+#elif defined(MIO_C510)
+
+    /* Uses 1:4:8 */
+    #define FCLK 400000000
+    #define HCLK (FCLK/4)   /* = 200,000,000 */
+    #define PCLK (HCLK/2)   /* =  50,000,000 */
+
+    #define CPUFREQ_DEFAULT FCLK    /* 400 MHz */
+    #define CPUFREQ_NORMAL  (FCLK/4)/* 100.00 MHz */   
+    #define CPUFREQ_MAX     FCLK    /* 400 MHz */
+    
+    #define UNCACHED_BASE_ADDR 0x30000000
+    #define UNCACHED_ADDR(a)  ((typeof(a))((unsigned int)(a) | UNCACHED_BASE_ADDR ))
 #else
     #error Unknown target
 #endif

@@ -987,6 +987,26 @@ target/arm/s3c2440/gigabeat-fx/wmcodec-meg-fx.c
 #endif /* SIMULATOR */
 #endif /* GIGABEAT_F */
 
+#ifdef MIO_C510
+#ifndef SIMULATOR
+target/arm/bits-armv4.S
+target/arm/lcd-as-memframe.S
+target/arm/mmu-arm.S
+target/arm/s3c2440/kernel-s3c2440.c
+target/arm/s3c2440/system-s3c2440.c
+target/arm/s3c2440/mio_c510/button-mioc510.c
+target/arm/s3c2440/mio_c510/backlight-mioc510.c
+target/arm/s3c2440/mio_c510/led-mioc510.c
+target/arm/s3c2440/mio_c510/power-mioc510.c
+target/arm/s3c2440/lcd-s3c2440.c
+target/arm/s3c2440/sd-s3c2440.c
+target/arm/s3c2440/dma-s3c2440.c
+#ifndef BOOTLOADER
+target/arm/s3c2440/i2c-s3c2440.c
+#endif
+#endif /* SIMULATOR */
+#endif /* MIO_C510 */
+
 #ifdef GIGABEAT_S
 #ifndef SIMULATOR
 target/arm/bits-armv6.S

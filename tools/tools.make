@@ -21,6 +21,10 @@ $(TOOLSDIR)/mkboot: $(TOOLSDIR)/mkboot.c
 $(TOOLSDIR)/wavtrim: $(TOOLSDIR)/wavtrim.c
 $(TOOLSDIR)/voicefont: $(TOOLSDIR)/voicefont.c
 
+$(TOOLSDIR)/mkwinceboot: $(TOOLSDIR)/mkwinceboot.c
+	$(call PRINTS,CC $(subst $(ROOTDIR)/,,$@))
+	$(SILENT)$(HOSTCC) $(TOOLSCFLAGS) -std=gnu99 -o $@ $^
+
 $(TOOLSDIR)/iaudio_bl_flash.c $(TOOLSDIR)/iaudio_bl_flash.h: $(TOOLSDIR)/iaudio_bl_flash.bmp $(TOOLSDIR)/bmp2rb
 	$(call PRINTS,BMP2RB $(@F))
 	$(SILENT)$(TOOLSDIR)/bmp2rb -f 7 -h $(TOOLSDIR) $< >$(TOOLSDIR)/iaudio_bl_flash.c

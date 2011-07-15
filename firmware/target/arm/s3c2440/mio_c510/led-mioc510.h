@@ -7,7 +7,7 @@
  *                     \/            \/     \/    \/            \/
  * $Id$
  *
- * Copyright © 2009 by Bob Cousins
+ * Copyright (c) 2011 by Amaury Pouly
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -18,45 +18,27 @@
  * KIND, either express or implied.
  *
  ****************************************************************************/
+#ifndef _LED_MIOC510_H_
+#define _LED_MIOC510_H_
 
-#ifndef _DMA_TARGET_H
-#define _DMA_TARGET_H
+/* LED functions for debug etc */
 
-#include <stdbool.h>
-#include <stdlib.h>
+/* Charging led has two states: orange and green;
+ * we use the convention off=orange, on=green */
+#define LED_CHARGING    (1 << 11)      /* GPG11 */
 
-/* DMA Channel assignments */
-#ifdef GIGABEAT_F
-#define DMA_CHAN_ATA        0
-#define DMA_CHAN_AUDIO_OUT  2
-#elif defined(MINI2440)
-#define DMA_CHAN_SD         0
-#define DMA_CHAN_AUDIO_OUT  2
-#elif defined(MIO_C510)
-#define DMA_CHAN_SD         0
-#define DMA_CHAN_AUDIO_OUT  2
-#else
-#error Unsupported target
-#endif
+#define LED_NONE    0x0000
+#define LED_ALL     LED_CHARGING
 
-struct dma_request 
-{
-    volatile void *source_addr;
-    volatile void *dest_addr;
-    unsigned long count;
-    unsigned long source_control;
-    unsigned long dest_control;
-    unsigned long source_map;
-    unsigned long control;
-    void (*callback)(void);
-};
+void led_init(void);
 
-void dma_init(void);
-void dma_enable_channel(int channel, struct dma_request *request);
+/* Turn on */
+void set_leds(int led_mask);
 
-inline void dma_disable_channel(int channel);
+/* Turn off */
+void clear_leds(int led_mask);
 
-void dma_retain(void);
-void dma_release(void);
+/* Alternate flash of pattern1 and pattern2 - never returns */
+void led_flash(int led_pattern1, int led_pattern2);
 
-#endif
+#endif /* _LED_MIOC510_H_ */

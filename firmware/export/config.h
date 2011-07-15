@@ -139,6 +139,7 @@
 #define SDL_PAD            46
 #define MPIO_HD300_PAD     47
 #define SANSA_FUZEPLUS_PAD 48
+#define MIO_C510_PAD       49
 
 /* CONFIG_REMOTE_KEYPAD */
 #define H100_REMOTE   1
@@ -224,6 +225,7 @@
 #define LCD_IPOD6G    40 /* as used by the iPod Nano 2nd Generation */
 #define LCD_FUZEPLUS  41
 #define LCD_SPFD5420A 42 /* rk27xx */
+#define LCD_MIOC510   43
 
 /* LCD_PIXELFORMAT */
 #define HORIZONTAL_PACKING 1
@@ -308,6 +310,7 @@ Lyre prototype 1 */
 #define USBOTG_AS3525   3525 /* AMS AS3525 */
 #define USBOTG_AS3525v2 3535 /* AMS AS3525v2 FIXME : same as S3C6400X */
 #define USBOTG_S3C6400X 6400 /* Samsung S3C6400X, also used in the S5L8701/S5L8702/S5L8720 */
+#define USBOTG_S3C2440  2440
 
 /* Multiple cores */
 #define CPU 0
@@ -464,6 +467,8 @@ Lyre prototype 1 */
 #include "config/nokian900.h"
 #elif defined(PANDORA)
 #include "config/pandora.h"
+#elif defined(MIO_C510)
+#include "config/mioc510.h"
 #else
 /* no known platform */
 #endif

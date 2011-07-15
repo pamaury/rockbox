@@ -262,6 +262,27 @@
 #define CLKDIVN (*(volatile unsigned long *)0x4C000014) /* Clock divider control */
 #define CAMDIVN (*(volatile unsigned long *)0x4C000018) /* Camera clock divider control */
 
+/* CLKCON */
+#define CLKCON_IDLE     (1 << 2)
+#define CLKCON_SLEEP    (1 << 3)
+#define CLKCON_NAND     (1 << 4)
+#define CLKCON_LCDC     (1 << 5)
+#define CLKCON_USBH     (1 << 6)
+#define CLKCON_USBD     (1 << 7)
+#define CLKCON_PWM      (1 << 8)
+#define CLKCON_SDI      (1 << 9)
+#define CLKCON_UART0    (1 << 10)
+#define CLKCON_UART1    (1 << 11)
+#define CLKCON_UART2    (1 << 12)
+#define CLKCON_GPIO     (1 << 13)
+#define CLKCON_RTC      (1 << 14)
+#define CLKCON_ADC      (1 << 15)
+#define CLKCON_I2C      (1 << 16)
+#define CLKCON_I2S      (1 << 17)
+#define CLKCON_SPI      (1 << 18)
+#define CLKCON_CAM      (1 << 19)
+#define CLKCON_AC97     (1 << 20)
+
 /* LCD Controller */
 
 #define LCDCON1 (*(volatile unsigned long *)0x4D000000) /* LCD control 1 */
@@ -751,7 +772,10 @@
 #define GPIO_PULLUP_ENABLE  0
 
 #define S3C2440_GPIO_CONFIG(port,pin,function)  port = ( (port & ~(3<<(pin*2)) ) | (function<<(pin*2)) )
-#define S3C2440_GPIO_PULLUP(port,pin,state)     port = ( (port & ~(1<<pin    ) ) | (state<<pin       ) ) 
+#define S3C2440_GPIO_PULLUP(port,pin,state)     port = ( (port & ~(1<<pin    ) ) | (state<<pin       ) )
+
+#define USB_NUM_ENDPOINTS   5
+#define USB_DEVBSS_ATTR     NOCACHEBSS_ATTR
 
 
 #endif /* __S3C2440_H__ */

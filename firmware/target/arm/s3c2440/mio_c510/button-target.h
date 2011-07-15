@@ -7,7 +7,7 @@
  *                     \/            \/     \/    \/            \/
  * $Id$
  *
- * Copyright © 2009 by Bob Cousins
+ * Copyright (C) 2011 by Amaury Pouly
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -18,45 +18,28 @@
  * KIND, either express or implied.
  *
  ****************************************************************************/
-
-#ifndef _DMA_TARGET_H
-#define _DMA_TARGET_H
+#ifndef _BUTTON_TARGET_H_
+#define _BUTTON_TARGET_H_
 
 #include <stdbool.h>
-#include <stdlib.h>
+#include "config.h"
 
-/* DMA Channel assignments */
-#ifdef GIGABEAT_F
-#define DMA_CHAN_ATA        0
-#define DMA_CHAN_AUDIO_OUT  2
-#elif defined(MINI2440)
-#define DMA_CHAN_SD         0
-#define DMA_CHAN_AUDIO_OUT  2
-#elif defined(MIO_C510)
-#define DMA_CHAN_SD         0
-#define DMA_CHAN_AUDIO_OUT  2
-#else
-#error Unsupported target
-#endif
+void button_init_device(void);
+int button_read_device(void);
 
-struct dma_request 
-{
-    volatile void *source_addr;
-    volatile void *dest_addr;
-    unsigned long count;
-    unsigned long source_control;
-    unsigned long dest_control;
-    unsigned long source_map;
-    unsigned long control;
-    void (*callback)(void);
-};
+/* Main unit's buttons */
+#define BUTTON_POWER        0x00000001
+#define BUTTON_VOL_UP       0x00000002
+#define BUTTON_VOL_DOWN     0x00000004
+#define BUTTON_MENU         0x00000008
+#define BUTTON_RESET        0x00000010
 
-void dma_init(void);
-void dma_enable_channel(int channel, struct dma_request *request);
+#define BUTTON_MAIN (BUTTON_VOL_UP|BUTTON_VOL_DOWN|BUTTON_POWER|BUTTON_MENU|BUTTON_RESET)
 
-inline void dma_disable_channel(int channel);
+#define BUTTON_REMOTE 0
 
-void dma_retain(void);
-void dma_release(void);
+/* Software power-off */
+#define POWEROFF_BUTTON BUTTON_POWER
+#define POWEROFF_COUNT 10
 
-#endif
+#endif /* _BUTTON_TARGET_H_ */

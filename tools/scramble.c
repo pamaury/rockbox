@@ -339,6 +339,8 @@ int main (int argc, char** argv)
             modelnum = 72;
         else if (!strcmp(&argv[1][5], "rk27")) /* rockchip 27xx generic */
             modelnum = 73;
+        else if (!strcmp(&argv[1][5], "m510")) /* Mio C510 */
+            modelnum = 74;
         else {
             fprintf(stderr, "unsupported model: %s\n", &argv[1][5]);
             return 2;

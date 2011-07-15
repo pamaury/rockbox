@@ -132,6 +132,7 @@
 #define VAL_MRSRB6    0x00000030
 #define VAL_MRSRB7    0x00000030
 #define VAL_GPACON    0x00FFFFFF
+#define VAL_MISCCR    0x00613020
 
 /****************************************************************************/
 #elif defined (MINI2440)
@@ -164,6 +165,37 @@
 #define VAL_GPFCON    0x000055AA
 #define VAL_GPGCON    0xAA2A0128
 #define VAL_GPGDAT    0x0000
+#define VAL_MISCCR    0x00613020
+
+#elif defined(MIO_C510)
+
+/* For Mio C510 */
+/* Clock and Power Management setup values */
+/* NB: clock settings must match values in s3c2440/system-target.h */
+#define VAL_CLKDIV    0x5         /* HCLK = FCLK/4, PCLK = HCLK/2 */
+#define VAL_UPLLCON   0x0003C042  /* UCLK = 48 MHz */
+#define VAL_MPLLCON   0x0006E031  /* FCLK = 400 MHz */
+
+
+/* Memory Controller setup */
+#define VAL_BWSCON    0x22111120
+#define VAL_BANKCON0  0x00000700
+#define VAL_BANKCON1  0x00000700
+#define VAL_BANKCON2  0x00000700
+#define VAL_BANKCON3  0x00000700
+#define VAL_BANKCON4  0x00000700
+#define VAL_BANKCON5  0x00000700
+#define VAL_BANKCON6  0x00018005
+#define VAL_BANKCON7  0x00018005
+
+#define VAL_REFRESH   0x009893F2
+#define VAL_BANKSIZE  0x000000B1
+#define VAL_MRSRB6    0x00000030
+#define VAL_MRSRB7    0x00000030
+
+#define VAL_GPACON    0x007FEFFF
+
+#define VAL_MISCCR    0x00013330
 
 #else
 #error Unknown target
@@ -195,6 +227,10 @@ vectors:
  */
 .string "ROCKBOX\0"
 .string "R 03.00\0"
+
+#if defined(MIO_C510)
+#include "romhdr.S"
+#endif
 
 /*
  * Function: word_copy
@@ -392,7 +428,7 @@ skipreset:
     nop
 
     /* Setup MISCCR */
-    ldr     r2, =0x00613020
+    ldr     r2, =VAL_MISCCR
     mov     r1, #0x56000000
     str     r2, [r1, #0x80]
 

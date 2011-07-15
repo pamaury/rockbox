@@ -7,7 +7,7 @@
  *                     \/            \/     \/    \/            \/
  * $Id$
  *
- * Copyright © 2009 by Bob Cousins
+ * Copyright (C) 2011 by Amaury Pouly
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -18,45 +18,22 @@
  * KIND, either express or implied.
  *
  ****************************************************************************/
+#include "button-target.h"
+#include "system.h"
+#include "system-target.h"
+#include "cpu.h"
 
-#ifndef _DMA_TARGET_H
-#define _DMA_TARGET_H
-
-#include <stdbool.h>
-#include <stdlib.h>
-
-/* DMA Channel assignments */
-#ifdef GIGABEAT_F
-#define DMA_CHAN_ATA        0
-#define DMA_CHAN_AUDIO_OUT  2
-#elif defined(MINI2440)
-#define DMA_CHAN_SD         0
-#define DMA_CHAN_AUDIO_OUT  2
-#elif defined(MIO_C510)
-#define DMA_CHAN_SD         0
-#define DMA_CHAN_AUDIO_OUT  2
-#else
-#error Unsupported target
-#endif
-
-struct dma_request 
+void button_init_device(void)
 {
-    volatile void *source_addr;
-    volatile void *dest_addr;
-    unsigned long count;
-    unsigned long source_control;
-    unsigned long dest_control;
-    unsigned long source_map;
-    unsigned long control;
-    void (*callback)(void);
-};
+}
 
-void dma_init(void);
-void dma_enable_channel(int channel, struct dma_request *request);
-
-inline void dma_disable_channel(int channel);
-
-void dma_retain(void);
-void dma_release(void);
-
-#endif
+int button_read_device(void)
+{
+    int res = 0;
+    if(!(GPGDAT & (1 << 5))) res |= BUTTON_VOL_DOWN;
+    if(!(GPGDAT & (1 << 4))) res |= BUTTON_VOL_UP;
+    if(!(GPGDAT & (1 << 3))) res |= BUTTON_MENU;
+    if(!(GPFDAT & (1 << 0))) res |= BUTTON_POWER;
+    if(!(GPFDAT & (1 << 2))) res |= BUTTON_RESET;
+    return res;
+}
