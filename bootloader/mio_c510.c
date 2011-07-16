@@ -59,6 +59,9 @@ void main(void)
 
     backlight_init();
 
+    printf("hello !");
+    system_exception_wait();
+
     ret = storage_init();
     if(ret < 0)
         error(EATA, ret, true);

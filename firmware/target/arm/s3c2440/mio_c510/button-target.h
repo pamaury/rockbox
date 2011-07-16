@@ -34,6 +34,10 @@ int button_read_device(void);
 #define BUTTON_MENU         0x00000008
 #define BUTTON_RESET        0x00000010
 
+/* there are no LEFT/RIGHT buttons, but other parts of the code expect them */
+#define BUTTON_LEFT         0
+#define BUTTON_RIGHT        0
+
 #define BUTTON_MAIN (BUTTON_VOL_UP|BUTTON_VOL_DOWN|BUTTON_POWER|BUTTON_MENU|BUTTON_RESET)
 
 #define BUTTON_REMOTE 0
