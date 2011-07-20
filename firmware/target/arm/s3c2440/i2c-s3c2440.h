@@ -42,5 +42,5 @@
 #define I2C_FLT_ENB         (1 << 2)
 
 void i2c_init(void);
-void i2c_write(int addr, const unsigned char *data, int count);
+int i2c_write(int addr, const unsigned char *data, int count);
 

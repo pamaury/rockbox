@@ -1001,9 +1001,7 @@ target/arm/s3c2440/mio_c510/power-mioc510.c
 target/arm/s3c2440/lcd-s3c2440.c
 target/arm/s3c2440/sd-s3c2440.c
 target/arm/s3c2440/dma-s3c2440.c
-#ifndef BOOTLOADER
 target/arm/s3c2440/i2c-s3c2440.c
-#endif
 #endif /* SIMULATOR */
 #endif /* MIO_C510 */
 
