@@ -460,6 +460,8 @@ static bool qs_is_changed(void* setting, void* defaultval)
 }
 static void qs_set_default(void* setting, void* defaultval)
 {
+    if (defaultval == NULL)
+        *(int*)setting = -1;
     find_setting(defaultval, (int*)setting);
 }
 #endif
@@ -784,10 +786,20 @@ const struct settings_list settings[] = {
 #define BATTERY_CAPACITY_MAX BATTERY_CAPACITY_DEFAULT
 #define BATTERY_CAPACITY_INC 0
 #endif
+#if defined(IPOD_VIDEO) && !defined(SIMULATOR)
+    /* its easier to leave this one un-macro()ed for the time being */
+    { F_T_INT|F_DEF_ISFUNC|F_INT_SETTING, &global_settings.battery_capacity,
+        LANG_BATTERY_CAPACITY, FUNCTYPE(battery_default_capacity),
+        "battery capacity", NULL , {
+            .int_setting = (struct int_setting[]) {
+                { set_battery_capacity, UNIT_MAH, BATTERY_CAPACITY_MIN,
+                  BATTERY_CAPACITY_MAX, BATTERY_CAPACITY_INC, NULL, NULL }}}},
+#else /* IPOD_VIDEO */
     INT_SETTING(0, battery_capacity, LANG_BATTERY_CAPACITY,
                 BATTERY_CAPACITY_DEFAULT, "battery capacity", UNIT_MAH,
                 BATTERY_CAPACITY_MIN, BATTERY_CAPACITY_MAX,
-                BATTERY_CAPACITY_INC, NULL, NULL, NULL),
+                BATTERY_CAPACITY_INC, NULL, NULL, set_battery_capacity),
+#endif /* IPOD_VIDEO */
 #endif
 #if CONFIG_CHARGING
     OFFON_SETTING(NVRAM(1), car_adapter_mode,
@@ -1718,7 +1730,7 @@ const struct settings_list settings[] = {
 #endif
 #ifdef HAVE_QUICKSCREEN
    CUSTOM_SETTING(0, qs_items[QUICKSCREEN_TOP], LANG_TOP_QS_ITEM,
-                  &global_settings.dirfilter, "qs top",
+                  NULL, "qs top",
                   qs_load_from_cfg, qs_write_to_cfg,
                   qs_is_changed, qs_set_default),
    CUSTOM_SETTING(0, qs_items[QUICKSCREEN_LEFT], LANG_LEFT_QS_ITEM,
@@ -1730,7 +1742,7 @@ const struct settings_list settings[] = {
                   qs_load_from_cfg, qs_write_to_cfg,
                   qs_is_changed, qs_set_default),
    CUSTOM_SETTING(0, qs_items[QUICKSCREEN_BOTTOM], LANG_BOTTOM_QS_ITEM,
-                  &global_settings.dirfilter, "qs bottom",
+                  NULL, "qs bottom",
                   qs_load_from_cfg, qs_write_to_cfg,
                   qs_is_changed, qs_set_default),
 #endif

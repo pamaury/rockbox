@@ -38,7 +38,10 @@
 #include "elf.h"
 #include "sb.h"
 
-#define bug(...) do { fprintf(stderr,"ERROR: "__VA_ARGS__); exit(1); } while(0)
+#define _STR(a) #a
+#define STR(a) _STR(a)
+
+#define bug(...) do { fprintf(stderr,"["__FILE__":"STR(__LINE__)"]ERROR: "__VA_ARGS__); exit(1); } while(0)
 #define bugp(a) do { perror("ERROR: "a); exit(1); } while(0)
 
 bool g_debug = false;
@@ -197,13 +200,14 @@ enum cmd_inst_type_t
     CMD_LOAD_AT, /* load binary at */
     CMD_CALL_AT, /* call at address */
     CMD_JUMP_AT, /* jump at address */
+    CMD_MODE, /* change boot mode */
 };
 
 struct cmd_inst_t
 {
     enum cmd_inst_type_t type;
     char *identifier;
-    uint32_t argument; // for jump, call
+    uint32_t argument; // for jump, call, mode
     uint32_t addr; // for 'at'
     struct cmd_inst_t *next;
 };
@@ -217,6 +221,8 @@ struct cmd_section_t
 
 struct cmd_file_t
 {
+    struct sb_version_t product_ver;
+    struct sb_version_t component_ver;
     struct cmd_source_t *source_list;
     struct cmd_section_t *section_list;
 };
@@ -253,18 +259,18 @@ static void __parse_string(char **ptr, char *end, void *user, void (*emit_fn)(vo
         {
             (*ptr)++;
             if(*ptr == end)
-                bug("Unfinished string");
+                bug("Unfinished string\n");
             if(**ptr == '\\') emit_fn(user, '\\');
             else if(**ptr == '\'') emit_fn(user, '\'');
             else if(**ptr == '\"') emit_fn(user, '\"');
-            else bug("Unknown escape sequence \\%c", **ptr);
+            else bug("Unknown escape sequence \\%c\n", **ptr);
             (*ptr)++;
         }
         else
             emit_fn(user, *(*ptr)++);
     }
     if(*ptr == end || **ptr != '"')
-        bug("unfinished string");
+        bug("unfinished string\n");
     (*ptr)++;
 }
 
@@ -315,9 +321,9 @@ static void parse_ascii_number(char **ptr, char *end, struct lexem_t *lexem)
             break;
     }
     if(*ptr == end || **ptr != '\'')
-        bug("Unterminated ascii number literal");
+        bug("Unterminated ascii number literal\n");
     if(len != 1 && len != 2 && len != 4)
-        bug("Invalid ascii number literal length: only 1, 2 or 4 are valid");
+        bug("Invalid ascii number literal length: only 1, 2 or 4 are valid\n");
     /* skip ' */
     (*ptr)++;
     lexem->type = LEX_NUMBER;
@@ -371,11 +377,28 @@ static void next_lexem(char **ptr, char *end, struct lexem_t *lexem)
             (*ptr)++;
             continue;
         }
-        /* skip comments */
+        /* skip C++ style comments */
         if(**ptr == '/' && (*ptr) + 1 != end && (*ptr)[1] == '/')
         {
             while(*ptr != end && **ptr != '\n')
                 (*ptr)++;
+            continue;
+        }
+        /* skip C-style comments */
+        if(**ptr == '/' && (*ptr) + 1 != end && (*ptr)[1] == '*')
+        {
+            (*ptr) += 2;
+            if(*ptr == end)
+                bug("invalid command file: unterminated comment");
+            while(true)
+            {
+                if(**ptr == '*' && (*ptr) + 1 != end && (*ptr)[1] == '/')
+                {
+                    (*ptr) += 2;
+                    break;
+                }
+                (*ptr)++;
+            }
             continue;
         }
         break;
@@ -428,6 +451,50 @@ static struct cmd_source_t *find_source_by_id(struct cmd_file_t *cmd_file, const
     return NULL;
 }
 
+static void generate_default_version(struct sb_version_t *ver)
+{
+    ver->major = 0x999;
+    ver->minor = 0x999;
+    ver->revision = 0x999;
+}
+
+static uint16_t parse_sb_subversion(char *str)
+{
+    int len = strlen(str);
+    uint16_t n = 0;
+    if(len == 0 || len > 4)
+        bug("invalid command file: invalid version string");
+    for(int i = 0; i < len; i++)
+    {
+        if(!isdigit(str[i]))
+            bug("invalid command file: invalid version string");
+        n = n << 4 | (str[i] - '0');
+    }
+    return n;
+}
+
+static void parse_sb_version(struct sb_version_t *ver, char *str)
+{
+    int len = strlen(str);
+    int cnt = 0;
+    int pos[2];
+
+    for(int i = 0; i < len; i++)
+    {
+        if(str[i] != '.')
+            continue;
+        if(cnt == 2)
+            bug("invalid command file: invalid version string");
+        pos[cnt++] = i + 1;
+        str[i] = 0;
+    }
+    if(cnt != 2)
+        bug("invalid command file: invalid version string");
+    ver->major = parse_sb_subversion(str);
+    ver->minor = parse_sb_subversion(str + pos[0]);
+    ver->revision = parse_sb_subversion(str + pos[1]);
+}
+
 static struct cmd_file_t *read_command_file(const char *file)
 {
     int size;
@@ -448,17 +515,57 @@ static struct cmd_file_t *read_command_file(const char *file)
     struct cmd_file_t *cmd_file = xmalloc(sizeof(struct cmd_file_t));
     memset(cmd_file, 0, sizeof(struct cmd_file_t));
 
+    generate_default_version(&cmd_file->product_ver);
+    generate_default_version(&cmd_file->component_ver);
+
     struct lexem_t lexem;
     char *p = buf;
     char *end = buf + size;
     #define next() next_lexem(&p, end, &lexem)
-    /* sources */
+    /* init lexer */
     next();
+    /* options ? */
+    if(lexem.type == LEX_IDENTIFIER && !strcmp(lexem.str, "options"))
+    {
+        next();
+        if(lexem.type != LEX_LBRACE)
+            bug("invalid command file: '{' expected after 'options'\n");
+
+        while(true)
+        {
+            next();
+            if(lexem.type == LEX_RBRACE)
+                break;
+            if(lexem.type != LEX_IDENTIFIER)
+                bug("invalid command file: identifier expected in options\n");
+            char *opt = lexem.str;
+            next();
+            if(lexem.type != LEX_EQUAL)
+                bug("invalid command file: '=' expected after identifier\n");
+            next();
+            if(!strcmp(opt, "productVersion") || !strcmp(opt, "componentVersion"))
+            {
+                if(lexem.type != LEX_STRING)
+                    bug("invalid command file: string expected after '='\n");
+                if(!strcmp(opt, "productVersion"))
+                    parse_sb_version(&cmd_file->product_ver, lexem.str);
+                else
+                    parse_sb_version(&cmd_file->component_ver, lexem.str);
+            }
+            else
+                bug("invalid command file: unknown option '%s'\n", opt);
+            next();
+            if(lexem.type != LEX_SEMICOLON)
+                bug("invalid command file: ';' expected after string\n");
+        }
+        next();
+    }
+    /* sources */
     if(lexem.type != LEX_IDENTIFIER || strcmp(lexem.str, "sources") != 0)
-        bug("invalid command file: 'sources' expected");
+        bug("invalid command file: 'sources' expected\n");
     next();
     if(lexem.type != LEX_LBRACE)
-        bug("invalid command file: '{' expected after 'sources'");
+        bug("invalid command file: '{' expected after 'sources'\n");
 
     while(true)
     {
@@ -469,20 +576,20 @@ static struct cmd_file_t *read_command_file(const char *file)
         memset(src, 0, sizeof(struct cmd_source_t));
         src->next = cmd_file->source_list;
         if(lexem.type != LEX_IDENTIFIER)
-            bug("invalid command file: identifier expected in sources");
+            bug("invalid command file: identifier expected in sources\n");
         src->identifier = lexem.str;
         next();
         if(lexem.type != LEX_EQUAL)
-            bug("invalid command file: '=' expected after identifier");
+            bug("invalid command file: '=' expected after identifier\n");
         next();
         if(lexem.type != LEX_STRING)
-            bug("invalid command file: string expected after '='");
+            bug("invalid command file: string expected after '='\n");
         src->filename = lexem.str;
         next();
         if(lexem.type != LEX_SEMICOLON)
-            bug("invalid command file: ';' expected after string");
+            bug("invalid command file: ';' expected after string\n");
         if(find_source_by_id(cmd_file, src->identifier) != NULL)
-            bug("invalid command file: duplicated source identifier");
+            bug("invalid command file: duplicated source identifier\n");
         /* type filled later */
         src->type = CMD_SRC_UNK;
         cmd_file->source_list = src;
@@ -499,10 +606,10 @@ static struct cmd_file_t *read_command_file(const char *file)
         if(lexem.type == LEX_EOF)
             break;
         if(lexem.type != LEX_IDENTIFIER || strcmp(lexem.str, "section") != 0)
-            bug("invalid command file: 'section' expected");
+            bug("invalid command file: 'section' expected\n");
         next();
         if(lexem.type != LEX_LPAREN)
-            bug("invalid command file: '(' expected after 'section'");
+            bug("invalid command file: '(' expected after 'section'\n");
         next();
         /* can be a number or a 4 character long string */
         if(lexem.type == LEX_NUMBER)
@@ -510,14 +617,14 @@ static struct cmd_file_t *read_command_file(const char *file)
             sec->identifier = lexem.num;
         }
         else
-            bug("invalid command file: number expected as section identifier");
+            bug("invalid command file: number expected as section identifier\n");
         
         next();
         if(lexem.type != LEX_RPAREN)
-            bug("invalid command file: ')' expected after section identifier");
+            bug("invalid command file: ')' expected after section identifier\n");
         next();
         if(lexem.type != LEX_LBRACE)
-            bug("invalid command file: '{' expected after section directive");
+            bug("invalid command file: '{' expected after section directive\n");
         /* commands */
         while(true)
         {
@@ -527,24 +634,26 @@ static struct cmd_file_t *read_command_file(const char *file)
             if(lexem.type == LEX_RBRACE)
                 break;
             if(lexem.type != LEX_IDENTIFIER)
-                bug("invalid command file: instruction expected in section");
+                bug("invalid command file: instruction expected in section\n");
             if(strcmp(lexem.str, "load") == 0)
                 inst->type = CMD_LOAD;
             else if(strcmp(lexem.str, "call") == 0)
                 inst->type = CMD_CALL;
             else if(strcmp(lexem.str, "jump") == 0)
                 inst->type = CMD_JUMP;
+            else if(strcmp(lexem.str, "mode") == 0)
+                inst->type = CMD_MODE;
             else
-                bug("invalid command file: instruction expected in section");
+                bug("invalid command file: instruction expected in section\n");
             next();
 
             if(inst->type == CMD_LOAD)
             {
                 if(lexem.type != LEX_IDENTIFIER)
-                    bug("invalid command file: identifier expected after instruction");
+                    bug("invalid command file: identifier expected after instruction\n");
                 inst->identifier = lexem.str;
                 if(find_source_by_id(cmd_file, inst->identifier) == NULL)
-                    bug("invalid command file: undefined reference to source '%s'", inst->identifier);
+                    bug("invalid command file: undefined reference to source '%s'\n", inst->identifier);
                 next();
                 if(lexem.type == LEX_RANGLE)
                 {
@@ -552,12 +661,12 @@ static struct cmd_file_t *read_command_file(const char *file)
                     inst->type = CMD_LOAD_AT;
                     next();
                     if(lexem.type != LEX_NUMBER)
-                        bug("invalid command file: number expected for loading address");
+                        bug("invalid command file: number expected for loading address\n");
                     inst->addr = lexem.num;
                     next();
                 }
                 if(lexem.type != LEX_SEMICOLON)
-                    bug("invalid command file: expected ';' after command");
+                    bug("invalid command file: expected ';' after command\n");
             }
             else if(inst->type == CMD_CALL || inst->type == CMD_JUMP)
             {
@@ -565,7 +674,7 @@ static struct cmd_file_t *read_command_file(const char *file)
                 {
                     inst->identifier = lexem.str;
                     if(find_source_by_id(cmd_file, inst->identifier) == NULL)
-                        bug("invalid command file: undefined reference to source '%s'", inst->identifier);
+                        bug("invalid command file: undefined reference to source '%s'\n", inst->identifier);
                     next();
                 }
                 else if(lexem.type == LEX_NUMBER)
@@ -575,24 +684,33 @@ static struct cmd_file_t *read_command_file(const char *file)
                     next();
                 }
                 else
-                    bug("invalid command file: identifier or number expected after jump/load");
+                    bug("invalid command file: identifier or number expected after jump/load\n");
                 
                 if(lexem.type == LEX_LPAREN)
                 {
                     next();
                     if(lexem.type != LEX_NUMBER)
-                        bug("invalid command file: expected numeral expression after (");
+                        bug("invalid command file: expected numeral expression after (\n");
                     inst->argument = lexem.num;
                     next();
                     if(lexem.type != LEX_RPAREN)
-                        bug("invalid command file: expected closing brace");
+                        bug("invalid command file: expected closing brace\n");
                     next();
                 }
                 if(lexem.type != LEX_SEMICOLON)
-                    bug("invalid command file: expected ';' after command");
+                    bug("invalid command file: expected ';' after command\n");
+            }
+            else if(inst->type == CMD_MODE)
+            {
+                if(lexem.type != LEX_NUMBER)
+                    bug("invalid command file: number expected after 'mode'\n");
+                inst->argument = lexem.num;
+                next();
+                if(lexem.type != LEX_SEMICOLON)
+                    bug("invalid command file: expected ';' after command\n");
             }
             else
-                bug("die");
+                bug("die\n");
             if(end_list == NULL)
             {
                 sec->inst_list = inst;
@@ -654,6 +772,8 @@ struct sb_file_t
 {
     int nr_sections;
     struct sb_section_t *sections;
+    struct sb_version_t product_ver;
+    struct sb_version_t component_ver;
     /* for production use */
     uint32_t image_size; /* in blocks */
 };
@@ -685,7 +805,7 @@ static void load_elf_by_id(struct cmd_file_t *cmd_file, const char *id)
     if(src->type == CMD_SRC_ELF && src->loaded)
         return;
     if(src->type != CMD_SRC_UNK)
-        bug("source '%s' seen both as elf and binary file", id);
+        bug("source '%s' seen both as elf and binary file\n", id);
     src->type = CMD_SRC_ELF;
     int fd = open(src->filename, O_RDONLY);
     if(fd < 0)
@@ -708,7 +828,7 @@ static void load_bin_by_id(struct cmd_file_t *cmd_file, const char *id)
     if(src->type == CMD_SRC_BIN && src->loaded)
         return;
     if(src->type != CMD_SRC_UNK)
-        bug("source '%s' seen both as elf and binary file", id);
+        bug("source '%s' seen both as elf and binary file\n", id);
     src->type = CMD_SRC_BIN;
     int fd = open(src->filename, O_RDONLY);
     if(fd < 0)
@@ -727,6 +847,9 @@ static struct sb_file_t *apply_cmd_file(struct cmd_file_t *cmd_file)
 {
     struct sb_file_t *sb = xmalloc(sizeof(struct sb_file_t));
     memset(sb, 0, sizeof(struct sb_file_t));
+
+    sb->product_ver = cmd_file->product_ver;
+    sb->component_ver = cmd_file->component_ver;
     
     if(g_debug)
         printf("Applying command file...\n");
@@ -773,8 +896,12 @@ static struct sb_file_t *apply_cmd_file(struct cmd_file_t *cmd_file)
                 load_bin_by_id(cmd_file, cinst->identifier);
                 sec->nr_insts++;
             }
+            else if(cinst->type == CMD_MODE)
+            {
+                sec->nr_insts++;
+            }
             else
-                bug("die");
+                bug("die\n");
             
             cinst = cinst->next;
         }
@@ -830,8 +957,13 @@ static struct sb_file_t *apply_cmd_file(struct cmd_file_t *cmd_file)
                 sec->insts[idx].data = bin->data;
                 sec->insts[idx++].size = bin->size;
             }
+            else if(cinst->type == CMD_MODE)
+            {
+                sec->insts[idx].inst = SB_INST_MODE;
+                sec->insts[idx++].addr = cinst->argument;
+            }
             else
-                bug("die");
+                bug("die\n");
             
             cinst = cinst->next;
         }
@@ -909,6 +1041,15 @@ static void compute_sb_offsets(struct sb_file_t *sb)
                 sb->image_size += (inst->size + inst->padding_size) / BLOCK_SIZE;
                 sec->sec_size += (inst->size + inst->padding_size) / BLOCK_SIZE;
             }
+            else if(inst->inst == SB_INST_MODE)
+            {
+                if(g_debug)
+                    printf("MODE | mod=0x%08x", inst->addr);
+                sb->image_size += sizeof(struct sb_instruction_mode_t) / BLOCK_SIZE;
+                sec->sec_size += sizeof(struct sb_instruction_mode_t) / BLOCK_SIZE;
+            }
+            else
+                bug("die on inst %d\n", inst->inst);
         }
     }
     /* final signature */
@@ -922,14 +1063,16 @@ static uint64_t generate_timestamp()
     return (uint64_t)t * 1000000L;
 }
 
-void generate_version(struct sb_version_t *ver)
+static uint16_t swap16(uint16_t t)
 {
-    ver->major = 0x999;
-    ver->pad0 = 0;
-    ver->minor = 0x999;
-    ver->pad1 = 0;
-    ver->revision = 0x999;
-    ver->pad2 = 0;
+    return (t << 8) | (t >> 8);
+}
+
+static void fix_version(struct sb_version_t *ver)
+{
+    ver->major = swap16(ver->major);
+    ver->minor = swap16(ver->minor);
+    ver->revision = swap16(ver->revision);
 }
 
 static void produce_sb_header(struct sb_file_t *sb, struct sb_header_t *sb_hdr)
@@ -956,8 +1099,10 @@ static void produce_sb_header(struct sb_file_t *sb, struct sb_header_t *sb_hdr)
     generate_random_data(sb_hdr->rand_pad0, sizeof(sb_hdr->rand_pad0));
     generate_random_data(sb_hdr->rand_pad1, sizeof(sb_hdr->rand_pad1));
     sb_hdr->timestamp = generate_timestamp();
-    generate_version(&sb_hdr->product_ver);
-    generate_version(&sb_hdr->component_ver);
+    sb_hdr->product_ver = sb->product_ver;
+    fix_version(&sb_hdr->product_ver);
+    sb_hdr->component_ver = sb->component_ver;
+    fix_version(&sb_hdr->component_ver);
     sb_hdr->drive_tag = 0;
 
     sha_1_init(&sha_1_params);
@@ -999,26 +1144,31 @@ static void produce_section_tag_cmd(struct sb_section_t *sec,
 void produce_sb_instruction(struct sb_inst_t *inst,
     struct sb_instruction_common_t *cmd)
 {
-    cmd->hdr.flags = 0;
+    memset(cmd, 0, sizeof(struct sb_instruction_common_t));
     cmd->hdr.opcode = inst->inst;
-    cmd->addr = inst->addr;
-    cmd->len = inst->size;
     switch(inst->inst)
     {
         case SB_INST_CALL:
         case SB_INST_JUMP:
-            cmd->len = 0;
+            cmd->addr = inst->addr;
             cmd->data = inst->argument;
             break;
         case SB_INST_FILL:
+            cmd->addr = inst->addr;
+            cmd->len = inst->size;
             cmd->data = inst->pattern;
             break;
         case SB_INST_LOAD:
+            cmd->addr = inst->addr;
+            cmd->len = inst->size;
             cmd->data = crc_continue(crc(inst->data, inst->size),
                 inst->padding, inst->padding_size);
             break;
-        default:
+        case SB_INST_MODE:
+            cmd->data = inst->addr;
             break;
+        default:
+            bug("die\n");
     }
     cmd->hdr.checksum = instruction_checksum(&cmd->hdr);
 }

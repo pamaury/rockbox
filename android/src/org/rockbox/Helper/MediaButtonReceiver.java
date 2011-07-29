@@ -29,7 +29,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.media.AudioManager;
-import android.util.Log;
 import android.view.KeyEvent;
 
 public class MediaButtonReceiver
@@ -59,6 +58,7 @@ public class MediaButtonReceiver
             /* Throwable includes Exception and the expected
              * NoClassDefFoundError */
             api = new OldApi(c);
+            Logger.i("MediaButtonReceiver: Falling back to compatibility API");
         }
     }
 
@@ -69,7 +69,7 @@ public class MediaButtonReceiver
     
     public void unregister()
     {
-        api.register();
+        api.unregister();
     }
 
     /* helper class for the manifest */
@@ -144,7 +144,7 @@ public class MediaButtonReceiver
 
         public void onAudioFocusChange(int focusChange)
         {
-            Log.d("Rockbox", "Audio focus" + ((focusChange>0)?"gained":"lost")+
+            Logger.d("Audio focus" + ((focusChange>0)?"gained":"lost")+
                                          ": "+ focusChange);
             if (running)
             {   /* Play nice and stop for the the other app */

@@ -319,4 +319,6 @@ keymaps/keymap-android.c
 keymaps/keymap-sdl.c
 #elif CONFIG_KEYPAD == MIO_C510_PAD
 keymaps/keymap-mioc510.c
+#elif CONFIG_KEYPAD == SANSA_FUZEPLUS_PAD
+keymaps/keymap-fuzeplus.c
 #endif

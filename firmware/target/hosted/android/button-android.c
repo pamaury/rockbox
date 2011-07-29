@@ -34,7 +34,6 @@ extern JNIEnv *env_ptr;
 extern jclass  RockboxService_class;
 extern jobject RockboxService_instance;
 
-static jfieldID _headphone_state;
 static int last_y, last_x;
 static int last_btns;
 
@@ -114,20 +113,14 @@ Java_org_rockbox_RockboxFramebuffer_buttonHandler(JNIEnv*env, jclass class,
 
 void button_init_device(void)
 {
-    jmethodID initHeadphoneMonitor = (*env_ptr)->GetMethodID(env_ptr,
-                                                           RockboxService_class,
-                                                           "initHeadphoneMonitor",
-                                                           "()V");
-    /* start the monitor */
-    (*env_ptr)->CallVoidMethod(env_ptr,
-                               RockboxService_instance,
-                               initHeadphoneMonitor);
-
-    /* cache the headphone state field id */
-    _headphone_state = (*env_ptr)->GetFieldID(env_ptr,
-                                            RockboxService_class,
-                                            "headphone_state",
-                                            "I");
+    JNIEnv e = *env_ptr;
+    jclass class = e->FindClass(env_ptr, "org/rockbox/monitors/HeadphoneMonitor");
+    jmethodID constructor =     e->GetMethodID(env_ptr, class,
+                                                "<init>",
+                                                "(Landroid/content/Context;)V");
+    e->NewObject(env_ptr, class,         
+                        constructor,
+                        RockboxService_instance);
 }
 
 int button_read_device(int *data)
@@ -146,12 +139,23 @@ int button_read_device(int *data)
     return btn;
 }
 
-
-/* Tell if anything is in the jack. */
+static int hp_state;
+JNIEXPORT void JNICALL
+Java_org_rockbox_monitors_HeadphoneMonitor_postHpStateChanged(JNIEnv *env,
+                                                            jobject this,
+                                                            jint state)
+{
+    (void)env; (void)this;
+    hp_state = state;
+}
+/* Tell if anything is in the jack.
+ * 
+ * since this is called from the tick task, which isn't attached to
+ * the dalvik VM, it's not permitted to make JNI calls (therefore
+ * we need the above callback) */
 bool headphones_inserted(void)
 {
-    int state = (*env_ptr)->GetIntField(env_ptr, RockboxService_instance, _headphone_state);
     /* 0 is disconnected, 1 and 2 are connected */
-    return (state == 0) ? false : true;
+    return (hp_state == 0) ? false : true;
 }
 

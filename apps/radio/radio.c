@@ -154,19 +154,6 @@ int radio_current_frequency(void)
     return curr_freq;
 }
 
-/* Function to manipulate all yesno dialogues.
-   This function needs the output text as an argument. */
-bool yesno_pop(const char* text)
-{
-    int i;
-    const char *lines[]={text};
-    const struct text_message message={lines, 1};
-    bool ret = (gui_syncyesno_run(&message,NULL,NULL)== YESNO_YES);
-    FOR_NB_SCREENS(i)
-        screens[i].clear_viewport();
-    return ret;
-}
-
 void radio_init(void)
 {
     tuner_init();
@@ -502,7 +489,7 @@ void radio_screen(void)
                     done = true;
                     if(presets_have_changed())
                     {
-                        if(yesno_pop(ID2P(LANG_FM_SAVE_CHANGES)))
+                        if(yesno_pop(ID2P(LANG_SAVE_CHANGES)))
                         {
                             presets_save();
                         }
@@ -552,7 +539,7 @@ void radio_screen(void)
                 done = true;
                 if(presets_have_changed())
                 {
-                    if(yesno_pop(ID2P(LANG_FM_SAVE_CHANGES)))
+                    if(yesno_pop(ID2P(LANG_SAVE_CHANGES)))
                     {
                         presets_save();
                     }
@@ -718,7 +705,7 @@ void radio_screen(void)
                     done = true;
                     if(presets_have_changed())
                     {
-                        if(yesno_pop(ID2P(LANG_FM_SAVE_CHANGES)))
+                        if(yesno_pop(ID2P(LANG_SAVE_CHANGES)))
                         {
                             radio_save_presets();
                         }

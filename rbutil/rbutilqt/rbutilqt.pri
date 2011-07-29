@@ -31,7 +31,6 @@ SOURCES += \
  ../ipodpatcher/ipodpatcher.c \
  ../sansapatcher/sansapatcher.c \
  ../chinachippatcher/chinachip.c \
- browsedirtree.cpp \
  themesinstallwindow.cpp \
  base/uninstall.cpp \
  uninstallwindow.cpp \
@@ -74,6 +73,7 @@ SOURCES += \
  quazip/zip.c \
  quazip/ioapi.c \
  base/ziputil.cpp \
+ comboboxviewdelegate.cpp \
 
 
 HEADERS += \
@@ -98,7 +98,6 @@ HEADERS += \
  irivertools/h100sums.h \
  irivertools/h120sums.h \
  irivertools/h300sums.h \
- browsedirtree.h \
  themesinstallwindow.h \
  base/uninstall.h \
  uninstallwindow.h \
@@ -143,6 +142,7 @@ HEADERS += \
  quazip/unzip.h \
  quazip/zip.h \
  base/ziputil.h \
+ comboboxviewdelegate.h \
 
 
 FORMS += \
@@ -151,7 +151,6 @@ FORMS += \
  installwindowfrm.ui \
  progressloggerfrm.ui \
  configurefrm.ui \
- browsedirtreefrm.ui \
  installtalkfrm.ui \
  themesinstallfrm.ui \
  uninstallfrm.ui \

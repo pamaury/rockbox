@@ -224,7 +224,15 @@ static void extract_section(int data_sec, char name[5], byte *buf, int size, con
             color(GREY);
             printf("[Bad checksum]");
         }
-        
+        if(hdr->flags != 0)
+        {
+            color(GREY);
+            printf("[");
+            color(BLUE);
+            printf("f=%x", hdr->flags);
+            color(GREY);
+            printf("] ");
+        }
         if(hdr->opcode == SB_INST_LOAD)
         {
             struct sb_instruction_load_t *load = (struct sb_instruction_load_t *)&buf[pos];
@@ -331,7 +339,7 @@ static void extract_section(int data_sec, char name[5], byte *buf, int size, con
     elf_release(&elf);
 }
 
-void fill_section_name(char name[5], uint32_t identifier)
+static void fill_section_name(char name[5], uint32_t identifier)
 {
     name[0] = (identifier >> 24) & 0xff;
     name[1] = (identifier >> 16) & 0xff;
@@ -341,6 +349,18 @@ void fill_section_name(char name[5], uint32_t identifier)
         if(!isprint(name[i]))
             name[i] = '_';
     name[4] = 0;
+}
+
+static uint16_t swap16(uint16_t t)
+{
+    return (t << 8) | (t >> 8);
+}
+
+static void fix_version(struct sb_version_t *ver)
+{
+    ver->major = swap16(ver->major);
+    ver->minor = swap16(ver->minor);
+    ver->revision = swap16(ver->revision);
 }
 
 static void extract(unsigned long filesize)
@@ -425,16 +445,19 @@ static void extract(unsigned long filesize)
     color(YELLOW);
     printf("%s", asctime(time));
 
+    struct sb_version_t product_ver = sb_header->product_ver;
+    fix_version(&product_ver);
+    struct sb_version_t component_ver = sb_header->component_ver;
+    fix_version(&component_ver);
+
     color(GREEN);
     printf("  Product version   = ");
     color(YELLOW);
-    printf("%X.%X.%X\n", sb_header->product_ver.major,
-         sb_header->product_ver.minor,  sb_header->product_ver.revision);
+    printf("%X.%X.%X\n", product_ver.major, product_ver.minor, product_ver.revision);
     color(GREEN);
     printf("  Component version = ");
     color(YELLOW);
-    printf("%X.%X.%X\n", sb_header->component_ver.major,
-         sb_header->component_ver.minor,  sb_header->component_ver.revision);
+    printf("%X.%X.%X\n", component_ver.major, component_ver.minor, component_ver.revision);
         
     color(GREEN);
     printf("  Drive tag = ");
@@ -612,8 +635,16 @@ static void extract(unsigned long filesize)
                 printf("cnt=0x%08x", tag->len);
                 color(OFF);printf(" | ");
                 color(YELLOW);
-                printf("flg=0x%08x\n", tag->flags);
+                printf("flg=0x%08x", tag->flags);
                 color(OFF);
+                if(tag->hdr.flags & SB_INST_LAST_TAG)
+                {
+                    printf(" | ");
+                    color(RED);
+                    printf(" Last section");
+                    color(OFF);
+                }
+                printf("\n");
                 offset += sizeof(struct sb_instruction_tag_t);
 
                 char name[5];

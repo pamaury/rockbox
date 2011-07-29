@@ -425,7 +425,7 @@
 </phrase>
 <phrase>
   id: LANG_PLAYLISTS
-  desc: in the main menu and file view setting
+  desc: in the file view setting
   user: core
   <source>
     *: "Playlists"
@@ -5392,19 +5392,19 @@
 </phrase>
 <phrase>
   id: LANG_FM_SAVE_CHANGES
-  desc: When you try to exit radio to confirm save
+  desc: deprecated
   user: core
   <source>
     *: none
-    radio: "Save Changes?"
+    radio: ""
   </source>
   <dest>
     *: none
-    radio: "Zapisać zmiany?"
+    radio: ""
   </dest>
   <voice>
     *: none
-    radio: "Zapisać zmiany?"
+    radio: ""
   </voice>
 </phrase>
 <phrase>
@@ -6470,16 +6470,16 @@
 </phrase>
 <phrase>
   id: LANG_CATALOG
-  desc: in onplay menu
+  desc: in main menu and onplay menu
   user: core
   <source>
-    *: "Playlist Catalog"
+    *: "Playlist Catalogue"
   </source>
   <dest>
-    *: "Katalog list"
+    *: "Katalog List odtwarzania"
   </dest>
   <voice>
-    *: "Katalog list odtwarzania"
+    *: "Katalog List odtwarzania"
   </voice>
 </phrase>
 <phrase>
@@ -6967,10 +6967,10 @@
 </phrase>
 <phrase>
   id: LANG_CATALOG_VIEW
-  desc: in onplay playlist catalog submenu
+  desc: in onplay playlist catalogue submenu
   user: core
   <source>
-    *: "View Catalog"
+    *: "View Catalogue"
   </source>
   <dest>
     *: "Zobacz katalog"
@@ -6981,7 +6981,7 @@
 </phrase>
 <phrase>
   id: LANG_CATALOG_ADD_TO
-  desc: in onplay playlist catalog submenu
+  desc: in onplay playlist catalogue submenu
   user: core
   <source>
     *: "Add to Playlist"
@@ -6995,7 +6995,7 @@
 </phrase>
 <phrase>
   id: LANG_CATALOG_ADD_TO_NEW
-  desc: in onplay playlist catalog submenu
+  desc: in onplay playlist catalogue submenu
   user: core
   <source>
     *: "Add to New Playlist"
@@ -7009,7 +7009,7 @@
 </phrase>
 <phrase>
   id: LANG_CATALOG_NO_DIRECTORY
-  desc: error message when playlist catalog directory doesn't exist
+  desc: error message when playlist catalogue directory doesn't exist
   user: core
   <source>
     *: "%s doesn't exist"
@@ -7023,7 +7023,7 @@
 </phrase>
 <phrase>
   id: LANG_CATALOG_NO_PLAYLISTS
-  desc: error message when no playlists for playlist catalog
+  desc: error message when no playlists for playlist catalogue
   user: core
   <source>
     *: "No Playlists"
@@ -12679,5 +12679,61 @@
   </dest>
   <voice>
     *: "Cofaj po Wstrzymaniu"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_CURRENT_PLAYLIST
+  desc: Used when you need to say playlist, also voiced
+  user: core
+  <source>
+    *: "Current Playlist"
+  </source>
+  <dest>
+    *: "Obecna Lista odtwarzania"
+  </dest>
+  <voice>
+    *: "Obecna Lista odtwarzania"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_SET_AS_PLAYLISTCAT_DIR
+  desc: used in the onplay menu to set a playlist catalog dir
+  user: core
+  <source>
+    *: "Set As Playlist Catalog Directory"
+  </source>
+  <dest>
+    *: "Ustaw Jako Ścieżkę Katalogu List odtwarzania"
+  </dest>
+  <voice>
+    *: "Ustaw Jako Ścieżkę Katalogu List odtwarzania"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_SAVE_CHANGES
+  desc: When you try to exit screens to confirm save
+  user: core
+  <source>
+    *: "Save Changes?"
+  </source>
+  <dest>
+    *: "Zachować Zmiany?"
+  </dest>
+  <voice>
+    *: "Zachować Zmiany?"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_RESET_PLAYLISTCAT_DIR
+  desc:
+  user: core
+  <source>
+    *: "Reset Playlist Catalog Directory"
+  </source>
+  <dest>
+    *: "Usuń Ścieżkę Katalogu List odtwarzania"
+  </dest>
+  <voice>
+    *: "Usuń Ścieżkę Katalogu List odtwarzania"
   </voice>
 </phrase>

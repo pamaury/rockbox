@@ -124,13 +124,13 @@ bool dbg_ports(void)
 #ifdef ADC_ACCESSORY
         lcd_putsf(0, line++, "ACCESSORY: %d", adc_read(ADC_ACCESSORY));
 #endif
-#ifdef IPOD_VIDEO
+#if defined(IPOD_VIDEO) || defined(IPOD_NANO)
         lcd_putsf(0, line++, "4066_ISTAT: %d", adc_read(ADC_4066_ISTAT));
 #endif
 
 #if defined(IPOD_ACCESSORY_PROTOCOL)
         const unsigned char *serbuf = iap_get_serbuf();
-        lcd_putsf(0, line++, "IAP PACKET: %02x %02x %02x %02x %02x %02x %02x %02x", 
+        lcd_putsf(0, line++, "IAP: %02x %02x %02x %02x %02x %02x %02x %02x", 
          serbuf[0], serbuf[1], serbuf[2], serbuf[3], serbuf[4], serbuf[5],
          serbuf[6], serbuf[7]);
 #endif
@@ -212,7 +212,7 @@ bool dbg_hw_info(void)
     lcd_putsf(0, line++, "HW rev: 0x%08lx", IPOD_HW_REVISION);
 #endif
 
-#ifdef IPOD_COLOR
+#if defined(IPOD_COLOR) || defined(IPOD_NANO)
     extern int lcd_type; /* Defined in lcd-colornano.c */
 
     lcd_putsf(0, line++, "LCD type: %d", lcd_type);
