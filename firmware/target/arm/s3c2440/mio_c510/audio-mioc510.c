@@ -7,7 +7,7 @@
  *                     \/            \/     \/    \/            \/
  * $Id$
  *
- * Copyright (c) 2011 by Amaury Pouly
+ * Copyright (C) 2011 by Amaury Pouly
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -19,32 +19,14 @@
  *
  ****************************************************************************/
 #include "config.h"
-#include "cpu.h"
-#include <stdbool.h>
-#include <stdio.h>
-#include "kernel.h"
 #include "system.h"
-#include "power.h"
-#include "led-mioc510.h"
+#include "audiohw.h"
+#include "audio.h"
 
-unsigned int power_input_status(void)
+void audio_set_output_source(int source)
 {
-    return charging_state() ? POWER_INPUT_USB_CHARGER : POWER_INPUT_NONE;
 }
 
-bool charging_state(void)
+void audio_input_mux(int source, unsigned int flags)
 {
-    return !!(GPGDAT & (1 << 9));
-}
-
-void power_init(void)
-{
-    /* Nothing to do */
-}
-
-void power_off(void)
-{
-    /* we don't have any power control, user must do it */
-    //led_flash (LED_NONE, LED_ALL);
-    while(1);
 }

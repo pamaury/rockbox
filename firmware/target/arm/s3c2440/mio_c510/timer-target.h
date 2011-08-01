@@ -7,7 +7,7 @@
  *                     \/            \/     \/    \/            \/
  * $Id$
  *
- * Copyright (c) 2011 by Amaury Pouly
+ * Copyright (C) 2011 by Amaury Pouly
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -18,33 +18,9 @@
  * KIND, either express or implied.
  *
  ****************************************************************************/
-#include "config.h"
-#include "cpu.h"
-#include <stdbool.h>
-#include <stdio.h>
-#include "kernel.h"
-#include "system.h"
-#include "power.h"
-#include "led-mioc510.h"
+#ifndef __TIMER_TARGET__
+#define __TIMER_TARGET__
 
-unsigned int power_input_status(void)
-{
-    return charging_state() ? POWER_INPUT_USB_CHARGER : POWER_INPUT_NONE;
-}
+#define TIMER_NR    1
 
-bool charging_state(void)
-{
-    return !!(GPGDAT & (1 << 9));
-}
-
-void power_init(void)
-{
-    /* Nothing to do */
-}
-
-void power_off(void)
-{
-    /* we don't have any power control, user must do it */
-    //led_flash (LED_NONE, LED_ALL);
-    while(1);
-}
+#endif /* __TIMER_TARGET__ */

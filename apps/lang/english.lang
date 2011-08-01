@@ -100,6 +100,7 @@
 # GoGear SA9200     gogearsa9200
 # Samsung
 # YH820/YH920/YH925 samsungyh*
+# Mio C510          mioc510
 
 <phrase>
   id: LANG_SET_BOOL_YES
@@ -12346,15 +12347,15 @@
   user: core
   <source>
     *: none
-    gigabeats: "Tone Controls"
+    gigabeats, mioc510: "Tone Controls"
   </source>
   <dest>
     *: none
-    gigabeats: "Tone Controls"
+    gigabeats, mioc510: "Tone Controls"
   </dest>
   <voice>
     *: none
-    gigabeats: "Tone Controls"
+    gigabeats, mioc510: "Tone Controls"
   </voice>
 </phrase>
 <phrase>
@@ -12363,15 +12364,15 @@
   user: core
   <source>
     *: none
-    gigabeats: "Advanced Tone Control Settings"
+    gigabeats, mioc510: "Advanced Tone Control Settings"
   </source>
   <dest>
     *: none
-    gigabeats: "Advanced Tone Control Settings"
+    gigabeats, mioc510: "Advanced Tone Control Settings"
   </dest>
   <voice>
     *: none
-    gigabeats: "Advanced Tone Control Settings"
+    gigabeats, mioc510: "Advanced Tone Control Settings"
   </voice>
 </phrase>
 <phrase>
@@ -12380,15 +12381,15 @@
   user: core
   <source>
     *: none
-    gigabeats: "Band %d Gain"
+    gigabeats, mioc510: "Band %d Gain"
   </source>
   <dest>
     *: none
-    gigabeats: "Band %d Gain"
+    gigabeats, mioc510: "Band %d Gain"
   </dest>
   <voice>
     *: none
-    gigabeats: "Band Gain"
+    gigabeats, mioc510: "Band Gain"
   </voice>
 </phrase>
 <phrase>
@@ -12397,15 +12398,15 @@
   user: core
   <source>
     *: none
-    gigabeats: "Band %d Frequency"
+    gigabeats, mioc510: "Band %d Frequency"
   </source>
   <dest>
     *: none
-    gigabeats: "Band %d Frequency"
+    gigabeats, mioc510: "Band %d Frequency"
   </dest>
   <voice>
     *: none
-    gigabeats: "Band Frequency"
+    gigabeats, mioc510: "Band Frequency"
   </voice>
 </phrase>
 <phrase>
@@ -12414,15 +12415,15 @@
   user: core
   <source>
     *: none
-    gigabeats: "Band %d Width"
+    gigabeats, mioc510: "Band %d Width"
   </source>
   <dest>
     *: none
-    gigabeats: "Band %d Width"
+    gigabeats, mioc510: "Band %d Width"
   </dest>
   <voice>
     *: none
-    gigabeats: "Band Width"
+    gigabeats, mioc510: "Band Width"
   </voice>
 </phrase>
 <phrase>
@@ -12431,15 +12432,15 @@
   user: core
   <source>
     *: none
-    gigabeats: "Narrow"
+    gigabeats, mioc510: "Narrow"
   </source>
   <dest>
     *: none
-    gigabeats: "Narrow"
+    gigabeats, mioc510: "Narrow"
   </dest>
   <voice>
     *: none
-    gigabeats: "Narrow"
+    gigabeats, mioc510: "Narrow"
   </voice>
 </phrase>
 <phrase>
@@ -12448,15 +12449,15 @@
   user: core
   <source>
     *: none
-    gigabeats: "Wide"
+    gigabeats, mioc510: "Wide"
   </source>
   <dest>
     *: none
-    gigabeats: "Wide"
+    gigabeats, mioc510: "Wide"
   </dest>
   <voice>
     *: none
-    gigabeats: "Wide"
+    gigabeats, mioc510: "Wide"
   </voice>
 </phrase>
 <phrase>
@@ -12465,15 +12466,15 @@
   user: core
   <source>
     *: none
-    gigabeats,mpiohd200,mpiohd300: "3-D Enhancement"
+    gigabeats,mpiohd200,mpiohd300,mioc510: "3-D Enhancement"
   </source>
   <dest>
     *: none
-    gigabeats,mpiohd200,mpiohd300: "3-D Enhancement"
+    gigabeats,mpiohd200,mpiohd300,mioc510: "3-D Enhancement"
   </dest>
   <voice>
     *: none
-    gigabeats,mpiohd200,mpiohd300: "3-D Enhancement"
+    gigabeats,mpiohd200,mpiohd300,mioc510: "3-D Enhancement"
   </voice>
 </phrase>
 <phrase>

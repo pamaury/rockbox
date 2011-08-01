@@ -21,4 +21,10 @@
 #ifndef _ADC_TARGET_H_
 #define _ADC_TARGET_H_
 
+#define NUM_ADC_CHANNELS    1
+
+#define ADC_BATTERY     0
+
+#define ADC_READ_ERROR 0xFFFF
+
 #endif

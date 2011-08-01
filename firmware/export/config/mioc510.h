@@ -24,7 +24,7 @@
 
 /* Define bitmask of input sources - recordable bitmask can be defined
    explicitly if different */
-#define INPUT_SRC_CAPS (SRC_CAP_MIC | SRC_CAP_FMRADIO)
+#define INPUT_SRC_CAPS SRC_CAP_MIC
 
 /* define this if you have a bitmap LCD display */
 #define HAVE_LCD_BITMAP
@@ -40,9 +40,6 @@
 /* define this to enable JPEG decoding */
 #define HAVE_JPEG
 
-/* define this if you have a light associated with the buttons */
-#define HAVE_BUTTON_LIGHT
-
 /* define this if you have access to the quickscreen */
 #define HAVE_QUICKSCREEN
 
@@ -54,6 +51,9 @@
 
 /* define this if you have LCD enable function */
 #define HAVE_LCD_ENABLE
+
+/* Mio C510 uses WM8976 but the WM8978 is just an upgrade */
+#define HAVE_WM8978
 
 /* Define this if your LCD can be put to sleep. HAVE_LCD_ENABLE
    should be defined as well.
@@ -88,13 +88,6 @@
 
 /* Define this if you do software codec */
 #define CONFIG_CODEC SWCODEC
-
-
-/* LCD dimensions */
-#define LCD_WIDTH  240
-#define LCD_HEIGHT 320
-#define LCD_DEPTH  16   /* 65536 colours */
-#define LCD_PIXELFORMAT RGB565 /* rgb565 */
 
 /* Define this if you have a software controlled poweroff */
 #define HAVE_SW_POWEROFF
@@ -162,8 +155,8 @@
 /* The LCD is assumed to be 3.5" TFT touch screen */
 #define CONFIG_LCD LCD_MIOC510
 /* LCD dimensions */
-#define LCD_WIDTH  240
-#define LCD_HEIGHT 320
+#define LCD_WIDTH  320
+#define LCD_HEIGHT 240
 #define LCD_DPI    114  /* 400 pixels diagonally / 3.5 inch */
 /* The LCD is configured for RGB565 */
 #define LCD_DEPTH  16          /* 65536 colours */

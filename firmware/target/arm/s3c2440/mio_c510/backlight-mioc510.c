@@ -27,19 +27,25 @@
 
 void _backlight_set_brightness(int brightness)
 {
+    #if 0
+    /* Reference code */
     TCNTB0 = 0x3FF;
     TCMPB0 = brightness;
-    TCFG0 |= 0x20;
-    TCFG1 &= ~0xF;
+    TCFG0 |= 0x20; // prescale = 0x20
+    TCFG1 &= ~0xF; // input = PCLK / 2
     TCON &= ~0xF;
     TCON |= 2;
     TCON &= ~0xF;
     TCON |= 9;
+    #else
+    #endif
 }
 
 bool _backlight_init(void)
 {
+    #if 0
     S3C2440_GPIO_CONFIG(GPBCON, 0, GPIO_FUNCTION);
+    #endif
     return true;
 }
 

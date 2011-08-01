@@ -7,7 +7,7 @@
  *                     \/            \/     \/    \/            \/
  * $Id$
  *
- * Copyright (c) 2011 by Amaury Pouly
+ * Copyright (C) 2011 by Amaury Pouly
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -18,33 +18,28 @@
  * KIND, either express or implied.
  *
  ****************************************************************************/
-#include "config.h"
 #include "cpu.h"
-#include <stdbool.h>
-#include <stdio.h>
 #include "kernel.h"
-#include "system.h"
-#include "power.h"
-#include "led-mioc510.h"
+#include "sound.h"
+#include "i2c-s3c2440.h"
+#include "system-target.h"
+#include "timer.h"
+#include "wmcodec.h"
 
-unsigned int power_input_status(void)
+void audiohw_init(void)
 {
-    return charging_state() ? POWER_INPUT_USB_CHARGER : POWER_INPUT_NONE;
+
 }
 
-bool charging_state(void)
+void audiohw_enable_headphone_jack(bool enable)
 {
-    return !!(GPGDAT & (1 << 9));
 }
 
-void power_init(void)
+void wmcodec_write(int reg, int data)
 {
-    /* Nothing to do */
-}
-
-void power_off(void)
-{
-    /* we don't have any power control, user must do it */
-    //led_flash (LED_NONE, LED_ALL);
-    while(1);
+    unsigned char d[2];
+    /* data is 9-bit wide so one bit of the data is part of the register address */
+    d[0] = (reg << 1) | ((data & 0x100) >> 8);
+    d[1] = data;
+    i2c_write(0x34, d, sizeof(d));
 }

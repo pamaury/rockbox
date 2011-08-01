@@ -74,11 +74,19 @@ static inline void delay_cycles(volatile int delay)
 static void LCD_CTRL_setup(void)
 {
     LCDCON1 = (LCD_CLKVAL << 8) | (LCD_MMODE << 7) | (LCD_PNRMODE << 5) | 
-                (LCD_BPPMODE << 1);  
+                (LCD_BPPMODE << 1);
+#ifndef MIO_C510
     LCDCON2 = (LCD_UPPER_MARGIN << 24) | ((LCD_HEIGHT - 1) << 14) | 
                 (LCD_LOWER_MARGIN << 6) | (LCD_VSYNC_LEN << 0);
     LCDCON3 = (LCD_LEFT_MARGIN << 19) | ((LCD_WIDTH  - 1) <<  8) | 
                 (LCD_RIGHT_MARGIN << 0);
+#else
+    /* Mio C510 screen is rotated so width is height and vice versa */
+    LCDCON2 = (LCD_UPPER_MARGIN << 24) | ((LCD_WIDTH - 1) << 14) | 
+                (LCD_LOWER_MARGIN << 6) | (LCD_VSYNC_LEN << 0);
+    LCDCON3 = (LCD_LEFT_MARGIN << 19) | ((LCD_HEIGHT  - 1) <<  8) | 
+                (LCD_RIGHT_MARGIN << 0);
+#endif
     LCDCON4 = (LCD_HSYNC_LEN << 0);
 
     /* HWSWP = 1, INVVFRAM = 1, INVVLINE = 1, FRM565 = 1, All others = 0 */
@@ -363,18 +371,14 @@ void lcd_enable(bool state)
 {
     if(state)
     {
-        GPJDAT &= ~4;
-        sleep(0x3C * HZ / 1000); // unsure
-        GPJDAT |= 8;
-        sleep(0x33 * HZ / 1000); // unsure
         LCDCON1 |= LCD_ENVID;
+        GPJDAT &= ~4;
+        GPJDAT |= 8;
     }
     else
     {
-        sleep(0x64 * HZ / 1000);
         LCDCON1 &= ~LCD_ENVID;
         GPJDAT &= ~8;
-        sleep(0x3C * HZ / 1000);
         GPJDAT |= 4;
     }
 }

@@ -53,11 +53,9 @@ static const struct button_mapping button_context_standard[]  = {
 
     { ACTION_STD_CANCEL,        BUTTON_POWER,                   BUTTON_NONE },
 
-    { ACTION_STD_CONTEXT,       BUTTON_MENU|BUTTON_REPEAT,      BUTTON_SELECT },
+    { ACTION_STD_MENU,          BUTTON_MENU|BUTTON_REPEAT,      BUTTON_MENU },
 
-    { ACTION_STD_MENU,          BUTTON_MENU|BUTTON_REL,         BUTTON_MENU },
-
-    { ACTION_STD_OK,            BUTTON_MENU|BUTTON_REL,         BUTTON_SELECT },
+    { ACTION_STD_OK,            BUTTON_MENU|BUTTON_REL,         BUTTON_NONE },
 
     LAST_ITEM_IN_LIST
 }; /* button_context_standard */
@@ -68,12 +66,7 @@ static const struct button_mapping button_context_wps[]  = {
     LAST_ITEM_IN_LIST
 }; /* button_context_wps */
 
-static const struct button_mapping button_context_list[]  = {
-    { ACTION_LISTTREE_PGUP,      BUTTON_VOL_UP,                 BUTTON_NONE },
-    { ACTION_LISTTREE_PGUP,      BUTTON_VOL_UP|BUTTON_REPEAT,   BUTTON_NONE },
-    { ACTION_LISTTREE_PGDOWN,    BUTTON_VOL_DOWN,               BUTTON_NONE },
-    { ACTION_LISTTREE_PGDOWN,    BUTTON_VOL_DOWN|BUTTON_REPEAT, BUTTON_NONE },
-    
+static const struct button_mapping button_context_list[]  = {    
     LAST_ITEM_IN_LIST__NEXTLIST(CONTEXT_STD)
 }; /* button_context_list */
 
@@ -111,7 +104,7 @@ static const struct button_mapping button_context_bmark[]  = {
 
 static const struct button_mapping button_context_time[]  = {
     { ACTION_STD_CANCEL,        BUTTON_POWER,                   BUTTON_NONE },
-    { ACTION_STD_OK,            BUTTON_BUTTON_MENU,             BUTTON_NONE },
+    { ACTION_STD_OK,            BUTTON_MENU,                    BUTTON_NONE },
     LAST_ITEM_IN_LIST__NEXTLIST(CONTEXT_SETTINGS),
 }; /* button_context_time */
 
@@ -130,7 +123,7 @@ static const struct button_mapping button_context_keyboard[]  = {
     LAST_ITEM_IN_LIST
 }; /* button_context_keyboard */
 
-const struct button_mapping* target_get_context_mapping(int context)
+const struct button_mapping* get_context_mapping(int context)
 {
     switch(context)
     {

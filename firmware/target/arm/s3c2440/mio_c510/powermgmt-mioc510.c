@@ -24,27 +24,37 @@
 #include <stdio.h>
 #include "kernel.h"
 #include "system.h"
-#include "power.h"
-#include "led-mioc510.h"
+#include "powermgmt.h"
+#include "adc.h"
 
-unsigned int power_input_status(void)
+/* dummy values */
+const unsigned short battery_level_dangerous[BATTERY_TYPES_COUNT] =
 {
-    return charging_state() ? POWER_INPUT_USB_CHARGER : POWER_INPUT_NONE;
+    3450
+};
+
+const unsigned short battery_level_shutoff[BATTERY_TYPES_COUNT] =
+{
+    3400
+};
+
+/* voltages (millivolt) of 0%, 10%, ... 100% when charging disabled */
+const unsigned short percent_to_volt_discharge[BATTERY_TYPES_COUNT][11] =
+{
+    /* Toshiba Gigabeat Li Ion 830mAH figured from discharge curve */
+    { 3480, 3550, 3590, 3610, 3630, 3650, 3700, 3760, 3800, 3910, 3990 },
+};
+
+/* voltages (millivolt) of 0%, 10%, ... 100% when charging enabled */
+const unsigned short percent_to_volt_charge[11] =
+{
+    /* Toshiba Gigabeat Li Ion 830mAH */
+    3480, 3550, 3590, 3610, 3630, 3650, 3700, 3760, 3800, 3910, 3990
+};
+
+/* Returns battery voltage from ADC [millivolts] */
+unsigned int battery_adc_voltage(void)
+{
+    return adc_read(ADC_BATTERY) * 4;
 }
 
-bool charging_state(void)
-{
-    return !!(GPGDAT & (1 << 9));
-}
-
-void power_init(void)
-{
-    /* Nothing to do */
-}
-
-void power_off(void)
-{
-    /* we don't have any power control, user must do it */
-    //led_flash (LED_NONE, LED_ALL);
-    while(1);
-}

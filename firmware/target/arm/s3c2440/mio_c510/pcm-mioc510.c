@@ -18,33 +18,66 @@
  * KIND, either express or implied.
  *
  ****************************************************************************/
+#include <stdlib.h>
 #include "config.h"
-#include "cpu.h"
-#include <stdbool.h>
-#include <stdio.h>
-#include "kernel.h"
 #include "system.h"
-#include "power.h"
-#include "led-mioc510.h"
+#include "kernel.h"
+#include "logf.h"
+#include "audio.h"
+#include "sound.h"
+#include "file.h"
+#include "pcm-internal.h"
 
-unsigned int power_input_status(void)
+
+void fiq_handler(void) __attribute__((interrupt ("FIQ")));
+
+void pcm_play_lock(void)
 {
-    return charging_state() ? POWER_INPUT_USB_CHARGER : POWER_INPUT_NONE;
 }
 
-bool charging_state(void)
+void pcm_play_unlock(void)
 {
-    return !!(GPGDAT & (1 << 9));
 }
 
-void power_init(void)
+void pcm_play_dma_init(void)
 {
-    /* Nothing to do */
 }
 
-void power_off(void)
+void pcm_postinit(void)
 {
-    /* we don't have any power control, user must do it */
-    //led_flash (LED_NONE, LED_ALL);
-    while(1);
+    audiohw_postinit();
+}
+
+void pcm_dma_apply_settings(void)
+{
+}
+
+void pcm_play_dma_start(const void *addr, size_t size)
+{
+    (void) addr;
+    (void) size;
+}
+
+void pcm_play_dma_stop(void)
+{
+}
+
+void pcm_play_dma_pause(bool pause)
+{
+    (void) pause;
+}
+
+void fiq_handler(void)
+{
+}
+
+size_t pcm_get_bytes_waiting(void)
+{
+    return 0;
+}
+
+const void *pcm_play_dma_get_peak_buffer(int *count)
+{
+    (void) count;
+    return NULL;
 }

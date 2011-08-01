@@ -7,7 +7,7 @@
  *                     \/            \/     \/    \/            \/
  * $Id$
  *
- * Copyright (c) 2011 by Amaury Pouly
+ * Copyright (C) 2011 by Amaury Pouly
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -18,102 +18,62 @@
  * KIND, either express or implied.
  *
  ****************************************************************************/
-#include <string.h>
-#include "cpu.h"
+
+#include "config.h"
 #include "system.h"
-#include "backlight-target.h"
+#include "cpu.h"
+#include "string.h"
 #include "lcd.h"
+#include "kernel.h"
+#include "lcd-target.h"
 
-static void wait(unsigned int t) __attribute__((naked));
+/** Mio C510 screen is rotated by 90° */
 
-static void wait(unsigned int t)
+/* Copies a rectangle from one framebuffer to another. Can be used in
+   single transfer mode with width = num pixels, and height = 1 which
+   allows a full-width rectangle to be copied more efficiently. */
+void lcd_copy_buffer_rect(fb_data *dst, const fb_data *src,
+                                 int width, int height)
 {
-    asm volatile(
-        "    movs    r0, r0 \n\
-        0: \n\
-            bxeq    lr \n\
-            ldr     r2, =0x4D2 \n\
-        1: \n\
-            subs    r2, #1 \n\
-            bne     1b \n\
-            subs    r0, #1 \n\
-            b       0b");
+    #if 1
+    /* dst is wrong since the screen is rotated, so recompute real
+     * location */
+    unsigned dst_off = ((unsigned char *)dst - (unsigned char *)FRAME) / sizeof(fb_data);
+    unsigned dst_x = dst_off % LCD_WIDTH;
+    unsigned dst_y = dst_off / LCD_WIDTH;
+
+    for(int y = 0; y < height; y++)
+    {
+        for(int x = 0; x < width; x++)
+        {
+            unsigned pos = (dst_y + y) * LCD_WIDTH + dst_x + x;
+            unsigned virtual_x = pos % LCD_WIDTH;
+            unsigned virtual_y = pos / LCD_WIDTH;
+            unsigned rot_x = virtual_y;
+            unsigned rot_y = virtual_x;
+            ((fb_data *)FRAME)[(rot_y + 1) * LCD_HEIGHT - rot_x] = src[y * LCD_WIDTH + x];
+        }
+    }
+    #else
+    for(int x = 0; x < LCD_WIDTH; x++)
+        for(int y = 0; y < LCD_HEIGHT; y++)
+            ((fb_data *)FRAME)[(x + 1) * LCD_HEIGHT - y] = lcd_framebuffer[y][x];
+    #endif
 }
 
-void lcd_init_device(void)
+/* Line write helper function for lcd_yuv_blit. Write two lines of yuv420. */
+extern void lcd_write_yuv420_lines(fb_data *dst,
+                                   unsigned char const * const src[3],
+                                   int width,
+                                   int stride)
 {
-    /* vsync, hsync, vclk, vd[0:15], vden, lend, lcd_pwren */
-    
-    GPGCON &= ~0xc00000;// GPG11 as input
-    wait(0x32);
-    GPCUP = 0x0000ff03;// all led pins
-    GPCCON &= 0x3FFC03;
-    GPCCON |= 0xAA8002A8;
-    GPDUP = 0x00000000ff;
-    GPDCON &= 0x3F000F;
-    GPDCON |= 0xAA80AAA0;
-    GPBUP = 0xffffffff;
-    GPBCON = (GPBCON & ~3) | 1;
-    GPBDAT &= ~1;
-    GPJDAT &= ~8;
-    GPJDAT |= 4;
-    GPJUP = 0xffff;
-    GPJCON &= ~0xCF0;
-    GPJCON |= 0x50;
-    GPJDAT &= ~4;
-    wait(1);
-    GPJDAT |= 8;
-    wait(1);
-    /*
-    INTMSK |= 0x400;
-    SRCPND = 0x400;
-    INTPND = 0x400;
-    */
-    TCFG0 &= ~0xff;
-    TCFG0 |= 0x20;
-    TCFG1 &= ~0xf;
-    TCNTB0 = 0x2FF;
-    TCMPB0 = 0xE6;
-    TCON &= ~0xF;
-    TCON |= 2;
-    TCON &= ~0xF;
-    TCON |= 9;
-    wait(1);
-
-    LCDCON1 = 0x978;
-    LCDCON2 = 0x24FC080;
-    LCDCON3 = 0x80EF0A;
-    LCDCON4 = 0xD04;
-    LCDCON5 = 0xB01;
-    LCDSADDR1 = LCD_FRAME_ADDR / 2; /* assume properly aligned */
-    LCDSADDR2 = ((LCD_FRAME_ADDR + LCD_WIDTH * LCD_HEIGHT * 2) & 0x3FFFFF) / 2;
-    LCDSADDR3 = 240;
-    TPAL = 0;
-    LCDCON1 |= 1;
-    wait(0x64);
-
-    GPBCON = (GPBCON & ~3) | 2;
-    GPCCON &= ~0xC00;
-    GPGCON &= ~0xC00000;
-    GPGCON |= 0x400000;
 }
 
-void lcd_enable(bool enable)
+extern void lcd_write_yuv420_lines_odither(fb_data *dst,
+                                           unsigned char const * const src[3],
+                                           int width,
+                                           int stride,
+                                           int x_screen, /* To align dither pattern */
+                                           int y_screen)
 {
-
-}
-
-void lcd_update(void)
-{
-    lcd_copy_buffer_rect((fb_data *)FRAME, &lcd_framebuffer[0][0],
-                         LCD_WIDTH*LCD_HEIGHT, 1);
-}
-
-void lcd_update_rect(int x, int y, int width, int height)
-{
-    (void) x;
-    (void) y;
-    (void) width;
-    (void) height;
-    lcd_update();
 }
