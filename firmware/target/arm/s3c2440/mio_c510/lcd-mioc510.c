@@ -51,7 +51,7 @@ void lcd_copy_buffer_rect(fb_data *dst, const fb_data *src,
             unsigned virtual_y = pos / LCD_WIDTH;
             unsigned rot_x = virtual_y;
             unsigned rot_y = virtual_x;
-            ((fb_data *)FRAME)[(rot_y + 1) * LCD_HEIGHT - rot_x] = src[y * LCD_WIDTH + x];
+            ((fb_data *)FRAME)[(rot_y + 1) * LCD_HEIGHT - rot_x - 1] = src[y * LCD_WIDTH + x];
         }
     }
     #else
